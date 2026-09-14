@@ -486,7 +486,20 @@
       </div>
     </footer>
   </div>
-
-  <script src="app.js"></script>
+ <script src="app.js"></script>
+ <div id="spellModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Official 5e Spells</h3>
+        <button id="closeSpellModal" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-search-bar">
+        <input type="text" id="spellSearchInput" placeholder="Search spell name..." />
+      </div>
+      <div id="spellApiList" class="modal-list">
+        <p class="loading-text">Loading spells from D&D 5e API...</p>
+      </div>
+    </div>
+  </div>   
 </body>
 </html>
