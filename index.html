@@ -6,57 +6,63 @@
   <title>Character Sheet App</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body id="top">
   <div class="sheet-container">
+    <!-- Top Action Bar -->
     <header class="top-nav">
-      <button class="btn red" id="saveBtn">Save</button>
-      <button class="btn red" id="loadBtn">Load</button>
-      <button class="btn red" id="newBtn">New</button>
-      <button class="btn red" id="backupBtn">Backup</button>
+      <button class="btn red" id="saveBtn" type="button">Save</button>
+      <button class="btn red" id="loadBtn" type="button">Load</button>
+      <button class="btn red" id="newBtn" type="button">New</button>
+      <button class="btn red" id="backupBtn" type="button">Backup</button>
       <label class="btn red file-label">
         Restore
-        <input type="file" id="restoreFile" accept=".json" style="display:none;" />
+        <input type="file" id="restoreFile" accept=".json" />
       </label>
-      <button class="btn red" id="deleteBtn">Delete</button>
-      <button class="btn red">Login</button>
+      <button class="btn red" id="deleteBtn" type="button">Delete</button>
+      <span id="saveStatus" class="status-msg"></span>
     </header>
 
+    <!-- Character Name Header -->
     <div class="name-box">
       <input type="text" id="charName" class="save-field name-input" placeholder="Character Name" />
     </div>
 
+    <!-- Primary Tabs -->
     <div class="tab-controls">
-      <button class="main-tab active" data-target="tab-stats">Statistics, Abilities, Equipment, etc.</button>
-      <button class="main-tab" data-target="tab-journal">Notes, Personality, NPCs, etc.</button>
+      <button class="main-tab active" data-target="tab-stats" type="button">Statistics, Abilities, Equipment, etc.</button>
+      <button class="main-tab" data-target="tab-journal" type="button">Notes, Personality, NPCs, etc.</button>
     </div>
 
+    <!-- MAIN VIEW 1: Statistics -->
     <div id="tab-stats" class="tab-page active">
+      <!-- Identity Line 1 -->
       <div class="meta-row">
         <div class="meta-item">
-          <label>Class</label>
+          <label for="charClass">Class</label>
           <input type="text" id="charClass" class="save-field inline-input" />
         </div>
         <div class="meta-item">
-          <label>Race</label>
+          <label for="charRace">Race</label>
           <input type="text" id="charRace" class="save-field inline-input" />
         </div>
         <div class="meta-item">
-          <label>Background</label>
+          <label for="charBackground">Background</label>
           <input type="text" id="charBackground" class="save-field inline-input" />
         </div>
         <div class="meta-item">
-          <label>Alignment</label>
+          <label for="charAlignment">Alignment</label>
           <input type="text" id="charAlignment" class="save-field inline-input" />
         </div>
         <div class="meta-item small">
-          <label>Level</label>
-          <input type="number" id="charLevel" class="save-field inline-input" value="1" />
+          <label for="charLevel">Level</label>
+          <input type="number" id="charLevel" class="save-field inline-input" value="1" min="1" max="20" />
         </div>
       </div>
 
+      <!-- Identity Line 2 -->
       <div class="meta-row">
         <div class="meta-item">
-          <label>Experience</label>
+          <label for="charExp">Experience</label>
           <input type="text" id="charExp" class="save-field inline-input" />
         </div>
         <div class="meta-item static-text">
@@ -64,21 +70,22 @@
           <span id="profBonusDisplay">+2</span>
         </div>
         <div class="meta-item">
-          <label>Inspiration</label>
+          <label for="charInspiration">Inspiration</label>
           <input type="text" id="charInspiration" class="save-field inline-input" />
         </div>
         <div class="meta-item small">
-          <label>Speed</label>
+          <label for="charSpeed">Speed</label>
           <input type="number" id="charSpeed" class="save-field inline-input" value="30" />
         </div>
         <div class="meta-item dual">
           <label>Hit Dice</label>
-          <input type="text" id="hitDiceCur" class="save-field dual-input" value="0" />
+          <input type="text" id="hitDiceCur" class="save-field dual-input" value="1" />
           <span>/</span>
-          <input type="text" id="hitDiceMax" class="save-field dual-input" value="0" />
+          <input type="text" id="hitDiceMax" class="save-field dual-input" value="1" />
         </div>
       </div>
 
+      <!-- Vitals Row -->
       <div class="vitals-row">
         <div class="vital-unit">
           <span>Armor Class</span>
@@ -92,12 +99,12 @@
           <div class="hearts-group">
             <div class="heart-box">
               <span class="heart-shape outline"></span>
-              <input type="number" id="curHp" class="save-field heart-val" value="0" />
+              <input type="number" id="curHp" class="save-field heart-val" value="10" />
             </div>
             <span class="slash">/</span>
             <div class="heart-box">
               <span class="heart-shape solid"></span>
-              <input type="number" id="maxHp" class="save-field heart-val white-txt" value="0" />
+              <input type="number" id="maxHp" class="save-field heart-val white-txt" value="10" />
             </div>
           </div>
         </div>
@@ -105,9 +112,9 @@
         <div class="vital-unit">
           <span>Death Save Success/Fail</span>
           <div class="pair-box">
-            <input type="number" id="deathSucc" class="save-field dual-input" value="0" />
+            <input type="number" id="deathSucc" class="save-field dual-input" value="0" min="0" max="3" />
             <span>/</span>
-            <input type="number" id="deathFail" class="save-field dual-input" value="0" />
+            <input type="number" id="deathFail" class="save-field dual-input" value="0" min="0" max="3" />
           </div>
         </div>
 
@@ -121,7 +128,9 @@
         </div>
       </div>
 
+      <!-- Two-Column Sheet Layout -->
       <div class="two-col-layout">
+        <!-- Left Column: Attributes and Skills -->
         <div class="left-pane">
           <h2 class="section-title">Attributes</h2>
           <div class="attributes-group">
@@ -131,7 +140,7 @@
               <span class="attr-mod" id="mod_str">0</span>
               <label class="save-check"><input type="checkbox" id="save_str" class="save-field check-save" /> Save</label>
               <span class="save-val" id="save_val_str">0</span>
-              <span class="hex-die roll-btn" data-type="save" data-attr="str"></span>
+              <span class="hex-die roll-btn" data-type="save" data-attr="str" title="Roll Strength Save"></span>
             </div>
 
             <div class="attr-row" data-attr="dex">
@@ -140,7 +149,7 @@
               <span class="attr-mod" id="mod_dex">0</span>
               <label class="save-check"><input type="checkbox" id="save_dex" class="save-field check-save" /> Save</label>
               <span class="save-val" id="save_val_dex">0</span>
-              <span class="hex-die roll-btn" data-type="save" data-attr="dex"></span>
+              <span class="hex-die roll-btn" data-type="save" data-attr="dex" title="Roll Dexterity Save"></span>
             </div>
 
             <div class="attr-row" data-attr="con">
@@ -149,7 +158,7 @@
               <span class="attr-mod" id="mod_con">0</span>
               <label class="save-check"><input type="checkbox" id="save_con" class="save-field check-save" /> Save</label>
               <span class="save-val" id="save_val_con">0</span>
-              <span class="hex-die roll-btn" data-type="save" data-attr="con"></span>
+              <span class="hex-die roll-btn" data-type="save" data-attr="con" title="Roll Constitution Save"></span>
             </div>
 
             <div class="attr-row" data-attr="int">
@@ -158,7 +167,7 @@
               <span class="attr-mod" id="mod_int">0</span>
               <label class="save-check"><input type="checkbox" id="save_int" class="save-field check-save" /> Save</label>
               <span class="save-val" id="save_val_int">0</span>
-              <span class="hex-die roll-btn" data-type="save" data-attr="int"></span>
+              <span class="hex-die roll-btn" data-type="save" data-attr="int" title="Roll Intelligence Save"></span>
             </div>
 
             <div class="attr-row" data-attr="wis">
@@ -167,7 +176,7 @@
               <span class="attr-mod" id="mod_wis">0</span>
               <label class="save-check"><input type="checkbox" id="save_wis" class="save-field check-save" /> Save</label>
               <span class="save-val" id="save_val_wis">0</span>
-              <span class="hex-die roll-btn" data-type="save" data-attr="wis"></span>
+              <span class="hex-die roll-btn" data-type="save" data-attr="wis" title="Roll Wisdom Save"></span>
             </div>
 
             <div class="attr-row" data-attr="cha">
@@ -176,176 +185,178 @@
               <span class="attr-mod" id="mod_cha">0</span>
               <label class="save-check"><input type="checkbox" id="save_cha" class="save-field check-save" /> Save</label>
               <span class="save-val" id="save_val_cha">0</span>
-              <span class="hex-die roll-btn" data-type="save" data-attr="cha"></span>
+              <span class="hex-die roll-btn" data-type="save" data-attr="cha" title="Roll Charisma Save"></span>
             </div>
           </div>
 
           <h2 class="section-title">Skills</h2>
           <div class="skills-group">
-            <div class="skill-row" data-stat="dex">
+            <div class="skill-row" data-stat="dex" id="row_acro">
               <input type="checkbox" class="save-field prof-cb" id="cb_acro_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_acro_e" />
               <span class="skill-label">Acrobatics (Dex)</span>
               <span class="skill-val" id="val_acro">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="acro"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="acro" title="Roll Acrobatics"></span>
             </div>
 
-            <div class="skill-row" data-stat="wis">
+            <div class="skill-row" data-stat="wis" id="row_anim">
               <input type="checkbox" class="save-field prof-cb" id="cb_anim_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_anim_e" />
               <span class="skill-label">Animal Handling (Wis)</span>
               <span class="skill-val" id="val_anim">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="anim"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="anim" title="Roll Animal Handling"></span>
             </div>
 
-            <div class="skill-row" data-stat="int">
+            <div class="skill-row" data-stat="int" id="row_arca">
               <input type="checkbox" class="save-field prof-cb" id="cb_arca_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_arca_e" />
               <span class="skill-label">Arcana (Int)</span>
               <span class="skill-val" id="val_arca">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="arca"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="arca" title="Roll Arcana"></span>
             </div>
 
-            <div class="skill-row" data-stat="str">
+            <div class="skill-row" data-stat="str" id="row_athl">
               <input type="checkbox" class="save-field prof-cb" id="cb_athl_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_athl_e" />
               <span class="skill-label">Athletics (Str)</span>
               <span class="skill-val" id="val_athl">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="athl"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="athl" title="Roll Athletics"></span>
             </div>
 
-            <div class="skill-row" data-stat="cha">
+            <div class="skill-row" data-stat="cha" id="row_dec">
               <input type="checkbox" class="save-field prof-cb" id="cb_dec_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_dec_e" />
               <span class="skill-label">Deception (Cha)</span>
               <span class="skill-val" id="val_dec">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="dec"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="dec" title="Roll Deception"></span>
             </div>
 
-            <div class="skill-row" data-stat="int">
+            <div class="skill-row" data-stat="int" id="row_hist">
               <input type="checkbox" class="save-field prof-cb" id="cb_hist_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_hist_e" />
               <span class="skill-label">History (Int)</span>
               <span class="skill-val" id="val_hist">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="hist"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="hist" title="Roll History"></span>
             </div>
 
-            <div class="skill-row" data-stat="wis">
+            <div class="skill-row" data-stat="wis" id="row_ins">
               <input type="checkbox" class="save-field prof-cb" id="cb_ins_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_ins_e" />
               <span class="skill-label">Insight (Wis)</span>
               <span class="skill-val" id="val_ins">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="ins"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="ins" title="Roll Insight"></span>
             </div>
 
-            <div class="skill-row" data-stat="cha">
+            <div class="skill-row" data-stat="cha" id="row_intm">
               <input type="checkbox" class="save-field prof-cb" id="cb_intm_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_intm_e" />
               <span class="skill-label">Intimidation (Cha)</span>
               <span class="skill-val" id="val_intm">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="intm"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="intm" title="Roll Intimidation"></span>
             </div>
 
-            <div class="skill-row" data-stat="int">
+            <div class="skill-row" data-stat="int" id="row_inv">
               <input type="checkbox" class="save-field prof-cb" id="cb_inv_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_inv_e" />
               <span class="skill-label">Investigation (Int)</span>
               <span class="skill-val" id="val_inv">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="inv"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="inv" title="Roll Investigation"></span>
             </div>
 
-            <div class="skill-row" data-stat="wis">
+            <div class="skill-row" data-stat="wis" id="row_med">
               <input type="checkbox" class="save-field prof-cb" id="cb_med_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_med_e" />
               <span class="skill-label">Medicine (Wis)</span>
               <span class="skill-val" id="val_med">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="med"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="med" title="Roll Medicine"></span>
             </div>
 
-            <div class="skill-row" data-stat="int">
+            <div class="skill-row" data-stat="int" id="row_nat">
               <input type="checkbox" class="save-field prof-cb" id="cb_nat_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_nat_e" />
               <span class="skill-label">Nature (Int)</span>
               <span class="skill-val" id="val_nat">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="nat"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="nat" title="Roll Nature"></span>
             </div>
 
-            <div class="skill-row" data-stat="wis">
+            <div class="skill-row" data-stat="wis" id="row_perc">
               <input type="checkbox" class="save-field prof-cb" id="cb_perc_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_perc_e" />
               <span class="skill-label">Perception (Wis)</span>
               <span class="skill-val" id="val_perc">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="perc"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="perc" title="Roll Perception"></span>
             </div>
 
-            <div class="skill-row" data-stat="cha">
+            <div class="skill-row" data-stat="cha" id="row_perf">
               <input type="checkbox" class="save-field prof-cb" id="cb_perf_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_perf_e" />
               <span class="skill-label">Performance (Cha)</span>
               <span class="skill-val" id="val_perf">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="perf"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="perf" title="Roll Performance"></span>
             </div>
 
-            <div class="skill-row" data-stat="cha">
+            <div class="skill-row" data-stat="cha" id="row_pers">
               <input type="checkbox" class="save-field prof-cb" id="cb_pers_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_pers_e" />
               <span class="skill-label">Persuasion (Cha)</span>
               <span class="skill-val" id="val_pers">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="pers"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="pers" title="Roll Persuasion"></span>
             </div>
 
-            <div class="skill-row" data-stat="int">
+            <div class="skill-row" data-stat="int" id="row_rel">
               <input type="checkbox" class="save-field prof-cb" id="cb_rel_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_rel_e" />
               <span class="skill-label">Religion (Int)</span>
               <span class="skill-val" id="val_rel">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="rel"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="rel" title="Roll Religion"></span>
             </div>
 
-            <div class="skill-row" data-stat="dex">
+            <div class="skill-row" data-stat="dex" id="row_slt">
               <input type="checkbox" class="save-field prof-cb" id="cb_slt_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_slt_e" />
               <span class="skill-label">Sleight of Hand (Dex)</span>
               <span class="skill-val" id="val_slt">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="slt"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="slt" title="Roll Sleight of Hand"></span>
             </div>
 
-            <div class="skill-row" data-stat="dex">
+            <div class="skill-row" data-stat="dex" id="row_ste">
               <input type="checkbox" class="save-field prof-cb" id="cb_ste_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_ste_e" />
               <span class="skill-label">Stealth (Dex)</span>
               <span class="skill-val" id="val_ste">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="ste"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="ste" title="Roll Stealth"></span>
             </div>
 
-            <div class="skill-row" data-stat="wis">
+            <div class="skill-row" data-stat="wis" id="row_surv">
               <input type="checkbox" class="save-field prof-cb" id="cb_surv_p" />
               <input type="checkbox" class="save-field exp-cb" id="cb_surv_e" />
               <span class="skill-label">Survival (Wis)</span>
               <span class="skill-val" id="val_surv">0</span>
-              <span class="hex-die roll-btn" data-type="skill" data-id="surv"></span>
+              <span class="hex-die roll-btn" data-type="skill" data-id="surv" title="Roll Survival"></span>
             </div>
           </div>
         </div>
 
+        <!-- Right Column: Dice Roller, Coins, Attacks, Features, Spells -->
         <div class="right-pane">
           <h2 class="section-title">Dice Roller</h2>
           <div class="dice-bar">
-            <button class="btn red dice-btn" data-sides="20">1d20</button>
-            <button class="btn red dice-btn" data-sides="12">1d12</button>
-            <button class="btn red dice-btn" data-sides="10">1d10</button>
-            <button class="btn red dice-btn" data-sides="8">1d8</button>
-            <button class="btn red dice-btn" data-sides="6">1d6</button>
-            <button class="btn red dice-btn" data-sides="4">1d4</button>
-            <button class="btn red" id="clearRollBtn">Clear</button>
+            <button class="btn red dice-btn" data-sides="20" type="button">1d20</button>
+            <button class="btn red dice-btn" data-sides="12" type="button">1d12</button>
+            <button class="btn red dice-btn" data-sides="10" type="button">1d10</button>
+            <button class="btn red dice-btn" data-sides="8" type="button">1d8</button>
+            <button class="btn red dice-btn" data-sides="6" type="button">1d6</button>
+            <button class="btn red dice-btn" data-sides="4" type="button">1d4</button>
+            <button class="btn red" id="clearRollBtn" type="button">Clear</button>
             <span id="rollResult" class="roll-output"></span>
           </div>
 
+          <!-- Currencies -->
           <div class="currency-bar">
-            <div class="coin-item"><label>CP</label><input type="number" id="coin_cp" class="save-field coin-input" value="0" /></div>
-            <div class="coin-item"><label>SP</label><input type="number" id="coin_sp" class="save-field coin-input" value="0" /></div>
-            <div class="coin-item"><label>GP</label><input type="number" id="coin_gp" class="save-field coin-input" value="0" /></div>
-            <div class="coin-item"><label>PP</label><input type="number" id="coin_pp" class="save-field coin-input" value="0" /></div>
+            <div class="coin-item"><label for="coin_cp">CP</label><input type="number" id="coin_cp" class="save-field coin-input" value="0" /></div>
+            <div class="coin-item"><label for="coin_sp">SP</label><input type="number" id="coin_sp" class="save-field coin-input" value="0" /></div>
+            <div class="coin-item"><label for="coin_gp">GP</label><input type="number" id="coin_gp" class="save-field coin-input" value="0" /></div>
+            <div class="coin-item"><label for="coin_pp">PP</label><input type="number" id="coin_pp" class="save-field coin-input" value="0" /></div>
           </div>
 
           <h2 class="section-title">Weapons & Attacks</h2>
@@ -358,16 +369,16 @@
             </div>
             <div class="attack-rows-container">
               <div class="attack-entry">
-                <input type="text" class="save-field inline-input" id="wpn_1_name" />
-                <input type="text" class="save-field inline-input" id="wpn_1_atk" />
-                <input type="text" class="save-field inline-input" id="wpn_1_dmg" />
-                <input type="text" class="save-field inline-input" id="wpn_1_notes" />
+                <input type="text" class="save-field inline-input" id="wpn_1_name" placeholder="Shortsword" />
+                <input type="text" class="save-field inline-input" id="wpn_1_atk" placeholder="+5" />
+                <input type="text" class="save-field inline-input" id="wpn_1_dmg" placeholder="1d6+3 Piercing" />
+                <input type="text" class="save-field inline-input" id="wpn_1_notes" placeholder="Finesse, light" />
               </div>
               <div class="attack-entry">
-                <input type="text" class="save-field inline-input" id="wpn_2_name" />
-                <input type="text" class="save-field inline-input" id="wpn_2_atk" />
-                <input type="text" class="save-field inline-input" id="wpn_2_dmg" />
-                <input type="text" class="save-field inline-input" id="wpn_2_notes" />
+                <input type="text" class="save-field inline-input" id="wpn_2_name" placeholder="Shortbow" />
+                <input type="text" class="save-field inline-input" id="wpn_2_atk" placeholder="+5" />
+                <input type="text" class="save-field inline-input" id="wpn_2_dmg" placeholder="1d6+3 Piercing" />
+                <input type="text" class="save-field inline-input" id="wpn_2_notes" placeholder="Range 80/320" />
               </div>
             </div>
           </div>
@@ -375,24 +386,24 @@
           <hr class="red-divider" />
 
           <h2 class="section-title">Features & Traits</h2>
-          <textarea id="featuresTraits" class="save-field block-text" rows="5"></textarea>
+          <textarea id="featuresTraits" class="save-field block-text" rows="5" placeholder="Class abilities, racial traits, and feats..."></textarea>
 
           <h2 class="section-title">Other Proficiencies</h2>
-          <textarea id="otherProfs" class="save-field block-text" rows="4"></textarea>
+          <textarea id="otherProfs" class="save-field block-text" rows="4" placeholder="Armor, weapons, tools, and languages..."></textarea>
 
           <h2 class="section-title">Spells</h2>
           <div class="spell-basics">
             <div class="meta-item">
-              <label>Spell Ability</label>
-              <input type="text" id="spellAbility" class="save-field inline-input" />
+              <label for="spellAbility">Spell Ability</label>
+              <input type="text" id="spellAbility" class="save-field inline-input" placeholder="INT" />
             </div>
             <div class="meta-item">
-              <label>Spell Save DC</label>
-              <input type="text" id="spellDc" class="save-field inline-input" />
+              <label for="spellDc">Spell Save DC</label>
+              <input type="text" id="spellDc" class="save-field inline-input" placeholder="13" />
             </div>
             <div class="meta-item">
-              <label>Spell Attack Bonus</label>
-              <input type="text" id="spellAtkBonus" class="save-field inline-input" />
+              <label for="spellAtkBonus">Spell Attack Bonus</label>
+              <input type="text" id="spellAtkBonus" class="save-field inline-input" placeholder="+5" />
             </div>
           </div>
 
@@ -409,26 +420,30 @@
             <div class="slot-item"><span>9th</span><input type="number" id="slot9_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot9_max" class="save-field dual-input" value="0" /></div>
           </div>
 
-          <<div class="cantrips-header">
-            <strong>Cantrips</strong>
-            <span class="red-text action-link" id="addSpellBtn">Add Spell</span>
+          <div class="cantrips-header">
+            <strong>Spells & Cantrips</strong>
+            <button class="btn-text-red" id="addSpellBtn" type="button">+ Add Spell</button>
           </div>
           <hr class="red-divider" />
+
+          <!-- Dynamic Container for Added Spell Cards -->
           <div id="spellsList" class="spells-container"></div>
+        </div>
       </div>
     </div>
 
+    <!-- MAIN VIEW 2: Notes, Personality, NPCs, Equipment -->
     <div id="tab-journal" class="tab-page">
       <div class="subtab-controls">
-        <button class="sub-tab active" data-sub="sub-notes">General Notes</button>
-        <button class="sub-tab" data-sub="sub-personality">Personality & Lore</button>
-        <button class="sub-tab" data-sub="sub-npcs">NPCs & Contacts</button>
-        <button class="sub-tab" data-sub="sub-equip">Equipment & Gear</button>
+        <button class="sub-tab active" data-sub="sub-notes" type="button">General Notes</button>
+        <button class="sub-tab" data-sub="sub-personality" type="button">Personality & Lore</button>
+        <button class="sub-tab" data-sub="sub-npcs" type="button">NPCs & Contacts</button>
+        <button class="sub-tab" data-sub="sub-equip" type="button">Equipment & Gear</button>
       </div>
 
       <div id="sub-notes" class="subtab-page active">
         <h2 class="section-title">Campaign Notes & Log</h2>
-        <textarea id="campaignNotes" class="save-field block-text journal-box" rows="14" placeholder="Quests, session notes, locations, and clues..."></textarea>
+        <textarea id="campaignNotes" class="save-field block-text journal-box" rows="14" placeholder="Quests, session notes, locations, clues..."></textarea>
       </div>
 
       <div id="sub-personality" class="subtab-page">
@@ -463,6 +478,7 @@
       </div>
     </div>
 
+    <!-- Footer -->
     <footer class="sheet-footer">
       <hr class="footer-divider" />
       <div class="footer-meta">
@@ -476,30 +492,33 @@
       <div class="bottom-quicknav">
         <a href="#top">Top</a>
         <span>|</span>
-        <a href="#tab-stats">Attributes</a>
+        <button class="footer-nav-btn" data-tab="tab-stats" data-scroll="attr">Attributes</button>
         <span>|</span>
-        <a href="#tab-stats">Skills</a>
+        <button class="footer-nav-btn" data-tab="tab-stats" data-scroll="skills">Skills</button>
         <span>|</span>
-        <a href="#tab-stats">Spells</a>
+        <button class="footer-nav-btn" data-tab="tab-stats" data-scroll="spells">Spells</button>
         <span>|</span>
-        <a href="#tab-journal">Notes</a>
+        <button class="footer-nav-btn" data-tab="tab-journal" data-scroll="journal">Notes</button>
       </div>
     </footer>
   </div>
- <script src="app.js"></script>
- <div id="spellModal" class="modal-backdrop">
+
+  <!-- Spell Picker Modal -->
+  <div id="spellModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-header">
         <h3>Official 5e Spells</h3>
-        <button id="closeSpellModal" class="modal-close-btn">&times;</button>
+        <button id="closeSpellModal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
       </div>
       <div class="modal-search-bar">
-        <input type="text" id="spellSearchInput" placeholder="Search spell name..." />
+        <input type="text" id="spellSearchInput" placeholder="Search official 5e spells..." autocomplete="off" />
       </div>
       <div id="spellApiList" class="modal-list">
-        <p class="loading-text">Loading spells from D&D 5e API...</p>
+        <p class="loading-text">Loading spells...</p>
       </div>
     </div>
-  </div>   
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
