@@ -16,7 +16,6 @@ body {
   margin: 0 auto;
 }
 
-/* Action Buttons Header */
 .top-nav {
   display: flex;
   gap: 0.5rem;
@@ -67,7 +66,6 @@ body {
   transition: opacity 0.3s ease;
 }
 
-/* Name Box */
 .name-box {
   margin-bottom: 0.8rem;
 }
@@ -88,7 +86,6 @@ body {
   border-color: #b70014;
 }
 
-/* Primary Navigation Tabs */
 .tab-controls {
   display: flex;
   border-bottom: 2px solid #b70014;
@@ -121,7 +118,6 @@ body {
   display: block;
 }
 
-/* Sub-tabs for Notes/Personality/NPCs */
 .subtab-controls {
   display: flex;
   gap: 0.4rem;
@@ -156,7 +152,6 @@ body {
   display: block;
 }
 
-/* Identity Rows */
 .meta-row {
   display: flex;
   flex-wrap: wrap;
@@ -198,7 +193,6 @@ body {
   background: #fafafa;
 }
 
-/* Vitals & Custom Badge Shapes */
 .vitals-row {
   display: flex;
   gap: 2.2rem;
@@ -317,7 +311,6 @@ body {
   color: #ffffff;
 }
 
-/* Two Column Layout */
 .two-col-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -337,7 +330,6 @@ body {
   margin: 1.25rem 0 0.75rem 0;
 }
 
-/* Attributes */
 .attr-row {
   display: flex;
   align-items: center;
@@ -372,7 +364,6 @@ body {
   cursor: pointer;
 }
 
-/* Hex Die Red Icon */
 .hex-die {
   width: 15px;
   height: 17px;
@@ -387,7 +378,6 @@ body {
   transform: scale(1.25);
 }
 
-/* Skills */
 .skill-row {
   display: flex;
   align-items: center;
@@ -407,7 +397,6 @@ body {
   font-weight: 600;
 }
 
-/* Dice Roller & Currencies */
 .dice-bar {
   display: flex;
   gap: 0.45rem;
@@ -449,8 +438,7 @@ body {
   text-align: center;
 }
 
-/* Weapons Table */
-/* Weapons Table with Dynamic Rows & Plus Icon */
+/* Weapons Table with Dynamic Plus Button */
 .attacks-table {
   margin-bottom: 1rem;
 }
@@ -516,13 +504,13 @@ body {
   background-color: #920010;
   transform: scale(1.1);
 }
+
 .red-divider {
   border: none;
   border-top: 1px solid #b70014;
   margin: 1.3rem 0;
 }
 
-/* Spell Section */
 .spell-basics {
   display: flex;
   gap: 1.5rem;
@@ -586,7 +574,6 @@ body {
   line-height: 1.45;
 }
 
-/* Dynamic Detailed Spell Cards */
 .spells-container {
   display: flex;
   flex-direction: column;
@@ -650,7 +637,6 @@ body {
   margin-top: 0.25rem;
 }
 
-/* Modal Popup Window */
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -753,7 +739,6 @@ body {
   padding: 1.2rem 0;
 }
 
-/* Footer */
 .sheet-footer {
   margin-top: 2.2rem;
 }
