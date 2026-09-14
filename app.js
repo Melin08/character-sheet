@@ -5,6 +5,15 @@ const SPELLS_STORAGE_KEY = "badman_char_sheet_spells";
 let allSpellsCache = [];
 let myCharacterSpells = [];
 
+const SHEET_STORAGE_KEY = "badman_char_sheet_data";
+const SPELLS_STORAGE_KEY = "badman_char_sheet_spells";
+const WEAPONS_STORAGE_KEY = "badman_char_sheet_weapons";
+
+let myCharacterWeapons = [
+  { name: "", atk: "", dmg: "", notes: "" },
+  { name: "", atk: "", dmg: "", notes: "" }
+];
+
 // Flash helper to show user action feedback
 function showStatus(text) {
   const statusElem = document.getElementById("saveStatus");
