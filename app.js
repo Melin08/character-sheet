@@ -1,20 +1,14 @@
-// Local Storage Keys
-const SHEET_STORAGE_KEY = "badman_char_sheet_data";
-const SPELLS_STORAGE_KEY = "badman_char_sheet_spells";
-
-let allSpellsCache = [];
-let myCharacterSpells = [];
-
 const SHEET_STORAGE_KEY = "badman_char_sheet_data";
 const SPELLS_STORAGE_KEY = "badman_char_sheet_spells";
 const WEAPONS_STORAGE_KEY = "badman_char_sheet_weapons";
 
+let allSpellsCache = [];
+let myCharacterSpells = [];
 let myCharacterWeapons = [
-  { name: "", atk: "", dmg: "", notes: "" },
-  { name: "", atk: "", dmg: "", notes: "" }
+  { name: "Shortsword", atk: "+5", dmg: "1d6+3 P", notes: "Finesse, light" },
+  { name: "Shortbow", atk: "+5", dmg: "1d6+3 P", notes: "Range 80/320" }
 ];
 
-// Flash helper to show user action feedback
 function showStatus(text) {
   const statusElem = document.getElementById("saveStatus");
   if (!statusElem) return;
@@ -24,7 +18,6 @@ function showStatus(text) {
   }, 2500);
 }
 
-// Math calculation helpers
 function getModifier(score) {
   return Math.floor((score - 10) / 2);
 }
@@ -33,7 +26,6 @@ function getProfBonus(level) {
   return Math.ceil(1 + level / 4);
 }
 
-// Recalculate proficiency, ability modifiers, saves, and skill totals
 function recalculateAll() {
   const levelInput = document.getElementById("charLevel");
   const level = parseInt(levelInput?.value, 10) || 1;
@@ -62,7 +54,6 @@ function recalculateAll() {
     }
   });
 
-  // Calculate 18 skill values
   document.querySelectorAll(".skill-row").forEach((row) => {
     const stat = row.dataset.stat;
     const statMod = mods[stat] ?? 0;
@@ -78,7 +69,69 @@ function recalculateAll() {
   });
 }
 
-// Save fields & spells to localStorage
+function renderWeapons() {
+  const container = document.getElementById("weaponsContainer");
+  if (!container) return;
+
+  container.innerHTML = myCharacterWeapons
+    .map(
+      (wpn, idx) => `
+      <div class="attack-entry" data-index="${idx}">
+        <input type="text" class="inline-input wpn-field" data-prop="name" value="${wpn.name || ""}" placeholder="Shortsword" />
+        <input type="text" class="inline-input wpn-field" data-prop="atk" value="${wpn.atk || ""}" placeholder="+5" />
+        <input type="text" class="inline-input wpn-field" data-prop="dmg" value="${wpn.dmg || ""}" placeholder="1d6+3" />
+        <input type="text" class="inline-input wpn-field" data-prop="notes" value="${wpn.notes || ""}" placeholder="Finesse" />
+        <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
+      </div>
+    `
+    )
+    .join("");
+}
+
+document.getElementById("addWeaponBtn")?.addEventListener("click", () => {
+  myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+  saveWeapons();
+  renderWeapons();
+});
+
+document.getElementById("weaponsContainer")?.addEventListener("input", (e) => {
+  if (e.target.classList.contains("wpn-field")) {
+    const entry = e.target.closest(".attack-entry");
+    const index = parseInt(entry.dataset.index, 10);
+    const prop = e.target.dataset.prop;
+    myCharacterWeapons[index][prop] = e.target.value;
+    saveWeapons();
+  }
+});
+
+document.getElementById("weaponsContainer")?.addEventListener("click", (e) => {
+  if (e.target.classList.contains("weapon-delete-btn")) {
+    const index = parseInt(e.target.dataset.index, 10);
+    myCharacterWeapons.splice(index, 1);
+    saveWeapons();
+    renderWeapons();
+  }
+});
+
+function saveWeapons() {
+  localStorage.setItem(WEAPONS_STORAGE_KEY, JSON.stringify(myCharacterWeapons));
+}
+
+function loadWeapons() {
+  const raw = localStorage.getItem(WEAPONS_STORAGE_KEY);
+  if (raw) {
+    try {
+      myCharacterWeapons = JSON.parse(raw);
+    } catch (e) {
+      myCharacterWeapons = [
+        { name: "Shortsword", atk: "+5", dmg: "1d6+3 P", notes: "Finesse, light" },
+        { name: "Shortbow", atk: "+5", dmg: "1d6+3 P", notes: "Range 80/320" }
+      ];
+    }
+  }
+  renderWeapons();
+}
+
 function saveSheet() {
   const data = {};
   document.querySelectorAll(".save-field").forEach((field) => {
@@ -90,10 +143,10 @@ function saveSheet() {
   });
   localStorage.setItem(SHEET_STORAGE_KEY, JSON.stringify(data));
   localStorage.setItem(SPELLS_STORAGE_KEY, JSON.stringify(myCharacterSpells));
+  saveWeapons();
   showStatus("Saved!");
 }
 
-// Load saved data from localStorage
 function loadSheet() {
   const rawData = localStorage.getItem(SHEET_STORAGE_KEY);
   if (rawData) {
@@ -125,18 +178,18 @@ function loadSheet() {
     myCharacterSpells = [];
   }
 
+  loadWeapons();
   recalculateAll();
   renderMySpells();
 }
 
-// Reset sheet to clean blank state
 function resetSheet() {
   localStorage.removeItem(SHEET_STORAGE_KEY);
   localStorage.removeItem(SPELLS_STORAGE_KEY);
+  localStorage.removeItem(WEAPONS_STORAGE_KEY);
   location.reload();
 }
 
-// ================= PRIMARY TAB & SUB-TAB SWITCHING ================= //
 function switchMainTab(targetId) {
   document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
   document.querySelectorAll(".tab-page").forEach((p) => p.classList.remove("active"));
@@ -163,7 +216,6 @@ document.querySelectorAll(".sub-tab").forEach((btn) => {
   });
 });
 
-// Footer quick links jump to correct tab and scroll smoothly
 document.querySelectorAll(".footer-nav-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     const tabTarget = btn.dataset.tab;
@@ -181,7 +233,6 @@ document.querySelectorAll(".footer-nav-btn").forEach((btn) => {
   });
 });
 
-// ================= DICE ROLLER ================= //
 document.querySelectorAll(".dice-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     const sides = parseInt(btn.dataset.sides, 10);
@@ -196,7 +247,6 @@ document.getElementById("clearRollBtn")?.addEventListener("click", () => {
   if (out) out.textContent = "";
 });
 
-// Red Hex Die icons roll d20 + corresponding bonus
 document.addEventListener("click", (e) => {
   if (e.target.classList.contains("roll-btn")) {
     const roll = Math.floor(Math.random() * 20) + 1;
@@ -221,7 +271,6 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// ================= SPELL MODAL & API INTEGRATION ================= //
 async function fetchOfficialSpells() {
   if (allSpellsCache.length > 0) return allSpellsCache;
   try {
@@ -330,7 +379,6 @@ function closeModal() {
   modal?.classList.remove("open");
 }
 
-// Open modal and fetch spell list if needed
 document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
   openModal();
   const list = document.getElementById("spellApiList");
@@ -341,32 +389,27 @@ document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
   renderModalSpells();
 });
 
-// Close button click
 document.getElementById("closeSpellModal")?.addEventListener("click", (e) => {
   e.stopPropagation();
   closeModal();
 });
 
-// Click outside modal box on the backdrop to dismiss
 document.getElementById("spellModal")?.addEventListener("click", (e) => {
   if (e.target.id === "spellModal") {
     closeModal();
   }
 });
 
-// Escape key dismisses modal
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeModal();
   }
 });
 
-// Filter spells as user types
 document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   renderModalSpells(e.target.value);
 });
 
-// Click spell to fetch details and add
 document.getElementById("spellApiList")?.addEventListener("click", async (e) => {
   const row = e.target.closest(".spell-option-item");
   if (!row) return;
@@ -393,7 +436,6 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   if (badge) badge.textContent = "+ Add";
 });
 
-// Delete individual spell from card list
 document.getElementById("spellsList")?.addEventListener("click", (e) => {
   if (e.target.classList.contains("spell-card-delete")) {
     const index = parseInt(e.target.dataset.index, 10);
@@ -403,40 +445,36 @@ document.getElementById("spellsList")?.addEventListener("click", (e) => {
   }
 });
 
-// ================= BUTTON BAR HANDLERS ================= //
-// Save
 document.getElementById("saveBtn")?.addEventListener("click", () => {
   saveSheet();
 });
 
-// Load
 document.getElementById("loadBtn")?.addEventListener("click", () => {
   loadSheet();
   showStatus("Loaded!");
 });
 
-// New
 document.getElementById("newBtn")?.addEventListener("click", () => {
   if (confirm("Reset current character sheet? Any unsaved changes will be lost.")) {
     resetSheet();
   }
 });
 
-// Delete
 document.getElementById("deleteBtn")?.addEventListener("click", () => {
   if (confirm("Permanently delete this character and all its spells?")) {
     resetSheet();
   }
 });
 
-// Backup
 document.getElementById("backupBtn")?.addEventListener("click", () => {
   const rawSheet = localStorage.getItem(SHEET_STORAGE_KEY) || "{}";
   const rawSpells = localStorage.getItem(SPELLS_STORAGE_KEY) || "[]";
+  const rawWeapons = localStorage.getItem(WEAPONS_STORAGE_KEY) || "[]";
 
   const fullBackup = {
     sheet: JSON.parse(rawSheet),
     spells: JSON.parse(rawSpells),
+    weapons: JSON.parse(rawWeapons),
     version: 1
   };
 
@@ -451,7 +489,6 @@ document.getElementById("backupBtn")?.addEventListener("click", () => {
   showStatus("Backup downloaded!");
 });
 
-// Restore
 document.getElementById("restoreFile")?.addEventListener("change", (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
@@ -463,6 +500,9 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
       if (parsed.sheet && parsed.spells) {
         localStorage.setItem(SHEET_STORAGE_KEY, JSON.stringify(parsed.sheet));
         localStorage.setItem(SPELLS_STORAGE_KEY, JSON.stringify(parsed.spells));
+        if (parsed.weapons) {
+          localStorage.setItem(WEAPONS_STORAGE_KEY, JSON.stringify(parsed.weapons));
+        }
       } else {
         localStorage.setItem(SHEET_STORAGE_KEY, JSON.stringify(parsed));
       }
@@ -475,7 +515,6 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
   reader.readAsText(file);
 });
 
-// Auto-calculate & save changes live on input
 document.addEventListener("input", (e) => {
   if (e.target.classList.contains("save-field")) {
     recalculateAll();
@@ -483,5 +522,4 @@ document.addEventListener("input", (e) => {
   }
 });
 
-// Initialize on page load
 loadSheet();
