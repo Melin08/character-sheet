@@ -79,13 +79,13 @@
         </div>
       </div>
 
-      <!-- Vitals Row with Perfectly Centered SVG Badges -->
+      <!-- Vitals Row -->
       <div class="vitals-row">
         <div class="vital-unit">
           <span>Armor Class</span>
           <div class="badge-wrapper shield-wrap">
-            <svg class="badge-svg" viewBox="0 0 100 120" preserveAspectRatio="none">
-              <path d="M5,5 L95,5 L95,55 Q95,110 50,118 Q5,110 5,55 Z" class="shield-path" />
+            <svg class="badge-svg" viewBox="0 0 100 115" preserveAspectRatio="none">
+              <path d="M6,6 L94,6 L94,52 Q94,105 50,111 Q6,105 6,52 Z" class="shield-path" />
             </svg>
             <input type="number" id="ac" class="save-field badge-input" value="10" />
           </div>
@@ -95,15 +95,15 @@
           <span>Hit Points</span>
           <div class="hearts-group">
             <div class="badge-wrapper heart-wrap">
-              <svg class="badge-svg" viewBox="0 0 100 95">
-                <path d="M50,88 C50,88 5,58 5,28 C5,10 20,4 34,4 C43,4 48,11 50,15 C52,11 57,4 66,4 C80,4 95,10 95,28 C95,58 50,88 50,88 Z" class="heart-outline-path" />
+              <svg class="badge-svg" viewBox="0 0 100 100">
+                <path d="M50,86 C50,86 8,56 8,28 C8,12 21,6 35,6 C44,6 48,12 50,16 C52,12 56,6 65,6 C79,6 92,12 92,28 C92,56 50,86 50,86 Z" class="heart-outline-path" />
               </svg>
               <input type="number" id="curHp" class="save-field badge-input" value="10" />
             </div>
             <span class="slash">/</span>
             <div class="badge-wrapper heart-wrap">
-              <svg class="badge-svg" viewBox="0 0 100 95">
-                <path d="M50,88 C50,88 5,58 5,28 C5,10 20,4 34,4 C43,4 48,11 50,15 C52,11 57,4 66,4 C80,4 95,10 95,28 C95,58 50,88 50,88 Z" class="heart-solid-path" />
+              <svg class="badge-svg" viewBox="0 0 100 100">
+                <path d="M50,86 C50,86 8,56 8,28 C8,12 21,6 35,6 C44,6 48,12 50,16 C52,12 56,6 65,6 C79,6 92,12 92,28 C92,56 50,86 50,86 Z" class="heart-solid-path" />
               </svg>
               <input type="number" id="maxHp" class="save-field badge-input white-txt" value="10" />
             </div>
@@ -464,14 +464,15 @@
       </div>
     </div>
 
+    <!-- Footer Area with Updated Attribution & Links -->
     <footer class="sheet-footer">
       <hr class="footer-divider" />
       <div class="footer-meta">
         <div class="footer-title">Character Sheet. App.</div>
         <ol class="footer-links">
-          <li>Help</li>
-          <li>Created by Derik A Badman</li>
-          <li>Github</li>
+          <li><button type="button" id="helpLinkBtn" class="footer-link-action">Help</button></li>
+          <li>Created by Melin08</li>
+          <li><a href="https://github.com/Melin08" target="_blank" rel="noopener noreferrer" class="footer-url-link">Github</a></li>
         </ol>
       </div>
       <div class="bottom-quicknav">
@@ -488,6 +489,19 @@
     </footer>
   </div>
 
+  <!-- Help Modal -->
+  <div id="helpModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-box help-modal-box">
+      <div class="modal-header">
+        <h3>Support & Questions</h3>
+        <button id="closeHelpModal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="help-modal-content">
+        <p class="help-text">Need help or have a question? Contact me on discord! (<strong>@lmp2620</strong>)</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Load Characters Modal -->
   <div id="loadModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box char-modal-box">
@@ -495,9 +509,7 @@
         <h3>Saved Characters</h3>
         <button id="closeLoadModal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
       </div>
-      <div id="charList" class="modal-list">
-        <!-- Renders saved characters list -->
-      </div>
+      <div id="charList" class="modal-list"></div>
     </div>
   </div>
 
