@@ -450,13 +450,14 @@ body {
 }
 
 /* Weapons Table */
+/* Weapons Table with Dynamic Rows & Plus Icon */
 .attacks-table {
   margin-bottom: 1rem;
 }
 
 .attack-headers {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.5fr 2fr;
+  grid-template-columns: 2fr 1fr 1.5fr 2fr 28px;
   gap: 0.5rem;
   font-weight: 700;
   font-size: 0.9rem;
@@ -465,15 +466,56 @@ body {
 
 .attack-entry {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.5fr 2fr;
+  grid-template-columns: 2fr 1fr 1.5fr 2fr 28px;
   gap: 0.5rem;
   margin-bottom: 0.45rem;
+  align-items: center;
 }
 
 .attack-entry input {
   width: 100%;
 }
 
+.weapon-delete-btn {
+  background: transparent;
+  border: none;
+  color: #b70014;
+  font-size: 1.3rem;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+  text-align: center;
+}
+
+.weapon-delete-btn:hover {
+  color: #000000;
+}
+
+.add-weapon-wrapper {
+  margin-top: 0.4rem;
+}
+
+.btn-icon-plus {
+  background-color: #b70014;
+  color: #ffffff;
+  border: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  font-weight: bold;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.btn-icon-plus:hover {
+  background-color: #920010;
+  transform: scale(1.1);
+}
 .red-divider {
   border: none;
   border-top: 1px solid #b70014;
