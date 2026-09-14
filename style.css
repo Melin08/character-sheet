@@ -193,7 +193,7 @@ body {
   background: #fafafa;
 }
 
-/* Vitals & Center-Aligned Vector Badges */
+/* Perfect Dead-Center Shield & Heart Badges */
 .vitals-row {
   display: flex;
   gap: 2.2rem;
@@ -215,10 +215,12 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  margin: 0;
 }
 
 .shield-wrap {
-  width: 42px;
+  width: 44px;
   height: 50px;
 }
 
@@ -229,8 +231,7 @@ body {
 
 .badge-svg {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
@@ -255,10 +256,13 @@ body {
   stroke-width: 2px;
 }
 
+/* Eliminate browser margins/spinners so text centers exactly */
 .badge-input {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 2;
   width: 100%;
+  height: 100%;
   border: none;
   background: transparent;
   text-align: center;
@@ -268,14 +272,26 @@ body {
   outline: none;
   padding: 0;
   margin: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.badge-input::-webkit-outer-spin-button,
+.badge-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .shield-wrap .badge-input {
-  margin-top: -3px;
+  padding-top: 1px;
 }
 
 .heart-wrap .badge-input {
-  margin-top: -2px;
+  padding-bottom: 2px;
 }
 
 .badge-input.white-txt {
@@ -650,6 +666,10 @@ body {
   max-width: 440px;
 }
 
+.modal-box.help-modal-box {
+  max-width: 420px;
+}
+
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -671,6 +691,17 @@ body {
   cursor: pointer;
   line-height: 1;
   padding: 0 0.4rem;
+}
+
+.help-modal-content {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.help-text {
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: #1f2937;
 }
 
 .modal-search-bar {
@@ -697,7 +728,6 @@ body {
   flex: 1;
 }
 
-/* Character Selector Items */
 .char-item-row {
   display: flex;
   justify-content: space-between;
@@ -802,6 +832,7 @@ body {
 .footer-meta {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   font-size: 0.9rem;
 }
 
@@ -812,6 +843,34 @@ body {
 .footer-links {
   list-style: decimal inside;
   color: #b70014;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.footer-links li {
+  color: #b70014;
+}
+
+.footer-link-action {
+  background: transparent;
+  border: none;
+  color: #b70014;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 500;
+}
+
+.footer-link-action:hover,
+.footer-url-link:hover {
+  text-decoration: underline;
+}
+
+.footer-url-link {
+  color: #b70014;
+  text-decoration: none;
+  font-weight: 500;
 }
 
 .bottom-quicknav {
