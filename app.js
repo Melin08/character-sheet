@@ -196,13 +196,13 @@ document.getElementById("deleteBtn")?.addEventListener("click", () => {
 
 // Initialize on page load
 loadSheet();
-// Spell System Logic
+// Spell System Logic with Full Details
 let allSpellsCache = [];
 let myCharacterSpells = [];
 
-const SPELLS_STORAGE_KEY = "badman_style_my_spells";
+const SPELLS_STORAGE_KEY = "badman_style_my_spells_v2";
 
-// Fetch official 5e SRD spells
+// Fetch list of official spells
 async function fetchOfficialSpells() {
   if (allSpellsCache.length > 0) return allSpellsCache;
   try {
@@ -211,8 +211,19 @@ async function fetchOfficialSpells() {
     allSpellsCache = data.results || [];
     return allSpellsCache;
   } catch (err) {
-    console.error("Failed to load official 5e spells:", err);
+    console.error("Failed to load spell list:", err);
     return [];
+  }
+}
+
+// Fetch complete attributes & description for a single spell
+async function fetchSpellDetails(spellIndex) {
+  try {
+    const res = await fetch(`https://www.dnd5eapi.co/api/spells/${spellIndex}`);
+    return await res.json();
+  } catch (err) {
+    console.error("Failed to load spell details:", err);
+    return null;
   }
 }
 
@@ -232,7 +243,7 @@ function renderModalSpells(filterText = "") {
   container.innerHTML = matches
     .map(
       (spell) => `
-        <div class="spell-option-item" data-name="${spell.name}">
+        <div class="spell-option-item" data-index="${spell.index}" data-name="${spell.name}">
           <span>${spell.name}</span>
           <span class="spell-add-badge">+ Add</span>
         </div>
@@ -241,7 +252,7 @@ function renderModalSpells(filterText = "") {
     .join("");
 }
 
-// Render character's added spells to sheet
+// Render added spells with attributes and description
 function renderMySpells() {
   const container = document.getElementById("spellsList");
   if (!container) return;
@@ -252,14 +263,39 @@ function renderMySpells() {
   }
 
   container.innerHTML = myCharacterSpells
-    .map(
-      (spellName, index) => `
-        <div class="spell-card-row">
-          <span class="spell-card-name">${spellName}</span>
-          <button class="spell-card-delete" data-index="${index}">&times;</button>
+    .map((spell, idx) => {
+      const levelText = spell.level === 0 ? "Cantrip" : `Level ${spell.level}`;
+      const schoolText = spell.school?.name || "";
+      const timeText = spell.casting_time || "—";
+      const rangeText = spell.range || "—";
+      const durationText = spell.duration || "—";
+      
+      let summary = "";
+      if (Array.isArray(spell.desc)) {
+        summary = spell.desc.join(" ");
+      } else if (typeof spell.desc === "string") {
+        summary = spell.desc;
+      }
+      if (summary.length > 220) {
+        summary = summary.substring(0, 220) + "...";
+      }
+
+      return `
+        <div class="spell-card">
+          <div class="spell-card-header">
+            <span class="spell-card-title">${spell.name}</span>
+            <button class="spell-card-delete" data-index="${idx}">&times;</button>
+          </div>
+          <div class="spell-card-meta">
+            <span><strong>Type:</strong> ${levelText} ${schoolText}</span>
+            <span><strong>Casting:</strong> ${timeText}</span>
+            <span><strong>Range:</strong> ${rangeText}</span>
+            <span><strong>Duration:</strong> ${durationText}</span>
+          </div>
+          <p class="spell-card-desc">${summary || "No description provided."}</p>
         </div>
-      `
-    )
+      `;
+    })
     .join("");
 }
 
@@ -304,21 +340,37 @@ document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   renderModalSpells(e.target.value);
 });
 
-// Click to add spell from list
-document.getElementById("spellApiList")?.addEventListener("click", (e) => {
+// Click spell to fetch details and add to sheet
+document.getElementById("spellApiList")?.addEventListener("click", async (e) => {
   const row = e.target.closest(".spell-option-item");
   if (!row) return;
 
+  const spellIndex = row.dataset.index;
   const spellName = row.dataset.name;
-  if (spellName && !myCharacterSpells.includes(spellName)) {
-    myCharacterSpells.push(spellName);
+
+  // Prevent duplicate additions
+  if (myCharacterSpells.some((s) => s.name === spellName)) {
+    document.getElementById("spellModal")?.classList.remove("open");
+    return;
+  }
+
+  // Visual feedback while fetching data
+  const badge = row.querySelector(".spell-add-badge");
+  if (badge) badge.textContent = "Adding...";
+
+  const spellData = await fetchSpellDetails(spellIndex);
+
+  if (spellData) {
+    myCharacterSpells.push(spellData);
     saveMySpells();
     renderMySpells();
   }
+
   document.getElementById("spellModal")?.classList.remove("open");
+  if (badge) badge.textContent = "+ Add";
 });
 
-// Delete spell from character sheet
+// Delete spell
 document.getElementById("spellsList")?.addEventListener("click", (e) => {
   if (e.target.classList.contains("spell-card-delete")) {
     const index = parseInt(e.target.dataset.index, 10);
@@ -328,5 +380,5 @@ document.getElementById("spellsList")?.addEventListener("click", (e) => {
   }
 });
 
-// Run spell loader on start
+// Run loader
 loadMySpells();
