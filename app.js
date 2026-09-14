@@ -196,3 +196,137 @@ document.getElementById("deleteBtn")?.addEventListener("click", () => {
 
 // Initialize on page load
 loadSheet();
+// Spell System Logic
+let allSpellsCache = [];
+let myCharacterSpells = [];
+
+const SPELLS_STORAGE_KEY = "badman_style_my_spells";
+
+// Fetch official 5e SRD spells
+async function fetchOfficialSpells() {
+  if (allSpellsCache.length > 0) return allSpellsCache;
+  try {
+    const res = await fetch("https://www.dnd5eapi.co/api/spells");
+    const data = await res.json();
+    allSpellsCache = data.results || [];
+    return allSpellsCache;
+  } catch (err) {
+    console.error("Failed to load official 5e spells:", err);
+    return [];
+  }
+}
+
+// Render search results inside modal
+function renderModalSpells(filterText = "") {
+  const container = document.getElementById("spellApiList");
+  if (!container) return;
+
+  const query = filterText.toLowerCase().trim();
+  const matches = allSpellsCache.filter((s) => s.name.toLowerCase().includes(query));
+
+  if (matches.length === 0) {
+    container.innerHTML = `<p class="loading-text">No spells found.</p>`;
+    return;
+  }
+
+  container.innerHTML = matches
+    .map(
+      (spell) => `
+        <div class="spell-option-item" data-name="${spell.name}">
+          <span>${spell.name}</span>
+          <span class="spell-add-badge">+ Add</span>
+        </div>
+      `
+    )
+    .join("");
+}
+
+// Render character's added spells to sheet
+function renderMySpells() {
+  const container = document.getElementById("spellsList");
+  if (!container) return;
+
+  if (myCharacterSpells.length === 0) {
+    container.innerHTML = `<p style="font-size: 0.85rem; color: #888;">No spells added yet.</p>`;
+    return;
+  }
+
+  container.innerHTML = myCharacterSpells
+    .map(
+      (spellName, index) => `
+        <div class="spell-card-row">
+          <span class="spell-card-name">${spellName}</span>
+          <button class="spell-card-delete" data-index="${index}">&times;</button>
+        </div>
+      `
+    )
+    .join("");
+}
+
+// Save spells array to localStorage
+function saveMySpells() {
+  localStorage.setItem(SPELLS_STORAGE_KEY, JSON.stringify(myCharacterSpells));
+}
+
+// Load spells array from localStorage
+function loadMySpells() {
+  const saved = localStorage.getItem(SPELLS_STORAGE_KEY);
+  if (saved) {
+    try {
+      myCharacterSpells = JSON.parse(saved);
+    } catch (e) {
+      myCharacterSpells = [];
+    }
+  }
+  renderMySpells();
+}
+
+// Open modal
+document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
+  const modal = document.getElementById("spellModal");
+  modal?.classList.add("open");
+
+  const list = document.getElementById("spellApiList");
+  if (list && allSpellsCache.length === 0) {
+    list.innerHTML = `<p class="loading-text">Loading official 5e spells...</p>`;
+    await fetchOfficialSpells();
+  }
+  renderModalSpells();
+});
+
+// Close modal
+document.getElementById("closeSpellModal")?.addEventListener("click", () => {
+  document.getElementById("spellModal")?.classList.remove("open");
+});
+
+// Search filter
+document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
+  renderModalSpells(e.target.value);
+});
+
+// Click to add spell from list
+document.getElementById("spellApiList")?.addEventListener("click", (e) => {
+  const row = e.target.closest(".spell-option-item");
+  if (!row) return;
+
+  const spellName = row.dataset.name;
+  if (spellName && !myCharacterSpells.includes(spellName)) {
+    myCharacterSpells.push(spellName);
+    saveMySpells();
+    renderMySpells();
+  }
+  document.getElementById("spellModal")?.classList.remove("open");
+});
+
+// Delete spell from character sheet
+document.getElementById("spellsList")?.addEventListener("click", (e) => {
+  if (e.target.classList.contains("spell-card-delete")) {
+    const index = parseInt(e.target.dataset.index, 10);
+    myCharacterSpells.splice(index, 1);
+    saveMySpells();
+    renderMySpells();
+  }
+});
+
+// Run spell loader on start
+loadMySpells();
