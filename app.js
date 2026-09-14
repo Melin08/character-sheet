@@ -1,16 +1,30 @@
-const STORAGE_KEY = "badman_style_sheet";
+// Local Storage Keys
+const SHEET_STORAGE_KEY = "badman_char_sheet_data";
+const SPELLS_STORAGE_KEY = "badman_char_sheet_spells";
 
-// Calculate modifier from ability score
+let allSpellsCache = [];
+let myCharacterSpells = [];
+
+// Flash helper to show user action feedback
+function showStatus(text) {
+  const statusElem = document.getElementById("saveStatus");
+  if (!statusElem) return;
+  statusElem.textContent = text;
+  setTimeout(() => {
+    statusElem.textContent = "";
+  }, 2500);
+}
+
+// Math calculation helpers
 function getModifier(score) {
   return Math.floor((score - 10) / 2);
 }
 
-// Calculate proficiency bonus based on level
 function getProfBonus(level) {
   return Math.ceil(1 + level / 4);
 }
 
-// Update all calculated fields
+// Recalculate proficiency, ability modifiers, saves, and skill totals
 function recalculateAll() {
   const levelInput = document.getElementById("charLevel");
   const level = parseInt(levelInput?.value, 10) || 1;
@@ -21,7 +35,6 @@ function recalculateAll() {
     profBonusDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
   }
 
-  // Update Attributes & Saves
   const stats = ["str", "dex", "con", "int", "wis", "cha"];
   const mods = {};
 
@@ -40,7 +53,7 @@ function recalculateAll() {
     }
   });
 
-  // Update Skills
+  // Calculate 18 skill values
   document.querySelectorAll(".skill-row").forEach((row) => {
     const stat = row.dataset.stat;
     const statMod = mods[stat] ?? 0;
@@ -56,7 +69,7 @@ function recalculateAll() {
   });
 }
 
-// Save all fields to LocalStorage
+// Save fields & spells to localStorage
 function saveSheet() {
   const data = {};
   document.querySelectorAll(".save-field").forEach((field) => {
@@ -66,143 +79,140 @@ function saveSheet() {
       data[field.id] = field.value;
     }
   });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  localStorage.setItem(SHEET_STORAGE_KEY, JSON.stringify(data));
+  localStorage.setItem(SPELLS_STORAGE_KEY, JSON.stringify(myCharacterSpells));
+  showStatus("Saved!");
 }
 
-// Load saved data
+// Load saved data from localStorage
 function loadSheet() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return;
-
-  try {
-    const data = JSON.parse(raw);
-    Object.keys(data).forEach((id) => {
-      const field = document.getElementById(id);
-      if (field) {
-        if (field.type === "checkbox") {
-          field.checked = data[id];
-        } else {
-          field.value = data[id];
+  const rawData = localStorage.getItem(SHEET_STORAGE_KEY);
+  if (rawData) {
+    try {
+      const data = JSON.parse(rawData);
+      Object.keys(data).forEach((id) => {
+        const field = document.getElementById(id);
+        if (field) {
+          if (field.type === "checkbox") {
+            field.checked = data[id];
+          } else {
+            field.value = data[id];
+          }
         }
-      }
-    });
-  } catch (err) {
-    console.error("Could not parse saved sheet", err);
+      });
+    } catch (e) {
+      console.error("Failed to parse sheet data", e);
+    }
   }
+
+  const rawSpells = localStorage.getItem(SPELLS_STORAGE_KEY);
+  if (rawSpells) {
+    try {
+      myCharacterSpells = JSON.parse(rawSpells);
+    } catch (e) {
+      myCharacterSpells = [];
+    }
+  } else {
+    myCharacterSpells = [];
+  }
+
   recalculateAll();
+  renderMySpells();
 }
 
-// Tabs switching
+// Reset sheet to clean blank state
+function resetSheet() {
+  localStorage.removeItem(SHEET_STORAGE_KEY);
+  localStorage.removeItem(SPELLS_STORAGE_KEY);
+  location.reload();
+}
+
+// ================= PRIMARY TAB & SUB-TAB SWITCHING ================= //
+function switchMainTab(targetId) {
+  document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
+  document.querySelectorAll(".tab-page").forEach((p) => p.classList.remove("active"));
+
+  const targetBtn = document.querySelector(`.main-tab[data-target="${targetId}"]`);
+  targetBtn?.classList.add("active");
+  document.getElementById(targetId)?.classList.add("active");
+}
+
 document.querySelectorAll(".main-tab").forEach((btn) => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
-    document.querySelectorAll(".tab-page").forEach((p) => p.classList.remove("active"));
+    switchMainTab(btn.dataset.target);
+  });
+});
+
+document.querySelectorAll(".sub-tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".sub-tab").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".subtab-page").forEach((p) => p.classList.remove("active"));
 
     btn.classList.add("active");
-    const target = btn.dataset.target;
+    const target = btn.dataset.sub;
     document.getElementById(target)?.classList.add("active");
   });
 });
 
-// Dice Roller
+// Footer quick links jump to correct tab and scroll smoothly
+document.querySelectorAll(".footer-nav-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const tabTarget = btn.dataset.tab;
+    switchMainTab(tabTarget);
+    const scrollTarget = btn.dataset.scroll;
+    if (scrollTarget === "spells") {
+      document.getElementById("spellsList")?.scrollIntoView({ behavior: "smooth" });
+    } else if (scrollTarget === "skills") {
+      document.querySelector(".skills-group")?.scrollIntoView({ behavior: "smooth" });
+    } else if (scrollTarget === "attr") {
+      document.querySelector(".attributes-group")?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      document.getElementById("tab-journal")?.scrollIntoView({ behavior: "smooth" });
+    }
+  });
+});
+
+// ================= DICE ROLLER ================= //
 document.querySelectorAll(".dice-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     const sides = parseInt(btn.dataset.sides, 10);
     const roll = Math.floor(Math.random() * sides) + 1;
-    document.getElementById("rollResult").textContent = `(d${sides}): ${roll}`;
+    const out = document.getElementById("rollResult");
+    if (out) out.textContent = `(d${sides}): ${roll}`;
   });
 });
 
 document.getElementById("clearRollBtn")?.addEventListener("click", () => {
-  document.getElementById("rollResult").textContent = "";
+  const out = document.getElementById("rollResult");
+  if (out) out.textContent = "";
 });
 
-// Hex Die Roll Click
+// Red Hex Die icons roll d20 + corresponding bonus
 document.addEventListener("click", (e) => {
   if (e.target.classList.contains("roll-btn")) {
     const roll = Math.floor(Math.random() * 20) + 1;
     let bonus = 0;
+    let label = "";
     const type = e.target.dataset.type;
 
     if (type === "save") {
       const attr = e.target.dataset.attr;
       bonus = parseInt(document.getElementById(`save_val_${attr}`)?.textContent, 10) || 0;
+      label = `${attr.toUpperCase()} Save`;
     } else if (type === "skill") {
       const id = e.target.dataset.id;
       bonus = parseInt(document.getElementById(`val_${id}`)?.textContent, 10) || 0;
+      label = document.querySelector(`#row_${id} .skill-label`)?.textContent || "Skill";
     }
 
     const total = roll + bonus;
-    document.getElementById("rollResult").textContent = `Rolled ${roll} + (${bonus}) = ${total}`;
+    const sign = bonus >= 0 ? `+ ${bonus}` : `- ${Math.abs(bonus)}`;
+    const out = document.getElementById("rollResult");
+    if (out) out.textContent = `${label}: ${roll} ${sign} = ${total}`;
   }
 });
 
-// Auto-save & calculate on input
-document.addEventListener("input", (e) => {
-  if (e.target.classList.contains("save-field")) {
-    recalculateAll();
-    saveSheet();
-  }
-});
-
-// Buttons
-document.getElementById("saveBtn")?.addEventListener("click", () => {
-  saveSheet();
-  alert("Character saved to browser storage!");
-});
-
-document.getElementById("newBtn")?.addEventListener("click", () => {
-  if (confirm("Reset current sheet?")) {
-    localStorage.removeItem(STORAGE_KEY);
-    location.reload();
-  }
-});
-
-document.getElementById("backupBtn")?.addEventListener("click", () => {
-  const data = localStorage.getItem(STORAGE_KEY) || "{}";
-  const blob = new Blob([data], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "character-sheet.json";
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-document.getElementById("restoreFile")?.addEventListener("change", (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (evt) => {
-    try {
-      const parsed = JSON.parse(evt.target.result);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-      loadSheet();
-      alert("Character restored successfully!");
-    } catch (err) {
-      alert("Invalid JSON file.");
-    }
-  };
-  reader.readAsText(file);
-});
-
-document.getElementById("deleteBtn")?.addEventListener("click", () => {
-  if (confirm("Delete this character profile?")) {
-    localStorage.removeItem(STORAGE_KEY);
-    location.reload();
-  }
-});
-
-// Initialize on page load
-loadSheet();
-// Spell System Logic with Full Details
-let allSpellsCache = [];
-let myCharacterSpells = [];
-
-const SPELLS_STORAGE_KEY = "badman_style_my_spells_v2";
-
-// Fetch list of official spells
+// ================= SPELL MODAL & API INTEGRATION ================= //
 async function fetchOfficialSpells() {
   if (allSpellsCache.length > 0) return allSpellsCache;
   try {
@@ -211,23 +221,21 @@ async function fetchOfficialSpells() {
     allSpellsCache = data.results || [];
     return allSpellsCache;
   } catch (err) {
-    console.error("Failed to load spell list:", err);
+    console.error("Failed to load official 5e spell index:", err);
     return [];
   }
 }
 
-// Fetch complete attributes & description for a single spell
 async function fetchSpellDetails(spellIndex) {
   try {
     const res = await fetch(`https://www.dnd5eapi.co/api/spells/${spellIndex}`);
     return await res.json();
   } catch (err) {
-    console.error("Failed to load spell details:", err);
+    console.error("Failed to load details for spell:", spellIndex, err);
     return null;
   }
 }
 
-// Render search results inside modal
 function renderModalSpells(filterText = "") {
   const container = document.getElementById("spellApiList");
   if (!container) return;
@@ -236,7 +244,7 @@ function renderModalSpells(filterText = "") {
   const matches = allSpellsCache.filter((s) => s.name.toLowerCase().includes(query));
 
   if (matches.length === 0) {
-    container.innerHTML = `<p class="loading-text">No spells found.</p>`;
+    container.innerHTML = `<p class="loading-text">No matching spells found.</p>`;
     return;
   }
 
@@ -252,13 +260,12 @@ function renderModalSpells(filterText = "") {
     .join("");
 }
 
-// Render added spells with attributes and description
 function renderMySpells() {
   const container = document.getElementById("spellsList");
   if (!container) return;
 
   if (myCharacterSpells.length === 0) {
-    container.innerHTML = `<p style="font-size: 0.85rem; color: #888;">No spells added yet.</p>`;
+    container.innerHTML = `<p style="font-size: 0.88rem; color: #888;">No spells added yet.</p>`;
     return;
   }
 
@@ -269,7 +276,7 @@ function renderMySpells() {
       const timeText = spell.casting_time || "—";
       const rangeText = spell.range || "—";
       const durationText = spell.duration || "—";
-      
+
       let summary = "";
       if (Array.isArray(spell.desc)) {
         summary = spell.desc.join(" ");
@@ -284,7 +291,7 @@ function renderMySpells() {
         <div class="spell-card">
           <div class="spell-card-header">
             <span class="spell-card-title">${spell.name}</span>
-            <button class="spell-card-delete" data-index="${idx}">&times;</button>
+            <button class="spell-card-delete" data-index="${idx}" type="button" title="Remove spell">&times;</button>
           </div>
           <div class="spell-card-meta">
             <span><strong>Type:</strong> ${levelText} ${schoolText}</span>
@@ -299,29 +306,24 @@ function renderMySpells() {
     .join("");
 }
 
-// Save spells array to localStorage
-function saveMySpells() {
-  localStorage.setItem(SPELLS_STORAGE_KEY, JSON.stringify(myCharacterSpells));
-}
-
-// Load spells array from localStorage
-function loadMySpells() {
-  const saved = localStorage.getItem(SPELLS_STORAGE_KEY);
-  if (saved) {
-    try {
-      myCharacterSpells = JSON.parse(saved);
-    } catch (e) {
-      myCharacterSpells = [];
-    }
-  }
-  renderMySpells();
-}
-
-// Open modal
-document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
+function openModal() {
   const modal = document.getElementById("spellModal");
   modal?.classList.add("open");
+  const searchInput = document.getElementById("spellSearchInput");
+  if (searchInput) {
+    searchInput.value = "";
+    setTimeout(() => searchInput.focus(), 50);
+  }
+}
 
+function closeModal() {
+  const modal = document.getElementById("spellModal");
+  modal?.classList.remove("open");
+}
+
+// Open modal and fetch spell list if needed
+document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
+  openModal();
   const list = document.getElementById("spellApiList");
   if (list && allSpellsCache.length === 0) {
     list.innerHTML = `<p class="loading-text">Loading official 5e spells...</p>`;
@@ -330,17 +332,32 @@ document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
   renderModalSpells();
 });
 
-// Close modal
-document.getElementById("closeSpellModal")?.addEventListener("click", () => {
-  document.getElementById("spellModal")?.classList.remove("open");
+// Close button click
+document.getElementById("closeSpellModal")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  closeModal();
 });
 
-// Search filter
+// Click outside modal box on the backdrop to dismiss
+document.getElementById("spellModal")?.addEventListener("click", (e) => {
+  if (e.target.id === "spellModal") {
+    closeModal();
+  }
+});
+
+// Escape key dismisses modal
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    closeModal();
+  }
+});
+
+// Filter spells as user types
 document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   renderModalSpells(e.target.value);
 });
 
-// Click spell to fetch details and add to sheet
+// Click spell to fetch details and add
 document.getElementById("spellApiList")?.addEventListener("click", async (e) => {
   const row = e.target.closest(".spell-option-item");
   if (!row) return;
@@ -348,37 +365,114 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   const spellIndex = row.dataset.index;
   const spellName = row.dataset.name;
 
-  // Prevent duplicate additions
   if (myCharacterSpells.some((s) => s.name === spellName)) {
-    document.getElementById("spellModal")?.classList.remove("open");
+    closeModal();
     return;
   }
 
-  // Visual feedback while fetching data
   const badge = row.querySelector(".spell-add-badge");
   if (badge) badge.textContent = "Adding...";
 
-  const spellData = await fetchSpellDetails(spellIndex);
-
-  if (spellData) {
-    myCharacterSpells.push(spellData);
-    saveMySpells();
+  const details = await fetchSpellDetails(spellIndex);
+  if (details) {
+    myCharacterSpells.push(details);
+    saveSheet();
     renderMySpells();
   }
 
-  document.getElementById("spellModal")?.classList.remove("open");
+  closeModal();
   if (badge) badge.textContent = "+ Add";
 });
 
-// Delete spell
+// Delete individual spell from card list
 document.getElementById("spellsList")?.addEventListener("click", (e) => {
   if (e.target.classList.contains("spell-card-delete")) {
     const index = parseInt(e.target.dataset.index, 10);
     myCharacterSpells.splice(index, 1);
-    saveMySpells();
+    saveSheet();
     renderMySpells();
   }
 });
 
-// Run loader
-loadMySpells();
+// ================= BUTTON BAR HANDLERS ================= //
+// Save
+document.getElementById("saveBtn")?.addEventListener("click", () => {
+  saveSheet();
+});
+
+// Load
+document.getElementById("loadBtn")?.addEventListener("click", () => {
+  loadSheet();
+  showStatus("Loaded!");
+});
+
+// New
+document.getElementById("newBtn")?.addEventListener("click", () => {
+  if (confirm("Reset current character sheet? Any unsaved changes will be lost.")) {
+    resetSheet();
+  }
+});
+
+// Delete
+document.getElementById("deleteBtn")?.addEventListener("click", () => {
+  if (confirm("Permanently delete this character and all its spells?")) {
+    resetSheet();
+  }
+});
+
+// Backup
+document.getElementById("backupBtn")?.addEventListener("click", () => {
+  const rawSheet = localStorage.getItem(SHEET_STORAGE_KEY) || "{}";
+  const rawSpells = localStorage.getItem(SPELLS_STORAGE_KEY) || "[]";
+
+  const fullBackup = {
+    sheet: JSON.parse(rawSheet),
+    spells: JSON.parse(rawSpells),
+    version: 1
+  };
+
+  const blob = new Blob([JSON.stringify(fullBackup, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const charName = document.getElementById("charName")?.value.trim() || "character";
+  a.href = url;
+  a.download = `${charName.toLowerCase().replace(/\s+/g, "_")}-backup.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showStatus("Backup downloaded!");
+});
+
+// Restore
+document.getElementById("restoreFile")?.addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const parsed = JSON.parse(evt.target.result);
+      if (parsed.sheet && parsed.spells) {
+        localStorage.setItem(SHEET_STORAGE_KEY, JSON.stringify(parsed.sheet));
+        localStorage.setItem(SPELLS_STORAGE_KEY, JSON.stringify(parsed.spells));
+      } else {
+        localStorage.setItem(SHEET_STORAGE_KEY, JSON.stringify(parsed));
+      }
+      loadSheet();
+      showStatus("Restored successfully!");
+    } catch (err) {
+      alert("Invalid JSON file provided.");
+    }
+  };
+  reader.readAsText(file);
+});
+
+// Auto-calculate & save changes live on input
+document.addEventListener("input", (e) => {
+  if (e.target.classList.contains("save-field")) {
+    recalculateAll();
+    saveSheet();
+  }
+});
+
+// Initialize on page load
+loadSheet();
