@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TTRPG Character Sheet</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-container">
+    <header class="sheet-header">
+      <div class="brand">
+        <h1>Character Sheet</h1>
+      </div>
+      <div class="actions">
+        <button id="saveBtn">Save</button>
+        <button id="exportBtn">Backup (JSON)</button>
+        <button id="newBtn">Reset</button>
+      </div>
+    </header>
+
+    <section class="identity-bar">
+      <div class="field">
+        <label for="charName">Name</label>
+        <input type="text" id="charName" class="save-field" placeholder="Hero Name" />
+      </div>
+      <div class="field">
+        <label for="charClass">Class & Level</label>
+        <input type="text" id="charClass" class="save-field" placeholder="Fighter 1" />
+      </div>
+      <div class="field">
+        <label for="charAncestry">Ancestry</label>
+        <input type="text" id="charAncestry" class="save-field" placeholder="Human" />
+      </div>
+    </section>
+
+    <nav class="nav-tabs">
+      <button class="tab-link active" data-tab="stats">Attributes & Combat</button>
+      <button class="tab-link" data-tab="notes">Notes & Gear</button>
+    </nav>
+
+    <main class="tab-content">
+      <!-- Stats Tab -->
+      <div id="stats" class="tab-pane active">
+        <div class="stats-grid">
+          <div class="vitals">
+            <div class="vital-box">
+              <label>Armor Class</label>
+              <input type="number" id="ac" class="save-field" value="10" />
+            </div>
+            <div class="vital-box">
+              <label>Max HP</label>
+              <input type="number" id="maxHp" class="save-field" value="10" />
+            </div>
+            <div class="vital-box">
+              <label>Current HP</label>
+              <input type="number" id="currentHp" class="save-field" value="10" />
+            </div>
+          </div>
+
+          <div class="attributes-list">
+            <div class="stat-card" data-stat="str">
+              <span class="stat-name">STR</span>
+              <input type="number" class="stat-score save-field" id="score_str" value="10" />
+              <span class="stat-mod" id="mod_str">+0</span>
+            </div>
+            <div class="stat-card" data-stat="dex">
+              <span class="stat-name">DEX</span>
+              <input type="number" class="stat-score save-field" id="score_dex" value="10" />
+              <span class="stat-mod" id="mod_dex">+0</span>
+            </div>
+            <div class="stat-card" data-stat="con">
+              <span class="stat-name">CON</span>
+              <input type="number" class="stat-score save-field" id="score_con" value="10" />
+              <span class="stat-mod" id="mod_con">+0</span>
+            </div>
+            <div class="stat-card" data-stat="int">
+              <span class="stat-name">INT</span>
+              <input type="number" class="stat-score save-field" id="score_int" value="10" />
+              <span class="stat-mod" id="mod_int">+0</span>
+            </div>
+            <div class="stat-card" data-stat="wis">
+              <span class="stat-name">WIS</span>
+              <input type="number" class="stat-score save-field" id="score_wis" value="10" />
+              <span class="stat-mod" id="mod_wis">+0</span>
+            </div>
+            <div class="stat-card" data-stat="cha">
+              <span class="stat-name">CHA</span>
+              <input type="number" class="stat-score save-field" id="score_cha" value="10" />
+              <span class="stat-mod" id="mod_cha">+0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes Tab -->
+      <div id="notes" class="tab-pane">
+        <div class="notes-grid">
+          <div class="text-block">
+            <label for="inventory">Equipment & Items</label>
+            <textarea id="inventory" class="save-field" rows="8" placeholder="Rope, rations, torch..."></textarea>
+          </div>
+          <div class="text-block">
+            <label for="bio">Backstory & Notes</label>
+            <textarea id="bio" class="save-field" rows="8" placeholder="Personality traits, lore..."></textarea>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
