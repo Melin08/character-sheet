@@ -551,3 +551,145 @@ body {
   color: #b70014;
   text-decoration: none;
 }
+/* Dynamic Spells Container & Cards */
+.spells-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.spell-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.45rem 0.65rem;
+  border: 1px dotted #9ca3af;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.spell-card-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.spell-card-delete {
+  background: transparent;
+  border: none;
+  color: #b70014;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 0.3rem;
+}
+
+.spell-card-delete:hover {
+  color: #000000;
+}
+
+/* Modal Popup Overlay */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-backdrop.open {
+  display: flex;
+}
+
+.modal-box {
+  background: #ffffff;
+  width: 90%;
+  max-width: 520px;
+  max-height: 80vh;
+  border-radius: 6px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #b70014;
+  color: #ffffff;
+  padding: 0.75rem 1rem;
+}
+
+.modal-header h3 {
+  font-size: 1.1rem;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal-search-bar {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-search-bar input {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.modal-search-bar input:focus {
+  border-color: #b70014;
+}
+
+.modal-list {
+  padding: 0.5rem 1rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.spell-option-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.4rem;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+}
+
+.spell-option-item:hover {
+  background-color: #fef2f2;
+}
+
+.spell-add-badge {
+  background: #b70014;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+}
+
+.loading-text {
+  font-style: italic;
+  color: #6b7280;
+  text-align: center;
+  padding: 1rem 0;
+}
