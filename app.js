@@ -115,7 +115,6 @@ document.getElementById("weaponsContainer")?.addEventListener("click", (e) => {
   }
 });
 
-// Character Management
 function getRoster() {
   try {
     return JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY)) || {};
@@ -241,7 +240,6 @@ function resetSheet() {
   showStatus("New Character Created!");
 }
 
-// Character Selection Modal
 function renderCharList() {
   const container = document.getElementById("charList");
   if (!container) return;
@@ -297,7 +295,6 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
   const targetId = row.dataset.id;
   const roster = getRoster();
 
-  // Handle delete
   if (e.target.classList.contains("char-delete-btn")) {
     e.stopPropagation();
     if (confirm(`Delete character "${roster[targetId]?.name || "Unnamed"}"?`)) {
@@ -314,12 +311,26 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
     return;
   }
 
-  // Handle character switch
   activeCharId = targetId;
   localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
   applyCharacterData(roster[activeCharId]);
   document.getElementById("loadModal")?.classList.remove("open");
   showStatus("Character Loaded!");
+});
+
+// Help Modal Controls
+document.getElementById("helpLinkBtn")?.addEventListener("click", () => {
+  document.getElementById("helpModal")?.classList.add("open");
+});
+
+document.getElementById("closeHelpModal")?.addEventListener("click", () => {
+  document.getElementById("helpModal")?.classList.remove("open");
+});
+
+document.getElementById("helpModal")?.addEventListener("click", (e) => {
+  if (e.target.id === "helpModal") {
+    document.getElementById("helpModal")?.classList.remove("open");
+  }
 });
 
 // Primary Tabs
@@ -405,7 +416,7 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Spells
+// Spell System
 async function fetchOfficialSpells() {
   if (allSpellsCache.length > 0) return allSpellsCache;
   try {
@@ -539,6 +550,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeSpellModal();
     document.getElementById("loadModal")?.classList.remove("open");
+    document.getElementById("helpModal")?.classList.remove("open");
   }
 });
 
@@ -581,7 +593,7 @@ document.getElementById("spellsList")?.addEventListener("click", (e) => {
   }
 });
 
-// Action Bar Buttons
+// Action Bar Handlers
 document.getElementById("saveBtn")?.addEventListener("click", () => {
   saveSheet();
 });
