@@ -193,6 +193,7 @@ body {
   background: #fafafa;
 }
 
+/* Vitals & Center-Aligned Vector Badges */
 .vitals-row {
   display: flex;
   gap: 2.2rem;
@@ -209,24 +210,76 @@ body {
   font-weight: 700;
 }
 
-.shield-badge {
-  width: 42px;
-  height: 50px;
-  border: 2px solid #4b5563;
-  border-radius: 0 0 21px 21px;
-  display: flex;
+.badge-wrapper {
+  position: relative;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #ffffff;
 }
 
-.shield-input {
+.shield-wrap {
+  width: 42px;
+  height: 50px;
+}
+
+.heart-wrap {
+  width: 48px;
+  height: 48px;
+}
+
+.badge-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.shield-path {
+  fill: #ffffff;
+  stroke: #4b5563;
+  stroke-width: 6px;
+}
+
+.heart-outline-path {
+  fill: #ffffff;
+  stroke: #b70014;
+  stroke-width: 6px;
+}
+
+.heart-solid-path {
+  fill: #111111;
+  stroke: #111111;
+  stroke-width: 2px;
+}
+
+.badge-input {
+  position: relative;
+  z-index: 2;
   width: 100%;
   border: none;
+  background: transparent;
   text-align: center;
   font-size: 1.15rem;
   font-weight: 700;
-  background: transparent;
+  color: #111111;
+  outline: none;
+  padding: 0;
+  margin: 0;
+}
+
+.shield-wrap .badge-input {
+  margin-top: -3px;
+}
+
+.heart-wrap .badge-input {
+  margin-top: -2px;
+}
+
+.badge-input.white-txt {
+  color: #ffffff;
 }
 
 .hearts-group {
@@ -235,80 +288,10 @@ body {
   gap: 0.3rem;
 }
 
-.heart-box {
-  width: 44px;
-  height: 44px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.heart-shape {
-  position: absolute;
-  top: 5px;
-  width: 32px;
-  height: 32px;
-  transform: rotate(-45deg);
-}
-
-.heart-shape::before,
-.heart-shape::after {
-  content: "";
-  position: absolute;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-}
-
-.heart-shape.outline {
-  border-left: 2px solid #b70014;
-  border-bottom: 2px solid #b70014;
-}
-
-.heart-shape.outline::before {
-  top: -16px;
-  left: 0;
-  border-top: 2px solid #b70014;
-  border-left: 2px solid #b70014;
-}
-
-.heart-shape.outline::after {
-  right: -16px;
-  top: 0;
-  border-top: 2px solid #b70014;
-  border-right: 2px solid #b70014;
-}
-
-.heart-shape.solid {
-  background-color: #111111;
-}
-
-.heart-shape.solid::before {
-  top: -16px;
-  left: 0;
-  background: #111111;
-}
-
-.heart-shape.solid::after {
-  right: -16px;
-  top: 0;
-  background: #111111;
-}
-
-.heart-val {
-  position: relative;
-  z-index: 5;
-  width: 38px;
-  text-align: center;
-  border: none;
-  background: transparent;
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.heart-val.white-txt {
-  color: #ffffff;
+.slash {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #6b7280;
 }
 
 .two-col-layout {
@@ -438,7 +421,6 @@ body {
   text-align: center;
 }
 
-/* Weapons Table with Dynamic Plus Button */
 .attacks-table {
   margin-bottom: 1rem;
 }
@@ -637,6 +619,7 @@ body {
   margin-top: 0.25rem;
 }
 
+/* Modals */
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -661,6 +644,10 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.modal-box.char-modal-box {
+  max-width: 440px;
 }
 
 .modal-header {
@@ -708,6 +695,69 @@ body {
   padding: 0.5rem 1rem;
   overflow-y: auto;
   flex: 1;
+}
+
+/* Character Selector Items */
+.char-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.65rem 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+  gap: 0.5rem;
+}
+
+.char-item-row:hover {
+  background-color: #fef2f2;
+}
+
+.char-item-info {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  flex: 1;
+}
+
+.char-item-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.char-item-sub {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.char-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.char-select-btn {
+  background-color: #b70014;
+  color: #ffffff;
+  border: none;
+  border-radius: 3px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.char-select-btn.active {
+  background-color: #059669;
+}
+
+.char-delete-btn {
+  background: transparent;
+  border: none;
+  color: #b70014;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 0.3rem;
 }
 
 .spell-option-item {
