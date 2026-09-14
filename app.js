@@ -1,35 +1,76 @@
-const STORAGE_KEY = "simple_rpg_character";
+const STORAGE_KEY = "badman_style_sheet";
 
-// Calculate modifier: (score - 10) / 2 rounded down
-function calculateModifier(score) {
-  const mod = Math.floor((score - 10) / 2);
-  return mod >= 0 ? `+${mod}` : `${mod}`;
+// Calculate modifier from ability score
+function getModifier(score) {
+  return Math.floor((score - 10) / 2);
 }
 
-// Update modifier displays
-function updateAllModifiers() {
-  document.querySelectorAll(".stat-card").forEach((card) => {
-    const stat = card.dataset.stat;
-    const scoreInput = document.getElementById(`score_${stat}`);
-    const modDisplay = document.getElementById(`mod_${stat}`);
-    if (scoreInput && modDisplay) {
-      const score = parseInt(scoreInput.value, 10) || 10;
-      modDisplay.textContent = calculateModifier(score);
+// Calculate proficiency bonus based on level
+function getProfBonus(level) {
+  return Math.ceil(1 + level / 4);
+}
+
+// Update all calculated fields
+function recalculateAll() {
+  const levelInput = document.getElementById("charLevel");
+  const level = parseInt(levelInput?.value, 10) || 1;
+  const prof = getProfBonus(level);
+
+  const profBonusDisplay = document.getElementById("profBonusDisplay");
+  if (profBonusDisplay) {
+    profBonusDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
+  }
+
+  // Update Attributes & Saves
+  const stats = ["str", "dex", "con", "int", "wis", "cha"];
+  const mods = {};
+
+  stats.forEach((stat) => {
+    const scoreVal = parseInt(document.getElementById(`attr_${stat}`)?.value, 10) || 10;
+    const mod = getModifier(scoreVal);
+    mods[stat] = mod;
+
+    const modElem = document.getElementById(`mod_${stat}`);
+    if (modElem) modElem.textContent = mod;
+
+    const isSaveChecked = document.getElementById(`save_${stat}`)?.checked;
+    const saveValElem = document.getElementById(`save_val_${stat}`);
+    if (saveValElem) {
+      saveValElem.textContent = isSaveChecked ? mod + prof : mod;
     }
   });
-}
 
-// Save all field values to localStorage
-function saveCharacter() {
-  const characterData = {};
-  document.querySelectorAll(".save-field").forEach((field) => {
-    characterData[field.id] = field.value;
+  // Update Skills
+  document.querySelectorAll(".skill-row").forEach((row) => {
+    const stat = row.dataset.stat;
+    const statMod = mods[stat] ?? 0;
+    const isProf = row.querySelector(".prof-cb")?.checked;
+    const isExp = row.querySelector(".exp-cb")?.checked;
+
+    let total = statMod;
+    if (isProf) total += prof;
+    if (isExp) total += prof;
+
+    const valElem = row.querySelector(".skill-val");
+    if (valElem) valElem.textContent = total;
   });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(characterData));
 }
 
-// Load values back into fields
-function loadCharacter() {
+// Save all fields to LocalStorage
+function saveSheet() {
+  const data = {};
+  document.querySelectorAll(".save-field").forEach((field) => {
+    if (field.type === "checkbox") {
+      data[field.id] = field.checked;
+    } else {
+      data[field.id] = field.value;
+    }
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// Load saved data
+function loadSheet() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return;
 
@@ -38,56 +79,120 @@ function loadCharacter() {
     Object.keys(data).forEach((id) => {
       const field = document.getElementById(id);
       if (field) {
-        field.value = data[id];
+        if (field.type === "checkbox") {
+          field.checked = data[id];
+        } else {
+          field.value = data[id];
+        }
       }
     });
   } catch (err) {
-    console.error("Failed to load character data:", err);
+    console.error("Could not parse saved sheet", err);
   }
-  updateAllModifiers();
+  recalculateAll();
 }
 
-// Tab navigation
-document.querySelectorAll(".tab-link").forEach((button) => {
-  button.addEventListener("click", () => {
-    document.querySelectorAll(".tab-link").forEach((btn) => btn.classList.remove("active"));
-    document.querySelectorAll(".tab-pane").forEach((pane) => pane.classList.remove("active"));
+// Tabs switching
+document.querySelectorAll(".main-tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".tab-page").forEach((p) => p.classList.remove("active"));
 
-    button.classList.add("active");
-    const target = button.dataset.tab;
-    document.getElementById(target).classList.add("active");
+    btn.classList.add("active");
+    const target = btn.dataset.target;
+    document.getElementById(target)?.classList.add("active");
   });
 });
 
-// Auto-save whenever user types or changes an input
-document.addEventListener("input", (e) => {
-  if (e.target.classList.contains("save-field")) {
-    if (e.target.classList.contains("stat-score")) {
-      updateAllModifiers();
+// Dice Roller
+document.querySelectorAll(".dice-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const sides = parseInt(btn.dataset.sides, 10);
+    const roll = Math.floor(Math.random() * sides) + 1;
+    document.getElementById("rollResult").textContent = `(d${sides}): ${roll}`;
+  });
+});
+
+document.getElementById("clearRollBtn")?.addEventListener("click", () => {
+  document.getElementById("rollResult").textContent = "";
+});
+
+// Hex Die Roll Click
+document.addEventListener("click", (e) => {
+  if (e.target.classList.contains("roll-btn")) {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    let bonus = 0;
+    const type = e.target.dataset.type;
+
+    if (type === "save") {
+      const attr = e.target.dataset.attr;
+      bonus = parseInt(document.getElementById(`save_val_${attr}`)?.textContent, 10) || 0;
+    } else if (type === "skill") {
+      const id = e.target.dataset.id;
+      bonus = parseInt(document.getElementById(`val_${id}`)?.textContent, 10) || 0;
     }
-    saveCharacter();
+
+    const total = roll + bonus;
+    document.getElementById("rollResult").textContent = `Rolled ${roll} + (${bonus}) = ${total}`;
   }
 });
 
-// Backup file download
-document.getElementById("exportBtn").addEventListener("click", () => {
-  const raw = localStorage.getItem(STORAGE_KEY) || "{}";
-  const blob = new Blob([raw], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "character-backup.json";
-  a.click();
-  URL.revokeObjectURL(url);
+// Auto-save & calculate on input
+document.addEventListener("input", (e) => {
+  if (e.target.classList.contains("save-field")) {
+    recalculateAll();
+    saveSheet();
+  }
 });
 
-// Clear character
-document.getElementById("newBtn").addEventListener("click", () => {
-  if (confirm("Reset this character? Unsaved changes will be cleared.")) {
+// Buttons
+document.getElementById("saveBtn")?.addEventListener("click", () => {
+  saveSheet();
+  alert("Character saved to browser storage!");
+});
+
+document.getElementById("newBtn")?.addEventListener("click", () => {
+  if (confirm("Reset current sheet?")) {
     localStorage.removeItem(STORAGE_KEY);
     location.reload();
   }
 });
 
-// Start up
-loadCharacter();
+document.getElementById("backupBtn")?.addEventListener("click", () => {
+  const data = localStorage.getItem(STORAGE_KEY) || "{}";
+  const blob = new Blob([data], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "character-sheet.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("restoreFile")?.addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const parsed = JSON.parse(evt.target.result);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      loadSheet();
+      alert("Character restored successfully!");
+    } catch (err) {
+      alert("Invalid JSON file.");
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById("deleteBtn")?.addEventListener("click", () => {
+  if (confirm("Delete this character profile?")) {
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  }
+});
+
+// Initialize on page load
+loadSheet();
