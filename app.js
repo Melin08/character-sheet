@@ -1,8 +1,10 @@
-const SHEET_STORAGE_KEY = "badman_char_sheet_data";
-const SPELLS_STORAGE_KEY = "badman_char_sheet_spells";
-const WEAPONS_STORAGE_KEY = "badman_char_sheet_weapons";
+// Storage Keys
+const ROSTER_STORAGE_KEY = "badman_char_roster_v1";
+const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
 
 let allSpellsCache = [];
+let activeCharId = localStorage.getItem(ACTIVE_CHAR_ID_KEY) || "default";
+
 let myCharacterSpells = [];
 let myCharacterWeapons = [
   { name: "Shortsword", atk: "+5", dmg: "1d6+3 P", notes: "Finesse, light" },
@@ -90,7 +92,7 @@ function renderWeapons() {
 
 document.getElementById("addWeaponBtn")?.addEventListener("click", () => {
   myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
-  saveWeapons();
+  saveSheet();
   renderWeapons();
 });
 
@@ -100,7 +102,7 @@ document.getElementById("weaponsContainer")?.addEventListener("input", (e) => {
     const index = parseInt(entry.dataset.index, 10);
     const prop = e.target.dataset.prop;
     myCharacterWeapons[index][prop] = e.target.value;
-    saveWeapons();
+    saveSheet();
   }
 });
 
@@ -108,88 +110,219 @@ document.getElementById("weaponsContainer")?.addEventListener("click", (e) => {
   if (e.target.classList.contains("weapon-delete-btn")) {
     const index = parseInt(e.target.dataset.index, 10);
     myCharacterWeapons.splice(index, 1);
-    saveWeapons();
+    saveSheet();
     renderWeapons();
   }
 });
 
-function saveWeapons() {
-  localStorage.setItem(WEAPONS_STORAGE_KEY, JSON.stringify(myCharacterWeapons));
+// Character Management
+function getRoster() {
+  try {
+    return JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY)) || {};
+  } catch (e) {
+    return {};
+  }
 }
 
-function loadWeapons() {
-  const raw = localStorage.getItem(WEAPONS_STORAGE_KEY);
-  if (raw) {
-    try {
-      myCharacterWeapons = JSON.parse(raw);
-    } catch (e) {
-      myCharacterWeapons = [
-        { name: "Shortsword", atk: "+5", dmg: "1d6+3 P", notes: "Finesse, light" },
-        { name: "Shortbow", atk: "+5", dmg: "1d6+3 P", notes: "Range 80/320" }
-      ];
+function saveRoster(roster) {
+  localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(roster));
+}
+
+function getCurrentSheetData() {
+  const fields = {};
+  document.querySelectorAll(".save-field").forEach((field) => {
+    if (field.type === "checkbox") {
+      fields[field.id] = field.checked;
+    } else {
+      fields[field.id] = field.value;
     }
-  }
-  renderWeapons();
+  });
+  return fields;
 }
 
 function saveSheet() {
-  const data = {};
-  document.querySelectorAll(".save-field").forEach((field) => {
-    if (field.type === "checkbox") {
-      data[field.id] = field.checked;
-    } else {
-      data[field.id] = field.value;
-    }
-  });
-  localStorage.setItem(SHEET_STORAGE_KEY, JSON.stringify(data));
-  localStorage.setItem(SPELLS_STORAGE_KEY, JSON.stringify(myCharacterSpells));
-  saveWeapons();
+  const roster = getRoster();
+  const fields = getCurrentSheetData();
+  const name = fields.charName?.trim() || "Unnamed Character";
+  const charClass = fields.charClass?.trim() || "Adventurer";
+  const level = fields.charLevel || 1;
+
+  roster[activeCharId] = {
+    id: activeCharId,
+    name: name,
+    summary: `${charClass} (Lvl ${level})`,
+    updatedAt: Date.now(),
+    fields: fields,
+    spells: myCharacterSpells,
+    weapons: myCharacterWeapons
+  };
+
+  saveRoster(roster);
+  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
   showStatus("Saved!");
 }
 
-function loadSheet() {
-  const rawData = localStorage.getItem(SHEET_STORAGE_KEY);
-  if (rawData) {
-    try {
-      const data = JSON.parse(rawData);
-      Object.keys(data).forEach((id) => {
-        const field = document.getElementById(id);
-        if (field) {
-          if (field.type === "checkbox") {
-            field.checked = data[id];
-          } else {
-            field.value = data[id];
-          }
-        }
-      });
-    } catch (e) {
-      console.error("Failed to parse sheet data", e);
-    }
-  }
+function applyCharacterData(charData) {
+  if (!charData) return;
 
-  const rawSpells = localStorage.getItem(SPELLS_STORAGE_KEY);
-  if (rawSpells) {
-    try {
-      myCharacterSpells = JSON.parse(rawSpells);
-    } catch (e) {
-      myCharacterSpells = [];
+  const fields = charData.fields || {};
+  Object.keys(fields).forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      if (el.type === "checkbox") {
+        el.checked = fields[id];
+      } else {
+        el.value = fields[id];
+      }
     }
-  } else {
-    myCharacterSpells = [];
-  }
+  });
 
-  loadWeapons();
-  recalculateAll();
+  myCharacterSpells = charData.spells || [];
+  myCharacterWeapons = charData.weapons || [
+    { name: "Shortsword", atk: "+5", dmg: "1d6+3 P", notes: "Finesse, light" },
+    { name: "Shortbow", atk: "+5", dmg: "1d6+3 P", notes: "Range 80/320" }
+  ];
+
+  renderWeapons();
   renderMySpells();
+  recalculateAll();
+}
+
+function loadSheet() {
+  const roster = getRoster();
+  if (roster[activeCharId]) {
+    applyCharacterData(roster[activeCharId]);
+  } else {
+    const keys = Object.keys(roster);
+    if (keys.length > 0) {
+      activeCharId = keys[0];
+      localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+      applyCharacterData(roster[activeCharId]);
+    } else {
+      recalculateAll();
+      renderWeapons();
+      renderMySpells();
+    }
+  }
 }
 
 function resetSheet() {
-  localStorage.removeItem(SHEET_STORAGE_KEY);
-  localStorage.removeItem(SPELLS_STORAGE_KEY);
-  localStorage.removeItem(WEAPONS_STORAGE_KEY);
-  location.reload();
+  activeCharId = "char_" + Date.now();
+  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+
+  document.querySelectorAll(".save-field").forEach((field) => {
+    if (field.type === "checkbox") {
+      field.checked = false;
+    } else if (field.id === "charLevel") {
+      field.value = 1;
+    } else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") {
+      field.value = 10;
+    } else if (field.classList.contains("attr-input")) {
+      field.value = 10;
+    } else if (field.id === "charSpeed") {
+      field.value = 30;
+    } else if (field.classList.contains("dual-input") || field.classList.contains("coin-input")) {
+      field.value = 0;
+    } else {
+      field.value = "";
+    }
+  });
+
+  myCharacterSpells = [];
+  myCharacterWeapons = [
+    { name: "Shortsword", atk: "+5", dmg: "1d6+3 P", notes: "Finesse, light" },
+    { name: "Shortbow", atk: "+5", dmg: "1d6+3 P", notes: "Range 80/320" }
+  ];
+
+  recalculateAll();
+  renderWeapons();
+  renderMySpells();
+  saveSheet();
+  showStatus("New Character Created!");
 }
 
+// Character Selection Modal
+function renderCharList() {
+  const container = document.getElementById("charList");
+  if (!container) return;
+
+  const roster = getRoster();
+  const keys = Object.keys(roster);
+
+  if (keys.length === 0) {
+    container.innerHTML = `<p class="loading-text">No saved characters found.</p>`;
+    return;
+  }
+
+  container.innerHTML = keys
+    .map((id) => {
+      const char = roster[id];
+      const isActive = id === activeCharId;
+      return `
+        <div class="char-item-row" data-id="${id}">
+          <div class="char-item-info">
+            <span class="char-item-name">${char.name || "Unnamed Character"}</span>
+            <span class="char-item-sub">${char.summary || ""}</span>
+          </div>
+          <div class="char-actions">
+            <button type="button" class="char-select-btn ${isActive ? "active" : ""}">
+              ${isActive ? "Active" : "Select"}
+            </button>
+            <button type="button" class="char-delete-btn" title="Delete character">&times;</button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+document.getElementById("loadBtn")?.addEventListener("click", () => {
+  renderCharList();
+  document.getElementById("loadModal")?.classList.add("open");
+});
+
+document.getElementById("closeLoadModal")?.addEventListener("click", () => {
+  document.getElementById("loadModal")?.classList.remove("open");
+});
+
+document.getElementById("loadModal")?.addEventListener("click", (e) => {
+  if (e.target.id === "loadModal") {
+    document.getElementById("loadModal")?.classList.remove("open");
+  }
+});
+
+document.getElementById("charList")?.addEventListener("click", (e) => {
+  const row = e.target.closest(".char-item-row");
+  if (!row) return;
+  const targetId = row.dataset.id;
+  const roster = getRoster();
+
+  // Handle delete
+  if (e.target.classList.contains("char-delete-btn")) {
+    e.stopPropagation();
+    if (confirm(`Delete character "${roster[targetId]?.name || "Unnamed"}"?`)) {
+      delete roster[targetId];
+      saveRoster(roster);
+      if (activeCharId === targetId) {
+        const remaining = Object.keys(roster);
+        activeCharId = remaining.length > 0 ? remaining[0] : "char_" + Date.now();
+        localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+        loadSheet();
+      }
+      renderCharList();
+    }
+    return;
+  }
+
+  // Handle character switch
+  activeCharId = targetId;
+  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+  applyCharacterData(roster[activeCharId]);
+  document.getElementById("loadModal")?.classList.remove("open");
+  showStatus("Character Loaded!");
+});
+
+// Primary Tabs
 function switchMainTab(targetId) {
   document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
   document.querySelectorAll(".tab-page").forEach((p) => p.classList.remove("active"));
@@ -233,6 +366,7 @@ document.querySelectorAll(".footer-nav-btn").forEach((btn) => {
   });
 });
 
+// Dice Roller
 document.querySelectorAll(".dice-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     const sides = parseInt(btn.dataset.sides, 10);
@@ -271,6 +405,7 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// Spells
 async function fetchOfficialSpells() {
   if (allSpellsCache.length > 0) return allSpellsCache;
   try {
@@ -364,7 +499,7 @@ function renderMySpells() {
     .join("");
 }
 
-function openModal() {
+function openSpellModal() {
   const modal = document.getElementById("spellModal");
   modal?.classList.add("open");
   const searchInput = document.getElementById("spellSearchInput");
@@ -374,13 +509,13 @@ function openModal() {
   }
 }
 
-function closeModal() {
+function closeSpellModal() {
   const modal = document.getElementById("spellModal");
   modal?.classList.remove("open");
 }
 
 document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
-  openModal();
+  openSpellModal();
   const list = document.getElementById("spellApiList");
   if (list && allSpellsCache.length === 0) {
     list.innerHTML = `<p class="loading-text">Loading official 5e spells...</p>`;
@@ -391,18 +526,19 @@ document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
 
 document.getElementById("closeSpellModal")?.addEventListener("click", (e) => {
   e.stopPropagation();
-  closeModal();
+  closeSpellModal();
 });
 
 document.getElementById("spellModal")?.addEventListener("click", (e) => {
   if (e.target.id === "spellModal") {
-    closeModal();
+    closeSpellModal();
   }
 });
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    closeModal();
+    closeSpellModal();
+    document.getElementById("loadModal")?.classList.remove("open");
   }
 });
 
@@ -418,7 +554,7 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   const spellName = row.dataset.name;
 
   if (myCharacterSpells.some((s) => s.name === spellName)) {
-    closeModal();
+    closeSpellModal();
     return;
   }
 
@@ -432,7 +568,7 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
     renderMySpells();
   }
 
-  closeModal();
+  closeSpellModal();
   if (badge) badge.textContent = "+ Add";
 });
 
@@ -445,43 +581,54 @@ document.getElementById("spellsList")?.addEventListener("click", (e) => {
   }
 });
 
+// Action Bar Buttons
 document.getElementById("saveBtn")?.addEventListener("click", () => {
   saveSheet();
 });
 
-document.getElementById("loadBtn")?.addEventListener("click", () => {
-  loadSheet();
-  showStatus("Loaded!");
-});
-
 document.getElementById("newBtn")?.addEventListener("click", () => {
-  if (confirm("Reset current character sheet? Any unsaved changes will be lost.")) {
+  if (confirm("Create a new blank character sheet?")) {
     resetSheet();
   }
 });
 
 document.getElementById("deleteBtn")?.addEventListener("click", () => {
-  if (confirm("Permanently delete this character and all its spells?")) {
-    resetSheet();
+  const roster = getRoster();
+  const currentName = roster[activeCharId]?.name || "Unnamed Character";
+  if (confirm(`Permanently delete current character "${currentName}"?`)) {
+    delete roster[activeCharId];
+    saveRoster(roster);
+    const remaining = Object.keys(roster);
+    if (remaining.length > 0) {
+      activeCharId = remaining[0];
+      localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+      loadSheet();
+    } else {
+      resetSheet();
+    }
   }
 });
 
 document.getElementById("backupBtn")?.addEventListener("click", () => {
-  const rawSheet = localStorage.getItem(SHEET_STORAGE_KEY) || "{}";
-  const rawSpells = localStorage.getItem(SPELLS_STORAGE_KEY) || "[]";
-  const rawWeapons = localStorage.getItem(WEAPONS_STORAGE_KEY) || "[]";
+  const roster = getRoster();
+  const currentChar = roster[activeCharId] || {
+    id: activeCharId,
+    name: document.getElementById("charName")?.value || "Character",
+    fields: getCurrentSheetData(),
+    spells: myCharacterSpells,
+    weapons: myCharacterWeapons
+  };
 
   const fullBackup = {
-    sheet: JSON.parse(rawSheet),
-    spells: JSON.parse(rawSpells),
-    weapons: JSON.parse(rawWeapons),
-    version: 1
+    character: currentChar,
+    allRoster: roster,
+    version: 2
   };
 
   const blob = new Blob([JSON.stringify(fullBackup, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  const charName = document.getElementById("charName")?.value.trim() || "character";
+  const charName = currentChar.name.trim() || "character";
   a.href = url;
   a.download = `${charName.toLowerCase().replace(/\s+/g, "_")}-backup.json`;
   a.click();
@@ -497,19 +644,32 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
   reader.onload = (evt) => {
     try {
       const parsed = JSON.parse(evt.target.result);
-      if (parsed.sheet && parsed.spells) {
-        localStorage.setItem(SHEET_STORAGE_KEY, JSON.stringify(parsed.sheet));
-        localStorage.setItem(SPELLS_STORAGE_KEY, JSON.stringify(parsed.spells));
-        if (parsed.weapons) {
-          localStorage.setItem(WEAPONS_STORAGE_KEY, JSON.stringify(parsed.weapons));
-        }
-      } else {
-        localStorage.setItem(SHEET_STORAGE_KEY, JSON.stringify(parsed));
+      const roster = getRoster();
+
+      if (parsed.allRoster) {
+        Object.assign(roster, parsed.allRoster);
+      } else if (parsed.character) {
+        const id = parsed.character.id || "char_" + Date.now();
+        roster[id] = parsed.character;
+        activeCharId = id;
+      } else if (parsed.sheet) {
+        const id = "char_" + Date.now();
+        roster[id] = {
+          id: id,
+          name: parsed.sheet.charName || "Restored Hero",
+          fields: parsed.sheet,
+          spells: parsed.spells || [],
+          weapons: parsed.weapons || []
+        };
+        activeCharId = id;
       }
+
+      saveRoster(roster);
+      localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
       loadSheet();
       showStatus("Restored successfully!");
     } catch (err) {
-      alert("Invalid JSON file provided.");
+      alert("Invalid JSON backup file.");
     }
   };
   reader.readAsText(file);
