@@ -8,7 +8,6 @@
 </head>
 <body id="top">
   <div class="sheet-container">
-    <!-- Top Action Bar -->
     <header class="top-nav">
       <button class="btn red" id="saveBtn" type="button">Save</button>
       <button class="btn red" id="loadBtn" type="button">Load</button>
@@ -22,20 +21,16 @@
       <span id="saveStatus" class="status-msg"></span>
     </header>
 
-    <!-- Character Name Header -->
     <div class="name-box">
       <input type="text" id="charName" class="save-field name-input" placeholder="Character Name" />
     </div>
 
-    <!-- Primary Tabs -->
     <div class="tab-controls">
       <button class="main-tab active" data-target="tab-stats" type="button">Statistics, Abilities, Equipment, etc.</button>
       <button class="main-tab" data-target="tab-journal" type="button">Notes, Personality, NPCs, etc.</button>
     </div>
 
-    <!-- MAIN VIEW 1: Statistics -->
     <div id="tab-stats" class="tab-page active">
-      <!-- Identity Line 1 -->
       <div class="meta-row">
         <div class="meta-item">
           <label for="charClass">Class</label>
@@ -59,7 +54,6 @@
         </div>
       </div>
 
-      <!-- Identity Line 2 -->
       <div class="meta-row">
         <div class="meta-item">
           <label for="charExp">Experience</label>
@@ -85,7 +79,6 @@
         </div>
       </div>
 
-      <!-- Vitals Row -->
       <div class="vitals-row">
         <div class="vital-unit">
           <span>Armor Class</span>
@@ -128,9 +121,7 @@
         </div>
       </div>
 
-      <!-- Two-Column Sheet Layout -->
       <div class="two-col-layout">
-        <!-- Left Column: Attributes and Skills -->
         <div class="left-pane">
           <h2 class="section-title">Attributes</h2>
           <div class="attributes-group">
@@ -337,7 +328,6 @@
           </div>
         </div>
 
-        <!-- Right Column: Dice Roller, Coins, Attacks, Features, Spells -->
         <div class="right-pane">
           <h2 class="section-title">Dice Roller</h2>
           <div class="dice-bar">
@@ -351,7 +341,6 @@
             <span id="rollResult" class="roll-output"></span>
           </div>
 
-          <!-- Currencies -->
           <div class="currency-bar">
             <div class="coin-item"><label for="coin_cp">CP</label><input type="number" id="coin_cp" class="save-field coin-input" value="0" /></div>
             <div class="coin-item"><label for="coin_sp">SP</label><input type="number" id="coin_sp" class="save-field coin-input" value="0" /></div>
@@ -360,7 +349,6 @@
           </div>
 
           <h2 class="section-title">Weapons & Attacks</h2>
-         <h2 class="section-title">Weapons & Attacks</h2>
           <div class="attacks-table">
             <div class="attack-headers">
               <span>Name</span>
@@ -369,35 +357,19 @@
               <span>Notes</span>
               <span></span>
             </div>
-            <div class="attack-rows-container" id="weaponsContainer">
-              <!-- Dynamic weapon rows will render here -->
-            </div>
+            <div class="attack-rows-container" id="weaponsContainer"></div>
             <div class="add-weapon-wrapper">
               <button type="button" class="btn-icon-plus" id="addWeaponBtn" title="Add weapon slot">+</button>
-            </div>
-          </div>
-              <div class="attack-entry">
-                <input type="text" class="save-field inline-input" id="wpn_1_name" placeholder="Shortsword" />
-                <input type="text" class="save-field inline-input" id="wpn_1_atk" placeholder="+5" />
-                <input type="text" class="save-field inline-input" id="wpn_1_dmg" placeholder="1d6+3 Piercing" />
-                <input type="text" class="save-field inline-input" id="wpn_1_notes" placeholder="Finesse, light" />
-              </div>
-              <div class="attack-entry">
-                <input type="text" class="save-field inline-input" id="wpn_2_name" placeholder="Shortbow" />
-                <input type="text" class="save-field inline-input" id="wpn_2_atk" placeholder="+5" />
-                <input type="text" class="save-field inline-input" id="wpn_2_dmg" placeholder="1d6+3 Piercing" />
-                <input type="text" class="save-field inline-input" id="wpn_2_notes" placeholder="Range 80/320" />
-              </div>
             </div>
           </div>
 
           <hr class="red-divider" />
 
           <h2 class="section-title">Features & Traits</h2>
-          <textarea id="featuresTraits" class="save-field block-text" rows="5" placeholder="Class abilities, racial traits, and feats..."></textarea>
+          <textarea id="featuresTraits" class="save-field block-text" rows="5" placeholder="Class abilities, racial traits, feats..."></textarea>
 
           <h2 class="section-title">Other Proficiencies</h2>
-          <textarea id="otherProfs" class="save-field block-text" rows="4" placeholder="Armor, weapons, tools, and languages..."></textarea>
+          <textarea id="otherProfs" class="save-field block-text" rows="4" placeholder="Armor, weapons, tools, languages..."></textarea>
 
           <h2 class="section-title">Spells</h2>
           <div class="spell-basics">
@@ -434,13 +406,11 @@
           </div>
           <hr class="red-divider" />
 
-          <!-- Dynamic Container for Added Spell Cards -->
           <div id="spellsList" class="spells-container"></div>
         </div>
       </div>
     </div>
 
-    <!-- MAIN VIEW 2: Notes, Personality, NPCs, Equipment -->
     <div id="tab-journal" class="tab-page">
       <div class="subtab-controls">
         <button class="sub-tab active" data-sub="sub-notes" type="button">General Notes</button>
@@ -486,7 +456,6 @@
       </div>
     </div>
 
-    <!-- Footer -->
     <footer class="sheet-footer">
       <hr class="footer-divider" />
       <div class="footer-meta">
@@ -511,7 +480,6 @@
     </footer>
   </div>
 
-  <!-- Spell Picker Modal -->
   <div id="spellModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-header">
