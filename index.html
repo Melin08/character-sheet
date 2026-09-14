@@ -360,14 +360,22 @@
           </div>
 
           <h2 class="section-title">Weapons & Attacks</h2>
+         <h2 class="section-title">Weapons & Attacks</h2>
           <div class="attacks-table">
             <div class="attack-headers">
               <span>Name</span>
               <span>Attack</span>
               <span>Damage</span>
               <span>Notes</span>
+              <span></span>
             </div>
-            <div class="attack-rows-container">
+            <div class="attack-rows-container" id="weaponsContainer">
+              <!-- Dynamic weapon rows will render here -->
+            </div>
+            <div class="add-weapon-wrapper">
+              <button type="button" class="btn-icon-plus" id="addWeaponBtn" title="Add weapon slot">+</button>
+            </div>
+          </div>
               <div class="attack-entry">
                 <input type="text" class="save-field inline-input" id="wpn_1_name" placeholder="Shortsword" />
                 <input type="text" class="save-field inline-input" id="wpn_1_atk" placeholder="+5" />
