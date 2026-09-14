@@ -16,12 +16,13 @@ body {
   margin: 0 auto;
 }
 
-/* Crimson Action Buttons */
+/* Action Buttons Header */
 .top-nav {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.2rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .btn.red {
@@ -36,6 +37,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  text-decoration: none;
 }
 
 .btn.red:hover {
@@ -44,9 +46,28 @@ body {
 
 .file-label {
   cursor: pointer;
+  position: relative;
 }
 
-/* Character Name Input */
+.file-label input[type="file"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.status-msg {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #059669;
+  margin-left: 0.5rem;
+  transition: opacity 0.3s ease;
+}
+
+/* Name Box */
 .name-box {
   margin-bottom: 0.8rem;
 }
@@ -55,7 +76,7 @@ body {
   width: 100%;
   font-size: 2.1rem;
   font-weight: 700;
-  color: #999999;
+  color: #737373;
   border: 1px dashed #d1d5db;
   border-radius: 4px;
   padding: 0.35rem 0.6rem;
@@ -67,7 +88,7 @@ body {
   border-color: #b70014;
 }
 
-/* Main Navigation Tabs */
+/* Primary Navigation Tabs */
 .tab-controls {
   display: flex;
   border-bottom: 2px solid #b70014;
@@ -100,13 +121,14 @@ body {
   display: block;
 }
 
-/* Sub Tabs for Notes, Personality, NPCs */
+/* Sub-tabs for Notes/Personality/NPCs */
 .subtab-controls {
   display: flex;
   gap: 0.4rem;
   border-bottom: 1px solid #d1d5db;
   margin-bottom: 1.2rem;
   padding-bottom: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .sub-tab {
@@ -134,7 +156,7 @@ body {
   display: block;
 }
 
-/* Meta Data Rows */
+/* Identity Rows */
 .meta-row {
   display: flex;
   flex-wrap: wrap;
@@ -176,7 +198,7 @@ body {
   background: #fafafa;
 }
 
-/* Vitals Row */
+/* Vitals & Custom Badge Shapes */
 .vitals-row {
   display: flex;
   gap: 2.2rem;
@@ -193,7 +215,6 @@ body {
   font-weight: 700;
 }
 
-/* AC Shield */
 .shield-badge {
   width: 42px;
   height: 50px;
@@ -211,9 +232,9 @@ body {
   text-align: center;
   font-size: 1.15rem;
   font-weight: 700;
+  background: transparent;
 }
 
-/* HP Hearts */
 .hearts-group {
   display: flex;
   align-items: center;
@@ -304,6 +325,12 @@ body {
   margin-top: 1rem;
 }
 
+@media (max-width: 860px) {
+  .two-col-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .section-title {
   font-size: 1.25rem;
   font-weight: 700;
@@ -342,6 +369,7 @@ body {
   align-items: center;
   gap: 0.25rem;
   font-size: 0.88rem;
+  cursor: pointer;
 }
 
 /* Hex Die Red Icon */
@@ -356,7 +384,7 @@ body {
 }
 
 .hex-die:hover {
-  transform: scale(1.2);
+  transform: scale(1.25);
 }
 
 /* Skills */
@@ -379,7 +407,7 @@ body {
   font-weight: 600;
 }
 
-/* Dice Roller & Coins */
+/* Dice Roller & Currencies */
 .dice-bar {
   display: flex;
   gap: 0.45rem;
@@ -421,7 +449,7 @@ body {
   text-align: center;
 }
 
-/* Attacks Table */
+/* Weapons Table */
 .attacks-table {
   margin-bottom: 1rem;
 }
@@ -488,14 +516,18 @@ body {
   margin-top: 1rem;
 }
 
-.red-text {
+.btn-text-red {
+  background: transparent;
+  border: none;
   color: #b70014;
-}
-
-.action-link {
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
+  padding: 0.2rem 0.4rem;
+}
+
+.btn-text-red:hover {
+  text-decoration: underline;
 }
 
 .block-text {
@@ -510,6 +542,173 @@ body {
 
 .journal-box {
   line-height: 1.45;
+}
+
+/* Dynamic Detailed Spell Cards */
+.spells-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.spell-card {
+  border: 1px dotted #9ca3af;
+  border-radius: 5px;
+  background: #fafafa;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.spell-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.3rem;
+}
+
+.spell-card-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #111827;
+}
+
+.spell-card-delete {
+  background: transparent;
+  border: none;
+  color: #b70014;
+  font-size: 1.35rem;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+
+.spell-card-delete:hover {
+  color: #000000;
+}
+
+.spell-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  font-size: 0.82rem;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.spell-card-desc {
+  font-size: 0.86rem;
+  color: #374151;
+  line-height: 1.35;
+  margin-top: 0.25rem;
+}
+
+/* Modal Popup Window */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-backdrop.open {
+  display: flex;
+}
+
+.modal-box {
+  background: #ffffff;
+  width: 90%;
+  max-width: 540px;
+  max-height: 80vh;
+  border-radius: 6px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #b70014;
+  color: #ffffff;
+  padding: 0.75rem 1rem;
+}
+
+.modal-header h3 {
+  font-size: 1.1rem;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 1.6rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.4rem;
+}
+
+.modal-search-bar {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-search-bar input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.modal-search-bar input:focus {
+  border-color: #b70014;
+}
+
+.modal-list {
+  padding: 0.5rem 1rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.spell-option-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 0.4rem;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+}
+
+.spell-option-item:hover {
+  background-color: #fef2f2;
+}
+
+.spell-add-badge {
+  background: #b70014;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: 3px;
+}
+
+.loading-text {
+  font-style: italic;
+  color: #6b7280;
+  text-align: center;
+  padding: 1.2rem 0;
 }
 
 /* Footer */
@@ -541,187 +740,26 @@ body {
 .bottom-quicknav {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 0.75rem;
   margin: 1.5rem 0;
   color: #b70014;
   font-size: 0.95rem;
+  flex-wrap: wrap;
 }
 
-.bottom-quicknav a {
+.bottom-quicknav a,
+.footer-nav-btn {
   color: #b70014;
   text-decoration: none;
-}
-/* Dynamic Spells Container & Detailed Cards */
-.spells-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  margin-top: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-
-.spell-card {
-  border: 1px dotted #9ca3af;
-  border-radius: 5px;
-  background: #fafafa;
-  padding: 0.6rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.spell-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 0.3rem;
-}
-
-.spell-card-title {
-  font-weight: 700;
-  font-size: 1rem;
-  color: #111827;
-}
-
-.spell-card-delete {
   background: transparent;
   border: none;
-  color: #b70014;
-  font-size: 1.3rem;
-  font-weight: bold;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.spell-card-delete:hover {
-  color: #000000;
-}
-
-.spell-card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.85rem;
-  font-size: 0.8rem;
-  color: #4b5563;
-  font-weight: 600;
-}
-
-.spell-card-meta span strong {
-  color: #1f2937;
-}
-
-.spell-card-desc {
-  font-size: 0.85rem;
-  color: #374151;
-  line-height: 1.35;
-  margin-top: 0.25rem;
-}
-.spell-card-delete:hover {
-  color: #000000;
-}
-
-/* Modal Popup Overlay */
-.modal-backdrop {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.45);
-  z-index: 999;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-backdrop.open {
-  display: flex;
-}
-
-.modal-box {
-  background: #ffffff;
-  width: 90%;
-  max-width: 520px;
-  max-height: 80vh;
-  border-radius: 6px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #b70014;
-  color: #ffffff;
-  padding: 0.75rem 1rem;
-}
-
-.modal-header h3 {
-  font-size: 1.1rem;
-}
-
-.modal-close-btn {
-  background: transparent;
-  border: none;
-  color: #ffffff;
-  font-size: 1.4rem;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.modal-search-bar {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-search-bar input {
-  width: 100%;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
   font-size: 0.95rem;
-  outline: none;
-}
-
-.modal-search-bar input:focus {
-  border-color: #b70014;
-}
-
-.modal-list {
-  padding: 0.5rem 1rem;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.spell-option-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0.4rem;
-  border-bottom: 1px solid #f3f4f6;
   cursor: pointer;
+  padding: 0;
 }
 
-.spell-option-item:hover {
-  background-color: #fef2f2;
-}
-
-.spell-add-badge {
-  background: #b70014;
-  color: #ffffff;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.2rem 0.5rem;
-  border-radius: 3px;
-}
-
-.loading-text {
-  font-style: italic;
-  color: #6b7280;
-  text-align: center;
-  padding: 1rem 0;
+.footer-nav-btn:hover,
+.bottom-quicknav a:hover {
+  text-decoration: underline;
 }
