@@ -570,6 +570,7 @@ function renderMySpells() {
 function attachSpellDragEvents() {
   const cards = document.querySelectorAll(".spell-card");
   cards.forEach((card) => {
+    // Desktop Mouse Drag
     card.addEventListener("dragstart", (e) => {
       if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) {
         e.preventDefault();
@@ -615,6 +616,7 @@ function attachSpellDragEvents() {
       renderMySpells();
     });
 
+    // Mobile Touch Drag on Handle
     const handle = card.querySelector(".spell-drag-handle");
     if (handle) {
       handle.addEventListener("touchstart", () => {
