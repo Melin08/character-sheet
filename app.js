@@ -486,6 +486,7 @@ async function fetchOfficialClasses() {
   if (allClassesCache.length > 0) return allClassesCache;
   try {
     const res = await fetch("https://www.dnd5eapi.co/api/classes");
+    if (!res.ok) return [];
     const data = await res.json();
     allClassesCache = data.results || [];
     return allClassesCache;
@@ -498,8 +499,10 @@ async function fetchOfficialClasses() {
 async function fetchClassDataAndEquipment(classIndex) {
   try {
     const classRes = await fetch(`https://www.dnd5eapi.co/api/classes/${classIndex}`);
+    if (!classRes.ok) return null;
     const details = await classRes.json();
     
+    // Explicitly target the robust starting-equipment endpoint
     const equipRes = await fetch(`https://www.dnd5eapi.co/api/starting-equipment/${classIndex}`);
     if (equipRes.ok) {
         const equip = await equipRes.json();
@@ -570,7 +573,9 @@ classDropdown?.addEventListener("click", async (e) => {
   recalculateAll();
   saveSheet();
 
+  showStatus("Loading gear...");
   const details = await fetchClassDataAndEquipment(classIdx);
+  
   if (details) {
     applyStartingEquipment(details);
   }
@@ -660,9 +665,13 @@ raceDropdown?.addEventListener("click", async (e) => {
     let raceText = "";
     if (details.traits && details.traits.length > 0) {
         for (let traitRef of details.traits) {
-            const traitData = await fetch(`https://www.dnd5eapi.co${traitRef.url}`).then(r => r.json());
-            const desc = Array.isArray(traitData.desc) ? traitData.desc.join("\n") : traitData.desc;
-            raceText += `[${traitData.name}]\n${desc}\n\n`;
+            try {
+                const traitData = await fetch(`https://www.dnd5eapi.co${traitRef.url}`).then(r => r.json());
+                const desc = Array.isArray(traitData.desc) ? traitData.desc.join("\n") : (traitData.desc || "");
+                raceText += `[${traitData.name}]\n${desc}\n\n`;
+            } catch (err) {
+                raceText += `[${traitRef.name}]\n(Description unavailable)\n\n`;
+            }
         }
     }
     
@@ -701,19 +710,23 @@ function getChoiceDetails(choice) {
   if (choice.option_type === "counted_reference" && choice.of) {
       details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.of.name}`);
   } else if (choice.option_type === "choice" && choice.choice) {
-      details.push(`Any ${choice.choice.desc}`);
+      const catDesc = choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option";
+      details.push(`Any ${catDesc}`);
   } else if (choice.option_type === "multiple" && choice.items) {
       choice.items.forEach(i => {
           if (i.option_type === "counted_reference" && i.of) {
               details.push(`${i.count > 1 ? i.count + "x " : ""}${i.of.name}`);
           } else if (i.option_type === "choice" && i.choice) {
-              details.push(`Any ${i.choice.desc}`);
+              const catDesc = i.choice.desc || i.choice.from?.equipment_category?.name || "Option";
+              details.push(`Any ${catDesc}`);
           } else if (i.of) {
               details.push(`${i.count > 1 ? i.count + "x " : ""}${i.of.name}`);
           } else if (i.item) {
               details.push(`${i.count > 1 ? i.count + "x " : ""}${i.item.name}`);
           }
       });
+  } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
+      details.push(`${choice.count > 1 ? choice.count + "x " : ""}Any ${choice.equipment_category.name}`);
   } else if (choice.equipment) {
       details.push(`${choice.quantity > 1 ? choice.quantity + "x " : ""}${choice.equipment.name}`);
   } else if (choice.equipment_category) {
@@ -737,7 +750,8 @@ function extractItemsFromChoice(choice) {
           if (i.option_type === "counted_reference" && i.of) {
               items.push({ name: i.of.name, qty: i.count || 1 });
           } else if (i.option_type === "choice" && i.choice) {
-              items.push({ name: `Any ${i.choice.desc}`, qty: 1 });
+              const catName = i.choice.from?.equipment_category?.name || "Equipment Option";
+              items.push({ name: `Any ${catName}`, qty: i.choice.choose || 1 });
           } else if (i.of) {
               items.push({ name: i.of.name, qty: i.count || 1 });
           } else if (i.item) {
@@ -747,7 +761,10 @@ function extractItemsFromChoice(choice) {
   } else if (choice.option_type === "counted_reference" && choice.of) {
       items.push({ name: choice.of.name, qty: choice.count || 1 });
   } else if (choice.option_type === "choice" && choice.choice) {
-      items.push({ name: `Any ${choice.choice.desc}`, qty: 1 });
+      const catName = choice.choice.from?.equipment_category?.name || "Equipment Option";
+      items.push({ name: `Any ${catName}`, qty: choice.choice.choose || 1 });
+  } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
+      items.push({ name: `Any ${choice.equipment_category.name}`, qty: choice.count || 1 });
   } else if (choice.equipment) {
       items.push({ name: choice.equipment.name, qty: choice.quantity || 1 });
   } else if (choice.equipment_category) {
@@ -766,10 +783,12 @@ function applyStartingEquipment(details) {
   
   let featuresText = `Hit Die: 1d${details.hit_die} per level\n\n`;
 
+  // Safely grab Saving throws, preventing duplication into "other proficiencies"
   if (details.saving_throws && details.saving_throws.length > 0) {
     featuresText += "Saving Throws: " + details.saving_throws.map(st => st.name).join(", ") + "\n\n";
   }
 
+  // Load everything else into "Other proficiencies"
   if (details.proficiencies && details.proficiencies.length > 0) {
     const filteredProfs = details.proficiencies.filter(p => !p.index.startsWith("saving"));
     const profs = filteredProfs.map(p => p.name).join(", ");
@@ -779,7 +798,7 @@ function applyStartingEquipment(details) {
     }
   }
 
-  myCharacterWeapons = [];
+  myCharacterWeapons = []; // Clean slate for weapons if switching class
 
   if (details.starting_equipment) {
     details.starting_equipment.forEach(item => {
@@ -818,9 +837,11 @@ function processEquipmentOptions(options, index, weaponsList, gearList, features
   } else if (optGroup.from && optGroup.from.option_set_type === "options_array") {
     choicesArray = optGroup.from.options;
   } else if (optGroup.from && optGroup.from.option_set_type === "equipment_category") {
-    choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category }];
+    choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: chooseAmount }];
+    chooseAmount = 1; // Simplified click
   } else if (optGroup.from && optGroup.from.equipment_category) {
-    choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category }];
+    choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: chooseAmount }];
+    chooseAmount = 1;
   } else if (optGroup.from && optGroup.from.options) {
     choicesArray = optGroup.from.options;
   }
@@ -828,6 +849,22 @@ function processEquipmentOptions(options, index, weaponsList, gearList, features
   if (!choicesArray || choicesArray.length === 0) {
     processEquipmentOptions(options, index + 1, weaponsList, gearList, featuresText);
     return;
+  }
+
+  // If there's only one option, automatically resolve it without annoying the user
+  if (choicesArray.length === 1) {
+      const chosenChoice = choicesArray[0];
+      const itemsToAdd = extractItemsFromChoice(chosenChoice);
+      itemsToAdd.forEach(item => {
+         const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
+         if (isWeaponOrArmor(item.name)) {
+           weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
+         } else {
+           gearList.push(`${qtyPrefix}${item.name}`);
+         }
+      });
+      processEquipmentOptions(options, index + 1, weaponsList, gearList, featuresText);
+      return;
   }
 
   let html = "";
@@ -904,8 +941,9 @@ function finalizeEquipmentApplication(weaponsList, gearList, featuresText) {
   }
 
   const featBox = document.getElementById("featuresTraits");
-  if (featBox && !featBox.value) {
-    featBox.value = featuresText.trim();
+  if (featBox) {
+    const currentFeats = featBox.value.trim();
+    featBox.value = currentFeats ? currentFeats + "\n\n" + featuresText.trim() : featuresText.trim();
     autoExpandTextarea(featBox);
   }
 
