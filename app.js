@@ -1,4 +1,5 @@
-// Storage Keys
+"use strict";
+
 const ROSTER_STORAGE_KEY = "badman_char_roster_v1";
 const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
 
@@ -371,8 +372,9 @@ function switchMainTab(targetId) {
   document.querySelectorAll(".tab-page").forEach((p) => p.classList.remove("active"));
 
   const targetBtn = document.querySelector(`.main-tab[data-target="${targetId}"]`);
-  targetBtn?.classList.add("active");
-  document.getElementById(targetId)?.classList.add("active");
+  if (targetBtn) targetBtn.classList.add("active");
+  const tabEl = document.getElementById(targetId);
+  if (tabEl) tabEl.classList.add("active");
 }
 
 document.querySelectorAll(".main-tab").forEach((btn) => {
@@ -388,7 +390,8 @@ document.querySelectorAll(".sub-tab").forEach((btn) => {
 
     btn.classList.add("active");
     const target = btn.dataset.sub;
-    document.getElementById(target)?.classList.add("active");
+    const tabEl = document.getElementById(target);
+    if (tabEl) tabEl.classList.add("active");
   });
 });
 
@@ -409,7 +412,6 @@ document.querySelectorAll(".footer-nav-btn").forEach((btn) => {
   });
 });
 
-// Dice Roller & History
 function addDiceHistory(desc, total) {
   const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   diceRollHistory.unshift({ desc, total, time });
@@ -464,7 +466,8 @@ document.addEventListener("click", (e) => {
     } else if (type === "skill") {
       const id = e.target.dataset.id;
       bonus = parseInt(document.getElementById(`val_${id}`)?.textContent, 10) || 0;
-      label = document.querySelector(`#row_${id} .skill-label`)?.textContent || "Skill";
+      const lblEl = document.querySelector(`#row_${id} .skill-label`);
+      label = lblEl ? lblEl.textContent : "Skill";
     }
 
     const total = roll + bonus;
@@ -475,11 +478,8 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Dropdowns & Data Fetching
 const classInput = document.getElementById("charClass");
 const classDropdown = document.getElementById("classDropdown");
-const raceInput = document.getElementById("charRace");
-const raceDropdown = document.getElementById("raceDropdown");
 const choiceModal = document.getElementById("choiceModal");
 const choiceModalTitle = document.getElementById("choiceModalTitle");
 const choiceModalBody = document.getElementById("choiceModalBody");
@@ -497,6 +497,92 @@ async function fetchOfficialClasses() {
   }
 }
 
+async function fetchClassDataAndEquipment(classIndex) {
+  try {
+    const classRes = await fetch(`https://www.dnd5eapi.co/api/classes/${classIndex}`);
+    if (!classRes.ok) return null;
+    const details = await classRes.json();
+    
+    const equipRes = await fetch(`https://www.dnd5eapi.co/api/starting-equipment/${classIndex}`);
+    if (equipRes.ok) {
+        const equip = await equipRes.json();
+        details.starting_equipment = equip.starting_equipment || [];
+        details.starting_equipment_options = equip.starting_equipment_options || [];
+    } else {
+        details.starting_equipment = [];
+        details.starting_equipment_options = [];
+    }
+
+    return details;
+  } catch (err) {
+    return null;
+  }
+}
+
+function renderClassDropdown(filter = "") {
+  if (!classDropdown) return;
+  const q = filter.toLowerCase().trim();
+  const filtered = allClassesCache.filter(c => c.name.toLowerCase().includes(q));
+
+  let html = filtered
+    .map(c => `<div class="dropdown-item" data-index="${c.index}" data-name="${escapeHtml(c.name)}">${escapeHtml(c.name)}</div>`)
+    .join("");
+
+  html += `<div class="dropdown-item dropdown-custom" id="addCustomClassOption">+ Add Custom Class</div>`;
+  classDropdown.innerHTML = html;
+}
+
+classInput?.addEventListener("click", async () => {
+  if (!classDropdown.classList.contains("open")) {
+    classDropdown.innerHTML = '<div class="dropdown-item" style="color: #94a3b8; font-style: italic;">Loading classes...</div>';
+    classDropdown.classList.add("open");
+    if (allClassesCache.length === 0) {
+      await fetchOfficialClasses();
+    }
+    renderClassDropdown(classInput.value);
+  }
+});
+
+classInput?.addEventListener("input", async () => {
+  if (allClassesCache.length === 0) {
+    classDropdown.innerHTML = '<div class="dropdown-item" style="color: #94a3b8; font-style: italic;">Loading classes...</div>';
+    classDropdown.classList.add("open");
+    await fetchOfficialClasses();
+  }
+  renderClassDropdown(classInput.value);
+  classDropdown?.classList.add("open");
+});
+
+classDropdown?.addEventListener("click", async (e) => {
+  const item = e.target.closest(".dropdown-item");
+  if (!item) return;
+
+  if (item.id === "addCustomClassOption") {
+    classInput.value = "";
+    classInput.focus();
+    classDropdown.classList.remove("open");
+    return;
+  }
+
+  const className = item.dataset.name;
+  const classIdx = item.dataset.index;
+  classInput.value = className;
+  classDropdown.classList.remove("open");
+
+  recalculateAll();
+  saveSheet();
+
+  showStatus("Loading gear...");
+  const details = await fetchClassDataAndEquipment(classIdx);
+  
+  if (details) {
+    applyStartingEquipment(details);
+  }
+});
+
+const raceInput = document.getElementById("charRace");
+const raceDropdown = document.getElementById("raceDropdown");
+
 async function fetchOfficialRaces() {
   if (allRacesCache.length > 0) return allRacesCache;
   try {
@@ -510,112 +596,93 @@ async function fetchOfficialRaces() {
   }
 }
 
-function renderDropdown(dropdownEl, items, filter = "") {
-  if (!dropdownEl) return;
+function renderRaceDropdown(filter = "") {
+  if (!raceDropdown) return;
   const q = filter.toLowerCase().trim();
-  const filtered = items.filter(i => i.name.toLowerCase().includes(q));
-  
+  const filtered = allRacesCache.filter(r => r.name.toLowerCase().includes(q));
+
   let html = filtered
-    .map(i => `<div class="dropdown-item" data-index="${i.index}" data-name="${escapeHtml(i.name)}">${escapeHtml(i.name)}</div>`)
+    .map(r => `<div class="dropdown-item" data-index="${r.index}" data-name="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>`)
     .join("");
 
-  dropdownEl.innerHTML = html;
+  html += `<div class="dropdown-item dropdown-custom" id="addCustomRaceOption">+ Add Custom Race</div>`;
+  raceDropdown.innerHTML = html;
 }
-
-classInput?.addEventListener("click", async () => {
-  if (!classDropdown.classList.contains("open")) {
-    classDropdown.innerHTML = '<div class="dropdown-item" style="color:#94a3b8; font-style:italic;">Loading classes...</div>';
-    classDropdown.classList.add("open");
-    if (allClassesCache.length === 0) await fetchOfficialClasses();
-    renderDropdown(classDropdown, allClassesCache, classInput.value);
-  }
-});
-
-classInput?.addEventListener("input", async () => {
-  if (allClassesCache.length === 0) await fetchOfficialClasses();
-  renderDropdown(classDropdown, allClassesCache, classInput.value);
-  classDropdown.classList.add("open");
-});
 
 raceInput?.addEventListener("click", async () => {
   if (!raceDropdown.classList.contains("open")) {
-    raceDropdown.innerHTML = '<div class="dropdown-item" style="color:#94a3b8; font-style:italic;">Loading races...</div>';
+    raceDropdown.innerHTML = '<div class="dropdown-item" style="color: #94a3b8; font-style: italic;">Loading races...</div>';
     raceDropdown.classList.add("open");
-    if (allRacesCache.length === 0) await fetchOfficialRaces();
-    renderDropdown(raceDropdown, allRacesCache, raceInput.value);
+    if (allRacesCache.length === 0) {
+      await fetchOfficialRaces();
+    }
+    renderRaceDropdown(raceInput.value);
   }
 });
 
 raceInput?.addEventListener("input", async () => {
-  if (allRacesCache.length === 0) await fetchOfficialRaces();
-  renderDropdown(raceDropdown, allRacesCache, raceInput.value);
-  raceDropdown.classList.add("open");
-});
-
-classDropdown?.addEventListener("click", async (e) => {
-  const item = e.target.closest(".dropdown-item");
-  if (!item) return;
-  
-  const className = item.dataset.name;
-  const classIdx = item.dataset.index;
-  classInput.value = className;
-  classDropdown.classList.remove("open");
-  saveSheet();
-
-  showStatus("Loading starting equipment...");
-  try {
-    const classRes = await fetch(`https://www.dnd5eapi.co/api/classes/${classIdx}`);
-    const classDetails = await classRes.json();
-    
-    const equipRes = await fetch(`https://www.dnd5eapi.co/api/starting-equipment/${classIdx}`);
-    let equipData = { starting_equipment: [], starting_equipment_options: [] };
-    if (equipRes.ok) {
-        equipData = await equipRes.json();
-    }
-    
-    await applyStartingEquipment(classDetails, equipData);
-  } catch (err) {
-    console.error("Error loading starting equipment:", err);
+  if (allRacesCache.length === 0) {
+    raceDropdown.innerHTML = '<div class="dropdown-item" style="color: #94a3b8; font-style: italic;">Loading races...</div>';
+    raceDropdown.classList.add("open");
+    await fetchOfficialRaces();
   }
+  renderRaceDropdown(raceInput.value);
+  raceDropdown?.classList.add("open");
 });
 
 raceDropdown?.addEventListener("click", async (e) => {
   const item = e.target.closest(".dropdown-item");
   if (!item) return;
+
+  if (item.id === "addCustomRaceOption") {
+    raceInput.value = "";
+    raceInput.focus();
+    raceDropdown.classList.remove("open");
+    return;
+  }
+
   const raceName = item.dataset.name;
   const raceIdx = item.dataset.index;
   raceInput.value = raceName;
   raceDropdown.classList.remove("open");
+
+  recalculateAll();
   saveSheet();
 
-  showStatus("Loading racial traits...");
+  showStatus("Fetching racial traits...");
+  const speedBox = document.getElementById("charSpeed");
+  
   try {
     const res = await fetch(`https://www.dnd5eapi.co/api/races/${raceIdx}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.speed) {
-        document.getElementById("charSpeed").value = data.speed;
-      }
-      let traitText = "";
-      if (data.traits && data.traits.length > 0) {
-        const promises = data.traits.map(t => fetch(`https://www.dnd5eapi.co${t.url}`).then(r => r.json()));
-        const traitsData = await Promise.all(promises);
-        traitsData.forEach(tData => {
-          const desc = Array.isArray(tData.desc) ? tData.desc.join("\n") : (tData.desc || "");
-          traitText += `[${tData.name}]\n${desc}\n\n`;
-        });
-      }
-      if (traitText) {
-        const featBox = document.getElementById("featuresTraits");
-        const cur = featBox.value.trim();
-        featBox.value = cur ? cur + "\n\n" + traitText.trim() : traitText.trim();
-        autoExpandTextarea(featBox);
-      }
-      saveSheet();
-      showStatus("Racial traits loaded!");
+    const details = await res.json();
+    
+    if (speedBox && details.speed) {
+        speedBox.value = details.speed;
     }
+    
+    let raceText = "";
+    if (details.traits && details.traits.length > 0) {
+        const promises = details.traits.map(t => fetch(`https://www.dnd5eapi.co${t.url}`).then(r => r.json()));
+        const traitsData = await Promise.all(promises);
+        
+        traitsData.forEach(td => {
+            const desc = Array.isArray(td.desc) ? td.desc.join("\n") : (td.desc || "");
+            raceText += `[${td.name}]\n${desc}\n\n`;
+        });
+    }
+    
+    if (raceText) {
+        const featBox = document.getElementById("featuresTraits");
+        if (featBox) {
+            const currentVal = featBox.value.trim();
+            featBox.value = currentVal ? currentVal + "\n\n" + raceText.trim() : raceText.trim();
+            autoExpandTextarea(featBox);
+            saveSheet();
+        }
+    }
+    showStatus("Racial traits loaded!");
   } catch (err) {
-    console.error("Error loading racial traits:", err);
+    console.error("Error loading traits", err);
   }
 });
 
@@ -625,7 +692,8 @@ function isWeaponOrArmor(name) {
   return l.includes("sword") || l.includes("bow") || l.includes("dagger") || l.includes("axe") || 
          l.includes("mace") || l.includes("crossbow") || l.includes("staff") || l.includes("hammer") || 
          l.includes("spear") || l.includes("shield") || l.includes("armor") || l.includes("mail") || 
-         l.includes("javelin") || l.includes("glaive") || l.includes("halberd") || l.includes("rapier");
+         l.includes("javelin") || l.includes("glaive") || l.includes("halberd") || l.includes("rapier") || 
+         l.includes("club") || l.includes("sickle") || l.includes("dart");
 }
 
 function parseChoiceOption(opt) {
@@ -728,7 +796,8 @@ function processOptionGroup(group, weaponsList, gearList) {
         else gearList.push(`${q}${i.name}`);
       });
 
-      document.getElementById(`choice-wrap-${idx}`).style.display = "none";
+      const wrapper = document.getElementById(`choice-wrap-${idx}`);
+      if(wrapper) wrapper.style.display = "none";
       choose--;
 
       if (choose <= 0) {
@@ -749,13 +818,14 @@ async function applyStartingEquipment(classDetails, equipData) {
   let gearList = [];
   
   let featText = `Hit Die: 1d${classDetails.hit_die} per level\n\n`;
-  if (classDetails.saving_throws && classDetails.saving_throws.length > 0) {
+  if (classDetails.saving_throws) {
     featText += "Saving Throws: " + classDetails.saving_throws.map(st => st.name).join(", ") + "\n\n";
   }
 
-  if (classDetails.proficiencies && classDetails.proficiencies.length > 0) {
+  if (classDetails.proficiencies) {
     const profs = classDetails.proficiencies.filter(p => !p.index.startsWith("saving")).map(p => p.name).join(", ");
-    document.getElementById("otherProfs").value = profs;
+    const otherProfsBox = document.getElementById("otherProfs");
+    if (otherProfsBox) otherProfsBox.value = profs;
   }
 
   if (equipData.starting_equipment) {
@@ -767,7 +837,7 @@ async function applyStartingEquipment(classDetails, equipData) {
     });
   }
 
-  if (equipData.starting_equipment_options && equipData.starting_equipment_options.length > 0) {
+  if (equipData.starting_equipment_options) {
     for (const group of equipData.starting_equipment_options) {
       await processOptionGroup(group, weaponsList, gearList);
     }
@@ -776,20 +846,21 @@ async function applyStartingEquipment(classDetails, equipData) {
   myCharacterWeapons = weaponsList;
   renderWeapons();
 
-  const invBox = document.getElementById("inventory");
-  if (invBox) {
-    invBox.value = gearList.join("\n");
-    autoExpandTextarea(invBox);
+  const inv = document.getElementById("inventory");
+  if (inv && gearList.length > 0) {
+    inv.value = gearList.join("\n");
+    autoExpandTextarea(inv);
   }
 
-  const featBox = document.getElementById("featuresTraits");
-  if (featBox) {
-    featBox.value = featText.trim();
-    autoExpandTextarea(featBox);
+  const feat = document.getElementById("featuresTraits");
+  if (feat) {
+    const currentFeats = feat.value.trim();
+    feat.value = currentFeats ? currentFeats + "\n\n" + featText.trim() : featText.trim();
+    autoExpandTextarea(feat);
   }
 
   saveSheet();
-  showStatus("Class gear & stats loaded!");
+  showStatus("Class gear loaded!");
   recalculateAll();
 }
 
@@ -800,6 +871,7 @@ document.addEventListener("click", (e) => {
 });
 
 function autoExpandTextarea(el) {
+  if (!el) return;
   el.style.height = "auto";
   el.style.height = el.scrollHeight + "px";
 }
