@@ -7,11 +7,7 @@ let allClassesCache = [];
 let activeCharId = localStorage.getItem(ACTIVE_CHAR_ID_KEY) || "default";
 
 let myCharacterSpells = [];
-let myCharacterWeapons = [
-  { name: "Shortsword", atk: "+5", dmg: "1d6+3 P", notes: "Finesse, light" },
-  { name: "Shortbow", atk: "+5", dmg: "1d6+3 P", notes: "Range 80/320" }
-];
-
+let myCharacterWeapons = []; // Starting completely empty
 let diceRollHistory = [];
 
 let draggedSpellIndex = null;
@@ -109,10 +105,10 @@ function renderWeapons() {
     .map(
       (wpn, idx) => `
       <div class="attack-entry" data-index="${idx}">
-        <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Shortsword" />
+        <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
         <input type="text" class="inline-input wpn-field" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
-        <input type="text" class="inline-input wpn-field" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d6+3" />
-        <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Finesse" />
+        <input type="text" class="inline-input wpn-field" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
+        <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes" />
         <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
       </div>
     `
@@ -173,13 +169,13 @@ function saveSheet() {
   const roster = getRoster();
   const fields = getCurrentSheetData();
   const name = fields.charName?.trim() || "Unnamed Character";
-  const charClass = fields.charClass?.trim() || "Adventurer";
+  const charClass = fields.charClass?.trim() || "";
   const level = fields.charLevel || 1;
 
   roster[activeCharId] = {
     id: activeCharId,
     name: name,
-    summary: `${charClass} (Lvl ${level})`,
+    summary: charClass ? `${charClass} (Lvl ${level})` : `Level ${level}`,
     updatedAt: Date.now(),
     fields: fields,
     spells: myCharacterSpells,
@@ -207,10 +203,7 @@ function applyCharacterData(charData) {
   });
 
   myCharacterSpells = charData.spells || [];
-  myCharacterWeapons = charData.weapons || [
-    { name: "Shortsword", atk: "+5", dmg: "1d6+3 P", notes: "Finesse, light" },
-    { name: "Shortbow", atk: "+5", dmg: "1d6+3 P", notes: "Range 80/320" }
-  ];
+  myCharacterWeapons = charData.weapons || [];
 
   renderWeapons();
   renderMySpells();
@@ -264,14 +257,10 @@ function resetSheet() {
   });
 
   myCharacterSpells = [];
-  myCharacterWeapons = [
-    { name: "Shortsword", atk: "+5", dmg: "1d6+3 P", notes: "Finesse, light" },
-    { name: "Shortbow", atk: "+5", dmg: "1d6+3 P", notes: "Range 80/320" }
-  ];
-
+  myCharacterWeapons = [];
   diceRollHistory = [];
+  
   renderDiceHistory();
-
   recalculateAll();
   renderWeapons();
   renderMySpells();
@@ -342,9 +331,13 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
       saveRoster(roster);
       if (activeCharId === targetId) {
         const remaining = Object.keys(roster);
-        activeCharId = remaining.length > 0 ? remaining[0] : "char_" + Date.now();
-        localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-        loadSheet();
+        if (remaining.length > 0) {
+          activeCharId = remaining[0];
+          localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+          loadSheet();
+        } else {
+          resetSheet();
+        }
       }
       renderCharList();
     }
@@ -451,7 +444,7 @@ document.querySelectorAll(".dice-btn").forEach((btn) => {
     const sides = parseInt(btn.dataset.sides, 10);
     const roll = Math.floor(Math.random() * sides) + 1;
     const out = document.getElementById("rollResult");
-    if (out) out.textContent = `(d${sides}): ${roll}`;
+    if (out) out.textContent = roll;
     addDiceHistory(`1d${sides}`, roll);
   });
 });
@@ -479,9 +472,9 @@ document.addEventListener("click", (e) => {
     }
 
     const total = roll + bonus;
-    const sign = bonus >= 0 ? `+ ${bonus}` : `- ${Math.abs(bonus)}`;
     const out = document.getElementById("rollResult");
-    if (out) out.textContent = `${label}: ${roll} ${sign} = ${total}`;
+    if (out) out.textContent = total;
+    const sign = bonus >= 0 ? `+ ${bonus}` : `- ${Math.abs(bonus)}`;
     addDiceHistory(`${label} (${roll} ${sign})`, total);
   }
 });
@@ -491,7 +484,6 @@ const classInput = document.getElementById("charClass");
 const classDropdown = document.getElementById("classDropdown");
 const choiceModal = document.getElementById("choiceModal");
 const choiceModalTitle = document.getElementById("choiceModalTitle");
-const choiceModalBody = document.getElementById("choiceModalBody");
 
 async function fetchOfficialClasses() {
   if (allClassesCache.length > 0) return allClassesCache;
@@ -566,30 +558,51 @@ classDropdown?.addEventListener("click", async (e) => {
   recalculateAll();
   saveSheet();
 
-  // Fetch and apply starting equipment packages
   const details = await fetchClassStartingEquipment(classIdx);
   if (details) {
     applyStartingEquipment(details);
   }
 });
 
+function isWeaponOrArmor(name) {
+  if (!name) return false;
+  const lower = name.toLowerCase();
+  return lower.includes("sword") || lower.includes("bow") || lower.includes("dagger") || 
+         lower.includes("axe") || lower.includes("mace") || lower.includes("crossbow") || 
+         lower.includes("staff") || lower.includes("hammer") || lower.includes("spear") || 
+         lower.includes("shield") || lower.includes("armor") || lower.includes("mail") || 
+         lower.includes("javelin") || lower.includes("glaive") || lower.includes("halberd") || 
+         lower.includes("pike") || lower.includes("flail") || lower.includes("club") || 
+         lower.includes("rapier") || lower.includes("dart");
+}
+
 function applyStartingEquipment(details) {
   let weaponsList = [];
   let gearList = [];
-  let featuresText = `Class: ${details.name}\nHit Die: d${details.hit_die}\n\n`;
+  let featuresText = `Class: ${details.name}\nHit Die: 1d${details.hit_die} per level\n\n`;
 
-  if (details.saving_throws) {
+  if (details.saving_throws && details.saving_throws.length > 0) {
     featuresText += "Saving Throws: " + details.saving_throws.map(st => st.name).join(", ") + "\n\n";
+  }
+
+  if (details.proficiencies && details.proficiencies.length > 0) {
+    const profs = details.proficiencies.map(p => p.name).join(", ");
+    const profBox = document.getElementById("otherProfs");
+    if (profBox && !profBox.value) {
+      profBox.value = profs;
+    }
   }
 
   if (details.starting_equipment) {
     details.starting_equipment.forEach(item => {
       const name = item.equipment.name;
       const qty = item.quantity || 1;
+      const qtyPrefix = qty > 1 ? `${qty}x ` : "";
+      
       if (isWeaponOrArmor(name)) {
-        weaponsList.push({ name: `${qty}x ${name}`, atk: "+5", dmg: "1d8", notes: "" });
+        weaponsList.push({ name: `${qtyPrefix}${name}`, atk: "+5", dmg: "1d8", notes: "" });
       } else {
-        gearList.push(`${qty}x ${name}`);
+        gearList.push(`${qtyPrefix}${name}`);
       }
     });
   }
@@ -601,11 +614,6 @@ function applyStartingEquipment(details) {
   }
 }
 
-function isWeaponOrArmor(name) {
-  const lower = name.toLowerCase();
-  return lower.includes("sword") || lower.includes("bow") || lower.includes("dagger") || lower.includes("axe") || lower.includes("mace") || lower.includes("crossbow") || lower.includes("staff") || lower.includes("hammer") || lower.includes("spear") || lower.includes("shield") || lower.includes("armor") || lower.includes("mail") || lower.includes("javelin") || lower.includes("glaive") || lower.includes("halberd") || lower.includes("pike") || lower.includes("flail");
-}
-
 function processEquipmentOptions(options, index, weaponsList, gearList, featuresText) {
   if (index >= options.length) {
     finalizeEquipmentApplication(weaponsList, gearList, featuresText);
@@ -613,54 +621,100 @@ function processEquipmentOptions(options, index, weaponsList, gearList, features
   }
 
   const optGroup = options[index];
-  choiceModalTitle.textContent = optGroup.desc || "Choose Starting Equipment";
+  let chooseAmount = optGroup.choose || 1;
+  choiceModalTitle.textContent = optGroup.desc || `Choose ${chooseAmount} Starting Item(s)`;
+
+  let choicesArray = [];
+  if (Array.isArray(optGroup.from)) {
+    choicesArray = optGroup.from;
+  } else if (optGroup.from && optGroup.from.options) {
+    choicesArray = optGroup.from.options;
+  } else if (optGroup.from && optGroup.from.equipment_category) {
+    choicesArray = [{ equipment_category: optGroup.from.equipment_category }];
+  }
+
+  if (choicesArray.length === 0) {
+    processEquipmentOptions(options, index + 1, weaponsList, gearList, featuresText);
+    return;
+  }
 
   let html = "";
-  optGroup.from.forEach((choice, choiceIdx) => {
-    let label = "";
-    if (choice.equipment) {
-      label = `${choice.quantity || 1}x ${choice.equipment.name}`;
-    } else if (choice.equipment_option) {
-      label = choice.equipment_option.desc || "Equipment Option";
+  choicesArray.forEach((choice, choiceIdx) => {
+    let label = "Option";
+    
+    if (choice.option_type === "counted_reference" && choice.of) {
+       label = `${choice.count > 1 ? choice.count + "x " : ""}${choice.of.name}`;
+       choice.equipment = choice.of; 
+       choice.quantity = choice.count;
+    } else if (choice.option_type === "choice" && choice.choice) {
+       label = `Choose from ${choice.choice.desc}`;
+       choice.equipment_category = { name: choice.choice.desc };
+    } else if (choice.option_type === "multiple" && choice.items) {
+       let names = choice.items.map(i => {
+           if (i.option_type === "counted_reference" && i.of) {
+             return `${i.count > 1 ? i.count + "x " : ""}${i.of.name}`;
+           }
+           return "Item";
+       }).join(" and ");
+       label = names;
+       choice.multiple_items = choice.items;
+    } else if (choice.equipment) {
+       label = `${choice.quantity > 1 ? choice.quantity + "x " : ""}${choice.equipment.name}`;
     } else if (choice.equipment_category) {
-      label = `Any ${choice.equipment_category.name}`;
-    } else if (choice.choice) {
-      label = "Multiple items selection";
-    } else {
-      label = "Option " + (choiceIdx + 1);
+       label = `Any ${choice.equipment_category.name}`;
+    } else if (choice.item) {
+       label = `${choice.count > 1 ? choice.count + "x " : ""}${choice.item.name}`;
+       choice.equipment = choice.item;
+       choice.quantity = choice.count;
     }
 
     html += `<button type="button" class="choice-option-btn" data-opt-index="${choiceIdx}">${escapeHtml(label)}</button>`;
   });
 
+  const choiceModalBody = document.getElementById("choiceModalBody");
   choiceModalBody.innerHTML = html;
   choiceModal.classList.add("open");
 
-  const handler = (e) => {
+  const newBody = choiceModalBody.cloneNode(true);
+  choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
+  const activeModalBody = document.getElementById("choiceModalBody");
+
+  activeModalBody.addEventListener("click", (e) => {
     const btn = e.target.closest(".choice-option-btn");
     if (!btn) return;
     const chosenIdx = parseInt(btn.dataset.optIndex, 10);
-    const chosenChoice = optGroup.from[chosenIdx];
+    const chosenChoice = choicesArray[chosenIdx];
 
-    if (chosenChoice && chosenChoice.equipment) {
-      const name = chosenChoice.equipment.name;
-      const qty = chosenChoice.quantity || 1;
-      if (isWeaponOrArmor(name)) {
-        weaponsList.push({ name: `${qty}x ${name}`, atk: "+5", dmg: "1d8", notes: "" });
-      } else {
-        gearList.push(`${qty}x ${name}`);
-      }
-    } else if (chosenChoice && chosenChoice.equipment_category) {
-      gearList.push(`1x ${chosenChoice.equipment_category.name}`);
+    let itemsToAdd = [];
+    if (chosenChoice.multiple_items) {
+       chosenChoice.multiple_items.forEach(i => {
+           if (i.of) itemsToAdd.push({ name: i.of.name, qty: i.count || 1 });
+           else if (i.item) itemsToAdd.push({ name: i.item.name, qty: i.count || 1 });
+       });
+    } else if (chosenChoice.equipment) {
+       itemsToAdd.push({ name: chosenChoice.equipment.name, qty: chosenChoice.quantity || 1 });
+    } else if (chosenChoice.equipment_category) {
+       gearList.push(`1x ${chosenChoice.equipment_category.name}`);
     }
 
-    choiceModal.classList.remove("open");
-    choiceModalBody.removeEventListener("click", handler);
+    itemsToAdd.forEach(item => {
+       const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
+       if (isWeaponOrArmor(item.name)) {
+         weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
+       } else {
+         gearList.push(`${qtyPrefix}${item.name}`);
+       }
+    });
 
-    processEquipmentOptions(options, index + 1, weaponsList, gearList, featuresText);
-  };
-
-  choiceModalBody.addEventListener("click", handler);
+    chooseAmount--;
+    if (chooseAmount > 0) {
+       btn.style.display = "none"; 
+       choiceModalTitle.textContent = `Choose ${chooseAmount} MORE option(s)`;
+    } else {
+       choiceModal.classList.remove("open");
+       processEquipmentOptions(options, index + 1, weaponsList, gearList, featuresText);
+    }
+  });
 }
 
 function finalizeEquipmentApplication(weaponsList, gearList, featuresText) {
@@ -671,16 +725,19 @@ function finalizeEquipmentApplication(weaponsList, gearList, featuresText) {
 
   const invBox = document.getElementById("inventory");
   if (invBox) {
-    invBox.value = gearList.join(", ");
+    invBox.value = gearList.join("\n");
+    autoExpandTextarea(invBox);
   }
 
   const featBox = document.getElementById("featuresTraits");
-  if (featBox) {
+  if (featBox && !featBox.value) {
     featBox.value = featuresText;
+    autoExpandTextarea(featBox);
   }
 
   saveSheet();
-  showStatus("Class starting package loaded!");
+  showStatus("Class data & gear loaded!");
+  recalculateAll();
 }
 
 document.addEventListener("click", (e) => {
@@ -811,7 +868,6 @@ function renderMySpells() {
 function attachSpellDragEvents() {
   const cards = document.querySelectorAll(".spell-card");
   cards.forEach((card) => {
-    // Desktop Mouse Drag
     card.addEventListener("dragstart", (e) => {
       if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) {
         e.preventDefault();
@@ -857,7 +913,6 @@ function attachSpellDragEvents() {
       renderMySpells();
     });
 
-    // Mobile Touch Drag on Handle
     const handle = card.querySelector(".spell-drag-handle");
     if (handle) {
       handle.addEventListener("touchstart", () => {
@@ -941,6 +996,7 @@ document.addEventListener("keydown", (e) => {
     closeSpellModal();
     document.getElementById("loadModal")?.classList.remove("open");
     document.getElementById("helpModal")?.classList.remove("open");
+    document.getElementById("choiceModal")?.classList.remove("open");
   }
 });
 
