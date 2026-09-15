@@ -299,20 +299,30 @@ body {
   text-align: center;
 }
 
-/* Updated Loadout Modal Styling */
-.modal-box.choice-modal-box {
+/* Enhanced Equipment Wizard Modal */
+.equip-wizard-box {
   max-width: 650px;
   max-height: 85vh;
-  overflow: visible;
+  display: flex;
+  flex-direction: column;
 }
 
-.choice-modal-content {
+.equip-wizard-content {
   padding: 1.5rem;
   overflow-y: auto;
-  border-radius: 0 0 12px 12px;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.equip-wizard-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #3b4c68;
+  display: flex;
+  justify-content: flex-end;
+  background: #0d1322;
+  border-radius: 0 0 12px 12px;
 }
 
 .equip-section-title {
@@ -320,39 +330,52 @@ body {
   font-size: 1.1rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
-  border-bottom: 1px solid #3b4c68;
-  padding-bottom: 0.35rem;
+  border-bottom: 1.5px solid #3b4c68;
+  padding-bottom: 0.4rem;
 }
 
 .equip-fixed-list {
   color: #94a3b8;
   font-size: 0.95rem;
   line-height: 1.6;
-  padding-left: 1rem;
-  margin-bottom: 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.equip-fixed-list li {
+  background: rgba(59, 76, 104, 0.2);
+  border-radius: 4px;
+  padding: 0.35rem 0.75rem;
+  margin-bottom: 0.4rem;
+  border-left: 3px solid #3b4c68;
 }
 
 .equip-choice-group {
   background: #0d1322;
   border: 1.5px solid #1e293b;
   border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  padding: 1.2rem;
 }
 
 .equip-choice-title {
   color: #34d399;
-  font-weight: 600;
-  font-size: 0.9rem;
-  margin-bottom: 0.75rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 .equip-options-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.85rem;
+}
+
+.choice-option-wrapper {
+  position: relative;
+  width: 100%;
 }
 
 .equip-option-card {
@@ -368,16 +391,21 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .equip-option-card:hover {
-  border-color: #dc2626;
+  border-color: #f87171;
   background: #1e293b;
+  transform: translateY(-2px);
 }
 
 .equip-option-card.selected {
   border-color: #dc2626;
-  background: #3f0f0f;
+  background: rgba(220, 38, 38, 0.15);
   color: #f8fafc;
   box-shadow: inset 0 0 0 1px #dc2626;
 }
@@ -391,18 +419,19 @@ body {
   transform: translateX(-50%) translateY(10px);
   background-color: #0b0f19;
   color: #34d399;
-  padding: 0.75rem 1rem;
-  border: 1px solid #3b4c68;
+  padding: 0.85rem 1.15rem;
+  border: 1.5px solid #3b4c68;
   border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 700;
   white-space: pre-wrap;
   z-index: 100000;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  box-shadow: 0 12px 35px rgba(0,0,0,0.85);
   transition: all 0.2s ease;
   pointer-events: none;
-  min-width: 220px;
+  min-width: 240px;
   text-align: center;
+  line-height: 1.5;
 }
 
 .choice-tooltip::after {
@@ -416,18 +445,10 @@ body {
   border-color: #3b4c68 transparent transparent transparent;
 }
 
-.equip-option-card:hover .choice-tooltip {
+.choice-option-wrapper:hover .choice-tooltip {
   visibility: visible;
   opacity: 1;
   transform: translateX(-50%) translateY(0);
-}
-
-.confirm-loadout-btn {
-  width: 100%;
-  padding: 1rem;
-  font-size: 1.05rem;
-  letter-spacing: 0.02em;
-  margin-top: 1rem;
 }
 
 .vitals-row {
@@ -1328,7 +1349,7 @@ textarea.tight-block {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   border: 1.5px solid #3b4c68;
 }
 
