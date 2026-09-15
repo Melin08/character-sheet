@@ -11,6 +11,18 @@ let myCharacterWeapons = [
   { name: "Shortbow", atk: "+5", dmg: "1d6+3 P", notes: "Range 80/320" }
 ];
 
+let draggedSpellIndex = null;
+
+function escapeHtml(str) {
+  if (typeof str !== "string") return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function showStatus(text) {
   const statusElem = document.getElementById("saveStatus");
   if (!statusElem) return;
@@ -79,10 +91,10 @@ function renderWeapons() {
     .map(
       (wpn, idx) => `
       <div class="attack-entry" data-index="${idx}">
-        <input type="text" class="inline-input wpn-field" data-prop="name" value="${wpn.name || ""}" placeholder="Shortsword" />
-        <input type="text" class="inline-input wpn-field" data-prop="atk" value="${wpn.atk || ""}" placeholder="+5" />
-        <input type="text" class="inline-input wpn-field" data-prop="dmg" value="${wpn.dmg || ""}" placeholder="1d6+3" />
-        <input type="text" class="inline-input wpn-field" data-prop="notes" value="${wpn.notes || ""}" placeholder="Finesse" />
+        <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Shortsword" />
+        <input type="text" class="inline-input wpn-field" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
+        <input type="text" class="inline-input wpn-field" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d6+3" />
+        <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Finesse" />
         <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
       </div>
     `
@@ -259,8 +271,8 @@ function renderCharList() {
       return `
         <div class="char-item-row" data-id="${id}">
           <div class="char-item-info">
-            <span class="char-item-name">${char.name || "Unnamed Character"}</span>
-            <span class="char-item-sub">${char.summary || ""}</span>
+            <span class="char-item-name">${escapeHtml(char.name || "Unnamed Character")}</span>
+            <span class="char-item-sub">${escapeHtml(char.summary || "")}</span>
           </div>
           <div class="char-actions">
             <button type="button" class="char-select-btn ${isActive ? "active" : ""}">
@@ -332,7 +344,6 @@ document.getElementById("helpModal")?.addEventListener("click", (e) => {
   }
 });
 
-// Primary Tabs Switching
 function switchMainTab(targetId) {
   document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
   document.querySelectorAll(".tab-page").forEach((p) => p.classList.remove("active"));
@@ -348,7 +359,6 @@ document.querySelectorAll(".main-tab").forEach((btn) => {
   });
 });
 
-// Sub-tabs Switching (Fixes Journal Tab stacking)
 document.querySelectorAll(".sub-tab").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".sub-tab").forEach((b) => b.classList.remove("active"));
@@ -416,13 +426,12 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Auto-expand textarea helper
 function autoExpandTextarea(el) {
   el.style.height = "auto";
   el.style.height = el.scrollHeight + "px";
 }
 
-// Spells
+// Spells API & Details
 async function fetchOfficialSpells() {
   if (allSpellsCache.length > 0) return allSpellsCache;
   try {
@@ -461,8 +470,8 @@ function renderModalSpells(filterText = "") {
   container.innerHTML = matches
     .map(
       (spell) => `
-        <div class="spell-option-item" data-index="${spell.index}" data-name="${spell.name}">
-          <span>${spell.name}</span>
+        <div class="spell-option-item" data-index="${spell.index}" data-name="${escapeHtml(spell.name)}">
+          <span>${escapeHtml(spell.name)}</span>
           <span class="spell-add-badge">+ Add</span>
         </div>
       `
@@ -470,61 +479,60 @@ function renderModalSpells(filterText = "") {
     .join("");
 }
 
+// Render All Spells into 3-Column Grid with Full In-Place Editing
 function renderMySpells() {
   const container = document.getElementById("spellsList");
   if (!container) return;
 
   if (myCharacterSpells.length === 0) {
-    container.innerHTML = `<p style="font-size: 0.88rem; color: #64748b;">No spells added yet.</p>`;
+    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.9rem; color: #64748b;">No spells added yet.</p>`;
     return;
   }
 
   container.innerHTML = myCharacterSpells
     .map((spell, idx) => {
-      if (spell.isCustom) {
-        return `
-          <div class="spell-card" data-index="${idx}">
-            <div class="spell-card-header">
-              <input type="text" class="spell-custom-title-input custom-spell-field" data-prop="name" value="${spell.name || ""}" placeholder="Spell Name" />
-              <button class="spell-card-delete" data-index="${idx}" type="button" title="Remove spell">&times;</button>
-            </div>
-            <div class="spell-card-meta">
-              <span><strong>Type:</strong> <input type="text" class="spell-meta-input custom-spell-field" data-prop="type" value="${spell.type || ""}" placeholder="Cantrip" /></span>
-              <span><strong>Casting:</strong> <input type="text" class="spell-meta-input custom-spell-field" data-prop="casting_time" value="${spell.casting_time || ""}" placeholder="1 Action" /></span>
-              <span><strong>Range:</strong> <input type="text" class="spell-meta-input custom-spell-field" data-prop="range" value="${spell.range || ""}" placeholder="30 ft" /></span>
-              <span><strong>Duration:</strong> <input type="text" class="spell-meta-input custom-spell-field" data-prop="duration" value="${spell.duration || ""}" placeholder="Instantaneous" /></span>
-            </div>
-            <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description and effects...">${spell.desc || ""}</textarea>
-          </div>
-        `;
+      let typeVal = spell.type;
+      if (!typeVal) {
+        const levelText = spell.level === 0 ? "Cantrip" : `Level ${spell.level || 1}`;
+        const schoolText = spell.school?.name || "";
+        typeVal = `${levelText} ${schoolText}`.trim();
       }
 
-      const levelText = spell.level === 0 ? "Cantrip" : `Level ${spell.level}`;
-      const schoolText = spell.school?.name || "";
-      const timeText = spell.casting_time || "—";
-      const rangeText = spell.range || "—";
-      const durationText = spell.duration || "—";
+      let descVal = spell.desc;
+      if (Array.isArray(descVal)) descVal = descVal.join("\n\n");
+      if (descVal === undefined || descVal === null) descVal = "";
 
-      let summary = "";
-      if (Array.isArray(spell.desc)) {
-        summary = spell.desc.join("\n\n");
-      } else if (typeof spell.desc === "string") {
-        summary = spell.desc;
-      }
+      const nameVal = spell.name || "New Spell";
+      const castVal = spell.casting_time || "1 Action";
+      const rangeVal = spell.range || "30 ft";
+      const durVal = spell.duration || "Instantaneous";
 
       return `
-        <div class="spell-card">
+        <div class="spell-card" draggable="true" data-index="${idx}">
           <div class="spell-card-header">
-            <span class="spell-card-title">${spell.name}</span>
+            <span class="spell-drag-handle" title="Drag to reorder">⋮⋮</span>
+            <input type="text" class="spell-custom-title-input custom-spell-field" data-prop="name" value="${escapeHtml(nameVal)}" placeholder="Spell Name" />
             <button class="spell-card-delete" data-index="${idx}" type="button" title="Remove spell">&times;</button>
           </div>
           <div class="spell-card-meta">
-            <span><strong>Type:</strong> ${levelText} ${schoolText}</span>
-            <span><strong>Casting:</strong> ${timeText}</span>
-            <span><strong>Range:</strong> ${rangeText}</span>
-            <span><strong>Duration:</strong> ${durationText}</span>
+            <div class="meta-field-group">
+              <span class="meta-label">Type</span>
+              <input type="text" class="spell-meta-input custom-spell-field" data-prop="type" value="${escapeHtml(typeVal)}" placeholder="Cantrip" />
+            </div>
+            <div class="meta-field-group">
+              <span class="meta-label">Cast</span>
+              <input type="text" class="spell-meta-input custom-spell-field" data-prop="casting_time" value="${escapeHtml(castVal)}" placeholder="1 Action" />
+            </div>
+            <div class="meta-field-group">
+              <span class="meta-label">Range</span>
+              <input type="text" class="spell-meta-input custom-spell-field" data-prop="range" value="${escapeHtml(rangeVal)}" placeholder="30 ft" />
+            </div>
+            <div class="meta-field-group">
+              <span class="meta-label">Duration</span>
+              <input type="text" class="spell-meta-input custom-spell-field" data-prop="duration" value="${escapeHtml(durVal)}" placeholder="Instant" />
+            </div>
           </div>
-          <p class="spell-card-desc">${summary || "No description provided."}</p>
+          <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description and effects...">${escapeHtml(descVal)}</textarea>
         </div>
       `;
     })
@@ -532,6 +540,59 @@ function renderMySpells() {
 
   document.querySelectorAll(".spell-custom-desc-textarea").forEach((textarea) => {
     autoExpandTextarea(textarea);
+  });
+
+  attachSpellDragEvents();
+}
+
+// Drag & Drop Spell Reordering Logic
+function attachSpellDragEvents() {
+  const cards = document.querySelectorAll(".spell-card");
+  cards.forEach((card) => {
+    card.addEventListener("dragstart", (e) => {
+      if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) {
+        e.preventDefault();
+        return;
+      }
+      draggedSpellIndex = parseInt(card.dataset.index, 10);
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", draggedSpellIndex);
+      card.classList.add("dragging");
+    });
+
+    card.addEventListener("dragend", () => {
+      card.classList.remove("dragging");
+      document.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
+      draggedSpellIndex = null;
+    });
+
+    card.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    });
+
+    card.addEventListener("dragenter", () => {
+      if (draggedSpellIndex !== null && parseInt(card.dataset.index, 10) !== draggedSpellIndex) {
+        card.classList.add("drag-over");
+      }
+    });
+
+    card.addEventListener("dragleave", () => {
+      card.classList.remove("drag-over");
+    });
+
+    card.addEventListener("drop", (e) => {
+      e.preventDefault();
+      card.classList.remove("drag-over");
+      if (draggedSpellIndex === null) return;
+      const targetIndex = parseInt(card.dataset.index, 10);
+      if (draggedSpellIndex === targetIndex) return;
+
+      const movedSpell = myCharacterSpells.splice(draggedSpellIndex, 1)[0];
+      myCharacterSpells.splice(targetIndex, 0, movedSpell);
+      saveSheet();
+      renderMySpells();
+    });
   });
 }
 
@@ -586,7 +647,6 @@ document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
 // Add Custom Spell Button
 document.getElementById("addCustomSpellBtn")?.addEventListener("click", () => {
   myCharacterSpells.push({
-    isCustom: true,
     name: "New Custom Spell",
     type: "1st Level",
     casting_time: "1 Action",
@@ -599,6 +659,7 @@ document.getElementById("addCustomSpellBtn")?.addEventListener("click", () => {
   closeSpellModal();
 });
 
+// Click Official 5e Spell to Add
 document.getElementById("spellApiList")?.addEventListener("click", async (e) => {
   const row = e.target.closest(".spell-option-item");
   if (!row) return;
@@ -606,7 +667,7 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   const spellIndex = row.dataset.index;
   const spellName = row.dataset.name;
 
-  if (myCharacterSpells.some((s) => s.name === spellName)) {
+  if (myCharacterSpells.some((s) => s.name.toLowerCase() === spellName.toLowerCase())) {
     closeSpellModal();
     return;
   }
@@ -616,7 +677,22 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
 
   const details = await fetchSpellDetails(spellIndex);
   if (details) {
-    myCharacterSpells.push(details);
+    let summary = "";
+    if (Array.isArray(details.desc)) summary = details.desc.join("\n\n");
+    else if (typeof details.desc === "string") summary = details.desc;
+
+    const levelText = details.level === 0 ? "Cantrip" : `Level ${details.level}`;
+    const schoolText = details.school?.name || "";
+
+    myCharacterSpells.push({
+      name: details.name || spellName,
+      type: `${levelText} ${schoolText}`.trim(),
+      casting_time: details.casting_time || "1 Action",
+      range: details.range || "Self",
+      duration: details.duration || "Instantaneous",
+      desc: summary || ""
+    });
+
     saveSheet();
     renderMySpells();
   }
@@ -625,7 +701,7 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   if (badge) badge.textContent = "+ Add";
 });
 
-// Watch custom spell field inputs live
+// Live Edit Spell Fields & Auto-Expanding Description
 document.getElementById("spellsList")?.addEventListener("input", (e) => {
   if (e.target.classList.contains("custom-spell-field")) {
     const card = e.target.closest(".spell-card");
@@ -643,6 +719,7 @@ document.getElementById("spellsList")?.addEventListener("input", (e) => {
   }
 });
 
+// Delete Individual Spell
 document.getElementById("spellsList")?.addEventListener("click", (e) => {
   if (e.target.classList.contains("spell-card-delete")) {
     const index = parseInt(e.target.dataset.index, 10);
