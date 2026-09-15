@@ -481,7 +481,7 @@ function renderModalSpells(filterText = "") {
     .join("");
 }
 
-// Render All Spells into 3-Column Grid with In-Place Editing
+// Render All Spells into 2-Column Grid with In-Place Editing
 function renderMySpells() {
   const container = document.getElementById("spellsList");
   if (!container) return;
@@ -547,7 +547,6 @@ function renderMySpells() {
   attachSpellDragEvents();
 }
 
-// Drag & Drop for Mouse (Desktop) + Touch (Phones)
 function attachSpellDragEvents() {
   const cards = document.querySelectorAll(".spell-card");
   cards.forEach((card) => {
