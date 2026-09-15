@@ -42,6 +42,18 @@ function getProfBonus(level) {
   return Math.ceil(1 + level / 4);
 }
 
+function autoResizeStatInput(input) {
+  if (!input) return;
+  const content = input.value || input.placeholder || "";
+  input.style.width = Math.max(3, content.length + 1.5) + "ch";
+}
+
+function syncAllStatInputs() {
+  document.querySelectorAll(".spell-stat-input").forEach((input) => {
+    autoResizeStatInput(input);
+  });
+}
+
 function recalculateAll() {
   const levelInput = document.getElementById("charLevel");
   const level = parseInt(levelInput?.value, 10) || 1;
@@ -199,6 +211,7 @@ function applyCharacterData(charData) {
   renderWeapons();
   renderMySpells();
   recalculateAll();
+  syncAllStatInputs();
 }
 
 function loadSheet() {
@@ -215,6 +228,7 @@ function loadSheet() {
       recalculateAll();
       renderWeapons();
       renderMySpells();
+      syncAllStatInputs();
     }
   }
 }
@@ -234,7 +248,11 @@ function resetSheet() {
       field.value = 10;
     } else if (field.id === "charSpeed") {
       field.value = 30;
-    } else if (field.classList.contains("dual-input") || field.classList.contains("coin-input")) {
+    } else if (
+      field.classList.contains("dual-input") ||
+      field.classList.contains("coin-input") ||
+      field.classList.contains("slot-input")
+    ) {
       field.value = 0;
     } else {
       field.value = "";
@@ -250,6 +268,7 @@ function resetSheet() {
   recalculateAll();
   renderWeapons();
   renderMySpells();
+  syncAllStatInputs();
   saveSheet();
   showStatus("New Character Created!");
 }
@@ -596,7 +615,7 @@ function attachSpellDragEvents() {
       renderMySpells();
     });
 
-    // Mobile Finger Touch Drag on Handle
+    // Mobile Touch Drag on Handle
     const handle = card.querySelector(".spell-drag-handle");
     if (handle) {
       handle.addEventListener("touchstart", () => {
@@ -870,6 +889,9 @@ document.addEventListener("input", (e) => {
   if (e.target.classList.contains("save-field")) {
     recalculateAll();
     saveSheet();
+  }
+  if (e.target.classList.contains("spell-stat-input")) {
+    autoResizeStatInput(e.target);
   }
 });
 
