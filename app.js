@@ -4,6 +4,7 @@ const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
 
 let allSpellsCache = [];
 let allClassesCache = [];
+let allRacesCache = [];
 let activeCharId = localStorage.getItem(ACTIVE_CHAR_ID_KEY) || "default";
 
 let myCharacterSpells = [];
@@ -499,7 +500,7 @@ async function fetchClassDataAndEquipment(classIndex) {
     const classRes = await fetch(`https://www.dnd5eapi.co/api/classes/${classIndex}`);
     const details = await classRes.json();
     
-    const equipRes = await fetch(`https://www.dnd5eapi.co/api/classes/${classIndex}/starting-equipment`);
+    const equipRes = await fetch(`https://www.dnd5eapi.co/api/starting-equipment/${classIndex}`);
     if (equipRes.ok) {
         const equip = await equipRes.json();
         details.starting_equipment = equip.starting_equipment || [];
@@ -522,16 +523,16 @@ function renderClassDropdown(filter = "") {
   const filtered = allClassesCache.filter(c => c.name.toLowerCase().includes(q));
 
   let html = filtered
-    .map(c => `<div class="class-dropdown-item" data-index="${c.index}" data-name="${escapeHtml(c.name)}">${escapeHtml(c.name)}</div>`)
+    .map(c => `<div class="dropdown-item" data-index="${c.index}" data-name="${escapeHtml(c.name)}">${escapeHtml(c.name)}</div>`)
     .join("");
 
-  html += `<div class="class-dropdown-item class-dropdown-custom" id="addCustomClassOption">+ Add Custom Class</div>`;
+  html += `<div class="dropdown-item dropdown-custom" id="addCustomClassOption">+ Add Custom Class</div>`;
   classDropdown.innerHTML = html;
 }
 
 classInput?.addEventListener("click", async () => {
   if (!classDropdown.classList.contains("open")) {
-    classDropdown.innerHTML = '<div class="class-dropdown-item" style="color: #94a3b8; font-style: italic;">Loading classes...</div>';
+    classDropdown.innerHTML = '<div class="dropdown-item" style="color: #94a3b8; font-style: italic;">Loading classes...</div>';
     classDropdown.classList.add("open");
     if (allClassesCache.length === 0) {
       await fetchOfficialClasses();
@@ -542,7 +543,7 @@ classInput?.addEventListener("click", async () => {
 
 classInput?.addEventListener("input", async () => {
   if (allClassesCache.length === 0) {
-    classDropdown.innerHTML = '<div class="class-dropdown-item" style="color: #94a3b8; font-style: italic;">Loading classes...</div>';
+    classDropdown.innerHTML = '<div class="dropdown-item" style="color: #94a3b8; font-style: italic;">Loading classes...</div>';
     classDropdown.classList.add("open");
     await fetchOfficialClasses();
   }
@@ -551,12 +552,11 @@ classInput?.addEventListener("input", async () => {
 });
 
 classDropdown?.addEventListener("click", async (e) => {
-  const item = e.target.closest(".class-dropdown-item");
+  const item = e.target.closest(".dropdown-item");
   if (!item) return;
 
   if (item.id === "addCustomClassOption") {
     classInput.value = "";
-    classInput.placeholder = "Type custom class...";
     classInput.focus();
     classDropdown.classList.remove("open");
     return;
@@ -570,14 +570,117 @@ classDropdown?.addEventListener("click", async (e) => {
   recalculateAll();
   saveSheet();
 
-  classInput.placeholder = "Loading gear...";
   const details = await fetchClassDataAndEquipment(classIdx);
-  classInput.placeholder = "";
-
   if (details) {
     applyStartingEquipment(details);
   }
 });
+
+// Official 5e Race Wiki Dropdown & Auto-Population
+const raceInput = document.getElementById("charRace");
+const raceDropdown = document.getElementById("raceDropdown");
+
+async function fetchOfficialRaces() {
+  if (allRacesCache.length > 0) return allRacesCache;
+  try {
+    const res = await fetch("https://www.dnd5eapi.co/api/races");
+    const data = await res.json();
+    allRacesCache = data.results || [];
+    return allRacesCache;
+  } catch (err) {
+    console.error("Failed to load races from API", err);
+    return [];
+  }
+}
+
+function renderRaceDropdown(filter = "") {
+  if (!raceDropdown) return;
+  const q = filter.toLowerCase().trim();
+  const filtered = allRacesCache.filter(r => r.name.toLowerCase().includes(q));
+
+  let html = filtered
+    .map(r => `<div class="dropdown-item" data-index="${r.index}" data-name="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>`)
+    .join("");
+
+  html += `<div class="dropdown-item dropdown-custom" id="addCustomRaceOption">+ Add Custom Race</div>`;
+  raceDropdown.innerHTML = html;
+}
+
+raceInput?.addEventListener("click", async () => {
+  if (!raceDropdown.classList.contains("open")) {
+    raceDropdown.innerHTML = '<div class="dropdown-item" style="color: #94a3b8; font-style: italic;">Loading races...</div>';
+    raceDropdown.classList.add("open");
+    if (allRacesCache.length === 0) {
+      await fetchOfficialRaces();
+    }
+    renderRaceDropdown(raceInput.value);
+  }
+});
+
+raceInput?.addEventListener("input", async () => {
+  if (allRacesCache.length === 0) {
+    raceDropdown.innerHTML = '<div class="dropdown-item" style="color: #94a3b8; font-style: italic;">Loading races...</div>';
+    raceDropdown.classList.add("open");
+    await fetchOfficialRaces();
+  }
+  renderRaceDropdown(raceInput.value);
+  raceDropdown?.classList.add("open");
+});
+
+raceDropdown?.addEventListener("click", async (e) => {
+  const item = e.target.closest(".dropdown-item");
+  if (!item) return;
+
+  if (item.id === "addCustomRaceOption") {
+    raceInput.value = "";
+    raceInput.focus();
+    raceDropdown.classList.remove("open");
+    return;
+  }
+
+  const raceName = item.dataset.name;
+  const raceIdx = item.dataset.index;
+  raceInput.value = raceName;
+  raceDropdown.classList.remove("open");
+
+  recalculateAll();
+  saveSheet();
+
+  showStatus("Fetching racial traits...");
+  const speedBox = document.getElementById("charSpeed");
+  
+  try {
+    const res = await fetch(`https://www.dnd5eapi.co/api/races/${raceIdx}`);
+    const details = await res.json();
+    
+    if (speedBox && details.speed) {
+        speedBox.value = details.speed;
+    }
+    
+    let raceText = "";
+    if (details.traits && details.traits.length > 0) {
+        for (let traitRef of details.traits) {
+            const traitData = await fetch(`https://www.dnd5eapi.co${traitRef.url}`).then(r => r.json());
+            const desc = Array.isArray(traitData.desc) ? traitData.desc.join("\n") : traitData.desc;
+            raceText += `[${traitData.name}]\n${desc}\n\n`;
+        }
+    }
+    
+    if (raceText) {
+        const featBox = document.getElementById("featuresTraits");
+        if (featBox) {
+            const currentVal = featBox.value.trim();
+            featBox.value = currentVal ? currentVal + "\n\n" + raceText.trim() : raceText.trim();
+            autoExpandTextarea(featBox);
+            saveSheet();
+        }
+    }
+    showStatus("Racial traits loaded!");
+  } catch (err) {
+    console.error("Failed to load race traits", err);
+  }
+});
+
 
 function isWeaponOrArmor(name) {
   if (!name) return false;
@@ -663,12 +766,10 @@ function applyStartingEquipment(details) {
   
   let featuresText = `Hit Die: 1d${details.hit_die} per level\n\n`;
 
-  // Safely grab Saving throws, preventing duplication into "other proficiencies"
   if (details.saving_throws && details.saving_throws.length > 0) {
     featuresText += "Saving Throws: " + details.saving_throws.map(st => st.name).join(", ") + "\n\n";
   }
 
-  // Load everything else into "Other proficiencies"
   if (details.proficiencies && details.proficiencies.length > 0) {
     const filteredProfs = details.proficiencies.filter(p => !p.index.startsWith("saving"));
     const profs = filteredProfs.map(p => p.name).join(", ");
@@ -678,7 +779,7 @@ function applyStartingEquipment(details) {
     }
   }
 
-  myCharacterWeapons = []; // Clean slate for weapons if switching class
+  myCharacterWeapons = [];
 
   if (details.starting_equipment) {
     details.starting_equipment.forEach(item => {
@@ -814,8 +915,8 @@ function finalizeEquipmentApplication(weaponsList, gearList, featuresText) {
 }
 
 document.addEventListener("click", (e) => {
-  if (!e.target.closest(".class-pill-wrapper")) {
-    classDropdown?.classList.remove("open");
+  if (!e.target.closest(".dropdown-pill-wrapper")) {
+    document.querySelectorAll(".dropdown-menu").forEach(m => m.classList.remove("open"));
   }
 });
 
@@ -941,7 +1042,6 @@ function renderMySpells() {
 function attachSpellDragEvents() {
   const cards = document.querySelectorAll(".spell-card");
   cards.forEach((card) => {
-    // Desktop Mouse Drag
     card.addEventListener("dragstart", (e) => {
       if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) {
         e.preventDefault();
