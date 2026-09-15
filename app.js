@@ -445,11 +445,6 @@ function renderDiceHistory() {
     .join("");
 }
 
-document.getElementById("clearHistoryBtn")?.addEventListener("click", () => {
-  diceRollHistory = [];
-  renderDiceHistory();
-});
-
 document.querySelectorAll(".dice-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     const sides = parseInt(btn.dataset.sides, 10);
