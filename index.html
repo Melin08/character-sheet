@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Character Sheet</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,5 95,28 95,72 50,95 5,72 5,28' fill='%23dc2626' stroke='%230b0f19' stroke-width='6'/%3E%3Ctext x='50%25' y='62%25' text-anchor='middle' font-size='42' font-weight='bold' fill='white' font-family='sans-serif'%3E20%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body id="top">
@@ -31,9 +31,7 @@
       <button class="main-tab" data-target="tab-journal" type="button">Notes, Personality, NPCs, etc.</button>
     </div>
 
-    <!-- MAIN TAB 1: Statistics & Combat -->
     <div id="tab-stats" class="tab-page active">
-      <!-- Top Row 1 -->
       <div class="meta-row-grid">
         <div class="field-pill dropdown-pill-wrapper">
           <span class="pill-label">Class</span>
@@ -59,7 +57,6 @@
         </div>
       </div>
 
-      <!-- Top Row 2 -->
       <div class="meta-row-grid">
         <div class="field-pill">
           <span class="pill-label">Experience</span>
@@ -87,7 +84,6 @@
         </div>
       </div>
 
-      <!-- Vitals Row -->
       <div class="vitals-row">
         <div class="vital-unit">
           <span>Armor Class</span>
@@ -137,7 +133,6 @@
         </div>
       </div>
 
-      <!-- Attributes and Combat Section -->
       <div class="two-col-layout">
         <div class="left-pane">
           <h2 class="section-title">Attributes</h2>
@@ -353,8 +348,9 @@
             <button class="btn red dice-btn" data-sides="10" type="button">1d10</button>
             <button class="btn red dice-btn" data-sides="8" type="button">1d8</button>
             <button class="btn red dice-btn" data-sides="6" type="button">1d6</button>
+            <button class="btn red dice-btn" data-sides="4" type="button">1d4</button>
             <div class="dice-result-badge">
-              <span id="rollResult" class="roll-output">—</span>
+              <span id="rollResult" class="roll-output">-</span>
             </div>
           </div>
 
@@ -374,7 +370,7 @@
             <div class="coin-item"><label for="coin_pp">PP</label><input type="number" id="coin_pp" class="save-field coin-input" value="0" /></div>
           </div>
 
-          <h2 class="section-title">Weapons & Attacks</h2>
+          <h2 class="section-title">Weapons &amp; Attacks</h2>
           <div class="attacks-table-wrapper">
             <div class="attacks-table">
               <div class="attack-headers">
@@ -393,18 +389,17 @@
 
           <hr class="red-divider" />
 
-          <h2 class="section-title">Features & Traits</h2>
+          <h2 class="section-title">Features &amp; Traits</h2>
           <textarea id="featuresTraits" class="save-field block-text tight-block" rows="4" placeholder="Class abilities, racial traits, feats..."></textarea>
 
           <h2 class="section-title tight-title">Other Proficiencies</h2>
           <textarea id="otherProfs" class="save-field block-text tight-block" rows="4" placeholder="Armor, weapons, tools, languages..."></textarea>
 
-          <h2 class="section-title tight-title">Equipment & Gear</h2>
+          <h2 class="section-title tight-title">Equipment &amp; Gear</h2>
           <textarea id="inventory" class="save-field block-text" rows="5" placeholder="Detailed inventory, weights, magic items, containers..."></textarea>
         </div>
       </div>
 
-      <!-- Spells Section -->
       <section class="spells-full-section">
         <hr class="red-divider" />
         <h2 class="section-title">Spells</h2>
@@ -514,7 +509,7 @@
 
         <div class="cantrips-header">
           <div class="cantrips-title-group">
-            <strong>Spells & Cantrips</strong>
+            <strong>Spells &amp; Cantrips</strong>
           </div>
           <div class="spell-filter-wrap">
             <input type="text" id="filterSpellbookInput" class="spell-filter-input" placeholder="Quick filter spellbook..." />
@@ -531,12 +526,12 @@
     <div id="tab-journal" class="tab-page">
       <div class="subtab-controls">
         <button class="sub-tab active" data-sub="sub-notes" type="button">General Notes</button>
-        <button class="sub-tab" data-sub="sub-personality" type="button">Personality & Lore</button>
-        <button class="sub-tab" data-sub="sub-npcs" type="button">NPCs & Contacts</button>
+        <button class="sub-tab" data-sub="sub-personality" type="button">Personality &amp; Lore</button>
+        <button class="sub-tab" data-sub="sub-npcs" type="button">NPCs &amp; Contacts</button>
       </div>
 
       <div id="sub-notes" class="subtab-page active">
-        <h2 class="section-title">Campaign Notes & Log</h2>
+        <h2 class="section-title">Campaign Notes &amp; Log</h2>
         <textarea id="campaignNotes" class="save-field block-text journal-box" rows="16" placeholder="Quests, session notes, locations, clues..."></textarea>
       </div>
 
@@ -562,7 +557,7 @@
       </div>
 
       <div id="sub-npcs" class="subtab-page">
-        <h2 class="section-title">NPCs, Factions & Contacts</h2>
+        <h2 class="section-title">NPCs, Factions &amp; Contacts</h2>
         <textarea id="npcList" class="save-field block-text journal-box" rows="16" placeholder="Names, affiliations, attitudes, notes..."></textarea>
       </div>
     </div>
@@ -591,11 +586,10 @@
     </footer>
   </div>
 
-  <!-- Help Modal -->
   <div id="helpModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box help-modal-box">
       <div class="modal-header">
-        <h3>Support & Questions</h3>
+        <h3>Support &amp; Questions</h3>
         <button id="closeHelpModal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
       </div>
       <div class="help-modal-content">
@@ -604,7 +598,6 @@
     </div>
   </div>
 
-  <!-- Load Characters Modal -->
   <div id="loadModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box char-modal-box">
       <div class="modal-header">
@@ -615,7 +608,6 @@
     </div>
   </div>
 
-  <!-- Choice Modal for Equipment -->
   <div id="choiceModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box choice-modal-box">
       <div class="modal-header">
@@ -625,7 +617,6 @@
     </div>
   </div>
 
-  <!-- Spell Picker Modal -->
   <div id="spellModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-header">
