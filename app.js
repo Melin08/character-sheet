@@ -44,6 +44,7 @@ function getProfBonus(level) {
 
 function autoResizeStatInput(input) {
   if (!input) return;
+  if (input.classList.contains("concentration-input")) return;
   const content = input.value || input.placeholder || "";
   input.style.width = Math.max(3, content.length + 1.5) + "ch";
 }
@@ -569,7 +570,6 @@ function renderMySpells() {
 function attachSpellDragEvents() {
   const cards = document.querySelectorAll(".spell-card");
   cards.forEach((card) => {
-    // Desktop Mouse Drag
     card.addEventListener("dragstart", (e) => {
       if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) {
         e.preventDefault();
@@ -615,7 +615,6 @@ function attachSpellDragEvents() {
       renderMySpells();
     });
 
-    // Mobile Touch Drag on Handle
     const handle = card.querySelector(".spell-drag-handle");
     if (handle) {
       handle.addEventListener("touchstart", () => {
@@ -704,6 +703,21 @@ document.addEventListener("keydown", (e) => {
 
 document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   renderModalSpells(e.target.value);
+});
+
+// Quick in-sheet spellbook search
+document.getElementById("filterSpellbookInput")?.addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase().trim();
+  document.querySelectorAll(".spell-card").forEach((card) => {
+    const title = card.querySelector(".spell-custom-title-input")?.value.toLowerCase() || "";
+    const desc = card.querySelector(".spell-custom-desc-textarea")?.value.toLowerCase() || "";
+    const type = card.querySelector(".spell-meta-input[data-prop='type']")?.value.toLowerCase() || "";
+    if (!q || title.includes(q) || desc.includes(q) || type.includes(q)) {
+      card.style.display = "flex";
+    } else {
+      card.style.display = "none";
+    }
+  });
 });
 
 // Add Custom Spell Button
