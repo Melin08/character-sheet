@@ -13,7 +13,7 @@ body {
 }
 
 .sheet-container {
-  max-width: 1140px;
+  max-width: 1180px;
   margin: 0 auto;
   background-color: #151d2f;
   padding: 2.5rem;
@@ -663,7 +663,11 @@ body {
   margin: 1.75rem 0;
 }
 
-/* Spells Section */
+/* Full Width Spells Section */
+.spells-full-section {
+  margin-top: 1.5rem;
+}
+
 .spell-basics {
   display: flex;
   gap: 1.75rem;
@@ -740,15 +744,28 @@ body {
   line-height: 1.55;
 }
 
-/* Dynamic Spells Container & Custom Card Additions */
-.spells-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+/* 3-Column Spells Grid */
+.spells-grid-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.15rem;
   margin-top: 1rem;
   margin-bottom: 1.5rem;
 }
 
+@media (max-width: 960px) {
+  .spells-grid-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 620px) {
+  .spells-grid-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Draggable & Editable Spell Cards */
 .spell-card {
   border: 1.5px solid #3b4c68;
   border-radius: 8px;
@@ -756,9 +773,32 @@ body {
   padding: 0.85rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
   height: auto;
   min-height: min-content;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.spell-card:active {
+  cursor: grabbing;
+}
+
+.spell-card.dragging {
+  opacity: 0.35;
+  border: 1.5px dashed #dc2626;
+}
+
+.spell-card.drag-over {
+  border-color: #f87171;
+  transform: translateY(-2px);
+}
+
+.spell-card input,
+.spell-card textarea {
+  user-select: text;
+  cursor: text;
 }
 
 .spell-card-header {
@@ -770,10 +810,13 @@ body {
   gap: 0.5rem;
 }
 
-.spell-card-title {
-  font-weight: 700;
-  font-size: 0.98rem;
-  color: #f8fafc;
+.spell-drag-handle {
+  cursor: grab;
+  color: #64748b;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding-right: 0.2rem;
+  letter-spacing: -1px;
 }
 
 .spell-custom-title-input {
@@ -781,11 +824,11 @@ body {
   border: 1.5px solid #3b4c68;
   border-radius: 4px;
   color: #f8fafc;
-  font-size: 0.98rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  padding: 0.3rem 0.6rem;
+  padding: 0.3rem 0.55rem;
   outline: none;
-  width: 70%;
+  flex: 1;
   transition: border-color 0.15s ease;
 }
 
@@ -810,37 +853,39 @@ body {
 }
 
 .spell-card-meta {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.45rem;
+}
+
+.meta-field-group {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.85rem;
-  font-size: 0.82rem;
-  color: #94a3b8;
   align-items: center;
+  gap: 0.35rem;
+}
+
+.meta-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+  min-width: 42px;
 }
 
 .spell-meta-input {
+  width: 100%;
   background: #151d2f;
   border: 1.5px solid #3b4c68;
   border-radius: 4px;
   color: #f8fafc;
-  padding: 0.25rem 0.45rem;
-  font-size: 0.82rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.8rem;
   outline: none;
-  min-width: 65px;
   transition: border-color 0.15s ease;
 }
 
 .spell-meta-input:focus {
   border-color: #dc2626;
-}
-
-.spell-card-desc {
-  font-size: 0.86rem;
-  color: #cbd5e1;
-  line-height: 1.5;
-  margin-top: 0.2rem;
-  word-break: break-word;
-  white-space: pre-wrap;
 }
 
 .spell-custom-desc-textarea {
@@ -855,7 +900,7 @@ body {
   outline: none;
   resize: none;
   overflow: hidden;
-  min-height: 60px;
+  min-height: 65px;
   font-family: inherit;
   transition: border-color 0.15s ease;
 }
@@ -1027,7 +1072,7 @@ body {
 .char-delete-btn {
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 1.25rem;
   font-weight: bold;
   cursor: pointer;
