@@ -499,15 +499,28 @@ async function fetchClassDataAndEquipment(classIndex) {
     const classRes = await fetch(`https://www.dnd5eapi.co/api/classes/${classIndex}`);
     const details = await classRes.json();
     
-    // Equipment is stored in a separate route in the API
-    const equipRes = await fetch(`https://www.dnd5eapi.co/api/starting-equipment/${classIndex}`);
-    if (equipRes.ok) {
-        const equip = await equipRes.json();
-        details.starting_equipment = equip.starting_equipment || [];
-        details.starting_equipment_options = equip.starting_equipment_options || [];
+    // Starting equipment is located via URL or direct endpoint in modern 5e API
+    let equipUrl = details.starting_equipment;
+    if (typeof equipUrl === 'string') {
+        const equipRes = await fetch(`https://www.dnd5eapi.co${equipUrl}`);
+        if (equipRes.ok) {
+            const equip = await equipRes.json();
+            details.starting_equipment = equip.starting_equipment || [];
+            details.starting_equipment_options = equip.starting_equipment_options || [];
+        } else {
+            details.starting_equipment = [];
+            details.starting_equipment_options = [];
+        }
     } else {
-        details.starting_equipment = [];
-        details.starting_equipment_options = [];
+        const equipRes = await fetch(`https://www.dnd5eapi.co/api/starting-equipment/${classIndex}`);
+        if (equipRes.ok) {
+            const equip = await equipRes.json();
+            details.starting_equipment = equip.starting_equipment || [];
+            details.starting_equipment_options = equip.starting_equipment_options || [];
+        } else {
+            details.starting_equipment = [];
+            details.starting_equipment_options = [];
+        }
     }
 
     return details;
@@ -594,6 +607,8 @@ function isWeaponOrArmor(name) {
 
 function getChoiceDetails(choice) {
   let details = [];
+  if (!choice) return details;
+
   if (choice.option_type === "counted_reference" && choice.of) {
       details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.of.name}`);
   } else if (choice.option_type === "choice" && choice.choice) {
@@ -619,11 +634,15 @@ function getChoiceDetails(choice) {
   } else {
       details.push("Item(s)");
   }
+  
+  if (details.length === 0) details.push("Equipment Option");
   return details;
 }
 
 function extractItemsFromChoice(choice) {
   let items = [];
+  if (!choice) return items;
+
   if (choice.option_type === "multiple" && choice.items) {
       choice.items.forEach(i => {
           if (i.option_type === "counted_reference" && i.of) {
@@ -646,6 +665,8 @@ function extractItemsFromChoice(choice) {
       items.push({ name: `Any ${choice.equipment_category.name}`, qty: 1 });
   } else if (choice.item) {
       items.push({ name: choice.item.name, qty: choice.count || 1 });
+  } else {
+      items.push({ name: "Selected Item", qty: 1 });
   }
   return items;
 }
@@ -653,19 +674,25 @@ function extractItemsFromChoice(choice) {
 function applyStartingEquipment(details) {
   let weaponsList = [];
   let gearList = [];
+  
+  // Specifically requested to only have Hit Die and Saving Throws in features Traits
   let featuresText = `Hit Die: 1d${details.hit_die} per level\n\n`;
 
   if (details.saving_throws && details.saving_throws.length > 0) {
     featuresText += "Saving Throws: " + details.saving_throws.map(st => st.name).join(", ") + "\n\n";
   }
 
+  // Load everything else into "Other proficiencies"
   if (details.proficiencies && details.proficiencies.length > 0) {
-    const profs = details.proficiencies.map(p => p.name).join(", ");
+    const filteredProfs = details.proficiencies.filter(p => !p.name.toLowerCase().includes("saving throw"));
+    const profs = filteredProfs.map(p => p.name).join(", ");
     const profBox = document.getElementById("otherProfs");
-    if (profBox && !profBox.value) {
+    if (profBox) {
       profBox.value = profs;
     }
   }
+
+  myCharacterWeapons = []; // Clean slate for weapons if switching class
 
   if (details.starting_equipment) {
     details.starting_equipment.forEach(item => {
@@ -733,6 +760,7 @@ function processEquipmentOptions(options, index, weaponsList, gearList, features
     `;
   });
 
+  const choiceModalBody = document.getElementById("choiceModalBody");
   choiceModalBody.innerHTML = html;
   choiceModal.classList.add("open");
 
@@ -772,19 +800,20 @@ function finalizeEquipmentApplication(weaponsList, gearList, featuresText) {
   if (weaponsList.length > 0) {
     myCharacterWeapons = weaponsList;
     renderWeapons();
+  } else {
+    myCharacterWeapons = [];
+    renderWeapons();
   }
 
   const invBox = document.getElementById("inventory");
-  if (invBox && gearList.length > 0) {
-    const currentInv = invBox.value.trim();
-    const newInv = gearList.join("\n");
-    invBox.value = currentInv ? currentInv + "\n\n" + newInv : newInv;
+  if (invBox) {
+    invBox.value = gearList.join("\n");
     autoExpandTextarea(invBox);
   }
 
   const featBox = document.getElementById("featuresTraits");
-  if (featBox && !featBox.value) {
-    featBox.value = featuresText;
+  if (featBox) {
+    featBox.value = featuresText.trim();
     autoExpandTextarea(featBox);
   }
 
