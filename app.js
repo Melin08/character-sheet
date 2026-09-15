@@ -479,7 +479,7 @@ function renderModalSpells(filterText = "") {
     .join("");
 }
 
-// Render All Spells into 3-Column Grid with Full In-Place Editing
+// Render All Spells into 3-Column Grid with In-Place Editing
 function renderMySpells() {
   const container = document.getElementById("spellsList");
   if (!container) return;
@@ -529,7 +529,7 @@ function renderMySpells() {
             </div>
             <div class="meta-field-group">
               <span class="meta-label">Duration</span>
-              <input type="text" class="spell-meta-input custom-spell-field" data-prop="duration" value="${escapeHtml(durVal)}" placeholder="Instant" />
+              <input type="text" class="spell-meta-input custom-spell-field" data-prop="duration" value="${escapeHtml(durVal)}" placeholder="Instantaneous" />
             </div>
           </div>
           <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description and effects...">${escapeHtml(descVal)}</textarea>
@@ -545,7 +545,6 @@ function renderMySpells() {
   attachSpellDragEvents();
 }
 
-// Drag & Drop Spell Reordering Logic
 function attachSpellDragEvents() {
   const cards = document.querySelectorAll(".spell-card");
   cards.forEach((card) => {
