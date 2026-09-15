@@ -1,1724 +1,1266 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-}
-
-body {
-  background-color: #0b0f19;
-  color: #e2e8f0;
-  padding: 2.5rem 1rem;
-  line-height: 1.5;
-}
-
-.sheet-container {
-  max-width: 1080px;
-  margin: 0 auto;
-  background-color: #151d2f;
-  padding: 2.5rem;
-  border-radius: 12px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
-  border: 1.5px solid #3b4c68;
-}
-
-/* Action Header */
-.top-nav {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.btn.red {
-  background-color: #dc2626;
-  color: #ffffff;
-  border: none;
-  border-radius: 6px;
-  padding: 0.5rem 1.1rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1.2;
-  transition: all 0.15s ease;
-  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.25);
-}
-
-.btn.red:hover {
-  background-color: #b91c1c;
-  transform: translateY(-1px);
-}
-
-.file-label {
-  cursor: pointer;
-  position: relative;
-}
-
-.file-label input[type="file"] {
-  position: absolute;
-  left: 0;
-  top: 0;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-}
-
-.status-msg {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #34d399;
-  margin-left: 0.5rem;
-}
-
-/* Character Name Input */
-.name-box {
-  margin-bottom: 1.5rem;
-}
-
-.name-input {
-  width: 100%;
-  font-size: 2.2rem;
-  font-weight: 700;
-  color: #f1f5f9;
-  border: 1.5px solid #3b4c68;
-  border-radius: 8px;
-  padding: 0.6rem 1rem;
-  outline: none;
-  background: #080d18;
-  transition: all 0.2s ease;
-}
-
-.name-input:focus {
-  border-color: #dc2626;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
-}
-
-/* Primary Tabs */
-.tab-controls {
-  display: flex;
-  border-bottom: 2px solid #dc2626;
-  margin-bottom: 1.5rem;
-  gap: 0.35rem;
-}
-
-.main-tab {
-  background: #101726;
-  color: #94a3b8;
-  border: 1.5px solid #3b4c68;
-  border-bottom: none;
-  border-radius: 8px 8px 0 0;
-  padding: 0.65rem 1.4rem;
-  cursor: pointer;
-  font-size: 0.92rem;
-  font-weight: 600;
-  transition: all 0.15s ease;
-}
-
-.main-tab:hover {
-  color: #f1f5f9;
-  background: #1a2337;
-}
-
-.main-tab.active {
-  background: #dc2626;
-  color: #ffffff;
-  border-color: #dc2626;
-}
-
-/* Top-level Tab Pane Visibility */
-.tab-page {
-  display: none !important;
-}
-
-.tab-page.active {
-  display: block !important;
-}
-
-/* Sub-tabs Container */
-.subtab-controls {
-  display: flex;
-  gap: 0.5rem;
-  border-bottom: 1.5px solid #3b4c68;
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.6rem;
-  flex-wrap: wrap;
-}
-
-.sub-tab {
-  background: #101726;
-  border: 1.5px solid #3b4c68;
-  border-radius: 6px;
-  padding: 0.45rem 1rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  color: #94a3b8;
-  transition: all 0.15s ease;
-}
-
-.sub-tab:hover {
-  color: #f1f5f9;
-  border-color: #4b6285;
-}
-
-.sub-tab.active {
-  background: #dc2626;
-  color: #ffffff;
-  border-color: #dc2626;
-}
-
-/* Sub-tab Pane Visibility */
-.subtab-page {
-  display: none !important;
-}
-
-.subtab-page.active {
-  display: block !important;
-}
-
-/* Top Meta Rows */
-.meta-row-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr) 130px;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-  width: 100%;
-}
-
-.field-pill {
-  display: flex;
-  align-items: center;
-  background: #080d18;
-  border: 1.5px solid #3b4c68;
-  border-radius: 6px;
-  padding: 0.35rem 0.6rem;
-  gap: 0.5rem;
-  min-width: 0;
-  transition: border-color 0.15s ease;
-}
-
-.field-pill:focus-within {
-  border-color: #dc2626;
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
-}
-
-.pill-label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #94a3b8;
-  white-space: nowrap;
-  flex-shrink: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.pill-input {
-  width: 100%;
-  min-width: 0;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #f8fafc;
-  font-size: 0.92rem;
-  font-weight: 500;
-}
-
-.pill-input.center {
-  text-align: center;
-}
-
-.pill-badge {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #f8fafc;
-}
-
-.dual-inputs-box {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  gap: 0.25rem;
-}
-
-.pill-sub-input {
-  width: 100%;
-  min-width: 0;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #f8fafc;
-  text-align: center;
-  font-size: 0.92rem;
-  font-weight: 500;
-}
-
-.dual-slash {
-  color: #94a3b8;
-  font-weight: bold;
-}
-
-/* Official Class Wiki Dropdown Styles */
-.class-pill-wrapper {
-  position: relative;
-}
-
-.class-dropdown-menu {
-  display: none;
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  background: #151d2f;
-  border: 1.5px solid #3b4c68;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-  z-index: 100;
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.class-dropdown-menu.open {
-  display: block;
-}
-
-.class-dropdown-item {
-  padding: 0.55rem 0.85rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #cbd5e1;
-  cursor: pointer;
-  border-bottom: 1px solid #1e293b;
-}
-
-.class-dropdown-item:hover {
-  background-color: #1a2337;
-  color: #f8fafc;
-}
-
-.class-dropdown-custom {
-  color: #f87171;
-  border-top: 1px solid #3b4c68;
-  text-align: center;
-}
-
-/* Choice Modal & Tooltips for Equipment Packages */
-.choice-modal-box {
-  max-width: 480px;
-  overflow: visible !important;
-}
-
-.choice-modal-box .modal-header {
-  border-radius: 12px 12px 0 0;
-}
-
-.choice-modal-content {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  border-radius: 0 0 12px 12px;
-}
-
-.choice-option-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-.choice-option-btn {
-  width: 100%;
-  background: #080d18;
-  border: 1.5px solid #3b4c68;
-  color: #f8fafc;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.choice-option-btn:hover {
-  border-color: #dc2626;
-  background: #1a2337;
-}
-
-.choice-tooltip {
-  visibility: hidden;
-  opacity: 0;
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%) translateY(5px);
-  background-color: #0f172a;
-  color: #34d399;
-  padding: 0.5rem 0.85rem;
-  border: 1px solid #3b4c68;
-  border-radius: 6px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  white-space: pre-wrap;
-  z-index: 2000;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-  transition: all 0.2s ease;
-  pointer-events: none;
-  min-width: 180px;
-  text-align: center;
-}
-
-.choice-tooltip::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border-width: 6px;
-  border-style: solid;
-  border-color: #3b4c68 transparent transparent transparent;
-}
-
-.choice-option-wrapper:hover .choice-tooltip {
-  visibility: visible;
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* Vitals Bar */
-.vitals-row {
-  display: flex;
-  gap: 2rem;
-  align-items: center;
-  margin: 1.75rem 0;
-  flex-wrap: wrap;
-  padding: 1.1rem 1.4rem;
-  background: #080d18;
-  border-radius: 10px;
-  border: 1.5px solid #3b4c68;
-}
-
-.vital-unit {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #94a3b8;
-}
-
-.badge-wrapper {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin: 0;
-}
-
-.shield-wrap {
-  width: 44px;
-  height: 50px;
-}
-
-.heart-wrap {
-  width: 48px;
-  height: 48px;
-}
-
-.badge-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.shield-path {
-  fill: #151d2f;
-  stroke: #4b6285;
-  stroke-width: 6px;
-}
-
-.heart-outline-path {
-  fill: #151d2f;
-  stroke: #dc2626;
-  stroke-width: 6px;
-}
-
-.heart-solid-path {
-  fill: #dc2626;
-  stroke: #dc2626;
-  stroke-width: 2px;
-}
-
-.badge-input {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  width: 100%;
-  height: 100%;
-  border: none;
-  background: transparent;
-  text-align: center;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #f8fafc;
-  outline: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-
-.badge-input::-webkit-outer-spin-button,
-.badge-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.shield-wrap .badge-input {
-  padding-top: 2px;
-}
-
-.heart-wrap .badge-input {
-  padding-bottom: 2px;
-}
-
-.badge-input.white-txt {
-  color: #ffffff;
-}
-
-.hearts-group {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.slash {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #94a3b8;
-}
-
-.pair-box {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  background: #151d2f;
-  border: 1.5px solid #3b4c68;
-  border-radius: 6px;
-  padding: 0.35rem 0.5rem;
-}
-
-.dual-input {
-  width: 32px;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #f8fafc;
-  text-align: center;
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
-/* Two Column Layout */
-.two-col-layout {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 3rem;
-  margin-top: 1.5rem;
-}
-
-.section-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #f8fafc;
-  margin: 1.5rem 0 0.85rem 0;
-  letter-spacing: -0.01em;
-}
-
-/* Tight Spacing Helpers for Stacked Textareas */
-.tight-title {
-  margin-top: 0.65rem !important;
-  margin-bottom: 0.45rem !important;
-}
-
-.tight-block {
-  margin-bottom: 0.55rem !important;
-}
-
-/* Attributes */
-.attr-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 0.6rem;
-}
-
-.attr-name {
-  width: 36px;
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #94a3b8;
-}
-
-.attr-input {
-  width: 48px;
-  border: 1.5px solid #3b4c68;
-  border-radius: 6px;
-  padding: 0.35rem 0.2rem;
-  text-align: center;
-  font-size: 0.95rem;
-  font-weight: 600;
-  background: #080d18;
-  color: #f8fafc;
-  outline: none;
-  transition: all 0.15s ease;
-}
-
-.attr-input:focus {
-  border-color: #dc2626;
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
-}
-
-.attr-mod, .save-val {
-  width: 28px;
-  text-align: center;
-  font-weight: 600;
-  color: #f8fafc;
-}
-
-.save-check {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.88rem;
-  cursor: pointer;
-  color: #94a3b8;
-  margin-left: 0.2rem;
-}
-
-.hex-die {
-  width: 16px;
-  height: 18px;
-  background-color: #dc2626;
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  display: inline-block;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-  margin-left: 0.25rem;
-}
-
-.hex-die:hover {
-  transform: scale(1.25);
-}
-
-/* Skills */
-.skill-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.45rem;
-  font-size: 0.9rem;
-}
-
-.skill-label {
-  flex: 1;
-  color: #cbd5e1;
-}
-
-.skill-val {
-  width: 24px;
-  text-align: right;
-  margin-right: 0.35rem;
-  font-weight: 600;
-  color: #f8fafc;
-}
-
-/* Dice Bar & History Module */
-.dice-bar {
-  display: flex;
-  gap: 0.45rem;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 0.65rem;
-  background: #080d18;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  border: 1.5px solid #3b4c68;
-}
-
-.dice-bar .btn.red {
-  padding: 0.4rem 0.8rem;
-  font-size: 0.85rem;
-}
-
-.dice-result-badge {
-  background: #151d2f;
-  border: 1.5px solid #3b4c68;
-  border-radius: 6px;
-  padding: 0.35rem 0.85rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 55px;
-  margin-left: auto;
-}
-
-.roll-output {
-  font-weight: 700;
-  color: #f87171;
-  font-size: 1rem;
-  letter-spacing: 0.02em;
-}
-
-.dice-history-card {
-  background: #080d18;
-  border: 1.5px solid #3b4c68;
-  border-radius: 8px;
-  padding: 0.65rem 0.85rem;
-  margin-bottom: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.dice-history-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid #1e293b;
-  padding-bottom: 0.35rem;
-}
-
-.dice-history-title {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.dice-history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  max-height: 110px;
-  overflow-y: auto;
-  padding-right: 0.2rem;
-}
-
-.dice-history-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.82rem;
-  background: #0d1322;
-  border: 1px solid #243049;
-  border-radius: 4px;
-  padding: 0.25rem 0.5rem;
-  color: #e2e8f0;
-}
-
-.dice-history-desc {
-  color: #94a3b8;
-}
-
-.dice-history-val {
-  font-weight: 700;
-  color: #f87171;
-}
-
-.dice-history-empty {
-  font-size: 0.8rem;
-  color: #64748b;
-  font-style: italic;
-  text-align: center;
-  padding: 0.35rem 0;
-}
-
-.currency-bar {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  align-items: center;
-}
-
-.coin-item {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: #94a3b8;
-}
-
-.coin-input {
-  width: 54px;
-  border: 1.5px solid #3b4c68;
-  border-radius: 6px;
-  padding: 0.35rem 0.25rem;
-  text-align: center;
-  font-size: 0.9rem;
-  font-weight: 600;
-  background: #080d18;
-  color: #f8fafc;
-  outline: none;
-  transition: all 0.15s ease;
-}
-
-.coin-input:focus {
-  border-color: #dc2626;
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
-}
-
-/* Weapons Table */
-.attacks-table-wrapper {
-  width: 100%;
-}
-
-.attacks-table {
-  margin-bottom: 1.25rem;
-}
-
-.attack-headers {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1.5fr 2fr 28px;
-  gap: 0.5rem;
-  font-weight: 700;
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #94a3b8;
-  margin-bottom: 0.5rem;
-  padding: 0 0.2rem;
-}
-
-.attack-entry {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1.5fr 2fr 28px;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  align-items: center;
-}
-
-.attack-entry input {
-  width: 100%;
-  background: #080d18;
-  border: 1.5px solid #3b4c68;
-  color: #f8fafc;
-  padding: 0.4rem 0.6rem;
-  border-radius: 6px;
-  outline: none;
-}
-
-.attack-entry input:focus {
-  border-color: #dc2626;
-}
-
-.weapon-delete-btn {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  font-size: 1.35rem;
-  cursor: pointer;
-  line-height: 1;
-  text-align: center;
-  transition: color 0.15s ease;
-}
-
-.weapon-delete-btn:hover {
-  color: #dc2626;
-}
-
-.add-weapon-wrapper {
-  margin-top: 0.6rem;
-}
-
-.btn-icon-plus {
-  background-color: #dc2626;
-  color: #ffffff;
-  border: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  font-size: 1.2rem;
-  font-weight: bold;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.btn-icon-plus:hover {
-  background-color: #b91c1c;
-  transform: scale(1.08);
-}
-
-.red-divider {
-  border: none;
-  border-top: 1.5px solid rgba(220, 38, 38, 0.45);
-  margin: 1.75rem 0;
-}
-
-/* Full Width Spells Section */
-.spells-full-section {
-  margin-top: 1.5rem;
-}
-
-/* Centered Stylized Spell Stats Hub */
-.spell-basics {
-  display: flex;
-  gap: 0.85rem;
-  flex-wrap: wrap;
-  align-items: stretch;
-  justify-content: center;
-  margin: 0 auto 1.6rem auto;
-  max-width: 960px;
-}
-
-.spell-stat-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: #0d1322;
-  border: 1.5px solid #3b4c68;
-  border-radius: 8px;
-  padding: 0.5rem 0.85rem;
-  gap: 0.35rem;
-  min-width: 125px;
-  flex: 1 1 125px;
-  max-width: 180px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.spell-stat-card.concentration-card {
-  max-width: 240px;
-  flex: 1.4 1 180px;
-}
-
-.spell-stat-card:focus-within {
-  border-color: #dc2626;
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
-}
-
-.spell-stat-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.spell-stat-input {
-  background: #080d18;
-  border: 1px solid #3b4c68;
-  border-radius: 5px;
-  color: #f8fafc;
-  font-size: 0.95rem;
-  font-weight: 700;
-  text-align: center;
-  padding: 0.25rem 0.5rem;
-  min-width: 48px;
-  width: 48px;
-  max-width: 100%;
-  outline: none;
-  transition: border-color 0.15s ease;
-}
-
-.spell-stat-input.concentration-input {
-  min-width: 100px;
-  width: 100%;
-  text-align: center;
-}
-
-.spell-stat-input:focus {
-  border-color: #dc2626;
-}
-
-.stat-dual {
-  width: 100%;
-  max-width: 90px;
-  border-color: #3b4c68;
-  padding: 0.2rem 0.35rem;
-}
-
-.subsection-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #94a3b8;
-  margin-bottom: 0.65rem;
-}
-
-/* Modernized Spell Slot Tiles */
-.slots-grid {
-  display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: 0.6rem;
-  margin-bottom: 1.5rem;
-}
-
-.slot-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: #0d1322;
-  border: 1.5px solid #3b4c68;
-  border-radius: 8px;
-  padding: 0.45rem 0.35rem;
-  gap: 0.35rem;
-  transition: border-color 0.15s ease;
-}
-
-.slot-tile:focus-within {
-  border-color: #dc2626;
-}
-
-.slot-level {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.slot-counter {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.2rem;
-  background: #080d18;
-  border: 1px solid #3b4c68;
-  border-radius: 5px;
-  padding: 0.15rem 0.25rem;
-  width: 100%;
-}
-
-.slot-input {
-  width: 24px;
-  background: transparent;
-  border: none;
-  color: #f8fafc;
-  font-size: 0.9rem;
-  font-weight: 700;
-  text-align: center;
-  outline: none;
-  padding: 0;
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-
-.slot-input::-webkit-outer-spin-button,
-.slot-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.slot-divider {
-  color: #64748b;
-  font-size: 0.85rem;
-  font-weight: 700;
-  user-select: none;
-}
-
-/* Cantrips Header & Instant Filter */
-.cantrips-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.85rem;
-  margin-top: 1.25rem;
-  flex-wrap: wrap;
-}
-
-.cantrips-title-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.spell-filter-wrap {
-  flex: 1;
-  max-width: 320px;
-}
-
-.spell-filter-input {
-  width: 100%;
-  background: #080d18;
-  border: 1.5px solid #3b4c68;
-  border-radius: 6px;
-  padding: 0.35rem 0.65rem;
-  color: #f8fafc;
-  font-size: 0.85rem;
-  outline: none;
-  transition: border-color 0.15s ease;
-}
-
-.spell-filter-input:focus {
-  border-color: #dc2626;
-}
-
-.btn-text-red {
-  background: transparent;
-  border: none;
-  color: #f87171;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  padding: 0.2rem 0.3rem;
-  transition: color 0.15s ease;
-  white-space: nowrap;
-}
-
-.btn-text-red:hover {
-  color: #ef4444;
-  text-decoration: underline;
-}
-
-/* Darker Recessed Textareas */
-.block-text {
-  width: 100%;
-  border: 1.5px solid #3b4c68;
-  border-radius: 8px;
-  padding: 0.75rem 0.85rem;
-  font-size: 0.9rem;
-  margin-bottom: 1.25rem;
-  background: #080d18;
-  color: #f8fafc;
-  outline: none;
-  transition: all 0.15s ease;
-}
-
-.block-text:focus {
-  border-color: #dc2626;
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
-}
-
-.journal-box {
-  line-height: 1.55;
-}
-
-/* 2-Column Spells Grid */
-.spells-grid-container {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.25rem;
-  margin-top: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-/* Draggable & Editable Spell Cards */
-.spell-card {
-  border: 1.5px solid #3b4c68;
-  border-radius: 8px;
-  background: #0d1322;
-  padding: 0.85rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  height: auto;
-  min-height: min-content;
-  cursor: grab;
-  user-select: none;
-  transition: transform 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
-}
-
-.spell-card:active {
-  cursor: grabbing;
-}
-
-.spell-card.dragging {
-  opacity: 0.35;
-  border: 1.5px dashed #dc2626;
-}
+// Storage Keys
+const ROSTER_STORAGE_KEY = "badman_char_roster_v1";
+const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
 
-.spell-card.drag-over {
-  border-color: #f87171;
-  transform: translateY(-2px);
-}
-
-.spell-card input,
-.spell-card textarea {
-  user-select: text;
-  cursor: text;
-}
-
-.spell-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1.5px solid #3b4c68;
-  padding-bottom: 0.45rem;
-  gap: 0.5rem;
-}
-
-.spell-drag-handle {
-  cursor: grab;
-  color: #64748b;
-  font-size: 1.15rem;
-  line-height: 1;
-  padding-right: 0.2rem;
-  letter-spacing: -1px;
-}
-
-.spell-custom-title-input {
-  background: #080d18;
-  border: 1.5px solid #3b4c68;
-  border-radius: 4px;
-  color: #f8fafc;
-  font-size: 0.95rem;
-  font-weight: 700;
-  padding: 0.35rem 0.6rem;
-  outline: none;
-  flex: 1;
-  transition: border-color 0.15s ease;
-}
-
-.spell-custom-title-input:focus {
-  border-color: #dc2626;
-}
-
-.spell-card-delete {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  font-size: 1.35rem;
-  font-weight: bold;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0 0.25rem;
-  transition: color 0.15s ease;
-}
-
-.spell-card-delete:hover {
-  color: #dc2626;
-}
-
-.spell-card-meta {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem 0.75rem;
-}
-
-.meta-field-group {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  min-width: 0;
-}
-
-.meta-label {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  font-weight: 700;
-  text-transform: uppercase;
-  flex-shrink: 0;
-  min-width: 48px;
-}
-
-.spell-meta-input {
-  width: 100%;
-  min-width: 0;
-  background: #080d18;
-  border: 1.5px solid #3b4c68;
-  border-radius: 4px;
-  color: #f8fafc;
-  padding: 0.3rem 0.5rem;
-  font-size: 0.82rem;
-  outline: none;
-  transition: border-color 0.15s ease;
-}
-
-.spell-meta-input:focus {
-  border-color: #dc2626;
-}
-
-.spell-custom-desc-textarea {
-  width: 100%;
-  background: #080d18;
-  border: 1.5px solid #3b4c68;
-  border-radius: 6px;
-  color: #cbd5e1;
-  font-size: 0.86rem;
-  line-height: 1.5;
-  padding: 0.65rem;
-  outline: none;
-  resize: none;
-  overflow: hidden;
-  min-height: 65px;
-  font-family: inherit;
-  transition: border-color 0.15s ease;
-}
-
-.spell-custom-desc-textarea:focus {
-  border-color: #dc2626;
-}
-
-/* Modals */
-.modal-backdrop {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
-  z-index: 1000;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-backdrop.open {
-  display: flex;
-}
-
-.modal-box {
-  background: #151d2f;
-  width: 90%;
-  max-width: 580px;
-  max-height: 80vh;
-  border-radius: 12px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  overflow: visible;
-  border: 1.5px solid #3b4c68;
-}
-
-.modal-box.char-modal-box {
-  max-width: 440px;
-}
-
-.modal-box.help-modal-box {
-  max-width: 420px;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #dc2626;
-  color: #ffffff;
-  padding: 0.85rem 1.15rem;
-  border-radius: 12px 12px 0 0;
-}
-
-.modal-header h3 {
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-
-.modal-close-btn {
-  background: transparent;
-  border: none;
-  color: #ffffff;
-  font-size: 1.5rem;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0 0.25rem;
-}
-
-.help-modal-content {
-  padding: 1.75rem 1.5rem;
-  text-align: center;
-}
-
-.help-text {
-  font-size: 1rem;
-  line-height: 1.6;
-  color: #cbd5e1;
-}
-
-.modal-search-bar {
-  padding: 0.85rem 1.15rem;
-  border-bottom: 1.5px solid #3b4c68;
-  display: flex;
-  gap: 0.65rem;
-  align-items: center;
-}
-
-.modal-search-bar input {
-  width: 100%;
-  padding: 0.55rem 0.85rem;
-  border: 1.5px solid #3b4c68;
-  border-radius: 6px;
-  font-size: 0.92rem;
-  outline: none;
-  background: #080d18;
-  color: #f8fafc;
-}
-
-.modal-search-bar input:focus {
-  border-color: #dc2626;
-}
-
-.custom-spell-btn {
-  white-space: nowrap;
-  font-size: 0.82rem;
-  padding: 0.55rem 0.85rem;
-  flex-shrink: 0;
-}
-
-.modal-list {
-  padding: 0.75rem 1.15rem;
-  overflow-y: auto;
-  flex: 1;
-  border-radius: 0 0 12px 12px;
-}
-
-.char-item-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.7rem 0.5rem;
-  border-bottom: 1px solid #2d3b52;
-  gap: 0.5rem;
-}
-
-.char-item-row:hover {
-  background-color: #1a2337;
-}
-
-.char-item-info {
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  flex: 1;
-}
-
-.char-item-name {
-  font-weight: 600;
-  font-size: 0.92rem;
-  color: #f8fafc;
-}
-
-.char-item-sub {
-  font-size: 0.8rem;
-  color: #94a3b8;
-}
-
-.char-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.char-select-btn {
-  background-color: #dc2626;
-  color: #ffffff;
-  border: none;
-  border-radius: 4px;
-  padding: 0.3rem 0.65rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.char-select-btn.active {
-  background-color: #059669;
-}
-
-.char-delete-btn {
-  background: transparent;
-  border: none;
-  color: #64748b;
-  font-size: 1.25rem;
-  font-weight: bold;
-  cursor: pointer;
-  padding: 0 0.3rem;
-  transition: color 0.15s ease;
-}
-
-.char-delete-btn:hover {
-  color: #dc2626;
-}
-
-.spell-option-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.65rem 0.5rem;
-  border-bottom: 1px solid #2d3b52;
-  cursor: pointer;
-}
-
-.spell-option-item:hover {
-  background-color: #1a2337;
-}
-
-.spell-add-badge {
-  background: #dc2626;
-  color: #ffffff;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.25rem 0.55rem;
-  border-radius: 4px;
-}
-
-.loading-text {
-  font-style: italic;
-  color: #94a3b8;
-  text-align: center;
-  padding: 1.5rem 0;
-}
-
-/* Footer Section */
-.sheet-footer {
-  margin-top: 3rem;
-}
-
-.footer-divider {
-  border: none;
-  border-top: 1.5px solid #3b4c68;
-  margin-bottom: 1.25rem;
-}
-
-.footer-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  font-size: 0.9rem;
-}
+let allSpellsCache = [];
+let allClassesCache = [];
+let activeCharId = localStorage.getItem(ACTIVE_CHAR_ID_KEY) || "default";
 
-.footer-title {
-  font-weight: 700;
-  color: #f8fafc;
-}
+let myCharacterSpells = [];
+let myCharacterWeapons = []; // Defaults perfectly empty
+let diceRollHistory = [];
 
-.footer-links {
-  list-style: decimal inside;
-  color: #f87171;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
+let draggedSpellIndex = null;
+let touchDraggedIndex = null;
+let currentDropTarget = null;
 
-.footer-links li {
-  color: #f87171;
+function escapeHtml(str) {
+  if (typeof str !== "string") return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
-.footer-link-action {
-  background: transparent;
-  border: none;
-  color: #f87171;
-  font-size: 0.9rem;
-  cursor: pointer;
-  padding: 0;
-  font-weight: 500;
+function showStatus(text) {
+  const statusElem = document.getElementById("saveStatus");
+  if (!statusElem) return;
+  statusElem.textContent = text;
+  setTimeout(() => {
+    statusElem.textContent = "";
+  }, 2500);
 }
 
-.footer-link-action:hover,
-.footer-url-link:hover {
-  text-decoration: underline;
+function getModifier(score) {
+  return Math.floor((score - 10) / 2);
 }
 
-.footer-url-link {
-  color: #f87171;
-  text-decoration: none;
-  font-weight: 500;
+function getProfBonus(level) {
+  return Math.ceil(1 + level / 4);
 }
 
-.bottom-quicknav {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.85rem;
-  margin: 1.75rem 0 0.5rem 0;
-  color: #f87171;
-  font-size: 0.9rem;
-  flex-wrap: wrap;
+function autoResizeStatInput(input) {
+  if (!input) return;
+  if (input.classList.contains("concentration-input")) return;
+  const content = input.value || input.placeholder || "";
+  input.style.width = Math.max(3, content.length + 1.5) + "ch";
 }
 
-.bottom-quicknav a,
-.footer-nav-btn {
-  color: #f87171;
-  text-decoration: none;
-  background: transparent;
-  border: none;
-  font-size: 0.9rem;
-  cursor: pointer;
-  padding: 0;
+function syncAllStatInputs() {
+  document.querySelectorAll(".spell-stat-input").forEach((input) => {
+    autoResizeStatInput(input);
+  });
 }
 
-.footer-nav-btn:hover,
-.bottom-quicknav a:hover {
-  text-decoration: underline;
-}
+function recalculateAll() {
+  const levelInput = document.getElementById("charLevel");
+  const level = parseInt(levelInput?.value, 10) || 1;
+  const prof = getProfBonus(level);
 
-/* Mobile Adjustments Under 768px */
-@media (max-width: 768px) {
-  body {
-    padding: 0.75rem 0.5rem;
+  const profBonusDisplay = document.getElementById("profBonusDisplay");
+  if (profBonusDisplay) {
+    profBonusDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
   }
 
-  .sheet-container {
-    padding: 1.25rem 1rem;
-    border-radius: 8px;
-  }
+  const stats = ["str", "dex", "con", "int", "wis", "cha"];
+  const mods = {};
 
-  input,
-  textarea,
-  select {
-    font-size: 16px !important;
-  }
+  stats.forEach((stat) => {
+    const scoreVal = parseInt(document.getElementById(`attr_${stat}`)?.value, 10) || 10;
+    const mod = getModifier(scoreVal);
+    mods[stat] = mod;
 
-  .name-input {
-    font-size: 1.65rem !important;
-    padding: 0.5rem 0.75rem;
-  }
+    const modElem = document.getElementById(`mod_${stat}`);
+    if (modElem) modElem.textContent = mod;
 
-  .top-nav {
-    gap: 0.4rem;
-  }
+    const isSaveChecked = document.getElementById(`save_${stat}`)?.checked;
+    const saveValElem = document.getElementById(`save_val_${stat}`);
+    if (saveValElem) {
+      saveValElem.textContent = isSaveChecked ? mod + prof : mod;
+    }
+  });
 
-  .top-nav .btn.red {
-    flex: 1 1 calc(33% - 0.4rem);
-    padding: 0.45rem 0.5rem;
-    font-size: 0.82rem;
-  }
+  document.querySelectorAll(".skill-row").forEach((row) => {
+    const stat = row.dataset.stat;
+    const statMod = mods[stat] ?? 0;
+    const isProf = row.querySelector(".prof-cb")?.checked;
+    const isExp = row.querySelector(".exp-cb")?.checked;
 
-  .tab-controls {
-    flex-direction: column;
-    border-bottom: none;
-    gap: 0.4rem;
-  }
+    let total = statMod;
+    if (isProf) total += prof;
+    if (isExp) total += prof;
 
-  .main-tab {
-    border-radius: 6px;
-    border: 1.5px solid #3b4c68;
-    text-align: center;
-    padding: 0.55rem 0.75rem;
-  }
+    const valElem = row.querySelector(".skill-val");
+    if (valElem) valElem.textContent = total;
+  });
+}
 
-  .subtab-controls {
-    gap: 0.4rem;
-  }
+function renderWeapons() {
+  const container = document.getElementById("weaponsContainer");
+  if (!container) return;
 
-  .sub-tab {
-    flex: 1 1 calc(50% - 0.4rem);
-    text-align: center;
-    padding: 0.4rem 0.5rem;
-  }
+  container.innerHTML = myCharacterWeapons
+    .map(
+      (wpn, idx) => `
+      <div class="attack-entry" data-index="${idx}">
+        <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
+        <input type="text" class="inline-input wpn-field" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
+        <input type="text" class="inline-input wpn-field" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
+        <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes" />
+        <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
+      </div>
+    `
+    )
+    .join("");
+}
 
-  .meta-row-grid {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-  }
+document.getElementById("addWeaponBtn")?.addEventListener("click", () => {
+  myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+  saveSheet();
+  renderWeapons();
+});
 
-  .field-pill.mini {
-    justify-content: space-between;
+document.getElementById("weaponsContainer")?.addEventListener("input", (e) => {
+  if (e.target.classList.contains("wpn-field")) {
+    const entry = e.target.closest(".attack-entry");
+    const index = parseInt(entry.dataset.index, 10);
+    const prop = e.target.dataset.prop;
+    myCharacterWeapons[index][prop] = e.target.value;
+    saveSheet();
   }
+});
 
-  .vitals-row {
-    gap: 1.25rem;
-    justify-content: space-around;
-    padding: 1rem 0.75rem;
+document.getElementById("weaponsContainer")?.addEventListener("click", (e) => {
+  if (e.target.classList.contains("weapon-delete-btn")) {
+    const index = parseInt(e.target.dataset.index, 10);
+    myCharacterWeapons.splice(index, 1);
+    saveSheet();
+    renderWeapons();
   }
+});
 
-  .vital-unit {
-    font-size: 0.85rem;
-  }
-
-  .two-col-layout {
-    grid-template-columns: 1fr;
-    gap: 1.75rem;
-  }
-
-  .attacks-table-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 0.4rem;
-  }
-
-  .attacks-table {
-    min-width: 520px;
-  }
-
-  .spell-basics {
-    gap: 0.5rem;
-  }
-
-  .spell-stat-card {
-    flex: 1 1 calc(50% - 0.5rem);
-    max-width: 100%;
-  }
-
-  .spell-stat-card.concentration-card {
-    flex: 1 1 100%;
-    max-width: 100%;
-  }
-
-  .slots-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-  }
-
-  .cantrips-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .spell-filter-wrap {
-    max-width: 100%;
-  }
-
-  .spells-grid-container {
-    grid-template-columns: 1fr;
-  }
-
-  .spell-card {
-    touch-action: pan-y;
-  }
-
-  .spell-drag-handle {
-    padding: 0.4rem 0.5rem;
-    font-size: 1.35rem;
-    touch-action: none;
-  }
-
-  .modal-box {
-    width: 95%;
-    max-height: 90vh;
-  }
-
-  .modal-search-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .custom-spell-btn {
-    text-align: center;
-    width: 100%;
-  }
-
-  .footer-meta {
-    flex-direction: column;
-    gap: 1rem;
+function getRoster() {
+  try {
+    return JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY)) || {};
+  } catch (e) {
+    return {};
   }
 }
 
-@media (max-width: 1024px) and (min-width: 769px) {
-  .meta-row-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+function saveRoster(roster) {
+  localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(roster));
+}
 
-  .two-col-layout {
-    grid-template-columns: 1fr;
-  }
+function getCurrentSheetData() {
+  const fields = {};
+  document.querySelectorAll(".save-field").forEach((field) => {
+    if (field.type === "checkbox") {
+      fields[field.id] = field.checked;
+    } else {
+      fields[field.id] = field.value;
+    }
+  });
+  return fields;
+}
 
-  .slots-grid {
-    grid-template-columns: repeat(5, 1fr);
+function saveSheet() {
+  const roster = getRoster();
+  const fields = getCurrentSheetData();
+  const name = fields.charName?.trim() || "Unnamed Character";
+  const charClass = fields.charClass?.trim() || "";
+  const level = fields.charLevel || 1;
+
+  roster[activeCharId] = {
+    id: activeCharId,
+    name: name,
+    summary: charClass ? `${charClass} (Lvl ${level})` : `Level ${level}`,
+    updatedAt: Date.now(),
+    fields: fields,
+    spells: myCharacterSpells,
+    weapons: myCharacterWeapons
+  };
+
+  saveRoster(roster);
+  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+  showStatus("Saved!");
+}
+
+function applyCharacterData(charData) {
+  if (!charData) return;
+
+  const fields = charData.fields || {};
+  Object.keys(fields).forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      if (el.type === "checkbox") {
+        el.checked = fields[id];
+      } else {
+        el.value = fields[id];
+      }
+    }
+  });
+
+  myCharacterSpells = charData.spells || [];
+  myCharacterWeapons = charData.weapons || [];
+
+  renderWeapons();
+  renderMySpells();
+  recalculateAll();
+  syncAllStatInputs();
+}
+
+function loadSheet() {
+  const roster = getRoster();
+  if (roster[activeCharId]) {
+    applyCharacterData(roster[activeCharId]);
+  } else {
+    const keys = Object.keys(roster);
+    if (keys.length > 0) {
+      activeCharId = keys[0];
+      localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+      applyCharacterData(roster[activeCharId]);
+    } else {
+      recalculateAll();
+      renderWeapons();
+      renderMySpells();
+      syncAllStatInputs();
+    }
   }
 }
+
+function resetSheet() {
+  activeCharId = "char_" + Date.now();
+  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+
+  document.querySelectorAll(".save-field").forEach((field) => {
+    if (field.type === "checkbox") {
+      field.checked = false;
+    } else if (field.id === "charLevel") {
+      field.value = 1;
+    } else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") {
+      field.value = 10;
+    } else if (field.classList.contains("attr-input")) {
+      field.value = 10;
+    } else if (field.id === "charSpeed") {
+      field.value = 30;
+    } else if (
+      field.classList.contains("dual-input") ||
+      field.classList.contains("coin-input") ||
+      field.classList.contains("slot-input")
+    ) {
+      field.value = 0;
+    } else {
+      field.value = "";
+    }
+  });
+
+  myCharacterSpells = [];
+  myCharacterWeapons = [];
+  diceRollHistory = [];
+  
+  renderDiceHistory();
+  recalculateAll();
+  renderWeapons();
+  renderMySpells();
+  syncAllStatInputs();
+  saveSheet();
+  showStatus("New Character Created!");
+}
+
+function renderCharList() {
+  const container = document.getElementById("charList");
+  if (!container) return;
+
+  const roster = getRoster();
+  const keys = Object.keys(roster);
+
+  if (keys.length === 0) {
+    container.innerHTML = `<p class="loading-text">No saved characters found.</p>`;
+    return;
+  }
+
+  container.innerHTML = keys
+    .map((id) => {
+      const char = roster[id];
+      const isActive = id === activeCharId;
+      return `
+        <div class="char-item-row" data-id="${id}">
+          <div class="char-item-info">
+            <span class="char-item-name">${escapeHtml(char.name || "Unnamed Character")}</span>
+            <span class="char-item-sub">${escapeHtml(char.summary || "")}</span>
+          </div>
+          <div class="char-actions">
+            <button type="button" class="char-select-btn ${isActive ? "active" : ""}">
+              ${isActive ? "Active" : "Select"}
+            </button>
+            <button type="button" class="char-delete-btn" title="Delete character">&times;</button>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+document.getElementById("loadBtn")?.addEventListener("click", () => {
+  renderCharList();
+  document.getElementById("loadModal")?.classList.add("open");
+});
+
+document.getElementById("closeLoadModal")?.addEventListener("click", () => {
+  document.getElementById("loadModal")?.classList.remove("open");
+});
+
+document.getElementById("loadModal")?.addEventListener("click", (e) => {
+  if (e.target.id === "loadModal") {
+    document.getElementById("loadModal")?.classList.remove("open");
+  }
+});
+
+document.getElementById("charList")?.addEventListener("click", (e) => {
+  const row = e.target.closest(".char-item-row");
+  if (!row) return;
+  const targetId = row.dataset.id;
+  const roster = getRoster();
+
+  if (e.target.classList.contains("char-delete-btn")) {
+    e.stopPropagation();
+    if (confirm(`Delete character "${roster[targetId]?.name || "Unnamed"}"?`)) {
+      delete roster[targetId];
+      saveRoster(roster);
+      if (activeCharId === targetId) {
+        const remaining = Object.keys(roster);
+        if (remaining.length > 0) {
+          activeCharId = remaining[0];
+          localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+          loadSheet();
+        } else {
+          resetSheet();
+        }
+      }
+      renderCharList();
+    }
+    return;
+  }
+
+  activeCharId = targetId;
+  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+  applyCharacterData(roster[activeCharId]);
+  document.getElementById("loadModal")?.classList.remove("open");
+  showStatus("Character Loaded!");
+});
+
+document.getElementById("helpLinkBtn")?.addEventListener("click", () => {
+  document.getElementById("helpModal")?.classList.add("open");
+});
+
+document.getElementById("closeHelpModal")?.addEventListener("click", () => {
+  document.getElementById("helpModal")?.classList.remove("open");
+});
+
+document.getElementById("helpModal")?.addEventListener("click", (e) => {
+  if (e.target.id === "helpModal") {
+    document.getElementById("helpModal")?.classList.remove("open");
+  }
+});
+
+function switchMainTab(targetId) {
+  document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
+  document.querySelectorAll(".tab-page").forEach((p) => p.classList.remove("active"));
+
+  const targetBtn = document.querySelector(`.main-tab[data-target="${targetId}"]`);
+  targetBtn?.classList.add("active");
+  document.getElementById(targetId)?.classList.add("active");
+}
+
+document.querySelectorAll(".main-tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    switchMainTab(btn.dataset.target);
+  });
+});
+
+document.querySelectorAll(".sub-tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".sub-tab").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".subtab-page").forEach((p) => p.classList.remove("active"));
+
+    btn.classList.add("active");
+    const target = btn.dataset.sub;
+    document.getElementById(target)?.classList.add("active");
+  });
+});
+
+document.querySelectorAll(".footer-nav-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const tabTarget = btn.dataset.tab;
+    switchMainTab(tabTarget);
+    const scrollTarget = btn.dataset.scroll;
+    if (scrollTarget === "spells") {
+      document.getElementById("spellsList")?.scrollIntoView({ behavior: "smooth" });
+    } else if (scrollTarget === "skills") {
+      document.querySelector(".skills-group")?.scrollIntoView({ behavior: "smooth" });
+    } else if (scrollTarget === "attr") {
+      document.querySelector(".attributes-group")?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      document.getElementById("tab-journal")?.scrollIntoView({ behavior: "smooth" });
+    }
+  });
+});
+
+// Dice Roller & History
+function addDiceHistory(desc, total) {
+  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  diceRollHistory.unshift({ desc, total, time });
+  if (diceRollHistory.length > 25) {
+    diceRollHistory.pop();
+  }
+  renderDiceHistory();
+}
+
+function renderDiceHistory() {
+  const container = document.getElementById("diceHistoryList");
+  if (!container) return;
+
+  if (diceRollHistory.length === 0) {
+    container.innerHTML = `<span class="dice-history-empty">No rolls logged yet.</span>`;
+    return;
+  }
+
+  container.innerHTML = diceRollHistory
+    .map(
+      (item) => `
+      <div class="dice-history-item">
+        <span class="dice-history-desc">${escapeHtml(item.desc)} <small style="color:#64748b;">(${item.time})</small></span>
+        <span class="dice-history-val">${escapeHtml(String(item.total))}</span>
+      </div>
+    `
+    )
+    .join("");
+}
+
+document.querySelectorAll(".dice-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const sides = parseInt(btn.dataset.sides, 10);
+    const roll = Math.floor(Math.random() * sides) + 1;
+    const out = document.getElementById("rollResult");
+    if (out) out.textContent = roll;
+    addDiceHistory(`1d${sides}`, roll);
+  });
+});
+
+document.addEventListener("click", (e) => {
+  if (e.target.classList.contains("roll-btn")) {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    let bonus = 0;
+    let label = "";
+    const type = e.target.dataset.type;
+
+    if (type === "save") {
+      const attr = e.target.dataset.attr;
+      bonus = parseInt(document.getElementById(`save_val_${attr}`)?.textContent, 10) || 0;
+      label = `${attr.toUpperCase()} Save`;
+    } else if (type === "skill") {
+      const id = e.target.dataset.id;
+      bonus = parseInt(document.getElementById(`val_${id}`)?.textContent, 10) || 0;
+      label = document.querySelector(`#row_${id} .skill-label`)?.textContent || "Skill";
+    }
+
+    const total = roll + bonus;
+    const out = document.getElementById("rollResult");
+    if (out) out.textContent = total;
+    const sign = bonus >= 0 ? `+ ${bonus}` : `- ${Math.abs(bonus)}`;
+    addDiceHistory(`${label} (${roll} ${sign})`, total);
+  }
+});
+
+// Official 5e Class Wiki Dropdown & Starting Equipment Automation
+const classInput = document.getElementById("charClass");
+const classDropdown = document.getElementById("classDropdown");
+const choiceModal = document.getElementById("choiceModal");
+const choiceModalTitle = document.getElementById("choiceModalTitle");
+const choiceModalBody = document.getElementById("choiceModalBody");
+
+async function fetchOfficialClasses() {
+  if (allClassesCache.length > 0) return allClassesCache;
+  try {
+    const res = await fetch("https://www.dnd5eapi.co/api/classes");
+    const data = await res.json();
+    allClassesCache = data.results || [];
+    return allClassesCache;
+  } catch (err) {
+    console.error("Failed to load classes from API", err);
+    return [];
+  }
+}
+
+async function fetchClassDataAndEquipment(classIndex) {
+  try {
+    const classRes = await fetch(`https://www.dnd5eapi.co/api/classes/${classIndex}`);
+    const details = await classRes.json();
+    
+    // Equipment is stored in a separate route in the API
+    const equipRes = await fetch(`https://www.dnd5eapi.co/api/starting-equipment/${classIndex}`);
+    if (equipRes.ok) {
+        const equip = await equipRes.json();
+        details.starting_equipment = equip.starting_equipment || [];
+        details.starting_equipment_options = equip.starting_equipment_options || [];
+    } else {
+        details.starting_equipment = [];
+        details.starting_equipment_options = [];
+    }
+
+    return details;
+  } catch (err) {
+    console.error("Failed to fetch class equipment", err);
+    return null;
+  }
+}
+
+function renderClassDropdown(filter = "") {
+  if (!classDropdown) return;
+  const q = filter.toLowerCase().trim();
+  const filtered = allClassesCache.filter(c => c.name.toLowerCase().includes(q));
+
+  let html = filtered
+    .map(c => `<div class="class-dropdown-item" data-index="${c.index}" data-name="${escapeHtml(c.name)}">${escapeHtml(c.name)}</div>`)
+    .join("");
+
+  html += `<div class="class-dropdown-item class-dropdown-custom" id="addCustomClassOption">+ Add Custom Class</div>`;
+  classDropdown.innerHTML = html;
+}
+
+classInput?.addEventListener("click", async () => {
+  if (!classDropdown.classList.contains("open")) {
+    classDropdown.innerHTML = '<div class="class-dropdown-item" style="color: #94a3b8; font-style: italic;">Loading classes...</div>';
+    classDropdown.classList.add("open");
+    if (allClassesCache.length === 0) {
+      await fetchOfficialClasses();
+    }
+    renderClassDropdown(classInput.value);
+  }
+});
+
+classInput?.addEventListener("input", async () => {
+  if (allClassesCache.length === 0) {
+    classDropdown.innerHTML = '<div class="class-dropdown-item" style="color: #94a3b8; font-style: italic;">Loading classes...</div>';
+    classDropdown.classList.add("open");
+    await fetchOfficialClasses();
+  }
+  renderClassDropdown(classInput.value);
+  classDropdown?.classList.add("open");
+});
+
+classDropdown?.addEventListener("click", async (e) => {
+  const item = e.target.closest(".class-dropdown-item");
+  if (!item) return;
+
+  if (item.id === "addCustomClassOption") {
+    classInput.value = "";
+    classInput.placeholder = "Type custom class...";
+    classInput.focus();
+    classDropdown.classList.remove("open");
+    return;
+  }
+
+  const className = item.dataset.name;
+  const classIdx = item.dataset.index;
+  classInput.value = className;
+  classDropdown.classList.remove("open");
+
+  recalculateAll();
+  saveSheet();
+
+  classInput.placeholder = "Loading gear...";
+  const details = await fetchClassDataAndEquipment(classIdx);
+  classInput.placeholder = "";
+
+  if (details) {
+    applyStartingEquipment(details);
+  }
+});
+
+function isWeaponOrArmor(name) {
+  if (!name) return false;
+  const lower = name.toLowerCase();
+  return lower.includes("sword") || lower.includes("bow") || lower.includes("dagger") || 
+         lower.includes("axe") || lower.includes("mace") || lower.includes("crossbow") || 
+         lower.includes("staff") || lower.includes("hammer") || lower.includes("spear") || 
+         lower.includes("shield") || lower.includes("armor") || lower.includes("mail") || 
+         lower.includes("javelin") || lower.includes("glaive") || lower.includes("halberd") || 
+         lower.includes("pike") || lower.includes("flail") || lower.includes("club") || 
+         lower.includes("rapier") || lower.includes("dart");
+}
+
+function getChoiceDetails(choice) {
+  let details = [];
+  if (choice.option_type === "counted_reference" && choice.of) {
+      details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.of.name}`);
+  } else if (choice.option_type === "choice" && choice.choice) {
+      details.push(`Any ${choice.choice.desc}`);
+  } else if (choice.option_type === "multiple" && choice.items) {
+      choice.items.forEach(i => {
+          if (i.option_type === "counted_reference" && i.of) {
+              details.push(`${i.count > 1 ? i.count + "x " : ""}${i.of.name}`);
+          } else if (i.option_type === "choice" && i.choice) {
+              details.push(`Any ${i.choice.desc}`);
+          } else if (i.of) {
+              details.push(`${i.count > 1 ? i.count + "x " : ""}${i.of.name}`);
+          } else if (i.item) {
+              details.push(`${i.count > 1 ? i.count + "x " : ""}${i.item.name}`);
+          }
+      });
+  } else if (choice.equipment) {
+      details.push(`${choice.quantity > 1 ? choice.quantity + "x " : ""}${choice.equipment.name}`);
+  } else if (choice.equipment_category) {
+      details.push(`Any ${choice.equipment_category.name}`);
+  } else if (choice.item) {
+      details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.item.name}`);
+  } else {
+      details.push("Item(s)");
+  }
+  return details;
+}
+
+function extractItemsFromChoice(choice) {
+  let items = [];
+  if (choice.option_type === "multiple" && choice.items) {
+      choice.items.forEach(i => {
+          if (i.option_type === "counted_reference" && i.of) {
+              items.push({ name: i.of.name, qty: i.count || 1 });
+          } else if (i.option_type === "choice" && i.choice) {
+              items.push({ name: `Any ${i.choice.desc}`, qty: 1 });
+          } else if (i.of) {
+              items.push({ name: i.of.name, qty: i.count || 1 });
+          } else if (i.item) {
+              items.push({ name: i.item.name, qty: i.count || 1 });
+          }
+      });
+  } else if (choice.option_type === "counted_reference" && choice.of) {
+      items.push({ name: choice.of.name, qty: choice.count || 1 });
+  } else if (choice.option_type === "choice" && choice.choice) {
+      items.push({ name: `Any ${choice.choice.desc}`, qty: 1 });
+  } else if (choice.equipment) {
+      items.push({ name: choice.equipment.name, qty: choice.quantity || 1 });
+  } else if (choice.equipment_category) {
+      items.push({ name: `Any ${choice.equipment_category.name}`, qty: 1 });
+  } else if (choice.item) {
+      items.push({ name: choice.item.name, qty: choice.count || 1 });
+  }
+  return items;
+}
+
+function applyStartingEquipment(details) {
+  let weaponsList = [];
+  let gearList = [];
+  let featuresText = `Hit Die: 1d${details.hit_die} per level\n\n`;
+
+  if (details.saving_throws && details.saving_throws.length > 0) {
+    featuresText += "Saving Throws: " + details.saving_throws.map(st => st.name).join(", ") + "\n\n";
+  }
+
+  if (details.proficiencies && details.proficiencies.length > 0) {
+    const profs = details.proficiencies.map(p => p.name).join(", ");
+    const profBox = document.getElementById("otherProfs");
+    if (profBox && !profBox.value) {
+      profBox.value = profs;
+    }
+  }
+
+  if (details.starting_equipment) {
+    details.starting_equipment.forEach(item => {
+      const name = item.equipment.name;
+      const qty = item.quantity || 1;
+      const qtyPrefix = qty > 1 ? `${qty}x ` : "";
+      
+      if (isWeaponOrArmor(name)) {
+        weaponsList.push({ name: `${qtyPrefix}${name}`, atk: "+5", dmg: "1d8", notes: "" });
+      } else {
+        gearList.push(`${qtyPrefix}${name}`);
+      }
+    });
+  }
+
+  if (details.starting_equipment_options && details.starting_equipment_options.length > 0) {
+    processEquipmentOptions(details.starting_equipment_options, 0, weaponsList, gearList, featuresText);
+  } else {
+    finalizeEquipmentApplication(weaponsList, gearList, featuresText);
+  }
+}
+
+function processEquipmentOptions(options, index, weaponsList, gearList, featuresText) {
+  if (index >= options.length) {
+    finalizeEquipmentApplication(weaponsList, gearList, featuresText);
+    return;
+  }
+
+  const optGroup = options[index];
+  let chooseAmount = optGroup.choose || 1;
+  choiceModalTitle.textContent = optGroup.desc || `Choose ${chooseAmount} Starting Option(s)`;
+
+  let choicesArray = [];
+  if (Array.isArray(optGroup.from)) {
+    choicesArray = optGroup.from;
+  } else if (optGroup.from && optGroup.from.options) {
+    choicesArray = optGroup.from.options;
+  } else if (optGroup.from && optGroup.from.equipment_category) {
+    choicesArray = [{ equipment_category: optGroup.from.equipment_category }];
+  }
+
+  if (choicesArray.length === 0) {
+    processEquipmentOptions(options, index + 1, weaponsList, gearList, featuresText);
+    return;
+  }
+
+  let html = "";
+  choicesArray.forEach((choice, choiceIdx) => {
+    const detailsArr = getChoiceDetails(choice);
+    const tooltipText = detailsArr.join("\n");
+    
+    let label = detailsArr.join(" + ");
+    if (label.length > 35) {
+      label = label.substring(0, 32) + "..."; 
+    }
+    if (!label || label === "Item Option" || label === "Item(s)") {
+      label = "Equipment Option";
+    }
+
+    html += `
+      <div class="choice-option-wrapper">
+        <button type="button" class="choice-option-btn" data-opt-index="${choiceIdx}">${escapeHtml(label)}</button>
+        <div class="choice-tooltip">${escapeHtml(tooltipText).replace(/\n/g, '<br>')}</div>
+      </div>
+    `;
+  });
+
+  choiceModalBody.innerHTML = html;
+  choiceModal.classList.add("open");
+
+  const newBody = choiceModalBody.cloneNode(true);
+  choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
+  const activeModalBody = document.getElementById("choiceModalBody");
+
+  activeModalBody.addEventListener("click", (e) => {
+    const btn = e.target.closest(".choice-option-btn");
+    if (!btn) return;
+    const chosenIdx = parseInt(btn.dataset.optIndex, 10);
+    const chosenChoice = choicesArray[chosenIdx];
+
+    const itemsToAdd = extractItemsFromChoice(chosenChoice);
+
+    itemsToAdd.forEach(item => {
+       const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
+       if (isWeaponOrArmor(item.name)) {
+         weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
+       } else {
+         gearList.push(`${qtyPrefix}${item.name}`);
+       }
+    });
+
+    chooseAmount--;
+    if (chooseAmount > 0) {
+       btn.closest(".choice-option-wrapper").style.display = "none"; 
+       choiceModalTitle.textContent = `Choose ${chooseAmount} MORE option(s)`;
+    } else {
+       choiceModal.classList.remove("open");
+       processEquipmentOptions(options, index + 1, weaponsList, gearList, featuresText);
+    }
+  });
+}
+
+function finalizeEquipmentApplication(weaponsList, gearList, featuresText) {
+  if (weaponsList.length > 0) {
+    myCharacterWeapons = weaponsList;
+    renderWeapons();
+  }
+
+  const invBox = document.getElementById("inventory");
+  if (invBox && gearList.length > 0) {
+    const currentInv = invBox.value.trim();
+    const newInv = gearList.join("\n");
+    invBox.value = currentInv ? currentInv + "\n\n" + newInv : newInv;
+    autoExpandTextarea(invBox);
+  }
+
+  const featBox = document.getElementById("featuresTraits");
+  if (featBox && !featBox.value) {
+    featBox.value = featuresText;
+    autoExpandTextarea(featBox);
+  }
+
+  saveSheet();
+  showStatus("Class gear & stats loaded!");
+  recalculateAll();
+}
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".class-pill-wrapper")) {
+    classDropdown?.classList.remove("open");
+  }
+});
+
+function autoExpandTextarea(el) {
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+}
+
+// Spells API & Details
+async function fetchOfficialSpells() {
+  if (allSpellsCache.length > 0) return allSpellsCache;
+  try {
+    const res = await fetch("https://www.dnd5eapi.co/api/spells");
+    const data = await res.json();
+    allSpellsCache = data.results || [];
+    return allSpellsCache;
+  } catch (err) {
+    console.error("Failed to load official 5e spell index:", err);
+    return [];
+  }
+}
+
+async function fetchSpellDetails(spellIndex) {
+  try {
+    const res = await fetch(`https://www.dnd5eapi.co/api/spells/${spellIndex}`);
+    return await res.json();
+  } catch (err) {
+    console.error("Failed to load details for spell:", spellIndex, err);
+    return null;
+  }
+}
+
+function renderModalSpells(filterText = "") {
+  const container = document.getElementById("spellApiList");
+  if (!container) return;
+
+  const query = filterText.toLowerCase().trim();
+  const matches = allSpellsCache.filter((s) => s.name.toLowerCase().includes(query));
+
+  if (matches.length === 0) {
+    container.innerHTML = `<p class="loading-text">No matching spells found.</p>`;
+    return;
+  }
+
+  container.innerHTML = matches
+    .map(
+      (spell) => `
+        <div class="spell-option-item" data-index="${spell.index}" data-name="${escapeHtml(spell.name)}">
+          <span>${escapeHtml(spell.name)}</span>
+          <span class="spell-add-badge">+ Add</span>
+        </div>
+      `
+    )
+    .join("");
+}
+
+// Render All Spells into 2-Column Grid with In-Place Editing
+function renderMySpells() {
+  const container = document.getElementById("spellsList");
+  if (!container) return;
+
+  if (myCharacterSpells.length === 0) {
+    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.9rem; color: #64748b;">No spells added yet.</p>`;
+    return;
+  }
+
+  container.innerHTML = myCharacterSpells
+    .map((spell, idx) => {
+      let typeVal = spell.type;
+      if (!typeVal) {
+        const levelText = spell.level === 0 ? "Cantrip" : `Level ${spell.level || 1}`;
+        const schoolText = spell.school?.name || "";
+        typeVal = `${levelText} ${schoolText}`.trim();
+      }
+
+      let descVal = spell.desc;
+      if (Array.isArray(descVal)) descVal = descVal.join("\n\n");
+      if (descVal === undefined || descVal === null) descVal = "";
+
+      const nameVal = spell.name || "New Spell";
+      const castVal = spell.casting_time || "1 Action";
+      const rangeVal = spell.range || "30 ft";
+      const durVal = spell.duration || "Instantaneous";
+
+      return `
+        <div class="spell-card" draggable="true" data-index="${idx}">
+          <div class="spell-card-header">
+            <span class="spell-drag-handle" title="Drag to reorder">⋮⋮</span>
+            <input type="text" class="spell-custom-title-input custom-spell-field" data-prop="name" value="${escapeHtml(nameVal)}" placeholder="Spell Name" />
+            <button class="spell-card-delete" data-index="${idx}" type="button" title="Remove spell">&times;</button>
+          </div>
+          <div class="spell-card-meta">
+            <div class="meta-field-group">
+              <span class="meta-label">Type</span>
+              <input type="text" class="spell-meta-input custom-spell-field" data-prop="type" value="${escapeHtml(typeVal)}" placeholder="Cantrip" />
+            </div>
+            <div class="meta-field-group">
+              <span class="meta-label">Cast</span>
+              <input type="text" class="spell-meta-input custom-spell-field" data-prop="casting_time" value="${escapeHtml(castVal)}" placeholder="1 Action" />
+            </div>
+            <div class="meta-field-group">
+              <span class="meta-label">Range</span>
+              <input type="text" class="spell-meta-input custom-spell-field" data-prop="range" value="${escapeHtml(rangeVal)}" placeholder="30 ft" />
+            </div>
+            <div class="meta-field-group">
+              <span class="meta-label">Duration</span>
+              <input type="text" class="spell-meta-input custom-spell-field" data-prop="duration" value="${escapeHtml(durVal)}" placeholder="Instantaneous" />
+            </div>
+          </div>
+          <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description and effects...">${escapeHtml(descVal)}</textarea>
+        </div>
+      `;
+    })
+    .join("");
+
+  document.querySelectorAll(".spell-custom-desc-textarea").forEach((textarea) => {
+    autoExpandTextarea(textarea);
+  });
+
+  attachSpellDragEvents();
+}
+
+function attachSpellDragEvents() {
+  const cards = document.querySelectorAll(".spell-card");
+  cards.forEach((card) => {
+    // Desktop Mouse Drag
+    card.addEventListener("dragstart", (e) => {
+      if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) {
+        e.preventDefault();
+        return;
+      }
+      draggedSpellIndex = parseInt(card.dataset.index, 10);
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", draggedSpellIndex);
+      card.classList.add("dragging");
+    });
+
+    card.addEventListener("dragend", () => {
+      card.classList.remove("dragging");
+      document.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
+      draggedSpellIndex = null;
+    });
+
+    card.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    });
+
+    card.addEventListener("dragenter", () => {
+      if (draggedSpellIndex !== null && parseInt(card.dataset.index, 10) !== draggedSpellIndex) {
+        card.classList.add("drag-over");
+      }
+    });
+
+    card.addEventListener("dragleave", () => {
+      card.classList.remove("drag-over");
+    });
+
+    card.addEventListener("drop", (e) => {
+      e.preventDefault();
+      card.classList.remove("drag-over");
+      if (draggedSpellIndex === null) return;
+      const targetIndex = parseInt(card.dataset.index, 10);
+      if (draggedSpellIndex === targetIndex) return;
+
+      const movedSpell = myCharacterSpells.splice(draggedSpellIndex, 1)[0];
+      myCharacterSpells.splice(targetIndex, 0, movedSpell);
+      saveSheet();
+      renderMySpells();
+    });
+
+    // Mobile Touch Drag on Handle
+    const handle = card.querySelector(".spell-drag-handle");
+    if (handle) {
+      handle.addEventListener("touchstart", () => {
+        touchDraggedIndex = parseInt(card.dataset.index, 10);
+        card.classList.add("dragging");
+      }, { passive: true });
+
+      handle.addEventListener("touchmove", (e) => {
+        const touch = e.touches[0];
+        const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+        const targetCard = targetElement ? targetElement.closest(".spell-card") : null;
+
+        document.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
+
+        if (targetCard && targetCard !== card) {
+          targetCard.classList.add("drag-over");
+          currentDropTarget = targetCard;
+        } else {
+          currentDropTarget = null;
+        }
+      });
+
+      handle.addEventListener("touchend", () => {
+        card.classList.remove("dragging");
+        document.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
+
+        if (touchDraggedIndex !== null && currentDropTarget) {
+          const targetIndex = parseInt(currentDropTarget.dataset.index, 10);
+          if (touchDraggedIndex !== targetIndex) {
+            const moved = myCharacterSpells.splice(touchDraggedIndex, 1)[0];
+            myCharacterSpells.splice(targetIndex, 0, moved);
+            saveSheet();
+            renderMySpells();
+          }
+        }
+        touchDraggedIndex = null;
+        currentDropTarget = null;
+      });
+    }
+  });
+}
+
+function openSpellModal() {
+  const modal = document.getElementById("spellModal");
+  modal?.classList.add("open");
+  const searchInput = document.getElementById("spellSearchInput");
+  if (searchInput) {
+    searchInput.value = "";
+    setTimeout(() => searchInput.focus(), 50);
+  }
+}
+
+function closeSpellModal() {
+  const modal = document.getElementById("spellModal");
+  modal?.classList.remove("open");
+}
+
+document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
+  openSpellModal();
+  const list = document.getElementById("spellApiList");
+  if (list && allSpellsCache.length === 0) {
+    list.innerHTML = `<p class="loading-text">Loading official 5e spells...</p>`;
+    await fetchOfficialSpells();
+  }
+  renderModalSpells();
+});
+
+document.getElementById("closeSpellModal")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  closeSpellModal();
+});
+
+document.getElementById("spellModal")?.addEventListener("click", (e) => {
+  if (e.target.id === "spellModal") {
+    closeSpellModal();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    closeSpellModal();
+    document.getElementById("loadModal")?.classList.remove("open");
+    document.getElementById("helpModal")?.classList.remove("open");
+    document.getElementById("choiceModal")?.classList.remove("open");
+  }
+});
+
+document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
+  renderModalSpells(e.target.value);
+});
+
+// Quick in-sheet spellbook search
+document.getElementById("filterSpellbookInput")?.addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase().trim();
+  document.querySelectorAll(".spell-card").forEach((card) => {
+    const title = card.querySelector(".spell-custom-title-input")?.value.toLowerCase() || "";
+    const desc = card.querySelector(".spell-custom-desc-textarea")?.value.toLowerCase() || "";
+    const type = card.querySelector(".spell-meta-input[data-prop='type']")?.value.toLowerCase() || "";
+    if (!q || title.includes(q) || desc.includes(q) || type.includes(q)) {
+      card.style.display = "flex";
+    } else {
+      card.style.display = "none";
+    }
+  });
+});
+
+// Add Custom Spell Button
+document.getElementById("addCustomSpellBtn")?.addEventListener("click", () => {
+  myCharacterSpells.push({
+    name: "New Custom Spell",
+    type: "1st Level",
+    casting_time: "1 Action",
+    range: "30 ft",
+    duration: "Instantaneous",
+    desc: ""
+  });
+  saveSheet();
+  renderMySpells();
+  closeSpellModal();
+});
+
+// Click Official 5e Spell to Add
+document.getElementById("spellApiList")?.addEventListener("click", async (e) => {
+  const row = e.target.closest(".spell-option-item");
+  if (!row) return;
+
+  const spellIndex = row.dataset.index;
+  const spellName = row.dataset.name;
+
+  if (myCharacterSpells.some((s) => s.name.toLowerCase() === spellName.toLowerCase())) {
+    closeSpellModal();
+    return;
+  }
+
+  const badge = row.querySelector(".spell-add-badge");
+  if (badge) badge.textContent = "Adding...";
+
+  const details = await fetchSpellDetails(spellIndex);
+  if (details) {
+    let summary = "";
+    if (Array.isArray(details.desc)) summary = details.desc.join("\n\n");
+    else if (typeof details.desc === "string") summary = details.desc;
+
+    const levelText = details.level === 0 ? "Cantrip" : `Level ${details.level}`;
+    const schoolText = details.school?.name || "";
+
+    myCharacterSpells.push({
+      name: details.name || spellName,
+      type: `${levelText} ${schoolText}`.trim(),
+      casting_time: details.casting_time || "1 Action",
+      range: details.range || "Self",
+      duration: details.duration || "Instantaneous",
+      desc: summary || ""
+    });
+
+    saveSheet();
+    renderMySpells();
+  }
+
+  closeSpellModal();
+  if (badge) badge.textContent = "+ Add";
+});
+
+// Live Edit Spell Fields & Auto-Expanding Description
+document.getElementById("spellsList")?.addEventListener("input", (e) => {
+  if (e.target.classList.contains("custom-spell-field")) {
+    const card = e.target.closest(".spell-card");
+    const idx = parseInt(card.dataset.index, 10);
+    const prop = e.target.dataset.prop;
+
+    if (myCharacterSpells[idx]) {
+      myCharacterSpells[idx][prop] = e.target.value;
+      saveSheet();
+    }
+
+    if (e.target.tagName.toLowerCase() === "textarea") {
+      autoExpandTextarea(e.target);
+    }
+  }
+});
+
+// Delete Individual Spell
+document.getElementById("spellsList")?.addEventListener("click", (e) => {
+  if (e.target.classList.contains("spell-card-delete")) {
+    const index = parseInt(e.target.dataset.index, 10);
+    myCharacterSpells.splice(index, 1);
+    saveSheet();
+    renderMySpells();
+  }
+});
+
+// Header Actions
+document.getElementById("saveBtn")?.addEventListener("click", () => {
+  saveSheet();
+});
+
+document.getElementById("newBtn")?.addEventListener("click", () => {
+  if (confirm("Create a new blank character sheet?")) {
+    resetSheet();
+  }
+});
+
+document.getElementById("deleteBtn")?.addEventListener("click", () => {
+  const roster = getRoster();
+  const currentName = roster[activeCharId]?.name || "Unnamed Character";
+  if (confirm(`Permanently delete current character "${currentName}"?`)) {
+    delete roster[activeCharId];
+    saveRoster(roster);
+    const remaining = Object.keys(roster);
+    if (remaining.length > 0) {
+      activeCharId = remaining[0];
+      localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+      loadSheet();
+    } else {
+      resetSheet();
+    }
+  }
+});
+
+document.getElementById("backupBtn")?.addEventListener("click", () => {
+  const roster = getRoster();
+  const currentChar = roster[activeCharId] || {
+    id: activeCharId,
+    name: document.getElementById("charName")?.value || "Character",
+    fields: getCurrentSheetData(),
+    spells: myCharacterSpells,
+    weapons: myCharacterWeapons
+  };
+
+  const fullBackup = {
+    character: currentChar,
+    allRoster: roster,
+    version: 2
+  };
+
+  const blob = new Blob([JSON.stringify(fullBackup, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const charName = currentChar.name.trim() || "character";
+  a.href = url;
+  a.download = `${charName.toLowerCase().replace(/\s+/g, "_")}-backup.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showStatus("Backup downloaded!");
+});
+
+document.getElementById("restoreFile")?.addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const parsed = JSON.parse(evt.target.result);
+      const roster = getRoster();
+
+      if (parsed.allRoster) {
+        Object.assign(roster, parsed.allRoster);
+      } else if (parsed.character) {
+        const id = parsed.character.id || "char_" + Date.now();
+        roster[id] = parsed.character;
+        activeCharId = id;
+      } else if (parsed.sheet) {
+        const id = "char_" + Date.now();
+        roster[id] = {
+          id: id,
+          name: parsed.sheet.charName || "Restored Hero",
+          fields: parsed.sheet,
+          spells: parsed.spells || [],
+          weapons: parsed.weapons || []
+        };
+        activeCharId = id;
+      }
+
+      saveRoster(roster);
+      localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+      loadSheet();
+      showStatus("Restored successfully!");
+    } catch (err) {
+      alert("Invalid JSON backup file.");
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.addEventListener("input", (e) => {
+  if (e.target.classList.contains("save-field")) {
+    recalculateAll();
+    saveSheet();
+  }
+  if (e.target.classList.contains("spell-stat-input")) {
+    autoResizeStatInput(e.target);
+  }
+});
+
+loadSheet();
