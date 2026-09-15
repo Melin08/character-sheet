@@ -3,14 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Character Sheet</title>
-  <link rel="stylesheet" href="style.css" />
-  <!-- Add this line below -->
+  <title>Character Sheet App</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 95,28 95,72 50,95 5,72 5,28' fill='%23dc2626' stroke='%230b0f19' stroke-width='6'/><text x='50%' y='62%' text-anchor='middle' font-size='42' font-weight='bold' fill='white' font-family='sans-serif'>20</text></svg>" />
-</head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Character Sheet</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body id="top">
@@ -39,7 +33,7 @@
 
     <!-- MAIN TAB 1: Statistics & Combat -->
     <div id="tab-stats" class="tab-page active">
-      <!-- Row 1 -->
+      <!-- Top Row 1 -->
       <div class="meta-row-grid">
         <div class="field-pill">
           <span class="pill-label">Class</span>
@@ -63,7 +57,7 @@
         </div>
       </div>
 
-      <!-- Row 2 -->
+      <!-- Top Row 2 -->
       <div class="meta-row-grid">
         <div class="field-pill">
           <span class="pill-label">Experience</span>
@@ -141,6 +135,7 @@
         </div>
       </div>
 
+      <!-- Attributes and Combat Section -->
       <div class="two-col-layout">
         <div class="left-pane">
           <h2 class="section-title">Attributes</h2>
@@ -390,45 +385,49 @@
 
           <h2 class="section-title">Other Proficiencies</h2>
           <textarea id="otherProfs" class="save-field block-text" rows="4" placeholder="Armor, weapons, tools, languages..."></textarea>
-
-          <h2 class="section-title">Spells</h2>
-          <div class="spell-basics">
-            <div class="meta-item">
-              <label for="spellAbility">Spell Ability</label>
-              <input type="text" id="spellAbility" class="save-field inline-input" placeholder="INT" />
-            </div>
-            <div class="meta-item">
-              <label for="spellDc">Spell Save DC</label>
-              <input type="text" id="spellDc" class="save-field inline-input" placeholder="13" />
-            </div>
-            <div class="meta-item">
-              <label for="spellAtkBonus">Spell Attack Bonus</label>
-              <input type="text" id="spellAtkBonus" class="save-field inline-input" placeholder="+5" />
-            </div>
-          </div>
-
-          <h3 class="subsection-title">Spell Slots</h3>
-          <div class="slots-grid">
-            <div class="slot-item"><span>1st</span><input type="number" id="slot1_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot1_max" class="save-field dual-input" value="0" /></div>
-            <div class="slot-item"><span>2nd</span><input type="number" id="slot2_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot2_max" class="save-field dual-input" value="0" /></div>
-            <div class="slot-item"><span>3rd</span><input type="number" id="slot3_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot3_max" class="save-field dual-input" value="0" /></div>
-            <div class="slot-item"><span>4th</span><input type="number" id="slot4_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot4_max" class="save-field dual-input" value="0" /></div>
-            <div class="slot-item"><span>5th</span><input type="number" id="slot5_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot5_max" class="save-field dual-input" value="0" /></div>
-            <div class="slot-item"><span>6th</span><input type="number" id="slot6_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot6_max" class="save-field dual-input" value="0" /></div>
-            <div class="slot-item"><span>7th</span><input type="number" id="slot7_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot7_max" class="save-field dual-input" value="0" /></div>
-            <div class="slot-item"><span>8th</span><input type="number" id="slot8_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot8_max" class="save-field dual-input" value="0" /></div>
-            <div class="slot-item"><span>9th</span><input type="number" id="slot9_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot9_max" class="save-field dual-input" value="0" /></div>
-          </div>
-
-          <div class="cantrips-header">
-            <strong>Spells & Cantrips</strong>
-            <button class="btn-text-red" id="addSpellBtn" type="button">+ Add Spell</button>
-          </div>
-          <hr class="red-divider" />
-
-          <div id="spellsList" class="spells-container"></div>
         </div>
       </div>
+
+      <!-- Spells Section: Full Width Row in 3-Column Grid -->
+      <section class="spells-full-section">
+        <hr class="red-divider" />
+        <h2 class="section-title">Spells</h2>
+        <div class="spell-basics">
+          <div class="meta-item">
+            <label for="spellAbility">Spell Ability</label>
+            <input type="text" id="spellAbility" class="save-field inline-input" placeholder="INT" />
+          </div>
+          <div class="meta-item">
+            <label for="spellDc">Spell Save DC</label>
+            <input type="text" id="spellDc" class="save-field inline-input" placeholder="13" />
+          </div>
+          <div class="meta-item">
+            <label for="spellAtkBonus">Spell Attack Bonus</label>
+            <input type="text" id="spellAtkBonus" class="save-field inline-input" placeholder="+5" />
+          </div>
+        </div>
+
+        <h3 class="subsection-title">Spell Slots</h3>
+        <div class="slots-grid">
+          <div class="slot-item"><span>1st</span><input type="number" id="slot1_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot1_max" class="save-field dual-input" value="0" /></div>
+          <div class="slot-item"><span>2nd</span><input type="number" id="slot2_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot2_max" class="save-field dual-input" value="0" /></div>
+          <div class="slot-item"><span>3rd</span><input type="number" id="slot3_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot3_max" class="save-field dual-input" value="0" /></div>
+          <div class="slot-item"><span>4th</span><input type="number" id="slot4_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot4_max" class="save-field dual-input" value="0" /></div>
+          <div class="slot-item"><span>5th</span><input type="number" id="slot5_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot5_max" class="save-field dual-input" value="0" /></div>
+          <div class="slot-item"><span>6th</span><input type="number" id="slot6_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot6_max" class="save-field dual-input" value="0" /></div>
+          <div class="slot-item"><span>7th</span><input type="number" id="slot7_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot7_max" class="save-field dual-input" value="0" /></div>
+          <div class="slot-item"><span>8th</span><input type="number" id="slot8_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot8_max" class="save-field dual-input" value="0" /></div>
+          <div class="slot-item"><span>9th</span><input type="number" id="slot9_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot9_max" class="save-field dual-input" value="0" /></div>
+        </div>
+
+        <div class="cantrips-header">
+          <strong>Spells & Cantrips</strong>
+          <button class="btn-text-red" id="addSpellBtn" type="button">+ Add Spell</button>
+        </div>
+        <hr class="red-divider" />
+
+        <div id="spellsList" class="spells-grid-container"></div>
+      </section>
     </div>
 
     <!-- MAIN TAB 2: Notes, Personality, NPCs, Equipment -->
@@ -440,13 +439,11 @@
         <button class="sub-tab" data-sub="sub-equip" type="button">Equipment & Gear</button>
       </div>
 
-      <!-- Subtab: General Notes -->
       <div id="sub-notes" class="subtab-page active">
         <h2 class="section-title">Campaign Notes & Log</h2>
         <textarea id="campaignNotes" class="save-field block-text journal-box" rows="16" placeholder="Quests, session notes, locations, clues..."></textarea>
       </div>
 
-      <!-- Subtab: Personality & Lore -->
       <div id="sub-personality" class="subtab-page">
         <div class="two-col-layout">
           <div>
@@ -468,13 +465,11 @@
         <textarea id="backstory" class="save-field block-text journal-box" rows="8"></textarea>
       </div>
 
-      <!-- Subtab: NPCs & Contacts -->
       <div id="sub-npcs" class="subtab-page">
         <h2 class="section-title">NPCs, Factions & Contacts</h2>
         <textarea id="npcList" class="save-field block-text journal-box" rows="16" placeholder="Names, affiliations, attitudes, notes..."></textarea>
       </div>
 
-      <!-- Subtab: Equipment & Gear -->
       <div id="sub-equip" class="subtab-page">
         <h2 class="section-title">Equipment, Bags & Attunement</h2>
         <textarea id="inventory" class="save-field block-text journal-box" rows="16" placeholder="Detailed inventory, weights, magic items, containers..."></textarea>
@@ -530,7 +525,7 @@
     </div>
   </div>
 
-  <!-- Spell Picker Modal with Custom Spell Button -->
+  <!-- Spell Picker Modal -->
   <div id="spellModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-header">
