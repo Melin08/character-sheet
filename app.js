@@ -318,7 +318,6 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
   showStatus("Character Loaded!");
 });
 
-// Help Modal Controls
 document.getElementById("helpLinkBtn")?.addEventListener("click", () => {
   document.getElementById("helpModal")?.classList.add("open");
 });
@@ -333,7 +332,7 @@ document.getElementById("helpModal")?.addEventListener("click", (e) => {
   }
 });
 
-// Primary Tabs
+// Primary Tabs Switching
 function switchMainTab(targetId) {
   document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
   document.querySelectorAll(".tab-page").forEach((p) => p.classList.remove("active"));
@@ -349,6 +348,7 @@ document.querySelectorAll(".main-tab").forEach((btn) => {
   });
 });
 
+// Sub-tabs Switching (Fixes Journal Tab stacking)
 document.querySelectorAll(".sub-tab").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".sub-tab").forEach((b) => b.classList.remove("active"));
@@ -416,7 +416,13 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Spell System
+// Auto-expand textarea helper
+function autoExpandTextarea(el) {
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+}
+
+// Spells
 async function fetchOfficialSpells() {
   if (allSpellsCache.length > 0) return allSpellsCache;
   try {
@@ -469,12 +475,30 @@ function renderMySpells() {
   if (!container) return;
 
   if (myCharacterSpells.length === 0) {
-    container.innerHTML = `<p style="font-size: 0.88rem; color: #888;">No spells added yet.</p>`;
+    container.innerHTML = `<p style="font-size: 0.88rem; color: #64748b;">No spells added yet.</p>`;
     return;
   }
 
   container.innerHTML = myCharacterSpells
     .map((spell, idx) => {
+      if (spell.isCustom) {
+        return `
+          <div class="spell-card" data-index="${idx}">
+            <div class="spell-card-header">
+              <input type="text" class="spell-custom-title-input custom-spell-field" data-prop="name" value="${spell.name || ""}" placeholder="Spell Name" />
+              <button class="spell-card-delete" data-index="${idx}" type="button" title="Remove spell">&times;</button>
+            </div>
+            <div class="spell-card-meta">
+              <span><strong>Type:</strong> <input type="text" class="spell-meta-input custom-spell-field" data-prop="type" value="${spell.type || ""}" placeholder="Cantrip" /></span>
+              <span><strong>Casting:</strong> <input type="text" class="spell-meta-input custom-spell-field" data-prop="casting_time" value="${spell.casting_time || ""}" placeholder="1 Action" /></span>
+              <span><strong>Range:</strong> <input type="text" class="spell-meta-input custom-spell-field" data-prop="range" value="${spell.range || ""}" placeholder="30 ft" /></span>
+              <span><strong>Duration:</strong> <input type="text" class="spell-meta-input custom-spell-field" data-prop="duration" value="${spell.duration || ""}" placeholder="Instantaneous" /></span>
+            </div>
+            <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description and effects...">${spell.desc || ""}</textarea>
+          </div>
+        `;
+      }
+
       const levelText = spell.level === 0 ? "Cantrip" : `Level ${spell.level}`;
       const schoolText = spell.school?.name || "";
       const timeText = spell.casting_time || "—";
@@ -483,12 +507,9 @@ function renderMySpells() {
 
       let summary = "";
       if (Array.isArray(spell.desc)) {
-        summary = spell.desc.join(" ");
+        summary = spell.desc.join("\n\n");
       } else if (typeof spell.desc === "string") {
         summary = spell.desc;
-      }
-      if (summary.length > 220) {
-        summary = summary.substring(0, 220) + "...";
       }
 
       return `
@@ -508,6 +529,10 @@ function renderMySpells() {
       `;
     })
     .join("");
+
+  document.querySelectorAll(".spell-custom-desc-textarea").forEach((textarea) => {
+    autoExpandTextarea(textarea);
+  });
 }
 
 function openSpellModal() {
@@ -558,6 +583,22 @@ document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   renderModalSpells(e.target.value);
 });
 
+// Add Custom Spell Button
+document.getElementById("addCustomSpellBtn")?.addEventListener("click", () => {
+  myCharacterSpells.push({
+    isCustom: true,
+    name: "New Custom Spell",
+    type: "1st Level",
+    casting_time: "1 Action",
+    range: "30 ft",
+    duration: "Instantaneous",
+    desc: ""
+  });
+  saveSheet();
+  renderMySpells();
+  closeSpellModal();
+});
+
 document.getElementById("spellApiList")?.addEventListener("click", async (e) => {
   const row = e.target.closest(".spell-option-item");
   if (!row) return;
@@ -584,6 +625,24 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   if (badge) badge.textContent = "+ Add";
 });
 
+// Watch custom spell field inputs live
+document.getElementById("spellsList")?.addEventListener("input", (e) => {
+  if (e.target.classList.contains("custom-spell-field")) {
+    const card = e.target.closest(".spell-card");
+    const idx = parseInt(card.dataset.index, 10);
+    const prop = e.target.dataset.prop;
+
+    if (myCharacterSpells[idx]) {
+      myCharacterSpells[idx][prop] = e.target.value;
+      saveSheet();
+    }
+
+    if (e.target.tagName.toLowerCase() === "textarea") {
+      autoExpandTextarea(e.target);
+    }
+  }
+});
+
 document.getElementById("spellsList")?.addEventListener("click", (e) => {
   if (e.target.classList.contains("spell-card-delete")) {
     const index = parseInt(e.target.dataset.index, 10);
@@ -593,7 +652,7 @@ document.getElementById("spellsList")?.addEventListener("click", (e) => {
   }
 });
 
-// Action Bar Handlers
+// Header Actions
 document.getElementById("saveBtn")?.addEventListener("click", () => {
   saveSheet();
 });
