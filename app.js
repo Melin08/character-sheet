@@ -21,6 +21,20 @@ let draggedSpellIndex = null;
 let touchDraggedIndex = null;
 let currentDropTarget = null;
 
+// Built-in SRD 5e Spells Backup Catalog so it never hangs
+const SRD_SPELLS_BACKUP = [
+  { name: "Fire Bolt", level: 0, school: "Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You hurl a mote of fire at a creature or object within range. Make a ranged spell attack. On a hit, the target takes 1d10 fire damage." },
+  { name: "Mage Hand", level: 0, school: "Conjuration", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears at a point you choose within range. You can use your action to control the hand." },
+  { name: "Eldritch Blast", level: 0, school: "Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "A beam of crackling energy streaks toward a creature within range. Make a ranged spell attack against the target. On a hit, the target takes 1d10 force damage." },
+  { name: "Vicious Mockery", level: 0, school: "Enchantment", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "You unleash a string of insults laced with subtle enchantments at one creature you can see. If it fails a Wisdom saving throw, it takes 1d4 psychic damage and has disadvantage on its next attack." },
+  { name: "Magic Missile", level: 1, school: "Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range, dealing 1d4 + 1 force damage." },
+  { name: "Shield", level: 1, school: "Abjuration", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "An invisible barrier of magical force appears and protects you. Until the start of your next turn, you have a +5 bonus to AC, including against the triggering attack." },
+  { name: "Cure Wounds", level: 1, school: "Evocation", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "A creature you touch regains a number of hit points equal to 1d8 + your spellcasting ability modifier." },
+  { name: "Healing Word", level: 1, school: "Evocation", casting_time: "1 Bonus Action", range: "60 ft", duration: "Instantaneous", desc: "A creature of your choice that you can see within range regains hit points equal to 1d4 + your spellcasting ability modifier." },
+  { name: "Misty Step", level: 2, school: "Conjuration", casting_time: "1 Bonus Action", range: "Self", duration: "Instantaneous", desc: "Briefly surrounded by silvery mist, you teleport up to 30 feet to an unoccupied space that you can see." },
+  { name: "Fireball", level: 3, school: "Evocation", casting_time: "1 Action", range: "150 ft", duration: "Instantaneous", desc: "A bright streak flashes from your pointing finger to a point you choose within range and then blossoms with a low roar into an explosion of flame. Each creature in a 20-foot-radius sphere must make a Dex save or take 8d6 fire damage." }
+];
+
 // Official 5e SRD Fallback Database to guarantee immediate pop-up
 const SRD_CLASS_EQUIPMENT = {
   barbarian: {
@@ -299,7 +313,6 @@ const SRD_RACE_DATA = {
   ]}
 };
 
-// Official 5e General Class/Feat Features for the picker
 const SRD_GENERAL_FEATURES = [
   { name: "Rage", type: "Class Ability", desc: "In battle, you fight with primal ferocity. On your turn, you can enter a rage as a bonus action." },
   { name: "Reckless Attack", type: "Class Ability", desc: "Starting at 2nd level, you can throw aside all concern for defense to attack with fierce desperation." },
@@ -558,7 +571,6 @@ raceDropdown?.addEventListener("click", (e) => {
   if (raceInfo) {
     if (raceInfo.speed) document.getElementById("charSpeed").value = raceInfo.speed;
     
-    // Add all racial abilities to the new Abilities & Features row
     if (raceInfo.traits && raceInfo.traits.length > 0) {
       raceInfo.traits.forEach(t => {
         if (!myCharacterTraits.some(existing => existing.name.toLowerCase() === t.name.toLowerCase())) {
@@ -626,7 +638,7 @@ document.getElementById("traitsList")?.addEventListener("click", (e) => {
   }
 });
 
-// Trait / Ability Search Modal
+// Trait / Ability Search Modal with Timeout Fallback
 function renderModalTraits(filterText = "") {
   const container = document.getElementById("traitApiList");
   if (!container) return;
@@ -652,23 +664,27 @@ function renderModalTraits(filterText = "") {
 async function fetchOfficialTraits() {
   if (allTraitsCache.length > 0) return;
   allTraitsCache = [...SRD_GENERAL_FEATURES];
+  
+  // Try fetching API with 2.5 second timeout so it never hangs
   try {
-    const res = await fetch("https://www.dnd5eapi.co/api/features");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch("https://www.dnd5eapi.co/api/features", { signal: controller.signal });
+    clearTimeout(timer);
     if (res.ok) {
       const data = await res.json();
       const apiFeatures = (data.results || []).map(f => ({ name: f.name, type: "Feature", url: f.url }));
       allTraitsCache.push(...apiFeatures);
     }
   } catch (err) {
-    console.error("API traits fallback used", err);
+    // Falls back seamlessly to SRD features
   }
 }
 
 document.getElementById("addTraitBtn")?.addEventListener("click", async () => {
-  document.getElementById("traitModal")?.classList.add("open");
-  const list = document.getElementById("traitApiList");
-  if (list && allTraitsCache.length === 0) {
-    list.innerHTML = `<p class="loading-text">Loading official features...</p>`;
+  const modal = document.getElementById("traitModal");
+  modal?.classList.add("open");
+  if (allTraitsCache.length === 0) {
     await fetchOfficialTraits();
   }
   renderModalTraits();
@@ -683,7 +699,9 @@ document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
 });
 
 document.getElementById("addCustomTraitBtn")?.addEventListener("click", () => {
-  myCharacterTraits.push({ name: "New Ability", type: "Custom", desc: "Write your custom skill description here..." });
+  const customName = prompt("Enter ability name:") || "New Custom Ability";
+  const customDesc = prompt("Enter ability description:") || "";
+  myCharacterTraits.push({ name: customName, type: "Custom", desc: customDesc });
   saveSheet();
   renderMyTraits();
   document.getElementById("traitModal")?.classList.remove("open");
@@ -721,22 +739,35 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
   document.getElementById("traitModal")?.classList.remove("open");
 });
 
-// Official Spells Implementation
+// Official Spells Implementation with Timeout Fallback
 async function fetchOfficialSpells() {
-  if (allSpellsCache.length > 0) return allSpellsCache;
+  if (allSpellsCache.length > 0) return;
+  allSpellsCache = [...SRD_SPELLS_BACKUP];
+
   try {
-    const res = await fetch("https://www.dnd5eapi.co/api/spells");
-    const data = await res.json();
-    allSpellsCache = data.results || [];
-    return allSpellsCache;
-  } catch (err) { return []; }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch("https://www.dnd5eapi.co/api/spells", { signal: controller.signal });
+    clearTimeout(timer);
+    if (res.ok) {
+      const data = await res.json();
+      allSpellsCache = data.results || SRD_SPELLS_BACKUP;
+    }
+  } catch (err) {
+    // Falls back to backup catalog
+  }
 }
 
 async function fetchSpellDetails(spellIndex) {
+  const localMatch = SRD_SPELLS_BACKUP.find(s => s.name.toLowerCase() === spellIndex.toLowerCase() || s.name.toLowerCase().replace(/\s+/g, '-') === spellIndex);
+  if (localMatch) return localMatch;
+
   try {
     const res = await fetch(`https://www.dnd5eapi.co/api/spells/${spellIndex}`);
     return await res.json();
-  } catch (err) { return null; }
+  } catch (err) {
+    return { name: spellIndex, level: 1, school: { name: "Magic" }, casting_time: "1 Action", range: "30 ft", duration: "Instantaneous", desc: "Custom spell" };
+  }
 }
 
 function renderModalSpells(filterText = "") {
@@ -751,7 +782,7 @@ function renderModalSpells(filterText = "") {
   }
 
   container.innerHTML = matches.map(spell => `
-    <div class="spell-option-item" data-index="${spell.index}" data-name="${escapeHtml(spell.name)}">
+    <div class="spell-option-item" data-index="${spell.index || spell.name.toLowerCase().replace(/\s+/g, '-')}" data-name="${escapeHtml(spell.name)}">
       <span>${escapeHtml(spell.name)}</span>
       <span class="spell-add-badge">+ Add</span>
     </div>
@@ -892,10 +923,9 @@ function attachSpellDragEvents() {
 }
 
 document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
-  document.getElementById("spellModal")?.classList.add("open");
-  const list = document.getElementById("spellApiList");
-  if (list && allSpellsCache.length === 0) {
-    list.innerHTML = `<p class="loading-text">Loading official 5e spells...</p>`;
+  const modal = document.getElementById("spellModal");
+  modal?.classList.add("open");
+  if (allSpellsCache.length === 0) {
     await fetchOfficialSpells();
   }
   renderModalSpells();
@@ -910,7 +940,9 @@ document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
 });
 
 document.getElementById("addCustomSpellBtn")?.addEventListener("click", () => {
-  myCharacterSpells.push({ name: "New Custom Spell", type: "1st Level", casting_time: "1 Action", range: "30 ft", duration: "Instantaneous", desc: "" });
+  const customName = prompt("Enter spell name:") || "New Custom Spell";
+  const customDesc = prompt("Enter spell description:") || "";
+  myCharacterSpells.push({ name: customName, type: "1st Level", casting_time: "1 Action", range: "30 ft", duration: "Instantaneous", desc: customDesc });
   saveSheet();
   renderMySpells();
   document.getElementById("spellModal")?.classList.remove("open");
@@ -926,11 +958,11 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   if (details) {
     myCharacterSpells.push({
       name: details.name,
-      type: `${details.level === 0 ? "Cantrip" : "Level " + details.level} ${details.school?.name || ""}`.trim(),
-      casting_time: details.casting_time,
-      range: details.range,
-      duration: details.duration,
-      desc: Array.isArray(details.desc) ? details.desc.join("\n\n") : details.desc
+      type: `${details.level === 0 ? "Cantrip" : "Level " + details.level} ${details.school?.name || details.school || ""}`.trim(),
+      casting_time: details.casting_time || "1 Action",
+      range: details.range || "30 ft",
+      duration: details.duration || "Instantaneous",
+      desc: Array.isArray(details.desc) ? details.desc.join("\n\n") : (details.desc || "")
     });
     saveSheet();
     renderMySpells();
