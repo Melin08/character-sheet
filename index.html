@@ -35,14 +35,15 @@
     <div id="tab-stats" class="tab-page active">
       <!-- Top Row 1 -->
       <div class="meta-row-grid">
-        <div class="field-pill class-pill-wrapper">
+        <div class="field-pill dropdown-pill-wrapper">
           <span class="pill-label">Class</span>
           <input type="text" id="charClass" class="save-field pill-input" autocomplete="off" placeholder="" />
-          <div id="classDropdown" class="class-dropdown-menu"></div>
+          <div id="classDropdown" class="dropdown-menu"></div>
         </div>
-        <div class="field-pill">
+        <div class="field-pill dropdown-pill-wrapper">
           <span class="pill-label">Race</span>
-          <input type="text" id="charRace" class="save-field pill-input" />
+          <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="" />
+          <div id="raceDropdown" class="dropdown-menu"></div>
         </div>
         <div class="field-pill">
           <span class="pill-label">Background</span>
@@ -618,7 +619,7 @@
     </div>
   </div>
 
-  <!-- Choice Modal for Class Starting Equipment -->
+  <!-- Choice Modal for Equipment -->
   <div id="choiceModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box choice-modal-box">
       <div class="modal-header">
