@@ -566,53 +566,69 @@ classDropdown?.addEventListener("click", async (e) => {
   recalculateAll();
   saveSheet();
 
-  // Fetch and apply starting equipment
+  // Fetch and apply starting equipment packages
   const details = await fetchClassStartingEquipment(classIdx);
-  if (details && details.starting_equipment) {
-    applyStartingEquipment(details.starting_equipment, details.starting_equipment_options);
+  if (details) {
+    applyStartingEquipment(details);
   }
 });
 
-function applyStartingEquipment(baseItems, options) {
+function applyStartingEquipment(details) {
   let weaponsList = [];
   let gearList = [];
-  let featuresText = `Starting features for ${classInput.value}:\n`;
+  let featuresText = `Class: ${details.name}\nHit Die: d${details.hit_die}\n\nProficiencies:\n`;
 
-  // Process standard items
-  baseItems.forEach(item => {
-    const name = item.equipment.name;
-    const qty = item.quantity || 1;
-    if (name.toLowerCase().includes("sword") || name.toLowerCase().includes("bow") || name.toLowerCase().includes("dagger") || name.toLowerCase().includes("axe") || name.toLowerCase().includes("mace") || name.toLowerCase().includes("crossbow") || name.toLowerCase().includes("staff")) {
-      weaponsList.push({ name: `${qty}x ${name}`, atk: "+5", dmg: "1d8", notes: "" });
-    } else {
-      gearList.push(`${qty}x ${name}`);
-    }
-  });
+  if (details.proficiencies) {
+    featuresText += details.proficiencies.map(p => p.name).join(", ") + "\n\n";
+  }
 
-  // If there are options to choose between (e.g. choice of weapon or pack)
-  if (options && options.length > 0) {
-    promptEquipmentChoices(options, 0, weaponsList, gearList, featuresText);
+  if (details.starting_equipment) {
+    details.starting_equipment.forEach(item => {
+      const name = item.equipment.name;
+      const qty = item.quantity || 1;
+      if (isWeapon(name)) {
+        weaponsList.push({ name: `${qty}x ${name}`, atk: "+5", dmg: "1d8", notes: "" });
+      } else {
+        gearList.push(`${qty}x ${name}`);
+      }
+    });
+  }
+
+  if (details.starting_equipment_options && details.starting_equipment_options.length > 0) {
+    processEquipmentOptions(details.starting_equipment_options, 0, weaponsList, gearList, featuresText);
   } else {
     finalizeEquipmentApplication(weaponsList, gearList, featuresText);
   }
 }
 
-function promptEquipmentChoices(options, index, weaponsList, gearList, featuresText) {
+function isWeapon(name) {
+  const lower = name.toLowerCase();
+  return lower.includes("sword") || lower.includes("bow") || lower.includes("dagger") || lower.includes("axe") || lower.includes("mace") || lower.includes("crossbow") || lower.includes("staff") || lower.includes("hammer") || lower.includes("spear") || lower.includes("shield") || lower.includes("armor") || lower.includes("mail");
+}
+
+function processEquipmentOptions(options, index, weaponsList, gearList, featuresText) {
   if (index >= options.length) {
     finalizeEquipmentApplication(weaponsList, gearList, featuresText);
     return;
   }
 
   const optGroup = options[index];
-  choiceModalTitle.textContent = optGroup.desc || "Choose Starting Equipment Option";
-  
+  choiceModalTitle.textContent = optGroup.desc || "Choose Starting Equipment";
+
   let html = "";
   optGroup.from.forEach((choice, choiceIdx) => {
     let label = "";
-    if (choice.equipment) label = `${choice.quantity || 1}x ${choice.equipment.name}`;
-    else if (choice.equipment_category) label = `Any ${choice.equipment_category.name}`;
-    else if (choice.choice) label = "Multiple items option";
-    else label = JSON.stringify(choice);
+    if (choice.equipment) {
+      label = `${choice.quantity || 1}x ${choice.equipment.name}`;
+    } else if (choice.equipment_option) {
+      label = choice.equipment_option.desc || "Equipment Option";
+    } else if (choice.equipment_category) {
+      label = `Any ${choice.equipment_category.name}`;
+    } else if (choice.choice) {
+      label = "Multiple items selection";
+    } else {
+      label = "Option " + (choiceIdx + 1);
+    }
 
     html += `<button type="button" class="choice-option-btn" data-opt-index="${choiceIdx}">${escapeHtml(label)}</button>`;
   });
@@ -629,18 +645,19 @@ function promptEquipmentChoices(options, index, weaponsList, gearList, featuresT
     if (chosenChoice && chosenChoice.equipment) {
       const name = chosenChoice.equipment.name;
       const qty = chosenChoice.quantity || 1;
-      if (name.toLowerCase().includes("sword") || name.toLowerCase().includes("bow") || name.toLowerCase().includes("dagger") || name.toLowerCase().includes("axe") || name.toLowerCase().includes("mace") || name.toLowerCase().includes("crossbow") || name.toLowerCase().includes("staff")) {
+      if (isWeapon(name)) {
         weaponsList.push({ name: `${qty}x ${name}`, atk: "+5", dmg: "1d8", notes: "" });
       } else {
         gearList.push(`${qty}x ${name}`);
       }
+    } else if (chosenChoice && chosenChoice.equipment_category) {
+      gearList.push(`1x ${chosenChoice.equipment_category.name}`);
     }
 
     choiceModal.classList.remove("open");
     choiceModalBody.removeEventListener("click", handler);
 
-    // Proceed to next choice option
-    promptEquipmentChoices(options, index + 1, weaponsList, gearList, featuresText);
+    processEquipmentOptions(options, index + 1, weaponsList, gearList, featuresText);
   };
 
   choiceModalBody.addEventListener("click", handler);
@@ -663,7 +680,7 @@ function finalizeEquipmentApplication(weaponsList, gearList, featuresText) {
   }
 
   saveSheet();
-  showStatus("Class & starting gear loaded!");
+  showStatus("Class starting package loaded!");
 }
 
 document.addEventListener("click", (e) => {
@@ -924,7 +941,6 @@ document.addEventListener("keydown", (e) => {
     closeSpellModal();
     document.getElementById("loadModal")?.classList.remove("open");
     document.getElementById("helpModal")?.classList.remove("open");
-    document.getElementById("choiceModal")?.classList.remove("open");
   }
 });
 
