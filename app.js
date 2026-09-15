@@ -11,6 +11,8 @@ let myCharacterWeapons = [
   { name: "Shortbow", atk: "+5", dmg: "1d6+3 P", notes: "Range 80/320" }
 ];
 
+let diceRollHistory = [];
+
 let draggedSpellIndex = null;
 let touchDraggedIndex = null;
 let currentDropTarget = null;
@@ -266,6 +268,9 @@ function resetSheet() {
     { name: "Shortbow", atk: "+5", dmg: "1d6+3 P", notes: "Range 80/320" }
   ];
 
+  diceRollHistory = [];
+  renderDiceHistory();
+
   recalculateAll();
   renderWeapons();
   renderMySpells();
@@ -409,13 +414,49 @@ document.querySelectorAll(".footer-nav-btn").forEach((btn) => {
   });
 });
 
-// Dice Roller
+// Dice Roller & History
+function addDiceHistory(desc, total) {
+  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  diceRollHistory.unshift({ desc, total, time });
+  if (diceRollHistory.length > 25) {
+    diceRollHistory.pop();
+  }
+  renderDiceHistory();
+}
+
+function renderDiceHistory() {
+  const container = document.getElementById("diceHistoryList");
+  if (!container) return;
+
+  if (diceRollHistory.length === 0) {
+    container.innerHTML = `<span class="dice-history-empty">No rolls logged yet.</span>`;
+    return;
+  }
+
+  container.innerHTML = diceRollHistory
+    .map(
+      (item) => `
+      <div class="dice-history-item">
+        <span class="dice-history-desc">${escapeHtml(item.desc)} <small style="color:#64748b;">(${item.time})</small></span>
+        <span class="dice-history-val">${escapeHtml(String(item.total))}</span>
+      </div>
+    `
+    )
+    .join("");
+}
+
+document.getElementById("clearHistoryBtn")?.addEventListener("click", () => {
+  diceRollHistory = [];
+  renderDiceHistory();
+});
+
 document.querySelectorAll(".dice-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     const sides = parseInt(btn.dataset.sides, 10);
     const roll = Math.floor(Math.random() * sides) + 1;
     const out = document.getElementById("rollResult");
     if (out) out.textContent = `(d${sides}): ${roll}`;
+    addDiceHistory(`1d${sides}`, roll);
   });
 });
 
@@ -445,6 +486,7 @@ document.addEventListener("click", (e) => {
     const sign = bonus >= 0 ? `+ ${bonus}` : `- ${Math.abs(bonus)}`;
     const out = document.getElementById("rollResult");
     if (out) out.textContent = `${label}: ${roll} ${sign} = ${total}`;
+    addDiceHistory(`${label} (${roll} ${sign})`, total);
   }
 });
 
