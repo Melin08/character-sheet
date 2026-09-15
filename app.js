@@ -9,7 +9,7 @@ let allRacesCache = [];
 let activeCharId = localStorage.getItem(ACTIVE_CHAR_ID_KEY) || "default";
 
 let myCharacterSpells = [];
-let myCharacterWeapons = []; 
+let myCharacterWeapons = []; // Starting completely empty
 let diceRollHistory = [];
 
 let currentEquipState = {
@@ -240,7 +240,10 @@ function resetSheet() {
   });
 
   myCharacterSpells = [];
-  myCharacterWeapons = [];
+  myCharacterWeapons = [
+      { name: "", atk: "", dmg: "", notes: "" },
+      { name: "", atk: "", dmg: "", notes: "" }
+  ];
   diceRollHistory = [];
   
   renderDiceHistory();
@@ -417,8 +420,8 @@ const classInput = document.getElementById("charClass");
 const classDropdown = document.getElementById("classDropdown");
 const raceInput = document.getElementById("charRace");
 const raceDropdown = document.getElementById("raceDropdown");
-const choiceModal = document.getElementById("choiceModal");
-const choiceModalBody = document.getElementById("choiceModalBody");
+const equipModal = document.getElementById("equipWizardModal");
+const equipModalBody = document.getElementById("equipWizardBody");
 
 async function fetchOfficialList(endpoint) {
   try {
@@ -468,192 +471,192 @@ raceInput?.addEventListener("input", async () => {
   raceDropdown.classList.add("open");
 });
 
-// STARTING EQUIPMENT PARSER
 function isWeaponOrArmor(name) {
   if (!name) return false;
   const l = name.toLowerCase();
   return l.includes("sword") || l.includes("bow") || l.includes("dagger") || l.includes("axe") || 
          l.includes("mace") || l.includes("crossbow") || l.includes("staff") || l.includes("hammer") || 
          l.includes("spear") || l.includes("shield") || l.includes("armor") || l.includes("mail") || 
-         l.includes("javelin") || l.includes("glaive") || l.includes("halberd") || l.includes("rapier") || 
+         l.includes("javelin") || l.includes("glaive") || l.includes("halberd") || l.includes("rapier") ||
          l.includes("club") || l.includes("sickle") || l.includes("dart");
 }
 
-function extractItemsFromOption(opt) {
+function extractItems(opt) {
   let items = [];
+  if (!opt) return items;
   if (opt.option_type === "counted_reference" && opt.of) {
       items.push({ name: opt.of.name, qty: opt.count || 1 });
   } else if (opt.option_type === "choice" && opt.choice) {
-      const cat = opt.choice.desc || opt.choice.from?.equipment_category?.name || "Equipment";
+      const cat = opt.choice.desc || opt.choice.from?.equipment_category?.name || "Equipment Option";
       items.push({ name: `Any ${cat}`, qty: opt.choice.choose || 1 });
   } else if (opt.option_type === "multiple" && opt.items) {
-      opt.items.forEach(sub => items.push(...extractItemsFromOption(sub)));
+      opt.items.forEach(i => items.push(...extractItems(i)));
   } else if (opt.equipment) {
       items.push({ name: opt.equipment.name, qty: opt.quantity || 1 });
   } else if (opt.equipment_category) {
       items.push({ name: `Any ${opt.equipment_category.name}`, qty: 1 });
   } else if (opt.item) {
       items.push({ name: opt.item.name, qty: opt.count || 1 });
+  } else {
+      items.push({ name: "Option", qty: 1 });
   }
   return items;
 }
 
 function generateOptionLabel(itemsArr) {
-    if(itemsArr.length === 0) return "Equipment Option";
-    let txt = itemsArr.map(i => `${i.qty > 1 ? i.qty + "x " : ""}${i.name}`).join(" + ");
-    return txt.length > 45 ? txt.substring(0, 42) + "..." : txt;
+  if(itemsArr.length === 0) return "Equipment Option";
+  let txt = itemsArr.map(i => `${i.qty > 1 ? i.qty + "x " : ""}${i.name}`).join(" + ");
+  return txt.length > 45 ? txt.substring(0, 42) + "..." : txt;
 }
 
 function parseChoiceGroup(groupData) {
-    let options = [];
-    let chooseCount = groupData.choose || 1;
-    let desc = groupData.desc || `Choose ${chooseCount}`;
+  let options = [];
+  let chooseCount = groupData.choose || 1;
+  let desc = groupData.desc || `Choose ${chooseCount}`;
 
-    if (groupData.from && groupData.from.option_set_type === "options_array") {
-        options = groupData.from.options;
-    } else if (groupData.from && groupData.from.option_set_type === "equipment_category") {
-        options = [{ option_type: "equipment_category", equipment_category: groupData.from.equipment_category }];
-    } else if (Array.isArray(groupData.from)) {
-        options = groupData.from;
-    } else if (groupData.from && groupData.from.options) {
-        options = groupData.from.options;
-    }
+  if (groupData.from && groupData.from.option_set_type === "options_array") {
+      options = groupData.from.options;
+  } else if (groupData.from && groupData.from.option_set_type === "equipment_category") {
+      options = [{ option_type: "equipment_category", equipment_category: groupData.from.equipment_category }];
+  } else if (Array.isArray(groupData.from)) {
+      options = groupData.from;
+  } else if (groupData.from && groupData.from.options) {
+      options = groupData.from.options;
+  }
 
-    let formattedOptions = options.map(opt => {
-        let items = extractItemsFromOption(opt);
-        return { label: generateOptionLabel(items), items: items };
-    });
+  let formattedOptions = options.map(opt => {
+      let items = extractItems(opt);
+      return { label: generateOptionLabel(items), items: items };
+  });
 
-    return { desc, choose: chooseCount, options: formattedOptions };
+  return { desc, choose: chooseCount, options: formattedOptions };
 }
 
-function renderEquipmentModal() {
-    if (currentEquipState.optionGroups.length === 0) {
-        finalizeEquipmentApplication();
-        return;
-    }
+function renderEquipmentWizard() {
+  if (!equipModal || !equipModalBody) return;
 
-    let html = `<div class="equip-section-title">Fixed Class Gear</div>`;
-    if(currentEquipState.fixedItems.length > 0) {
-        html += `<ul class="equip-fixed-list">`;
-        currentEquipState.fixedItems.forEach(i => {
-            html += `<li>${i.qty}x ${i.name}</li>`;
-        });
-        html += `</ul>`;
-    } else {
-        html += `<p style="color:#64748b; font-size:0.9rem; margin-bottom:1rem;">None</p>`;
-    }
+  if (currentEquipState.optionGroups.length === 0 && currentEquipState.fixedItems.length === 0) {
+      finalizeEquipmentApplication();
+      return;
+  }
 
-    currentEquipState.optionGroups.forEach((group, gIdx) => {
-        html += `<div class="equip-choice-group" id="group-${gIdx}">`;
-        html += `<div class="equip-choice-title">${escapeHtml(group.desc)} (Pick ${group.choose})</div>`;
-        html += `<div class="equip-options-grid">`;
-        
-        group.options.forEach((opt, oIdx) => {
-            const isSelected = group.selectedIndices && group.selectedIndices.includes(oIdx);
-            const tooltip = opt.items.map(i => `${i.qty}x ${i.name}`).join("\n");
-            html += `
-                <div class="choice-option-wrapper">
-                  <div class="equip-option-card ${isSelected ? 'selected' : ''}" data-gidx="${gIdx}" data-oidx="${oIdx}">
-                      ${escapeHtml(opt.label)}
-                      <div class="choice-tooltip">${escapeHtml(tooltip).replace(/\n/g, '<br>')}</div>
-                  </div>
+  let html = `<div class="equip-section-title">Granted Equipment</div>`;
+  if (currentEquipState.fixedItems.length > 0) {
+      html += `<ul class="equip-fixed-list">`;
+      currentEquipState.fixedItems.forEach(i => { html += `<li>${i.qty}x ${i.name}</li>`; });
+      html += `</ul>`;
+  } else {
+      html += `<p style="color:#64748b; font-size:0.9rem; margin-bottom:1rem;">None</p>`;
+  }
+
+  currentEquipState.optionGroups.forEach((group, gIdx) => {
+      html += `<div class="equip-choice-group" id="group-${gIdx}">`;
+      html += `<div class="equip-choice-title">${escapeHtml(group.desc)}</div>`;
+      html += `<div class="equip-options-grid">`;
+      
+      group.options.forEach((opt, oIdx) => {
+          const isSelected = group.selectedIndices && group.selectedIndices.includes(oIdx);
+          const tooltip = opt.items.map(i => `${i.qty}x ${i.name}`).join("\n");
+          html += `
+              <div class="choice-option-wrapper">
+                <div class="equip-option-card ${isSelected ? 'selected' : ''}" data-gidx="${gIdx}" data-oidx="${oIdx}">
+                    ${escapeHtml(opt.label)}
+                    <div class="choice-tooltip">${escapeHtml(tooltip).replace(/\n/g, '<br>')}</div>
                 </div>
-            `;
-        });
-        html += `</div></div>`;
-    });
+              </div>
+          `;
+      });
+      html += `</div></div>`;
+  });
 
-    html += `<button id="confirmEquipmentBtn" class="btn red confirm-loadout-btn" type="button">Confirm Loadout</button>`;
-    
-    choiceModalBody.innerHTML = html;
-    choiceModal.classList.add("open");
+  equipModalBody.innerHTML = html;
+  equipModal.classList.add("open");
 
-    const newBody = choiceModalBody.cloneNode(true);
-    choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-    const activeModalBody = document.getElementById("choiceModalBody");
+  const newBody = equipModalBody.cloneNode(true);
+  equipModalBody.parentNode.replaceChild(newBody, equipModalBody);
+  const activeModalBody = document.getElementById("equipWizardBody");
 
-    activeModalBody.addEventListener("click", (e) => {
-        const card = e.target.closest(".equip-option-card");
-        if (card) {
-            const gIdx = parseInt(card.dataset.gidx, 10);
-            const oIdx = parseInt(card.dataset.oidx, 10);
-            const group = currentEquipState.optionGroups[gIdx];
-            
-            if(!group.selectedIndices) group.selectedIndices = [];
-            
-            const existingIdx = group.selectedIndices.indexOf(oIdx);
-            if(existingIdx > -1) {
-                group.selectedIndices.splice(existingIdx, 1);
-            } else {
-                if(group.selectedIndices.length >= group.choose) {
-                    group.selectedIndices.shift(); 
-                }
-                group.selectedIndices.push(oIdx);
-            }
-            renderEquipmentModal(); // Re-render to update selection highlights
-        }
-
-        if (e.target.id === "confirmEquipmentBtn") {
-            finalizeEquipmentApplication();
-        }
-    });
+  activeModalBody.addEventListener("click", (e) => {
+      const card = e.target.closest(".equip-option-card");
+      if (card) {
+          const gIdx = parseInt(card.dataset.gidx, 10);
+          const oIdx = parseInt(card.dataset.oidx, 10);
+          const group = currentEquipState.optionGroups[gIdx];
+          
+          if(!group.selectedIndices) group.selectedIndices = [];
+          
+          const existingIdx = group.selectedIndices.indexOf(oIdx);
+          if(existingIdx > -1) {
+              group.selectedIndices.splice(existingIdx, 1);
+          } else {
+              if(group.selectedIndices.length >= group.choose) {
+                  group.selectedIndices.shift(); 
+              }
+              group.selectedIndices.push(oIdx);
+          }
+          renderEquipmentWizard(); 
+      }
+  });
 }
 
 function finalizeEquipmentApplication() {
-    let wpnList = [];
-    let grList = [];
+  let wpnList = [];
+  let grList = [];
 
-    // Add fixed items
-    currentEquipState.fixedItems.forEach(i => {
-        if(isWeaponOrArmor(i.name)) wpnList.push({ name: `${i.qty > 1 ? i.qty+"x " : ""}${i.name}`, atk: "+5", dmg: "1d8", notes: "" });
-        else grList.push(`${i.qty > 1 ? i.qty+"x " : ""}${i.name}`);
-    });
+  currentEquipState.fixedItems.forEach(i => {
+      const q = i.qty > 1 ? `${i.qty}x ` : "";
+      if (isWeaponOrArmor(i.name)) wpnList.push({ name: `${q}${i.name}`, atk: "+5", dmg: "1d8", notes: "" });
+      else grList.push(`${q}${i.name}`);
+  });
 
-    // Add selected option items
-    currentEquipState.optionGroups.forEach(group => {
-        if(group.selectedIndices && group.selectedIndices.length > 0) {
-            group.selectedIndices.forEach(oIdx => {
-                const opt = group.options[oIdx];
-                opt.items.forEach(i => {
-                    if(isWeaponOrArmor(i.name)) wpnList.push({ name: `${i.qty > 1 ? i.qty+"x " : ""}${i.name}`, atk: "+5", dmg: "1d8", notes: "" });
-                    else grList.push(`${i.qty > 1 ? i.qty+"x " : ""}${i.name}`);
-                });
-            });
-        }
-    });
+  currentEquipState.optionGroups.forEach(group => {
+      if(group.selectedIndices && group.selectedIndices.length > 0) {
+          group.selectedIndices.forEach(oIdx => {
+              const opt = group.options[oIdx];
+              opt.items.forEach(i => {
+                  const q = i.qty > 1 ? `${i.qty}x ` : "";
+                  if(isWeaponOrArmor(i.name)) wpnList.push({ name: `${q}${i.name}`, atk: "+5", dmg: "1d8", notes: "" });
+                  else grList.push(`${q}${i.name}`);
+              });
+          });
+      }
+  });
 
-    myCharacterWeapons = wpnList;
-    renderWeapons();
+  while (wpnList.length < 2) {
+      wpnList.push({ name: "", atk: "", dmg: "", notes: "" });
+  }
 
-    const invBox = document.getElementById("inventory");
-    if (invBox) {
-        invBox.value = grList.join("\n");
-        autoExpandTextarea(invBox);
-    }
+  myCharacterWeapons = wpnList;
+  renderWeapons();
 
-    let featText = `Hit Die: 1d${currentEquipState.hitDie} per level\n\n`;
-    if (currentEquipState.saves && currentEquipState.saves.length > 0) {
-        featText += "Saving Throws: " + currentEquipState.saves.join(", ") + "\n\n";
-    }
+  const invBox = document.getElementById("inventory");
+  if (invBox && grList.length > 0) {
+      invBox.value = grList.join("\n");
+      autoExpandTextarea(invBox);
+  }
 
-    const featBox = document.getElementById("featuresTraits");
-    if (featBox) {
-        const cur = featBox.value.trim();
-        featBox.value = cur ? cur + "\n\n" + featText.trim() : featText.trim();
-        autoExpandTextarea(featBox);
-    }
+  let featText = `Hit Die: 1d${currentEquipState.hitDie} per level\n\n`;
+  if (currentEquipState.saves && currentEquipState.saves.length > 0) {
+      featText += "Saving Throws: " + currentEquipState.saves.join(", ") + "\n\n";
+  }
 
-    const profBox = document.getElementById("otherProfs");
-    if(profBox && currentEquipState.proficiencies.length > 0) {
-        profBox.value = currentEquipState.proficiencies.join(", ");
-        autoExpandTextarea(profBox);
-    }
+  const featBox = document.getElementById("featuresTraits");
+  if (featBox) {
+      const cur = featBox.value.trim();
+      featBox.value = cur ? cur + "\n\n" + featText.trim() : featText.trim();
+      autoExpandTextarea(featBox);
+  }
 
-    saveSheet();
-    recalculateAll();
-    choiceModal.classList.remove("open");
-    showStatus("Loadout loaded!");
+  const profBox = document.getElementById("otherProfs");
+  if(profBox && currentEquipState.proficiencies.length > 0) {
+      profBox.value = currentEquipState.proficiencies.join(", ");
+      autoExpandTextarea(profBox);
+  }
+
+  saveSheet();
+  recalculateAll();
+  equipModal.classList.remove("open");
+  showStatus("Class Loadout applied!");
 }
 
 classDropdown?.addEventListener("click", async (e) => {
@@ -673,7 +676,7 @@ classDropdown?.addEventListener("click", async (e) => {
   classDropdown.classList.remove("open");
   saveSheet();
 
-  showStatus("Loading gear...");
+  showStatus("Loading class data...");
   try {
     const classRes = await fetch(`https://www.dnd5eapi.co/api/classes/${classIdx}`);
     if (!classRes.ok) return;
@@ -691,13 +694,11 @@ classDropdown?.addEventListener("click", async (e) => {
     const equipRes = await fetch(`https://www.dnd5eapi.co/api/starting-equipment/${classIdx}`);
     if (equipRes.ok) {
         const equipData = await equipRes.json();
-        
         if (equipData.starting_equipment) {
             equipData.starting_equipment.forEach(i => {
                 currentEquipState.fixedItems.push({ name: i.equipment.name, qty: i.quantity || 1 });
             });
         }
-        
         if (equipData.starting_equipment_options) {
             equipData.starting_equipment_options.forEach(groupData => {
                 currentEquipState.optionGroups.push(parseChoiceGroup(groupData));
@@ -705,7 +706,7 @@ classDropdown?.addEventListener("click", async (e) => {
         }
     }
     
-    renderEquipmentModal();
+    renderEquipmentWizard();
 
   } catch (err) {
     console.error("Error loading class equipment:", err);
@@ -730,7 +731,6 @@ raceDropdown?.addEventListener("click", async (e) => {
   saveSheet();
 
   showStatus("Fetching racial traits...");
-  
   try {
     const res = await fetch(`https://www.dnd5eapi.co/api/races/${raceIdx}`);
     if (!res.ok) return;
@@ -770,6 +770,10 @@ document.addEventListener("click", (e) => {
   if(e.target.classList.contains("modal-backdrop") || e.target.classList.contains("modal-close-btn")) {
       e.target.closest(".modal-backdrop")?.classList.remove("open");
   }
+});
+
+document.getElementById("confirmEquipWizardBtn")?.addEventListener("click", () => {
+    finalizeEquipmentApplication();
 });
 
 function autoExpandTextarea(el) {
