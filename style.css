@@ -19,7 +19,7 @@ body {
   padding: 2.5rem;
   border-radius: 12px;
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
-  border: 1px solid #1e293b;
+  border: 1.5px solid #3b4c68;
 }
 
 /* Action Header */
@@ -85,7 +85,7 @@ body {
   font-size: 2.2rem;
   font-weight: 700;
   color: #f1f5f9;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-radius: 8px;
   padding: 0.6rem 1rem;
   outline: none;
@@ -109,7 +109,7 @@ body {
 .main-tab {
   background: #101726;
   color: #94a3b8;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-bottom: none;
   border-radius: 8px 8px 0 0;
   padding: 0.65rem 1.4rem;
@@ -143,7 +143,7 @@ body {
 .subtab-controls {
   display: flex;
   gap: 0.5rem;
-  border-bottom: 1px solid #243049;
+  border-bottom: 1.5px solid #3b4c68;
   margin-bottom: 1.5rem;
   padding-bottom: 0.6rem;
   flex-wrap: wrap;
@@ -151,7 +151,7 @@ body {
 
 .sub-tab {
   background: #101726;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-radius: 6px;
   padding: 0.45rem 1rem;
   font-size: 0.88rem;
@@ -163,7 +163,7 @@ body {
 
 .sub-tab:hover {
   color: #f1f5f9;
-  border-color: #334155;
+  border-color: #4b6285;
 }
 
 .sub-tab.active {
@@ -194,7 +194,7 @@ body {
   display: flex;
   align-items: center;
   background: #0d1322;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-radius: 6px;
   padding: 0.35rem 0.6rem;
   gap: 0.5rem;
@@ -258,7 +258,7 @@ body {
 }
 
 .dual-slash {
-  color: #64748b;
+  color: #94a3b8;
   font-weight: bold;
 }
 
@@ -272,7 +272,7 @@ body {
   padding: 1.1rem 1.4rem;
   background: #0d1322;
   border-radius: 10px;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
 }
 
 .vital-unit {
@@ -314,7 +314,7 @@ body {
 
 .shield-path {
   fill: #151d2f;
-  stroke: #475569;
+  stroke: #4b6285;
   stroke-width: 6px;
 }
 
@@ -379,7 +379,7 @@ body {
 .slash {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .pair-box {
@@ -387,7 +387,7 @@ body {
   align-items: center;
   gap: 0.35rem;
   background: #151d2f;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-radius: 6px;
   padding: 0.35rem 0.5rem;
 }
@@ -445,7 +445,7 @@ body {
 
 .attr-input {
   width: 48px;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-radius: 6px;
   padding: 0.35rem 0.2rem;
   text-align: center;
@@ -526,7 +526,7 @@ body {
   background: #0d1322;
   padding: 0.75rem 1rem;
   border-radius: 8px;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
 }
 
 .dice-bar .btn.red {
@@ -559,7 +559,7 @@ body {
 
 .coin-input {
   width: 54px;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-radius: 6px;
   padding: 0.35rem 0.25rem;
   text-align: center;
@@ -589,7 +589,7 @@ body {
   font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #64748b;
+  color: #94a3b8;
   margin-bottom: 0.5rem;
   padding: 0 0.2rem;
 }
@@ -605,7 +605,7 @@ body {
 .attack-entry input {
   width: 100%;
   background: #0d1322;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   color: #f8fafc;
   padding: 0.4rem 0.6rem;
   border-radius: 6px;
@@ -619,7 +619,7 @@ body {
 .weapon-delete-btn {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: #94a3b8;
   font-size: 1.35rem;
   cursor: pointer;
   line-height: 1;
@@ -659,7 +659,7 @@ body {
 
 .red-divider {
   border: none;
-  border-top: 1px solid #243049;
+  border-top: 1.5px solid rgba(220, 38, 38, 0.45);
   margin: 1.75rem 0;
 }
 
@@ -720,7 +720,7 @@ body {
 
 .block-text {
   width: 100%;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-radius: 8px;
   padding: 0.75rem 0.85rem;
   font-size: 0.9rem;
@@ -750,7 +750,7 @@ body {
 }
 
 .spell-card {
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-radius: 8px;
   background: #0d1322;
   padding: 0.85rem 1rem;
@@ -765,7 +765,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #1e293b;
+  border-bottom: 1.5px solid #3b4c68;
   padding-bottom: 0.4rem;
   gap: 0.5rem;
 }
@@ -778,7 +778,7 @@ body {
 
 .spell-custom-title-input {
   background: #151d2f;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-radius: 4px;
   color: #f8fafc;
   font-size: 0.98rem;
@@ -796,7 +796,7 @@ body {
 .spell-card-delete {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: #94a3b8;
   font-size: 1.35rem;
   font-weight: bold;
   cursor: pointer;
@@ -820,7 +820,7 @@ body {
 
 .spell-meta-input {
   background: #151d2f;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-radius: 4px;
   color: #f8fafc;
   padding: 0.25rem 0.45rem;
@@ -846,7 +846,7 @@ body {
 .spell-custom-desc-textarea {
   width: 100%;
   background: #151d2f;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-radius: 6px;
   color: #cbd5e1;
   font-size: 0.86rem;
@@ -890,7 +890,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
 }
 
 .modal-box.char-modal-box {
@@ -938,7 +938,7 @@ body {
 
 .modal-search-bar {
   padding: 0.85rem 1.15rem;
-  border-bottom: 1px solid #243049;
+  border-bottom: 1.5px solid #3b4c68;
   display: flex;
   gap: 0.65rem;
   align-items: center;
@@ -947,7 +947,7 @@ body {
 .modal-search-bar input {
   width: 100%;
   padding: 0.55rem 0.85rem;
-  border: 1px solid #243049;
+  border: 1.5px solid #3b4c68;
   border-radius: 6px;
   font-size: 0.92rem;
   outline: none;
@@ -977,7 +977,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 0.7rem 0.5rem;
-  border-bottom: 1px solid #1e293b;
+  border-bottom: 1px solid #2d3b52;
   gap: 0.5rem;
 }
 
@@ -1027,7 +1027,7 @@ body {
 .char-delete-btn {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: #94a3b8;
   font-size: 1.25rem;
   font-weight: bold;
   cursor: pointer;
@@ -1044,7 +1044,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 0.65rem 0.5rem;
-  border-bottom: 1px solid #1e293b;
+  border-bottom: 1px solid #2d3b52;
   cursor: pointer;
 }
 
@@ -1075,7 +1075,7 @@ body {
 
 .footer-divider {
   border: none;
-  border-top: 1px solid #243049;
+  border-top: 1.5px solid #3b4c68;
   margin-bottom: 1.25rem;
 }
 
