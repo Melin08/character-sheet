@@ -31,7 +31,9 @@
       <button class="main-tab" data-target="tab-journal" type="button">Notes, Personality, NPCs, etc.</button>
     </div>
 
+    <!-- MAIN TAB 1: Statistics & Combat -->
     <div id="tab-stats" class="tab-page active">
+      <!-- Top Row 1 -->
       <div class="meta-row-grid">
         <div class="field-pill dropdown-pill-wrapper">
           <span class="pill-label">Class</span>
@@ -57,6 +59,7 @@
         </div>
       </div>
 
+      <!-- Top Row 2 -->
       <div class="meta-row-grid">
         <div class="field-pill">
           <span class="pill-label">Experience</span>
@@ -84,6 +87,7 @@
         </div>
       </div>
 
+      <!-- Vitals Row -->
       <div class="vitals-row">
         <div class="vital-unit">
           <span>Armor Class</span>
@@ -133,6 +137,7 @@
         </div>
       </div>
 
+      <!-- Attributes and Combat Section -->
       <div class="two-col-layout">
         <div class="left-pane">
           <h2 class="section-title">Attributes</h2>
@@ -397,9 +402,17 @@
 
           <h2 class="section-title tight-title">Equipment &amp; Gear</h2>
           <textarea id="inventory" class="save-field block-text" rows="5" placeholder="Detailed inventory, weights, magic items, containers..."></textarea>
+
+          <!-- NEW ROW: Abilities & Features 4-column Grid -->
+          <div class="abilities-header">
+            <h2 class="section-title tight-title">Abilities &amp; Features</h2>
+            <button class="btn-text-red" id="addTraitBtn" type="button">+ Add Ability</button>
+          </div>
+          <div id="traitsList" class="traits-grid-container"></div>
         </div>
       </div>
 
+      <!-- Spells Section -->
       <section class="spells-full-section">
         <hr class="red-divider" />
         <h2 class="section-title">Spells</h2>
@@ -632,6 +645,23 @@
       </div>
       <div id="spellApiList" class="modal-list">
         <p class="loading-text">Loading spells...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trait / Ability Picker Modal -->
+  <div id="traitModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Official 5e Features &amp; Traits</h3>
+        <button id="closeTraitModal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-search-bar">
+        <input type="text" id="traitSearchInput" placeholder="Search official traits, racial skills &amp; features..." autocomplete="off" />
+        <button type="button" class="btn red custom-spell-btn" id="addCustomTraitBtn">+ Add Custom Ability</button>
+      </div>
+      <div id="traitApiList" class="modal-list">
+        <p class="loading-text">Loading official features...</p>
       </div>
     </div>
   </div>
