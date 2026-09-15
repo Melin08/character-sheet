@@ -576,17 +576,17 @@ classDropdown?.addEventListener("click", async (e) => {
 function applyStartingEquipment(details) {
   let weaponsList = [];
   let gearList = [];
-  let featuresText = `Class: ${details.name}\nHit Die: d${details.hit_die}\n\nProficiencies:\n`;
+  let featuresText = `Class: ${details.name}\nHit Die: d${details.hit_die}\n\n`;
 
-  if (details.proficiencies) {
-    featuresText += details.proficiencies.map(p => p.name).join(", ") + "\n\n";
+  if (details.saving_throws) {
+    featuresText += "Saving Throws: " + details.saving_throws.map(st => st.name).join(", ") + "\n\n";
   }
 
   if (details.starting_equipment) {
     details.starting_equipment.forEach(item => {
       const name = item.equipment.name;
       const qty = item.quantity || 1;
-      if (isWeapon(name)) {
+      if (isWeaponOrArmor(name)) {
         weaponsList.push({ name: `${qty}x ${name}`, atk: "+5", dmg: "1d8", notes: "" });
       } else {
         gearList.push(`${qty}x ${name}`);
@@ -601,9 +601,9 @@ function applyStartingEquipment(details) {
   }
 }
 
-function isWeapon(name) {
+function isWeaponOrArmor(name) {
   const lower = name.toLowerCase();
-  return lower.includes("sword") || lower.includes("bow") || lower.includes("dagger") || lower.includes("axe") || lower.includes("mace") || lower.includes("crossbow") || lower.includes("staff") || lower.includes("hammer") || lower.includes("spear") || lower.includes("shield") || lower.includes("armor") || lower.includes("mail");
+  return lower.includes("sword") || lower.includes("bow") || lower.includes("dagger") || lower.includes("axe") || lower.includes("mace") || lower.includes("crossbow") || lower.includes("staff") || lower.includes("hammer") || lower.includes("spear") || lower.includes("shield") || lower.includes("armor") || lower.includes("mail") || lower.includes("javelin") || lower.includes("glaive") || lower.includes("halberd") || lower.includes("pike") || lower.includes("flail");
 }
 
 function processEquipmentOptions(options, index, weaponsList, gearList, featuresText) {
@@ -645,7 +645,7 @@ function processEquipmentOptions(options, index, weaponsList, gearList, features
     if (chosenChoice && chosenChoice.equipment) {
       const name = chosenChoice.equipment.name;
       const qty = chosenChoice.quantity || 1;
-      if (isWeapon(name)) {
+      if (isWeaponOrArmor(name)) {
         weaponsList.push({ name: `${qty}x ${name}`, atk: "+5", dmg: "1d8", notes: "" });
       } else {
         gearList.push(`${qty}x ${name}`);
