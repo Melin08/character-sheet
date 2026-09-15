@@ -12,6 +12,8 @@ let myCharacterWeapons = [
 ];
 
 let draggedSpellIndex = null;
+let touchDraggedIndex = null;
+let currentDropTarget = null;
 
 function escapeHtml(str) {
   if (typeof str !== "string") return "";
@@ -545,9 +547,11 @@ function renderMySpells() {
   attachSpellDragEvents();
 }
 
+// Drag & Drop for Mouse (Desktop) + Touch (Phones)
 function attachSpellDragEvents() {
   const cards = document.querySelectorAll(".spell-card");
   cards.forEach((card) => {
+    // Desktop Mouse Drag
     card.addEventListener("dragstart", (e) => {
       if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) {
         e.preventDefault();
@@ -592,6 +596,47 @@ function attachSpellDragEvents() {
       saveSheet();
       renderMySpells();
     });
+
+    // Mobile Finger Touch Drag on Handle
+    const handle = card.querySelector(".spell-drag-handle");
+    if (handle) {
+      handle.addEventListener("touchstart", () => {
+        touchDraggedIndex = parseInt(card.dataset.index, 10);
+        card.classList.add("dragging");
+      }, { passive: true });
+
+      handle.addEventListener("touchmove", (e) => {
+        const touch = e.touches[0];
+        const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+        const targetCard = targetElement ? targetElement.closest(".spell-card") : null;
+
+        document.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
+
+        if (targetCard && targetCard !== card) {
+          targetCard.classList.add("drag-over");
+          currentDropTarget = targetCard;
+        } else {
+          currentDropTarget = null;
+        }
+      });
+
+      handle.addEventListener("touchend", () => {
+        card.classList.remove("dragging");
+        document.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
+
+        if (touchDraggedIndex !== null && currentDropTarget) {
+          const targetIndex = parseInt(currentDropTarget.dataset.index, 10);
+          if (touchDraggedIndex !== targetIndex) {
+            const moved = myCharacterSpells.splice(touchDraggedIndex, 1)[0];
+            myCharacterSpells.splice(targetIndex, 0, moved);
+            saveSheet();
+            renderMySpells();
+          }
+        }
+        touchDraggedIndex = null;
+        currentDropTarget = null;
+      });
+    }
   });
 }
 
