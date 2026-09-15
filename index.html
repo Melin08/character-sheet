@@ -31,51 +31,55 @@
     </div>
 
     <div id="tab-stats" class="tab-page active">
-      <div class="meta-row">
-        <div class="meta-item">
+      <!-- Identity Row 1 -->
+      <div class="meta-grid">
+        <div class="meta-cell">
           <label for="charClass">Class</label>
           <input type="text" id="charClass" class="save-field inline-input" />
         </div>
-        <div class="meta-item">
+        <div class="meta-cell">
           <label for="charRace">Race</label>
           <input type="text" id="charRace" class="save-field inline-input" />
         </div>
-        <div class="meta-item">
+        <div class="meta-cell">
           <label for="charBackground">Background</label>
           <input type="text" id="charBackground" class="save-field inline-input" />
         </div>
-        <div class="meta-item">
+        <div class="meta-cell">
           <label for="charAlignment">Alignment</label>
           <input type="text" id="charAlignment" class="save-field inline-input" />
         </div>
-        <div class="meta-item small">
+        <div class="meta-cell narrow">
           <label for="charLevel">Level</label>
           <input type="number" id="charLevel" class="save-field inline-input" value="1" min="1" max="20" />
         </div>
       </div>
 
-      <div class="meta-row">
-        <div class="meta-item">
+      <!-- Identity Row 2 -->
+      <div class="meta-grid">
+        <div class="meta-cell">
           <label for="charExp">Experience</label>
           <input type="text" id="charExp" class="save-field inline-input" />
         </div>
-        <div class="meta-item static-text">
-          <label>Proficiency Bonus</label>
-          <span id="profBonusDisplay">+2</span>
+        <div class="meta-cell prof-cell">
+          <label>Proficiency</label>
+          <span id="profBonusDisplay" class="prof-badge">+2</span>
         </div>
-        <div class="meta-item">
+        <div class="meta-cell">
           <label for="charInspiration">Inspiration</label>
           <input type="text" id="charInspiration" class="save-field inline-input" />
         </div>
-        <div class="meta-item small">
+        <div class="meta-cell">
           <label for="charSpeed">Speed</label>
           <input type="number" id="charSpeed" class="save-field inline-input" value="30" />
         </div>
-        <div class="meta-item dual">
+        <div class="meta-cell narrow">
           <label>Hit Dice</label>
-          <input type="text" id="hitDiceCur" class="save-field dual-input" value="1" />
-          <span>/</span>
-          <input type="text" id="hitDiceMax" class="save-field dual-input" value="1" />
+          <div class="dual-wrap">
+            <input type="text" id="hitDiceCur" class="save-field dual-input" value="1" />
+            <span>/</span>
+            <input type="text" id="hitDiceMax" class="save-field dual-input" value="1" />
+          </div>
         </div>
       </div>
 
@@ -464,7 +468,7 @@
       </div>
     </div>
 
-    <!-- Footer Area with Updated Attribution & Links -->
+    <!-- Footer Area -->
     <footer class="sheet-footer">
       <hr class="footer-divider" />
       <div class="footer-meta">
