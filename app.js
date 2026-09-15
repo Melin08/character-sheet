@@ -499,28 +499,14 @@ async function fetchClassDataAndEquipment(classIndex) {
     const classRes = await fetch(`https://www.dnd5eapi.co/api/classes/${classIndex}`);
     const details = await classRes.json();
     
-    // Starting equipment is located via URL or direct endpoint in modern 5e API
-    let equipUrl = details.starting_equipment;
-    if (typeof equipUrl === 'string') {
-        const equipRes = await fetch(`https://www.dnd5eapi.co${equipUrl}`);
-        if (equipRes.ok) {
-            const equip = await equipRes.json();
-            details.starting_equipment = equip.starting_equipment || [];
-            details.starting_equipment_options = equip.starting_equipment_options || [];
-        } else {
-            details.starting_equipment = [];
-            details.starting_equipment_options = [];
-        }
+    const equipRes = await fetch(`https://www.dnd5eapi.co/api/classes/${classIndex}/starting-equipment`);
+    if (equipRes.ok) {
+        const equip = await equipRes.json();
+        details.starting_equipment = equip.starting_equipment || [];
+        details.starting_equipment_options = equip.starting_equipment_options || [];
     } else {
-        const equipRes = await fetch(`https://www.dnd5eapi.co/api/starting-equipment/${classIndex}`);
-        if (equipRes.ok) {
-            const equip = await equipRes.json();
-            details.starting_equipment = equip.starting_equipment || [];
-            details.starting_equipment_options = equip.starting_equipment_options || [];
-        } else {
-            details.starting_equipment = [];
-            details.starting_equipment_options = [];
-        }
+        details.starting_equipment = [];
+        details.starting_equipment_options = [];
     }
 
     return details;
@@ -675,19 +661,19 @@ function applyStartingEquipment(details) {
   let weaponsList = [];
   let gearList = [];
   
-  // Specifically requested to only have Hit Die and Saving Throws in features Traits
   let featuresText = `Hit Die: 1d${details.hit_die} per level\n\n`;
 
+  // Safely grab Saving throws, preventing duplication into "other proficiencies"
   if (details.saving_throws && details.saving_throws.length > 0) {
     featuresText += "Saving Throws: " + details.saving_throws.map(st => st.name).join(", ") + "\n\n";
   }
 
   // Load everything else into "Other proficiencies"
   if (details.proficiencies && details.proficiencies.length > 0) {
-    const filteredProfs = details.proficiencies.filter(p => !p.name.toLowerCase().includes("saving throw"));
+    const filteredProfs = details.proficiencies.filter(p => !p.index.startsWith("saving"));
     const profs = filteredProfs.map(p => p.name).join(", ");
     const profBox = document.getElementById("otherProfs");
-    if (profBox) {
+    if (profBox && !profBox.value) {
       profBox.value = profs;
     }
   }
@@ -728,13 +714,17 @@ function processEquipmentOptions(options, index, weaponsList, gearList, features
   let choicesArray = [];
   if (Array.isArray(optGroup.from)) {
     choicesArray = optGroup.from;
+  } else if (optGroup.from && optGroup.from.option_set_type === "options_array") {
+    choicesArray = optGroup.from.options;
+  } else if (optGroup.from && optGroup.from.option_set_type === "equipment_category") {
+    choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category }];
+  } else if (optGroup.from && optGroup.from.equipment_category) {
+    choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category }];
   } else if (optGroup.from && optGroup.from.options) {
     choicesArray = optGroup.from.options;
-  } else if (optGroup.from && optGroup.from.equipment_category) {
-    choicesArray = [{ equipment_category: optGroup.from.equipment_category }];
   }
 
-  if (choicesArray.length === 0) {
+  if (!choicesArray || choicesArray.length === 0) {
     processEquipmentOptions(options, index + 1, weaponsList, gearList, featuresText);
     return;
   }
@@ -799,20 +789,21 @@ function processEquipmentOptions(options, index, weaponsList, gearList, features
 function finalizeEquipmentApplication(weaponsList, gearList, featuresText) {
   if (weaponsList.length > 0) {
     myCharacterWeapons = weaponsList;
-    renderWeapons();
   } else {
     myCharacterWeapons = [];
-    renderWeapons();
   }
+  renderWeapons();
 
   const invBox = document.getElementById("inventory");
-  if (invBox) {
-    invBox.value = gearList.join("\n");
+  if (invBox && gearList.length > 0) {
+    const currentInv = invBox.value.trim();
+    const newInv = gearList.join("\n");
+    invBox.value = currentInv ? currentInv + "\n\n" + newInv : newInv;
     autoExpandTextarea(invBox);
   }
 
   const featBox = document.getElementById("featuresTraits");
-  if (featBox) {
+  if (featBox && !featBox.value) {
     featBox.value = featuresText.trim();
     autoExpandTextarea(featBox);
   }
