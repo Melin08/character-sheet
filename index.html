@@ -31,54 +31,54 @@
     </div>
 
     <div id="tab-stats" class="tab-page active">
-      <!-- Identity Row 1 -->
-      <div class="meta-grid">
-        <div class="meta-cell">
-          <label for="charClass">Class</label>
-          <input type="text" id="charClass" class="save-field inline-input" />
+      <!-- Row 1: Side by side -->
+      <div class="meta-row-grid">
+        <div class="field-pill">
+          <span class="pill-label">Class</span>
+          <input type="text" id="charClass" class="save-field pill-input" />
         </div>
-        <div class="meta-cell">
-          <label for="charRace">Race</label>
-          <input type="text" id="charRace" class="save-field inline-input" />
+        <div class="field-pill">
+          <span class="pill-label">Race</span>
+          <input type="text" id="charRace" class="save-field pill-input" />
         </div>
-        <div class="meta-cell">
-          <label for="charBackground">Background</label>
-          <input type="text" id="charBackground" class="save-field inline-input" />
+        <div class="field-pill">
+          <span class="pill-label">Background</span>
+          <input type="text" id="charBackground" class="save-field pill-input" />
         </div>
-        <div class="meta-cell">
-          <label for="charAlignment">Alignment</label>
-          <input type="text" id="charAlignment" class="save-field inline-input" />
+        <div class="field-pill">
+          <span class="pill-label">Alignment</span>
+          <input type="text" id="charAlignment" class="save-field pill-input" />
         </div>
-        <div class="meta-cell narrow">
-          <label for="charLevel">Level</label>
-          <input type="number" id="charLevel" class="save-field inline-input" value="1" min="1" max="20" />
+        <div class="field-pill mini">
+          <span class="pill-label">Level</span>
+          <input type="number" id="charLevel" class="save-field pill-input center" value="1" min="1" max="20" />
         </div>
       </div>
 
-      <!-- Identity Row 2 -->
-      <div class="meta-grid">
-        <div class="meta-cell">
-          <label for="charExp">Experience</label>
-          <input type="text" id="charExp" class="save-field inline-input" />
+      <!-- Row 2: Side by side -->
+      <div class="meta-row-grid">
+        <div class="field-pill">
+          <span class="pill-label">Experience</span>
+          <input type="text" id="charExp" class="save-field pill-input" />
         </div>
-        <div class="meta-cell prof-cell">
-          <label>Proficiency</label>
-          <span id="profBonusDisplay" class="prof-badge">+2</span>
+        <div class="field-pill badge-pill">
+          <span class="pill-label">Proficiency</span>
+          <span id="profBonusDisplay" class="pill-badge">+2</span>
         </div>
-        <div class="meta-cell">
-          <label for="charInspiration">Inspiration</label>
-          <input type="text" id="charInspiration" class="save-field inline-input" />
+        <div class="field-pill">
+          <span class="pill-label">Inspiration</span>
+          <input type="text" id="charInspiration" class="save-field pill-input" />
         </div>
-        <div class="meta-cell">
-          <label for="charSpeed">Speed</label>
-          <input type="number" id="charSpeed" class="save-field inline-input" value="30" />
+        <div class="field-pill">
+          <span class="pill-label">Speed</span>
+          <input type="number" id="charSpeed" class="save-field pill-input center" value="30" />
         </div>
-        <div class="meta-cell narrow">
-          <label>Hit Dice</label>
-          <div class="dual-wrap">
-            <input type="text" id="hitDiceCur" class="save-field dual-input" value="1" />
-            <span>/</span>
-            <input type="text" id="hitDiceMax" class="save-field dual-input" value="1" />
+        <div class="field-pill mini">
+          <span class="pill-label">Hit Dice</span>
+          <div class="dual-inputs-box">
+            <input type="text" id="hitDiceCur" class="save-field pill-sub-input" value="1" />
+            <span class="dual-slash">/</span>
+            <input type="text" id="hitDiceMax" class="save-field pill-sub-input" value="1" />
           </div>
         </div>
       </div>
@@ -115,10 +115,10 @@
         </div>
 
         <div class="vital-unit">
-          <span>Death Save Success/Fail</span>
+          <span>Death Saves</span>
           <div class="pair-box">
             <input type="number" id="deathSucc" class="save-field dual-input" value="0" min="0" max="3" />
-            <span>/</span>
+            <span class="dual-slash">/</span>
             <input type="number" id="deathFail" class="save-field dual-input" value="0" min="0" max="3" />
           </div>
         </div>
@@ -127,7 +127,7 @@
           <span>Class Points</span>
           <div class="pair-box">
             <input type="number" id="classPtsCur" class="save-field dual-input" value="0" />
-            <span>/</span>
+            <span class="dual-slash">/</span>
             <input type="number" id="classPtsMax" class="save-field dual-input" value="0" />
           </div>
         </div>
