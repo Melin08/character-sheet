@@ -265,6 +265,7 @@ body {
 /* Official Class Wiki Dropdown Styles */
 .class-pill-wrapper {
   position: relative;
+  z-index: 999;
 }
 
 .class-dropdown-menu {
@@ -277,7 +278,7 @@ body {
   border: 1.5px solid #3b4c68;
   border-radius: 8px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-  z-index: 100;
+  z-index: 99999;
   max-height: 220px;
   overflow-y: auto;
 }
@@ -352,22 +353,22 @@ body {
   visibility: hidden;
   opacity: 0;
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 10px);
   left: 50%;
-  transform: translateX(-50%) translateY(5px);
-  background-color: #0f172a;
+  transform: translateX(-50%) translateY(10px);
+  background-color: #0b0f19;
   color: #34d399;
-  padding: 0.5rem 0.85rem;
+  padding: 0.75rem 1rem;
   border: 1px solid #3b4c68;
-  border-radius: 6px;
-  font-size: 0.82rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
   font-weight: 700;
   white-space: pre-wrap;
-  z-index: 2000;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+  z-index: 100000;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
   transition: all 0.2s ease;
   pointer-events: none;
-  min-width: 180px;
+  min-width: 220px;
   text-align: center;
 }
 
@@ -377,7 +378,7 @@ body {
   top: 100%;
   left: 50%;
   transform: translateX(-50%);
-  border-width: 6px;
+  border-width: 8px;
   border-style: solid;
   border-color: #3b4c68 transparent transparent transparent;
 }
@@ -662,22 +663,24 @@ body {
 }
 
 .dice-result-badge {
-  background: #151d2f;
-  border: 1.5px solid #3b4c68;
-  border-radius: 6px;
-  padding: 0.35rem 0.85rem;
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  border: 2px solid #f87171;
+  border-radius: 8px;
+  padding: 0.4rem 1.25rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 55px;
+  min-width: 80px;
   margin-left: auto;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.3);
 }
 
 .roll-output {
-  font-weight: 700;
-  color: #f87171;
-  font-size: 1rem;
-  letter-spacing: 0.02em;
+  font-weight: 800;
+  color: #ffffff;
+  font-size: 1.25rem;
+  letter-spacing: 0.03em;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 .dice-history-card {
@@ -1293,7 +1296,7 @@ body {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;
   border: 1.5px solid #3b4c68;
 }
 
