@@ -31,9 +31,11 @@
       <button class="main-tab" data-target="tab-journal" type="button">Notes, Personality, NPCs, etc.</button>
     </div>
 
+    <!-- MAIN TAB 1: Statistics & Combat -->
     <div id="tab-stats" class="tab-page active">
+      <!-- Top Row 1 -->
       <div class="meta-row-grid">
-        <div class="field-pill class-pill-wrapper">
+        <div class="field-pill dropdown-pill-wrapper">
           <span class="pill-label">Class</span>
           <input type="text" id="charClass" class="save-field pill-input" autocomplete="off" placeholder="" />
           <div id="classDropdown" class="dropdown-menu"></div>
@@ -57,6 +59,7 @@
         </div>
       </div>
 
+      <!-- Top Row 2 -->
       <div class="meta-row-grid">
         <div class="field-pill">
           <span class="pill-label">Experience</span>
@@ -84,6 +87,7 @@
         </div>
       </div>
 
+      <!-- Vitals Row -->
       <div class="vitals-row">
         <div class="vital-unit">
           <span>Armor Class</span>
@@ -133,6 +137,7 @@
         </div>
       </div>
 
+      <!-- Attributes and Combat Section -->
       <div class="two-col-layout">
         <div class="left-pane">
           <h2 class="section-title">Attributes</h2>
@@ -350,7 +355,7 @@
             <button class="btn red dice-btn" data-sides="6" type="button">1d6</button>
             <button class="btn red dice-btn" data-sides="4" type="button">1d4</button>
             <div class="dice-result-badge">
-              <span id="rollResult" class="roll-output">0</span>
+              <span id="rollResult" class="roll-output">—</span>
             </div>
           </div>
 
