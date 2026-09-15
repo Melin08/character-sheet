@@ -486,9 +486,12 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Official 5e Class Wiki Dropdown Logic
+// Official 5e Class Wiki Dropdown & Starting Equipment Automation
 const classInput = document.getElementById("charClass");
 const classDropdown = document.getElementById("classDropdown");
+const choiceModal = document.getElementById("choiceModal");
+const choiceModalTitle = document.getElementById("choiceModalTitle");
+const choiceModalBody = document.getElementById("choiceModalBody");
 
 async function fetchOfficialClasses() {
   if (allClassesCache.length > 0) return allClassesCache;
@@ -503,13 +506,24 @@ async function fetchOfficialClasses() {
   }
 }
 
+async function fetchClassStartingEquipment(classIndex) {
+  try {
+    const res = await fetch(`https://www.dnd5eapi.co/api/classes/${classIndex}`);
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error("Failed to fetch class equipment", err);
+    return null;
+  }
+}
+
 function renderClassDropdown(filter = "") {
   if (!classDropdown) return;
   const q = filter.toLowerCase().trim();
   const filtered = allClassesCache.filter(c => c.name.toLowerCase().includes(q));
 
   let html = filtered
-    .map(c => `<div class="class-dropdown-item" data-name="${escapeHtml(c.name)}">${escapeHtml(c.name)}</div>`)
+    .map(c => `<div class="class-dropdown-item" data-index="${c.index}" data-name="${escapeHtml(c.name)}">${escapeHtml(c.name)}</div>`)
     .join("");
 
   html += `<div class="class-dropdown-item class-dropdown-custom" id="addCustomClassOption">+ Add Custom Class</div>`;
@@ -532,7 +546,7 @@ classInput?.addEventListener("input", async () => {
   classDropdown?.classList.add("open");
 });
 
-classDropdown?.addEventListener("click", (e) => {
+classDropdown?.addEventListener("click", async (e) => {
   const item = e.target.closest(".class-dropdown-item");
   if (!item) return;
 
@@ -540,13 +554,117 @@ classDropdown?.addEventListener("click", (e) => {
     classInput.value = "";
     classInput.placeholder = "Type custom class...";
     classInput.focus();
-  } else {
-    classInput.value = item.dataset.name;
-    recalculateAll();
-    saveSheet();
+    classDropdown.classList.remove("open");
+    return;
   }
+
+  const className = item.dataset.name;
+  const classIdx = item.dataset.index;
+  classInput.value = className;
   classDropdown.classList.remove("open");
+
+  recalculateAll();
+  saveSheet();
+
+  // Fetch and apply starting equipment
+  const details = await fetchClassStartingEquipment(classIdx);
+  if (details && details.starting_equipment) {
+    applyStartingEquipment(details.starting_equipment, details.starting_equipment_options);
+  }
 });
+
+function applyStartingEquipment(baseItems, options) {
+  let weaponsList = [];
+  let gearList = [];
+  let featuresText = `Starting features for ${classInput.value}:\n`;
+
+  // Process standard items
+  baseItems.forEach(item => {
+    const name = item.equipment.name;
+    const qty = item.quantity || 1;
+    if (name.toLowerCase().includes("sword") || name.toLowerCase().includes("bow") || name.toLowerCase().includes("dagger") || name.toLowerCase().includes("axe") || name.toLowerCase().includes("mace") || name.toLowerCase().includes("crossbow") || name.toLowerCase().includes("staff")) {
+      weaponsList.push({ name: `${qty}x ${name}`, atk: "+5", dmg: "1d8", notes: "" });
+    } else {
+      gearList.push(`${qty}x ${name}`);
+    }
+  });
+
+  // If there are options to choose between (e.g. choice of weapon or pack)
+  if (options && options.length > 0) {
+    promptEquipmentChoices(options, 0, weaponsList, gearList, featuresText);
+  } else {
+    finalizeEquipmentApplication(weaponsList, gearList, featuresText);
+  }
+}
+
+function promptEquipmentChoices(options, index, weaponsList, gearList, featuresText) {
+  if (index >= options.length) {
+    finalizeEquipmentApplication(weaponsList, gearList, featuresText);
+    return;
+  }
+
+  const optGroup = options[index];
+  choiceModalTitle.textContent = optGroup.desc || "Choose Starting Equipment Option";
+  
+  let html = "";
+  optGroup.from.forEach((choice, choiceIdx) => {
+    let label = "";
+    if (choice.equipment) label = `${choice.quantity || 1}x ${choice.equipment.name}`;
+    else if (choice.equipment_category) label = `Any ${choice.equipment_category.name}`;
+    else if (choice.choice) label = "Multiple items option";
+    else label = JSON.stringify(choice);
+
+    html += `<button type="button" class="choice-option-btn" data-opt-index="${choiceIdx}">${escapeHtml(label)}</button>`;
+  });
+
+  choiceModalBody.innerHTML = html;
+  choiceModal.classList.add("open");
+
+  const handler = (e) => {
+    const btn = e.target.closest(".choice-option-btn");
+    if (!btn) return;
+    const chosenIdx = parseInt(btn.dataset.optIndex, 10);
+    const chosenChoice = optGroup.from[chosenIdx];
+
+    if (chosenChoice && chosenChoice.equipment) {
+      const name = chosenChoice.equipment.name;
+      const qty = chosenChoice.quantity || 1;
+      if (name.toLowerCase().includes("sword") || name.toLowerCase().includes("bow") || name.toLowerCase().includes("dagger") || name.toLowerCase().includes("axe") || name.toLowerCase().includes("mace") || name.toLowerCase().includes("crossbow") || name.toLowerCase().includes("staff")) {
+        weaponsList.push({ name: `${qty}x ${name}`, atk: "+5", dmg: "1d8", notes: "" });
+      } else {
+        gearList.push(`${qty}x ${name}`);
+      }
+    }
+
+    choiceModal.classList.remove("open");
+    choiceModalBody.removeEventListener("click", handler);
+
+    // Proceed to next choice option
+    promptEquipmentChoices(options, index + 1, weaponsList, gearList, featuresText);
+  };
+
+  choiceModalBody.addEventListener("click", handler);
+}
+
+function finalizeEquipmentApplication(weaponsList, gearList, featuresText) {
+  if (weaponsList.length > 0) {
+    myCharacterWeapons = weaponsList;
+    renderWeapons();
+  }
+
+  const invBox = document.getElementById("inventory");
+  if (invBox) {
+    invBox.value = gearList.join(", ");
+  }
+
+  const featBox = document.getElementById("featuresTraits");
+  if (featBox) {
+    featBox.value = featuresText;
+  }
+
+  saveSheet();
+  showStatus("Class & starting gear loaded!");
+}
 
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".class-pill-wrapper")) {
@@ -806,6 +924,7 @@ document.addEventListener("keydown", (e) => {
     closeSpellModal();
     document.getElementById("loadModal")?.classList.remove("open");
     document.getElementById("helpModal")?.classList.remove("open");
+    document.getElementById("choiceModal")?.classList.remove("open");
   }
 });
 
