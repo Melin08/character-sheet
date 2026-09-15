@@ -569,20 +569,6 @@ body {
   letter-spacing: 0.04em;
 }
 
-.btn-clear-history {
-  background: transparent;
-  border: none;
-  color: #f87171;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-}
-
-.btn-clear-history:hover {
-  text-decoration: underline;
-}
-
 .dice-history-list {
   display: flex;
   flex-direction: column;
