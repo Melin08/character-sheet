@@ -30,8 +30,9 @@
       <button class="main-tab" data-target="tab-journal" type="button">Notes, Personality, NPCs, etc.</button>
     </div>
 
+    <!-- MAIN TAB 1: Statistics & Combat -->
     <div id="tab-stats" class="tab-page active">
-      <!-- Row 1: Side by side -->
+      <!-- Row 1 -->
       <div class="meta-row-grid">
         <div class="field-pill">
           <span class="pill-label">Class</span>
@@ -55,7 +56,7 @@
         </div>
       </div>
 
-      <!-- Row 2: Side by side -->
+      <!-- Row 2 -->
       <div class="meta-row-grid">
         <div class="field-pill">
           <span class="pill-label">Experience</span>
@@ -423,6 +424,7 @@
       </div>
     </div>
 
+    <!-- MAIN TAB 2: Notes, Personality, NPCs, Equipment -->
     <div id="tab-journal" class="tab-page">
       <div class="subtab-controls">
         <button class="sub-tab active" data-sub="sub-notes" type="button">General Notes</button>
@@ -431,11 +433,13 @@
         <button class="sub-tab" data-sub="sub-equip" type="button">Equipment & Gear</button>
       </div>
 
+      <!-- Subtab: General Notes -->
       <div id="sub-notes" class="subtab-page active">
         <h2 class="section-title">Campaign Notes & Log</h2>
-        <textarea id="campaignNotes" class="save-field block-text journal-box" rows="14" placeholder="Quests, session notes, locations, clues..."></textarea>
+        <textarea id="campaignNotes" class="save-field block-text journal-box" rows="16" placeholder="Quests, session notes, locations, clues..."></textarea>
       </div>
 
+      <!-- Subtab: Personality & Lore -->
       <div id="sub-personality" class="subtab-page">
         <div class="two-col-layout">
           <div>
@@ -457,14 +461,16 @@
         <textarea id="backstory" class="save-field block-text journal-box" rows="8"></textarea>
       </div>
 
+      <!-- Subtab: NPCs & Contacts -->
       <div id="sub-npcs" class="subtab-page">
         <h2 class="section-title">NPCs, Factions & Contacts</h2>
-        <textarea id="npcList" class="save-field block-text journal-box" rows="14" placeholder="Names, affiliations, attitudes, notes..."></textarea>
+        <textarea id="npcList" class="save-field block-text journal-box" rows="16" placeholder="Names, affiliations, attitudes, notes..."></textarea>
       </div>
 
+      <!-- Subtab: Equipment & Gear -->
       <div id="sub-equip" class="subtab-page">
         <h2 class="section-title">Equipment, Bags & Attunement</h2>
-        <textarea id="inventory" class="save-field block-text journal-box" rows="14" placeholder="Detailed inventory, weights, magic items, containers..."></textarea>
+        <textarea id="inventory" class="save-field block-text journal-box" rows="16" placeholder="Detailed inventory, weights, magic items, containers..."></textarea>
       </div>
     </div>
 
@@ -517,7 +523,7 @@
     </div>
   </div>
 
-  <!-- Spell Picker Modal -->
+  <!-- Spell Picker Modal with Custom Spell Button -->
   <div id="spellModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-header">
@@ -526,6 +532,7 @@
       </div>
       <div class="modal-search-bar">
         <input type="text" id="spellSearchInput" placeholder="Search official 5e spells..." autocomplete="off" />
+        <button type="button" class="btn red custom-spell-btn" id="addCustomSpellBtn">+ Add Custom Spell</button>
       </div>
       <div id="spellApiList" class="modal-list">
         <p class="loading-text">Loading spells...</p>
