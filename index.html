@@ -31,7 +31,9 @@
       <button class="main-tab" data-target="tab-journal" type="button">Notes, Personality, NPCs, etc.</button>
     </div>
 
+    <!-- MAIN TAB 1: Statistics & Combat -->
     <div id="tab-stats" class="tab-page active">
+      <!-- Top Row 1 -->
       <div class="meta-row-grid">
         <div class="field-pill dropdown-pill-wrapper">
           <span class="pill-label">Class</span>
@@ -57,6 +59,7 @@
         </div>
       </div>
 
+      <!-- Top Row 2 -->
       <div class="meta-row-grid">
         <div class="field-pill">
           <span class="pill-label">Experience</span>
@@ -84,6 +87,7 @@
         </div>
       </div>
 
+      <!-- Vitals Row -->
       <div class="vitals-row">
         <div class="vital-unit">
           <span>Armor Class</span>
@@ -133,6 +137,7 @@
         </div>
       </div>
 
+      <!-- Attributes and Combat Section -->
       <div class="two-col-layout">
         <div class="left-pane">
           <h2 class="section-title">Attributes</h2>
@@ -390,7 +395,7 @@
           <hr class="red-divider" />
 
           <h2 class="section-title">Features &amp; Traits</h2>
-          <textarea id="featuresTraits" class="save-field block-text tight-block" rows="4" placeholder="Class abilities, racial traits, feats..."></textarea>
+          <textarea id="featuresTraits" class="save-field block-text tight-block" rows="4" placeholder="Class Hit Dice, saving throws, racial traits..."></textarea>
 
           <h2 class="section-title tight-title">Other Proficiencies</h2>
           <textarea id="otherProfs" class="save-field block-text tight-block" rows="4" placeholder="Armor, weapons, tools, languages..."></textarea>
@@ -400,6 +405,7 @@
         </div>
       </div>
 
+      <!-- Spells Section -->
       <section class="spells-full-section">
         <hr class="red-divider" />
         <h2 class="section-title">Spells</h2>
@@ -611,7 +617,7 @@
   <div id="choiceModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box choice-modal-box">
       <div class="modal-header">
-        <h3 id="choiceModalTitle">Choose Starting Equipment</h3>
+        <h3 id="choiceModalTitle">Class Equipment</h3>
       </div>
       <div class="choice-modal-content" id="choiceModalBody"></div>
     </div>
