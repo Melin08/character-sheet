@@ -22,7 +22,6 @@ body {
   border: 1.5px solid #3b4c68;
 }
 
-/* Action Header */
 .top-nav {
   display: flex;
   gap: 0.5rem;
@@ -75,7 +74,6 @@ body {
   margin-left: 0.5rem;
 }
 
-/* Character Name Input */
 .name-box {
   margin-bottom: 1.5rem;
 }
@@ -98,7 +96,6 @@ body {
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
 }
 
-/* Primary Tabs */
 .tab-controls {
   display: flex;
   border-bottom: 2px solid #dc2626;
@@ -130,16 +127,14 @@ body {
   border-color: #dc2626;
 }
 
-/* Top-level Tab Pane Visibility */
 .tab-page {
-  display: none !important;
+  display: none;
 }
 
 .tab-page.active {
-  display: block !important;
+  display: block;
 }
 
-/* Sub-tabs Container */
 .subtab-controls {
   display: flex;
   gap: 0.5rem;
@@ -172,16 +167,14 @@ body {
   border-color: #dc2626;
 }
 
-/* Sub-tab Pane Visibility */
 .subtab-page {
-  display: none !important;
+  display: none;
 }
 
 .subtab-page.active {
-  display: block !important;
+  display: block;
 }
 
-/* Top Meta Rows */
 .meta-row-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr) 130px;
@@ -262,7 +255,6 @@ body {
   font-weight: bold;
 }
 
-/* Official Wiki Dropdown Styles */
 .dropdown-pill-wrapper {
   position: relative;
   z-index: 999;
@@ -307,13 +299,12 @@ body {
   text-align: center;
 }
 
-/* Choice Modal & Tooltips for Equipment Packages */
-.choice-modal-box {
+.modal-box.choice-modal-box {
   max-width: 480px;
-  overflow: visible !important;
+  overflow: visible;
 }
 
-.choice-modal-box .modal-header {
+.modal-box.choice-modal-box .modal-header {
   border-radius: 12px 12px 0 0;
 }
 
@@ -392,7 +383,6 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
-/* Vitals Bar */
 .vitals-row {
   display: flex;
   gap: 2rem;
@@ -479,6 +469,7 @@ body {
   align-items: center;
   justify-content: center;
   -moz-appearance: textfield;
+  -webkit-appearance: textfield;
   appearance: textfield;
 }
 
@@ -533,7 +524,6 @@ body {
   font-weight: 600;
 }
 
-/* Two Column Layout */
 .two-col-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -549,17 +539,15 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Tight Spacing Helpers for Stacked Textareas */
-.tight-title {
-  margin-top: 0.65rem !important;
-  margin-bottom: 0.45rem !important;
+.section-title.tight-title {
+  margin-top: 0.65rem;
+  margin-bottom: 0.45rem;
 }
 
-.tight-block {
-  margin-bottom: 0.55rem !important;
+textarea.tight-block {
+  margin-bottom: 0.55rem;
 }
 
-/* Attributes */
 .attr-row {
   display: flex;
   align-items: center;
@@ -625,7 +613,6 @@ body {
   transform: scale(1.25);
 }
 
-/* Skills */
 .skill-row {
   display: flex;
   align-items: center;
@@ -647,7 +634,6 @@ body {
   color: #f8fafc;
 }
 
-/* Dice Bar & History Module */
 .dice-bar {
   display: flex;
   gap: 0.45rem;
@@ -786,7 +772,6 @@ body {
   box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
 }
 
-/* Weapons Table */
 .attacks-table-wrapper {
   width: 100%;
 }
@@ -877,12 +862,10 @@ body {
   margin: 1.75rem 0;
 }
 
-/* Full Width Spells Section */
 .spells-full-section {
   margin-top: 1.5rem;
 }
 
-/* Centered Stylized Spell Stats Hub */
 .spell-basics {
   display: flex;
   gap: 0.85rem;
@@ -969,7 +952,6 @@ body {
   margin-bottom: 0.65rem;
 }
 
-/* Modernized Spell Slot Tiles */
 .slots-grid {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
@@ -1025,6 +1007,7 @@ body {
   outline: none;
   padding: 0;
   -moz-appearance: textfield;
+  -webkit-appearance: textfield;
   appearance: textfield;
 }
 
@@ -1038,10 +1021,10 @@ body {
   color: #64748b;
   font-size: 0.85rem;
   font-weight: 700;
+  -webkit-user-select: none;
   user-select: none;
 }
 
-/* Cantrips Header & Instant Filter */
 .cantrips-header {
   display: flex;
   align-items: center;
@@ -1095,7 +1078,6 @@ body {
   text-decoration: underline;
 }
 
-/* Darker Recessed Textareas */
 .block-text {
   width: 100%;
   border: 1.5px solid #3b4c68;
@@ -1118,7 +1100,6 @@ body {
   line-height: 1.55;
 }
 
-/* 2-Column Spells Grid */
 .spells-grid-container {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1127,7 +1108,6 @@ body {
   margin-bottom: 1.5rem;
 }
 
-/* Draggable & Editable Spell Cards */
 .spell-card {
   border: 1.5px solid #3b4c68;
   border-radius: 8px;
@@ -1139,6 +1119,7 @@ body {
   height: auto;
   min-height: min-content;
   cursor: grab;
+  -webkit-user-select: none;
   user-select: none;
   transition: transform 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
 }
@@ -1159,6 +1140,7 @@ body {
 
 .spell-card input,
 .spell-card textarea {
+  -webkit-user-select: text;
   user-select: text;
   cursor: text;
 }
@@ -1274,12 +1256,12 @@ body {
   border-color: #dc2626;
 }
 
-/* Modals */
 .modal-backdrop {
   display: none;
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.75);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   z-index: 1000;
   align-items: center;
@@ -1299,7 +1281,7 @@ body {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;
   border: 1.5px solid #3b4c68;
 }
 
@@ -1480,11 +1462,6 @@ body {
   padding: 1.5rem 0;
 }
 
-/* Footer Section */
-.sheet-footer {
-  margin-top: 3rem;
-}
-
 .footer-divider {
   border: none;
   border-top: 1.5px solid #3b4c68;
@@ -1563,7 +1540,6 @@ body {
   text-decoration: underline;
 }
 
-/* Mobile Adjustments Under 768px */
 @media (max-width: 768px) {
   body {
     padding: 0.75rem 0.5rem;
@@ -1574,14 +1550,14 @@ body {
     border-radius: 8px;
   }
 
-  input,
-  textarea,
-  select {
-    font-size: 16px !important;
+  body input,
+  body textarea,
+  body select {
+    font-size: 16px;
   }
 
-  .name-input {
-    font-size: 1.65rem !important;
+  body .name-input {
+    font-size: 1.65rem;
     padding: 0.5rem 0.75rem;
   }
 
