@@ -6,9 +6,11 @@ const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
 let allSpellsCache = [];
 let allClassesCache = [];
 let allRacesCache = [];
+let allTraitsCache = [];
 let activeCharId = localStorage.getItem(ACTIVE_CHAR_ID_KEY) || "default";
 
 let myCharacterSpells = [];
+let myCharacterTraits = [];
 let myCharacterWeapons = [
   { name: "", atk: "", dmg: "", notes: "" },
   { name: "", atk: "", dmg: "", notes: "" }
@@ -19,7 +21,7 @@ let draggedSpellIndex = null;
 let touchDraggedIndex = null;
 let currentDropTarget = null;
 
-// Official 5e SRD Fallback Database to ensure instant pop-up without API stalls
+// Official 5e SRD Fallback Database to guarantee immediate pop-up
 const SRD_CLASS_EQUIPMENT = {
   barbarian: {
     name: "Barbarian", hitDie: 12, saves: ["Strength", "Constitution"],
@@ -251,411 +253,73 @@ const SRD_CLASS_EQUIPMENT = {
 };
 
 const SRD_RACE_DATA = {
-  dwarf: { speed: 25, traits: "[Darkvision]\nYou can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light.\n\n[Dwarven Resilience]\nYou have advantage on saving throws against poison, and you have resistance against poison damage.\n\n[Dwarven Combat Training]\nYou have proficiency with the battleaxe, handaxe, light hammer, and warhammer.\n\n[Stonecunning]\nWhenever you make an Intelligence (History) check related to the origin of stonework, you add double your proficiency bonus." },
-  elf: { speed: 30, traits: "[Darkvision]\nYou can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light.\n\n[Keen Senses]\nYou have proficiency in the Perception skill.\n\n[Fey Ancestry]\nYou have advantage on saving throws against being charmed, and magic can't put you to sleep.\n\n[Trance]\nElves don't need to sleep. Instead, they meditate deeply for 4 hours a day." },
-  halfling: { speed: 25, traits: "[Lucky]\nWhen you roll a 1 on the d20 for an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll.\n\n[Brave]\nYou have advantage on saving throws against being frightened.\n\n[Halfling Nimbleness]\nYou can move through the space of any creature that is of a size larger than yours." },
-  human: { speed: 30, traits: "[Versatile]\nHumans gain +1 to all ability scores and an extra language." },
-  dragonborn: { speed: 30, traits: "[Draconic Ancestry]\nYou have draconic ancestry. Your breath weapon and damage resistance are determined by the dragon type.\n\n[Breath Weapon]\nYou can use your action to exhale destructive energy determined by your draconic ancestry.\n\n[Damage Resistance]\nYou have resistance to the damage type associated with your draconic ancestry." },
-  gnome: { speed: 25, traits: "[Darkvision]\nYou can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light.\n\n[Gnome Cunning]\nYou have advantage on all Intelligence, Wisdom, and Charisma saving throws against magic." },
-  "half-elf": { speed: 30, traits: "[Darkvision]\nYou can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light.\n\n[Fey Ancestry]\nYou have advantage on saving throws against being charmed, and magic can't put you to sleep.\n\n[Skill Versatility]\nYou gain proficiency in two skills of your choice." },
-  "half-orc": { speed: 30, traits: "[Darkvision]\nYou can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light.\n\n[Menacing]\nYou gain proficiency in the Intimidation skill.\n\n[Relentless Endurance]\nWhen you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead once per long rest.\n\n[Savage Attacks]\nWhen you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage." },
-  tiefling: { speed: 30, traits: "[Darkvision]\nYou can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light.\n\n[Hellish Resistance]\nYou have resistance to fire damage.\n\n[Infernal Legacy]\nYou know the Thaumaturgy cantrip. Charisma is your spellcasting ability for these spells." }
+  dwarf: { speed: 25, traits: [
+    { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+    { name: "Dwarven Resilience", type: "Racial", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." },
+    { name: "Stonecunning", type: "Racial", desc: "Whenever you make an Intelligence (History) check related to the origin of stonework, you add double your proficiency bonus." }
+  ]},
+  elf: { speed: 30, traits: [
+    { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+    { name: "Keen Senses", type: "Racial", desc: "You have proficiency in the Perception skill." },
+    { name: "Fey Ancestry", type: "Racial", desc: "You have advantage on saving throws against being charmed, and magic can't put you to sleep." },
+    { name: "Trance", type: "Racial", desc: "Elves don't need to sleep. Instead, they meditate deeply for 4 hours a day." }
+  ]},
+  halfling: { speed: 25, traits: [
+    { name: "Lucky", type: "Racial", desc: "When you roll a 1 on the d20 for an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll." },
+    { name: "Brave", type: "Racial", desc: "You have advantage on saving throws against being frightened." },
+    { name: "Halfling Nimbleness", type: "Racial", desc: "You can move through the space of any creature that is of a size larger than yours." }
+  ]},
+  human: { speed: 30, traits: [
+    { name: "Versatile", type: "Racial", desc: "Humans gain +1 to all ability scores and an extra language." }
+  ]},
+  dragonborn: { speed: 30, traits: [
+    { name: "Draconic Ancestry", type: "Racial", desc: "You have draconic ancestry. Your breath weapon and damage resistance are determined by dragon type." },
+    { name: "Breath Weapon", type: "Racial", desc: "You can use your action to exhale destructive energy determined by your draconic ancestry." },
+    { name: "Damage Resistance", type: "Racial", desc: "You have resistance to the damage type associated with your draconic ancestry." }
+  ]},
+  gnome: { speed: 25, traits: [
+    { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+    { name: "Gnome Cunning", type: "Racial", desc: "You have advantage on all Intelligence, Wisdom, and Charisma saving throws against magic." }
+  ]},
+  "half-elf": { speed: 30, traits: [
+    { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+    { name: "Fey Ancestry", type: "Racial", desc: "You have advantage on saving throws against being charmed, and magic can't put you to sleep." },
+    { name: "Skill Versatility", type: "Racial", desc: "You gain proficiency in two skills of your choice." }
+  ]},
+  "half-orc": { speed: 30, traits: [
+    { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+    { name: "Menacing", type: "Racial", desc: "You gain proficiency in the Intimidation skill." },
+    { name: "Relentless Endurance", type: "Racial", desc: "When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead once per long rest." },
+    { name: "Savage Attacks", type: "Racial", desc: "When you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage." }
+  ]},
+  tiefling: { speed: 30, traits: [
+    { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+    { name: "Hellish Resistance", type: "Racial", desc: "You have resistance to fire damage." },
+    { name: "Infernal Legacy", type: "Racial", desc: "You know the Thaumaturgy cantrip. Charisma is your spellcasting ability for these spells." }
+  ]}
 };
 
-function escapeHtml(str) {
-  if (typeof str !== "string") return "";
-  return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
+// Official 5e General Class/Feat Features for the picker
+const SRD_GENERAL_FEATURES = [
+  { name: "Rage", type: "Class Ability", desc: "In battle, you fight with primal ferocity. On your turn, you can enter a rage as a bonus action." },
+  { name: "Reckless Attack", type: "Class Ability", desc: "Starting at 2nd level, you can throw aside all concern for defense to attack with fierce desperation." },
+  { name: "Action Surge", type: "Class Ability", desc: "On your turn, you can take one additional action on top of your regular action and possible bonus action." },
+  { name: "Second Wind", type: "Class Ability", desc: "You have a limited well of stamina. On your turn, you can use a bonus action to regain hit points equal to 1d10 + your fighter level." },
+  { name: "Sneak Attack", type: "Class Ability", desc: "Beginning at 1st level, you know how to strike subtly and exploit a foe's distraction to deal extra damage." },
+  { name: "Cunning Action", type: "Class Ability", desc: "Starting at 2nd level, your quick thinking and agility allow you to move and act quickly. You can take a bonus action to Dash, Disengage, or Hide." },
+  { name: "Divine Smite", type: "Class Ability", desc: "Starting at 2nd level, when you hit a creature with a melee weapon attack, you can expend one spell slot to deal radiant damage to the target." },
+  { name: "Lay on Hands", type: "Class Ability", desc: "Your blessed touch can heal wounds. You have a pool of healing power that replenishes when you take a long rest." },
+  { name: "Wild Shape", type: "Class Ability", desc: "Starting at 2nd level, you can use your action to magically assume the shape of a beast that you have seen before." },
+  { name: "Bardic Inspiration", type: "Class Ability", desc: "You can inspire others through stirring words or music. Use a bonus action on your turn to choose one creature other than yourself within 60 feet." },
+  { name: "Channel Divinity", type: "Class Ability", desc: "You gain the ability to channel divine energy directly from your deity, using that energy to fuel magical effects." },
+  { name: "Flurry of Blows", type: "Class Ability", desc: "Immediately after you take the Attack action on your turn, you can spend 1 ki point to make two unarmed strikes as a bonus action." },
+  { name: "Pact Magic", type: "Class Ability", desc: "Your arcane research and the magic bestowed on you by your patron have given you facility with spells." },
+  { name: "Arcane Recovery", type: "Class Ability", desc: "Once per day when you finish a short rest, you can choose expended spell slots to recover." },
+  { name: "Alert", type: "Feat", desc: "Always on the lookout for danger. You gain a +5 bonus to initiative and you can't be surprised while you are conscious." },
+  { name: "Lucky", type: "Feat", desc: "You have 3 luck points. Whenever you make an attack roll, an ability check, or a saving throw, you can spend one luck point to roll an additional d20." },
+  { name: "War Caster", type: "Feat", desc: "You have advantage on Constitution saving throws that you make to maintain your concentration on a spell when you take damage." }
+];
 
-function showStatus(text) {
-  const statusElem = document.getElementById("saveStatus");
-  if (!statusElem) return;
-  statusElem.textContent = text;
-  setTimeout(() => { statusElem.textContent = ""; }, 2500);
-}
-
-function getModifier(score) {
-  return Math.floor((score - 10) / 2);
-}
-
-function getProfBonus(level) {
-  return Math.ceil(1 + level / 4);
-}
-
-function autoResizeStatInput(input) {
-  if (!input) return;
-  if (input.classList.contains("concentration-input")) return;
-  const content = input.value || input.placeholder || "";
-  input.style.width = Math.max(3, content.length + 1.5) + "ch";
-}
-
-function syncAllStatInputs() {
-  document.querySelectorAll(".spell-stat-input").forEach(autoResizeStatInput);
-}
-
-function recalculateAll() {
-  const levelInput = document.getElementById("charLevel");
-  const level = parseInt(levelInput?.value, 10) || 1;
-  const prof = getProfBonus(level);
-
-  const profBonusDisplay = document.getElementById("profBonusDisplay");
-  if (profBonusDisplay) profBonusDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
-
-  const stats = ["str", "dex", "con", "int", "wis", "cha"];
-  const mods = {};
-
-  stats.forEach((stat) => {
-    const scoreVal = parseInt(document.getElementById(`attr_${stat}`)?.value, 10) || 10;
-    const mod = getModifier(scoreVal);
-    mods[stat] = mod;
-
-    const modElem = document.getElementById(`mod_${stat}`);
-    if (modElem) modElem.textContent = mod;
-
-    const isSaveChecked = document.getElementById(`save_${stat}`)?.checked;
-    const saveValElem = document.getElementById(`save_val_${stat}`);
-    if (saveValElem) saveValElem.textContent = isSaveChecked ? mod + prof : mod;
-  });
-
-  document.querySelectorAll(".skill-row").forEach((row) => {
-    const stat = row.dataset.stat;
-    const statMod = mods[stat] ?? 0;
-    const isProf = row.querySelector(".prof-cb")?.checked;
-    const isExp = row.querySelector(".exp-cb")?.checked;
-
-    let total = statMod;
-    if (isProf) total += prof;
-    if (isExp) total += prof;
-
-    const valElem = row.querySelector(".skill-val");
-    if (valElem) valElem.textContent = total;
-  });
-}
-
-function renderWeapons() {
-  const container = document.getElementById("weaponsContainer");
-  if (!container) return;
-
-  while (myCharacterWeapons.length < 2) {
-    myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
-  }
-
-  container.innerHTML = myCharacterWeapons
-    .map(
-      (wpn, idx) => `
-      <div class="attack-entry" data-index="${idx}">
-        <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
-        <input type="text" class="inline-input wpn-field" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
-        <input type="text" class="inline-input wpn-field" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
-        <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes" />
-        <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
-      </div>
-    `
-    )
-    .join("");
-}
-
-document.getElementById("addWeaponBtn")?.addEventListener("click", () => {
-  myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
-  saveSheet();
-  renderWeapons();
-});
-
-document.getElementById("weaponsContainer")?.addEventListener("input", (e) => {
-  if (e.target.classList.contains("wpn-field")) {
-    const entry = e.target.closest(".attack-entry");
-    const index = parseInt(entry.dataset.index, 10);
-    const prop = e.target.dataset.prop;
-    myCharacterWeapons[index][prop] = e.target.value;
-    saveSheet();
-  }
-});
-
-document.getElementById("weaponsContainer")?.addEventListener("click", (e) => {
-  if (e.target.classList.contains("weapon-delete-btn")) {
-    const index = parseInt(e.target.dataset.index, 10);
-    myCharacterWeapons.splice(index, 1);
-    while (myCharacterWeapons.length < 2) {
-      myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
-    }
-    saveSheet();
-    renderWeapons();
-  }
-});
-
-function getRoster() {
-  try { return JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY)) || {}; } 
-  catch (e) { return {}; }
-}
-
-function saveRoster(roster) {
-  localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(roster));
-}
-
-function getCurrentSheetData() {
-  const fields = {};
-  document.querySelectorAll(".save-field").forEach((field) => {
-    if (field.type === "checkbox") fields[field.id] = field.checked;
-    else fields[field.id] = field.value;
-  });
-  return fields;
-}
-
-function saveSheet() {
-  const roster = getRoster();
-  const fields = getCurrentSheetData();
-  const name = fields.charName?.trim() || "Unnamed Character";
-  const charClass = fields.charClass?.trim() || "";
-  const level = fields.charLevel || 1;
-
-  roster[activeCharId] = {
-    id: activeCharId,
-    name: name,
-    summary: charClass ? `${charClass} (Lvl ${level})` : `Level ${level}`,
-    updatedAt: Date.now(),
-    fields: fields,
-    spells: myCharacterSpells,
-    weapons: myCharacterWeapons
-  };
-
-  saveRoster(roster);
-  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-  showStatus("Saved!");
-}
-
-function applyCharacterData(charData) {
-  if (!charData) return;
-  const fields = charData.fields || {};
-  Object.keys(fields).forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) {
-      if (el.type === "checkbox") el.checked = fields[id];
-      else el.value = fields[id];
-    }
-  });
-
-  myCharacterSpells = charData.spells || [];
-  myCharacterWeapons = charData.weapons && charData.weapons.length >= 2 ? charData.weapons : [
-    { name: "", atk: "", dmg: "", notes: "" },
-    { name: "", atk: "", dmg: "", notes: "" }
-  ];
-
-  renderWeapons();
-  renderMySpells();
-  recalculateAll();
-  syncAllStatInputs();
-}
-
-function loadSheet() {
-  const roster = getRoster();
-  if (roster[activeCharId]) {
-    applyCharacterData(roster[activeCharId]);
-  } else {
-    const keys = Object.keys(roster);
-    if (keys.length > 0) {
-      activeCharId = keys[0];
-      localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-      applyCharacterData(roster[activeCharId]);
-    } else {
-      recalculateAll();
-      renderWeapons();
-      renderMySpells();
-      syncAllStatInputs();
-    }
-  }
-}
-
-function resetSheet() {
-  activeCharId = "char_" + Date.now();
-  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-
-  document.querySelectorAll(".save-field").forEach((field) => {
-    if (field.type === "checkbox") field.checked = false;
-    else if (field.id === "charLevel") field.value = 1;
-    else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") field.value = 10;
-    else if (field.classList.contains("attr-input")) field.value = 10;
-    else if (field.id === "charSpeed") field.value = 30;
-    else if (field.classList.contains("dual-input") || field.classList.contains("coin-input") || field.classList.contains("slot-input")) field.value = 0;
-    else field.value = "";
-  });
-
-  myCharacterSpells = [];
-  myCharacterWeapons = [
-    { name: "", atk: "", dmg: "", notes: "" },
-    { name: "", atk: "", dmg: "", notes: "" }
-  ];
-  diceRollHistory = [];
-  
-  renderDiceHistory();
-  recalculateAll();
-  renderWeapons();
-  renderMySpells();
-  syncAllStatInputs();
-  saveSheet();
-  showStatus("New Character Created!");
-}
-
-function renderCharList() {
-  const container = document.getElementById("charList");
-  if (!container) return;
-  const roster = getRoster();
-  const keys = Object.keys(roster);
-
-  if (keys.length === 0) {
-    container.innerHTML = `<p class="loading-text">No saved characters found.</p>`;
-    return;
-  }
-
-  container.innerHTML = keys.map((id) => {
-    const char = roster[id];
-    const isActive = id === activeCharId;
-    return `
-      <div class="char-item-row" data-id="${id}">
-        <div class="char-item-info">
-          <span class="char-item-name">${escapeHtml(char.name || "Unnamed Character")}</span>
-          <span class="char-item-sub">${escapeHtml(char.summary || "")}</span>
-        </div>
-        <div class="char-actions">
-          <button type="button" class="char-select-btn ${isActive ? "active" : ""}">${isActive ? "Active" : "Select"}</button>
-          <button type="button" class="char-delete-btn" title="Delete character">&times;</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-document.getElementById("loadBtn")?.addEventListener("click", () => {
-  renderCharList();
-  document.getElementById("loadModal")?.classList.add("open");
-});
-
-document.getElementById("closeLoadModal")?.addEventListener("click", () => {
-  document.getElementById("loadModal")?.classList.remove("open");
-});
-
-document.getElementById("charList")?.addEventListener("click", (e) => {
-  const row = e.target.closest(".char-item-row");
-  if (!row) return;
-  const targetId = row.dataset.id;
-  const roster = getRoster();
-
-  if (e.target.classList.contains("char-delete-btn")) {
-    e.stopPropagation();
-    if (confirm(`Delete character "${roster[targetId]?.name || "Unnamed"}"?`)) {
-      delete roster[targetId];
-      saveRoster(roster);
-      if (activeCharId === targetId) {
-        const remaining = Object.keys(roster);
-        if (remaining.length > 0) {
-          activeCharId = remaining[0];
-          localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-          loadSheet();
-        } else resetSheet();
-      }
-      renderCharList();
-    }
-    return;
-  }
-
-  activeCharId = targetId;
-  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-  applyCharacterData(roster[activeCharId]);
-  document.getElementById("loadModal")?.classList.remove("open");
-  showStatus("Character Loaded!");
-});
-
-document.getElementById("helpLinkBtn")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.add("open"));
-document.getElementById("closeHelpModal")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.remove("open"));
-
-function switchMainTab(targetId) {
-  document.querySelectorAll(".main-tab").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".tab-page").forEach(p => p.classList.remove("active"));
-  const targetBtn = document.querySelector(`.main-tab[data-target="${targetId}"]`);
-  if (targetBtn) targetBtn.classList.add("active");
-  const tabEl = document.getElementById(targetId);
-  if (tabEl) tabEl.classList.add("active");
-}
-
-document.querySelectorAll(".main-tab").forEach(btn => {
-  btn.addEventListener("click", () => switchMainTab(btn.dataset.target));
-});
-
-document.querySelectorAll(".sub-tab").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".sub-tab").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".subtab-page").forEach(p => p.classList.remove("active"));
-    btn.classList.add("active");
-    const target = btn.dataset.sub;
-    const tabEl = document.getElementById(target);
-    if (tabEl) tabEl.classList.add("active");
-  });
-});
-
-document.querySelectorAll(".footer-nav-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    switchMainTab(btn.dataset.tab);
-    const targetId = btn.dataset.scroll === "attr" ? ".attributes-group" : 
-                     btn.dataset.scroll === "skills" ? ".skills-group" : 
-                     btn.dataset.scroll === "spells" ? "#spellsList" : "#tab-journal";
-    const el = document.querySelector(targetId);
-    if(el) el.scrollIntoView({ behavior: "smooth" });
-  });
-});
-
-function addDiceHistory(desc, total) {
-  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  diceRollHistory.unshift({ desc, total, time });
-  if (diceRollHistory.length > 25) diceRollHistory.pop();
-  renderDiceHistory();
-}
-
-function renderDiceHistory() {
-  const container = document.getElementById("diceHistoryList");
-  if (!container) return;
-  if (diceRollHistory.length === 0) {
-    container.innerHTML = `<span class="dice-history-empty">No rolls logged yet.</span>`;
-    return;
-  }
-  container.innerHTML = diceRollHistory.map(item => `
-    <div class="dice-history-item">
-      <span class="dice-history-desc">${escapeHtml(item.desc)} <small style="color:#64748b;">(${item.time})</small></span>
-      <span class="dice-history-val">${escapeHtml(String(item.total))}</span>
-    </div>
-  `).join("");
-}
-
-document.querySelectorAll(".dice-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const sides = parseInt(btn.dataset.sides, 10);
-    const roll = Math.floor(Math.random() * sides) + 1;
-    const out = document.getElementById("rollResult");
-    if (out) out.textContent = roll;
-    addDiceHistory(`1d${sides}`, roll);
-  });
-});
-
-document.addEventListener("click", (e) => {
-  if (e.target.classList.contains("roll-btn")) {
-    const roll = Math.floor(Math.random() * 20) + 1;
-    let bonus = 0, label = "";
-    if (e.target.dataset.type === "save") {
-      const attr = e.target.dataset.attr;
-      bonus = parseInt(document.getElementById(`save_val_${attr}`)?.textContent, 10) || 0;
-      label = `${attr.toUpperCase()} Save`;
-    } else if (e.target.dataset.type === "skill") {
-      const id = e.target.dataset.id;
-      bonus = parseInt(document.getElementById(`val_${id}`)?.textContent, 10) || 0;
-      label = document.querySelector(`#row_${id} .skill-label`)?.textContent || "Skill";
-    }
-    const total = roll + bonus;
-    const out = document.getElementById("rollResult");
-    if (out) out.textContent = total;
-    const sign = bonus >= 0 ? `+ ${bonus}` : `- ${Math.abs(bonus)}`;
-    addDiceHistory(`${label} (${roll} ${sign})`, total);
-  }
-});
-
-// Dropdowns & D&D 5e API Fetching
 const classInput = document.getElementById("charClass");
 const classDropdown = document.getElementById("classDropdown");
 const raceInput = document.getElementById("charRace");
@@ -664,65 +328,7 @@ const choiceModal = document.getElementById("choiceModal");
 const choiceModalBody = document.getElementById("choiceModalBody");
 const choiceModalTitle = document.getElementById("choiceModalTitle");
 
-async function fetchOfficialList(endpoint) {
-  try {
-    const res = await fetch(`https://www.dnd5eapi.co/api/${endpoint}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.results || [];
-  } catch (err) { return []; }
-}
-
-function renderDropdown(dropdownEl, items, filter = "", customId, customText) {
-  if (!dropdownEl) return;
-  const q = filter.toLowerCase().trim();
-  const filtered = items.filter(i => i.name.toLowerCase().includes(q));
-  let html = filtered.map(i => `<div class="dropdown-item" data-index="${i.index}" data-name="${escapeHtml(i.name)}">${escapeHtml(i.name)}</div>`).join("");
-  html += `<div class="dropdown-item dropdown-custom" id="${customId}">${customText}</div>`;
-  dropdownEl.innerHTML = html;
-}
-
-classInput?.addEventListener("click", async () => {
-  if (!classDropdown.classList.contains("open")) {
-    classDropdown.innerHTML = '<div class="dropdown-item" style="color:#94a3b8; font-style:italic;">Loading classes...</div>';
-    classDropdown.classList.add("open");
-    if (allClassesCache.length === 0) allClassesCache = await fetchOfficialList("classes");
-    if (allClassesCache.length === 0) {
-      allClassesCache = Object.keys(SRD_CLASS_EQUIPMENT).map(k => ({ index: k, name: SRD_CLASS_EQUIPMENT[k].name }));
-    }
-    renderDropdown(classDropdown, allClassesCache, classInput.value, "addCustomClassOption", "+ Add Custom Class");
-  }
-});
-
-classInput?.addEventListener("input", async () => {
-  if (allClassesCache.length === 0) allClassesCache = await fetchOfficialList("classes");
-  if (allClassesCache.length === 0) {
-    allClassesCache = Object.keys(SRD_CLASS_EQUIPMENT).map(k => ({ index: k, name: SRD_CLASS_EQUIPMENT[k].name }));
-  }
-  renderDropdown(classDropdown, allClassesCache, classInput.value, "addCustomClassOption", "+ Add Custom Class");
-  classDropdown.classList.add("open");
-});
-
-raceInput?.addEventListener("click", async () => {
-  if (!raceDropdown.classList.contains("open")) {
-    raceDropdown.innerHTML = '<div class="dropdown-item" style="color:#94a3b8; font-style:italic;">Loading races...</div>';
-    raceDropdown.classList.add("open");
-    if (allRacesCache.length === 0) allRacesCache = await fetchOfficialList("races");
-    if (allRacesCache.length === 0) {
-      allRacesCache = Object.keys(SRD_RACE_DATA).map(k => ({ index: k, name: k.charAt(0).toUpperCase() + k.slice(1) }));
-    }
-    renderDropdown(raceDropdown, allRacesCache, raceInput.value, "addCustomRaceOption", "+ Add Custom Race");
-  }
-});
-
-raceInput?.addEventListener("input", async () => {
-  if (allRacesCache.length === 0) allRacesCache = await fetchOfficialList("races");
-  if (allRacesCache.length === 0) {
-    allRacesCache = Object.keys(SRD_RACE_DATA).map(k => ({ index: k, name: k.charAt(0).toUpperCase() + k.slice(1) }));
-  }
-  renderDropdown(raceDropdown, allRacesCache, raceInput.value, "addCustomRaceOption", "+ Add Custom Race");
-  raceDropdown.classList.add("open");
-});
+let activeClassLoadout = null;
 
 function isWeaponOrArmor(name) {
   if (!name) return false;
@@ -734,8 +340,6 @@ function isWeaponOrArmor(name) {
          l.includes("club") || l.includes("sickle") || l.includes("dart");
 }
 
-let activeClassLoadout = null;
-
 function openClassEquipmentModal(classKey, displayName) {
   const data = SRD_CLASS_EQUIPMENT[classKey];
   if (!data) return;
@@ -743,9 +347,9 @@ function openClassEquipmentModal(classKey, displayName) {
   activeClassLoadout = JSON.parse(JSON.stringify(data));
   activeClassLoadout.selectedChoices = [];
 
-  choiceModalTitle.textContent = `${displayName} Starting Equipment`;
+  choiceModalTitle.textContent = `${displayName} Starting Loadout`;
 
-  let html = `<div class="equip-section-title">Automatic Gear</div>`;
+  let html = `<div class="equip-section-title">Granted Equipment</div>`;
   if (activeClassLoadout.fixed.length > 0) {
     html += `<ul class="equip-fixed-list">`;
     activeClassLoadout.fixed.forEach(i => {
@@ -868,6 +472,51 @@ function finalizeSelectedLoadout() {
   showStatus("Class Loadout applied!");
 }
 
+function renderDropdown(dropdownEl, items, filter = "", customId, customText) {
+  if (!dropdownEl) return;
+  const q = filter.toLowerCase().trim();
+  const filtered = items.filter(i => i.name.toLowerCase().includes(q));
+  let html = filtered.map(i => `<div class="dropdown-item" data-index="${i.index}" data-name="${escapeHtml(i.name)}">${escapeHtml(i.name)}</div>`).join("");
+  html += `<div class="dropdown-item dropdown-custom" id="${customId}">${customText}</div>`;
+  dropdownEl.innerHTML = html;
+}
+
+classInput?.addEventListener("click", () => {
+  if (!classDropdown.classList.contains("open")) {
+    if (allClassesCache.length === 0) {
+      allClassesCache = Object.keys(SRD_CLASS_EQUIPMENT).map(k => ({ index: k, name: SRD_CLASS_EQUIPMENT[k].name }));
+    }
+    renderDropdown(classDropdown, allClassesCache, classInput.value, "addCustomClassOption", "+ Add Custom Class");
+    classDropdown.classList.add("open");
+  }
+});
+
+classInput?.addEventListener("input", () => {
+  if (allClassesCache.length === 0) {
+    allClassesCache = Object.keys(SRD_CLASS_EQUIPMENT).map(k => ({ index: k, name: SRD_CLASS_EQUIPMENT[k].name }));
+  }
+  renderDropdown(classDropdown, allClassesCache, classInput.value, "addCustomClassOption", "+ Add Custom Class");
+  classDropdown.classList.add("open");
+});
+
+raceInput?.addEventListener("click", () => {
+  if (!raceDropdown.classList.contains("open")) {
+    if (allRacesCache.length === 0) {
+      allRacesCache = Object.keys(SRD_RACE_DATA).map(k => ({ index: k, name: k.charAt(0).toUpperCase() + k.slice(1) }));
+    }
+    renderDropdown(raceDropdown, allRacesCache, raceInput.value, "addCustomRaceOption", "+ Add Custom Race");
+    raceDropdown.classList.add("open");
+  }
+});
+
+raceInput?.addEventListener("input", () => {
+  if (allRacesCache.length === 0) {
+    allRacesCache = Object.keys(SRD_RACE_DATA).map(k => ({ index: k, name: k.charAt(0).toUpperCase() + k.slice(1) }));
+  }
+  renderDropdown(raceDropdown, allRacesCache, raceInput.value, "addCustomRaceOption", "+ Add Custom Race");
+  raceDropdown.classList.add("open");
+});
+
 classDropdown?.addEventListener("click", (e) => {
   const item = e.target.closest(".dropdown-item");
   if (!item) return;
@@ -908,14 +557,19 @@ raceDropdown?.addEventListener("click", (e) => {
   const raceInfo = SRD_RACE_DATA[raceIdx];
   if (raceInfo) {
     if (raceInfo.speed) document.getElementById("charSpeed").value = raceInfo.speed;
-    const featBox = document.getElementById("featuresTraits");
-    if (featBox) {
-      const cur = featBox.value.trim();
-      featBox.value = cur ? cur + "\n\n" + raceInfo.traits : raceInfo.traits;
-      autoExpandTextarea(featBox);
+    
+    // Add all racial abilities to the new Abilities & Features row
+    if (raceInfo.traits && raceInfo.traits.length > 0) {
+      raceInfo.traits.forEach(t => {
+        if (!myCharacterTraits.some(existing => existing.name.toLowerCase() === t.name.toLowerCase())) {
+          myCharacterTraits.push({ name: t.name, type: t.type || "Racial", desc: t.desc || "" });
+        }
+      });
+      renderMyTraits();
     }
+
     saveSheet();
-    showStatus("Racial traits loaded!");
+    showStatus("Racial abilities loaded!");
   }
 });
 
@@ -934,6 +588,140 @@ function autoExpandTextarea(el) {
   el.style.height = el.scrollHeight + "px";
 }
 
+// 4-Column Abilities & Features Implementation
+function renderMyTraits() {
+  const container = document.getElementById("traitsList");
+  if (!container) return;
+
+  if (myCharacterTraits.length === 0) {
+    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.85rem; color: #64748b; font-style: italic;">No abilities added yet. Click "+ Add Ability" above to add one.</p>`;
+    return;
+  }
+
+  container.innerHTML = myCharacterTraits.map((trait, idx) => `
+    <div class="trait-card" data-index="${idx}">
+      <div class="trait-card-header">
+        <span class="trait-card-title">${escapeHtml(trait.name)}</span>
+        <button class="trait-card-delete" data-index="${idx}" type="button" title="Remove ability">&times;</button>
+      </div>
+      <span class="trait-card-type">${escapeHtml(trait.type || "Ability")}</span>
+      <div class="trait-card-snippet">${escapeHtml(trait.desc || "No description provided.")}</div>
+    </div>
+  `).join("");
+}
+
+document.getElementById("traitsList")?.addEventListener("click", (e) => {
+  if (e.target.classList.contains("trait-card-delete")) {
+    e.stopPropagation();
+    const idx = parseInt(e.target.dataset.index, 10);
+    myCharacterTraits.splice(idx, 1);
+    saveSheet();
+    renderMyTraits();
+    return;
+  }
+
+  const card = e.target.closest(".trait-card");
+  if (card) {
+    card.classList.toggle("expanded");
+  }
+});
+
+// Trait / Ability Search Modal
+function renderModalTraits(filterText = "") {
+  const container = document.getElementById("traitApiList");
+  if (!container) return;
+  const q = filterText.toLowerCase().trim();
+  const matches = allTraitsCache.filter(t => t.name.toLowerCase().includes(q));
+
+  if (matches.length === 0) {
+    container.innerHTML = `<p class="loading-text">No matching features found.</p>`;
+    return;
+  }
+
+  container.innerHTML = matches.map((trait, idx) => `
+    <div class="spell-option-item trait-option-item" data-idx="${idx}">
+      <div>
+        <span style="font-weight: 600; color: #f8fafc;">${escapeHtml(trait.name)}</span>
+        <span style="font-size: 0.75rem; color: #34d399; margin-left: 0.5rem; text-transform: uppercase;">${escapeHtml(trait.type)}</span>
+      </div>
+      <span class="spell-add-badge">+ Add</span>
+    </div>
+  `).join("");
+}
+
+async function fetchOfficialTraits() {
+  if (allTraitsCache.length > 0) return;
+  allTraitsCache = [...SRD_GENERAL_FEATURES];
+  try {
+    const res = await fetch("https://www.dnd5eapi.co/api/features");
+    if (res.ok) {
+      const data = await res.json();
+      const apiFeatures = (data.results || []).map(f => ({ name: f.name, type: "Feature", url: f.url }));
+      allTraitsCache.push(...apiFeatures);
+    }
+  } catch (err) {
+    console.error("API traits fallback used", err);
+  }
+}
+
+document.getElementById("addTraitBtn")?.addEventListener("click", async () => {
+  document.getElementById("traitModal")?.classList.add("open");
+  const list = document.getElementById("traitApiList");
+  if (list && allTraitsCache.length === 0) {
+    list.innerHTML = `<p class="loading-text">Loading official features...</p>`;
+    await fetchOfficialTraits();
+  }
+  renderModalTraits();
+});
+
+document.getElementById("closeTraitModal")?.addEventListener("click", () => {
+  document.getElementById("traitModal")?.classList.remove("open");
+});
+
+document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
+  renderModalTraits(e.target.value);
+});
+
+document.getElementById("addCustomTraitBtn")?.addEventListener("click", () => {
+  myCharacterTraits.push({ name: "New Ability", type: "Custom", desc: "Write your custom skill description here..." });
+  saveSheet();
+  renderMyTraits();
+  document.getElementById("traitModal")?.classList.remove("open");
+});
+
+document.getElementById("traitApiList")?.addEventListener("click", async (e) => {
+  const row = e.target.closest(".trait-option-item");
+  if (!row) return;
+
+  const idx = parseInt(row.dataset.idx, 10);
+  const selected = allTraitsCache[idx];
+  if (!selected) return;
+
+  let desc = selected.desc || "";
+  if (!desc && selected.url) {
+    try {
+      const res = await fetch(`https://www.dnd5eapi.co${selected.url}`);
+      if (res.ok) {
+        const data = await res.json();
+        desc = Array.isArray(data.desc) ? data.desc.join("\n\n") : (data.desc || "");
+      }
+    } catch (err) {
+      desc = "No description available.";
+    }
+  }
+
+  myCharacterTraits.push({
+    name: selected.name,
+    type: selected.type || "Feature",
+    desc: desc || "No description provided."
+  });
+
+  saveSheet();
+  renderMyTraits();
+  document.getElementById("traitModal")?.classList.remove("open");
+});
+
+// Official Spells Implementation
 async function fetchOfficialSpells() {
   if (allSpellsCache.length > 0) return allSpellsCache;
   try {
@@ -1113,6 +901,10 @@ document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
   renderModalSpells();
 });
 
+document.getElementById("closeSpellModal")?.addEventListener("click", () => {
+  document.getElementById("spellModal")?.classList.remove("open");
+});
+
 document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   renderModalSpells(e.target.value);
 });
@@ -1189,7 +981,14 @@ document.getElementById("deleteBtn")?.addEventListener("click", () => {
 
 document.getElementById("backupBtn")?.addEventListener("click", () => {
   const roster = getRoster();
-  const currentChar = roster[activeCharId] || { id: activeCharId, name: "Character", fields: getCurrentSheetData(), spells: myCharacterSpells, weapons: myCharacterWeapons };
+  const currentChar = roster[activeCharId] || { 
+    id: activeCharId, 
+    name: "Character", 
+    fields: getCurrentSheetData(), 
+    spells: myCharacterSpells, 
+    traits: myCharacterTraits,
+    weapons: myCharacterWeapons 
+  };
   const blob = new Blob([JSON.stringify({ character: currentChar, allRoster: roster }, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -1228,3 +1027,4 @@ document.addEventListener("input", (e) => {
 });
 
 loadSheet();
+renderMyTraits();
