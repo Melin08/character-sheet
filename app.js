@@ -3,6 +3,7 @@ const ROSTER_STORAGE_KEY = "badman_char_roster_v1";
 const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
 
 let allSpellsCache = [];
+let allClassesCache = [];
 let activeCharId = localStorage.getItem(ACTIVE_CHAR_ID_KEY) || "default";
 
 let myCharacterSpells = [];
@@ -457,7 +458,7 @@ document.querySelectorAll(".dice-btn").forEach((btn) => {
 
 document.getElementById("clearRollBtn")?.addEventListener("click", () => {
   const out = document.getElementById("rollResult");
-  if (out) out.textContent = "";
+  if (out) out.textContent = "—";
 });
 
 document.addEventListener("click", (e) => {
@@ -482,6 +483,74 @@ document.addEventListener("click", (e) => {
     const out = document.getElementById("rollResult");
     if (out) out.textContent = `${label}: ${roll} ${sign} = ${total}`;
     addDiceHistory(`${label} (${roll} ${sign})`, total);
+  }
+});
+
+// Official 5e Class Wiki Dropdown Logic
+const classInput = document.getElementById("charClass");
+const classDropdown = document.getElementById("classDropdown");
+
+async function fetchOfficialClasses() {
+  if (allClassesCache.length > 0) return allClassesCache;
+  try {
+    const res = await fetch("https://www.dnd5eapi.co/api/classes");
+    const data = await res.json();
+    allClassesCache = data.results || [];
+    return allClassesCache;
+  } catch (err) {
+    console.error("Failed to load classes from API", err);
+    return [];
+  }
+}
+
+function renderClassDropdown(filter = "") {
+  if (!classDropdown) return;
+  const q = filter.toLowerCase().trim();
+  const filtered = allClassesCache.filter(c => c.name.toLowerCase().includes(q));
+
+  let html = filtered
+    .map(c => `<div class="class-dropdown-item" data-name="${escapeHtml(c.name)}">${escapeHtml(c.name)}</div>`)
+    .join("");
+
+  html += `<div class="class-dropdown-item class-dropdown-custom" id="addCustomClassOption">+ Add Custom Class</div>`;
+  classDropdown.innerHTML = html;
+}
+
+classInput?.addEventListener("focus", async () => {
+  if (allClassesCache.length === 0) {
+    await fetchOfficialClasses();
+  }
+  renderClassDropdown(classInput.value);
+  classDropdown?.classList.add("open");
+});
+
+classInput?.addEventListener("input", async () => {
+  if (allClassesCache.length === 0) {
+    await fetchOfficialClasses();
+  }
+  renderClassDropdown(classInput.value);
+  classDropdown?.classList.add("open");
+});
+
+classDropdown?.addEventListener("click", (e) => {
+  const item = e.target.closest(".class-dropdown-item");
+  if (!item) return;
+
+  if (item.id === "addCustomClassOption") {
+    classInput.value = "";
+    classInput.placeholder = "Type custom class...";
+    classInput.focus();
+  } else {
+    classInput.value = item.dataset.name;
+    recalculateAll();
+    saveSheet();
+  }
+  classDropdown.classList.remove("open");
+});
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".class-pill-wrapper")) {
+    classDropdown?.classList.remove("open");
   }
 });
 
