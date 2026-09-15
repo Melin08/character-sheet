@@ -395,31 +395,94 @@
         <hr class="red-divider" />
         <h2 class="section-title">Spells</h2>
         <div class="spell-basics">
-          <div class="meta-item">
-            <label for="spellAbility">Spell Ability</label>
-            <input type="text" id="spellAbility" class="save-field inline-input" placeholder="INT" />
+          <div class="spell-stat-card">
+            <span class="spell-stat-label">Spell Ability</span>
+            <input type="text" id="spellAbility" class="save-field spell-stat-input" placeholder="INT" />
           </div>
-          <div class="meta-item">
-            <label for="spellDc">Spell Save DC</label>
-            <input type="text" id="spellDc" class="save-field inline-input" placeholder="13" />
+          <div class="spell-stat-card">
+            <span class="spell-stat-label">Spell Save DC</span>
+            <input type="text" id="spellDc" class="save-field spell-stat-input" placeholder="13" />
           </div>
-          <div class="meta-item">
-            <label for="spellAtkBonus">Spell Attack Bonus</label>
-            <input type="text" id="spellAtkBonus" class="save-field inline-input" placeholder="+5" />
+          <div class="spell-stat-card">
+            <span class="spell-stat-label">Spell Attack Bonus</span>
+            <input type="text" id="spellAtkBonus" class="save-field spell-stat-input" placeholder="+5" />
           </div>
         </div>
 
         <h3 class="subsection-title">Spell Slots</h3>
         <div class="slots-grid">
-          <div class="slot-item"><span>1st</span><input type="number" id="slot1_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot1_max" class="save-field dual-input" value="0" /></div>
-          <div class="slot-item"><span>2nd</span><input type="number" id="slot2_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot2_max" class="save-field dual-input" value="0" /></div>
-          <div class="slot-item"><span>3rd</span><input type="number" id="slot3_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot3_max" class="save-field dual-input" value="0" /></div>
-          <div class="slot-item"><span>4th</span><input type="number" id="slot4_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot4_max" class="save-field dual-input" value="0" /></div>
-          <div class="slot-item"><span>5th</span><input type="number" id="slot5_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot5_max" class="save-field dual-input" value="0" /></div>
-          <div class="slot-item"><span>6th</span><input type="number" id="slot6_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot6_max" class="save-field dual-input" value="0" /></div>
-          <div class="slot-item"><span>7th</span><input type="number" id="slot7_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot7_max" class="save-field dual-input" value="0" /></div>
-          <div class="slot-item"><span>8th</span><input type="number" id="slot8_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot8_max" class="save-field dual-input" value="0" /></div>
-          <div class="slot-item"><span>9th</span><input type="number" id="slot9_cur" class="save-field dual-input" value="0" />/ <input type="number" id="slot9_max" class="save-field dual-input" value="0" /></div>
+          <div class="slot-tile">
+            <span class="slot-level">1st</span>
+            <div class="slot-counter">
+              <input type="number" id="slot1_cur" class="save-field slot-input" value="0" />
+              <span class="slot-divider">/</span>
+              <input type="number" id="slot1_max" class="save-field slot-input" value="0" />
+            </div>
+          </div>
+          <div class="slot-tile">
+            <span class="slot-level">2nd</span>
+            <div class="slot-counter">
+              <input type="number" id="slot2_cur" class="save-field slot-input" value="0" />
+              <span class="slot-divider">/</span>
+              <input type="number" id="slot2_max" class="save-field slot-input" value="0" />
+            </div>
+          </div>
+          <div class="slot-tile">
+            <span class="slot-level">3rd</span>
+            <div class="slot-counter">
+              <input type="number" id="slot3_cur" class="save-field slot-input" value="0" />
+              <span class="slot-divider">/</span>
+              <input type="number" id="slot3_max" class="save-field slot-input" value="0" />
+            </div>
+          </div>
+          <div class="slot-tile">
+            <span class="slot-level">4th</span>
+            <div class="slot-counter">
+              <input type="number" id="slot4_cur" class="save-field slot-input" value="0" />
+              <span class="slot-divider">/</span>
+              <input type="number" id="slot4_max" class="save-field slot-input" value="0" />
+            </div>
+          </div>
+          <div class="slot-tile">
+            <span class="slot-level">5th</span>
+            <div class="slot-counter">
+              <input type="number" id="slot5_cur" class="save-field slot-input" value="0" />
+              <span class="slot-divider">/</span>
+              <input type="number" id="slot5_max" class="save-field slot-input" value="0" />
+            </div>
+          </div>
+          <div class="slot-tile">
+            <span class="slot-level">6th</span>
+            <div class="slot-counter">
+              <input type="number" id="slot6_cur" class="save-field slot-input" value="0" />
+              <span class="slot-divider">/</span>
+              <input type="number" id="slot6_max" class="save-field slot-input" value="0" />
+            </div>
+          </div>
+          <div class="slot-tile">
+            <span class="slot-level">7th</span>
+            <div class="slot-counter">
+              <input type="number" id="slot7_cur" class="save-field slot-input" value="0" />
+              <span class="slot-divider">/</span>
+              <input type="number" id="slot7_max" class="save-field slot-input" value="0" />
+            </div>
+          </div>
+          <div class="slot-tile">
+            <span class="slot-level">8th</span>
+            <div class="slot-counter">
+              <input type="number" id="slot8_cur" class="save-field slot-input" value="0" />
+              <span class="slot-divider">/</span>
+              <input type="number" id="slot8_max" class="save-field slot-input" value="0" />
+            </div>
+          </div>
+          <div class="slot-tile">
+            <span class="slot-level">9th</span>
+            <div class="slot-counter">
+              <input type="number" id="slot9_cur" class="save-field slot-input" value="0" />
+              <span class="slot-divider">/</span>
+              <input type="number" id="slot9_max" class="save-field slot-input" value="0" />
+            </div>
+          </div>
         </div>
 
         <div class="cantrips-header">
