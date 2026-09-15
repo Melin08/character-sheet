@@ -419,6 +419,16 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* Tight Spacing Helpers for Stacked Textareas */
+.tight-title {
+  margin-top: 0.65rem !important;
+  margin-bottom: 0.45rem !important;
+}
+
+.tight-block {
+  margin-bottom: 0.55rem !important;
+}
+
 /* Attributes */
 .attr-row {
   display: flex;
