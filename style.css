@@ -6,20 +6,26 @@
 }
 
 body {
-  background-color: #ffffff;
-  color: #2b2b2b;
-  padding: 1.25rem;
+  background-color: #f7f8fa;
+  color: #262626;
+  padding: 2rem 1rem;
+  line-height: 1.5;
 }
 
 .sheet-container {
   max-width: 1140px;
   margin: 0 auto;
+  background-color: #ffffff;
+  padding: 2rem 2.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
 
+/* Action Header */
 .top-nav {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.2rem;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
   flex-wrap: wrap;
   align-items: center;
 }
@@ -29,14 +35,15 @@ body {
   color: #ffffff;
   border: none;
   border-radius: 4px;
-  padding: 0.45rem 1.1rem;
-  font-size: 0.95rem;
-  font-weight: 700;
+  padding: 0.5rem 1.15rem;
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  text-decoration: none;
+  line-height: 1.2;
+  transition: background-color 0.15s ease;
 }
 
 .btn.red:hover {
@@ -63,46 +70,51 @@ body {
   font-weight: 600;
   color: #059669;
   margin-left: 0.5rem;
-  transition: opacity 0.3s ease;
 }
 
+/* Character Name Input */
 .name-box {
-  margin-bottom: 0.8rem;
+  margin-bottom: 1.25rem;
 }
 
 .name-input {
   width: 100%;
-  font-size: 2.1rem;
+  font-size: 2rem;
   font-weight: 700;
-  color: #737373;
+  color: #4b5563;
   border: 1px dashed #d1d5db;
-  border-radius: 4px;
-  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  padding: 0.5rem 0.85rem;
   outline: none;
+  background: #fafbfc;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .name-input:focus {
-  color: #111111;
+  color: #111827;
   border-color: #b70014;
+  background: #ffffff;
 }
 
+/* Main Navigation Tabs */
 .tab-controls {
   display: flex;
   border-bottom: 2px solid #b70014;
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.5rem;
+  gap: 0.25rem;
 }
 
 .main-tab {
-  background: #ffffff;
+  background: #fdfdfd;
   color: #b70014;
   border: 1px solid #b70014;
   border-bottom: none;
-  border-radius: 4px 4px 0 0;
-  padding: 0.55rem 1.2rem;
+  border-radius: 5px 5px 0 0;
+  padding: 0.6rem 1.25rem;
   cursor: pointer;
-  font-size: 0.95rem;
-  margin-right: 0.5rem;
+  font-size: 0.92rem;
   font-weight: 600;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .main-tab.active {
@@ -118,24 +130,26 @@ body {
   display: block;
 }
 
+/* Sub-tabs */
 .subtab-controls {
   display: flex;
-  gap: 0.4rem;
-  border-bottom: 1px solid #d1d5db;
-  margin-bottom: 1.2rem;
-  padding-bottom: 0.4rem;
+  gap: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
   flex-wrap: wrap;
 }
 
 .sub-tab {
   background: #f3f4f6;
-  border: 1px solid #d1d5db;
+  border: 1px solid #e5e7eb;
   border-radius: 4px;
-  padding: 0.4rem 0.9rem;
-  font-size: 0.9rem;
+  padding: 0.45rem 1rem;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   color: #4b5563;
+  transition: all 0.15s ease;
 }
 
 .sub-tab.active {
@@ -144,70 +158,82 @@ body {
   border-color: #b70014;
 }
 
-.subtab-page {
-  display: none;
-}
-
-.subtab-page.active {
-  display: block;
-}
-
+/* Meta Data Rows */
 .meta-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.2rem;
+  gap: 1.5rem;
   align-items: center;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .meta-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  font-size: 0.92rem;
+  gap: 0.5rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
 .meta-item label {
-  color: #222222;
+  color: #374151;
+  letter-spacing: 0.01em;
 }
 
 .inline-input {
   border: 1px dotted #9ca3af;
   border-radius: 4px;
-  padding: 0.25rem 0.45rem;
-  font-size: 0.92rem;
-  background: #fafafa;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.9rem;
+  background: #ffffff;
+  color: #1f2937;
+  outline: none;
+}
+
+.inline-input:focus {
+  border-color: #b70014;
 }
 
 .meta-item.small input {
-  width: 55px;
+  width: 58px;
+  text-align: center;
 }
 
 .dual-input {
-  width: 46px;
+  width: 48px;
   text-align: center;
   border: 1px dotted #9ca3af;
   border-radius: 4px;
-  padding: 0.25rem;
-  background: #fafafa;
+  padding: 0.3rem 0.25rem;
+  background: #ffffff;
+  font-size: 0.9rem;
+  outline: none;
 }
 
-/* Perfect Dead-Center Shield & Heart Badges */
+.dual-input:focus {
+  border-color: #b70014;
+}
+
+/* Vitals & Center Alignment */
 .vitals-row {
   display: flex;
-  gap: 2.2rem;
+  gap: 2.25rem;
   align-items: center;
-  margin: 1.3rem 0;
+  margin: 1.75rem 0;
   flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  background: #fafbfc;
+  border-radius: 6px;
+  border: 1px solid #f0f2f5;
 }
 
 .vital-unit {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  font-size: 0.92rem;
+  gap: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 700;
+  color: #374151;
 }
 
 .badge-wrapper {
@@ -215,8 +241,6 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  margin: 0;
 }
 
 .shield-wrap {
@@ -251,12 +275,11 @@ body {
 }
 
 .heart-solid-path {
-  fill: #111111;
-  stroke: #111111;
+  fill: #1f2937;
+  stroke: #1f2937;
   stroke-width: 2px;
 }
 
-/* Eliminate browser margins/spinners so text centers exactly */
 .badge-input {
   position: absolute;
   inset: 0;
@@ -268,7 +291,7 @@ body {
   text-align: center;
   font-size: 1.15rem;
   font-weight: 700;
-  color: #111111;
+  color: #111827;
   outline: none;
   padding: 0;
   margin: 0;
@@ -301,20 +324,21 @@ body {
 .hearts-group {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
 }
 
 .slash {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 600;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
+/* Two Column Layout */
 .two-col-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
-  gap: 2.5rem;
-  margin-top: 1rem;
+  gap: 3rem;
+  margin-top: 1.25rem;
 }
 
 @media (max-width: 860px) {
@@ -324,121 +348,158 @@ body {
 }
 
 .section-title {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  margin: 1.25rem 0 0.75rem 0;
+  color: #111827;
+  margin: 1.5rem 0 0.85rem 0;
+  letter-spacing: -0.01em;
 }
 
+/* Attributes Alignment */
 .attr-row {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  margin-bottom: 0.55rem;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
 }
 
 .attr-name {
-  width: 35px;
+  width: 36px;
   font-weight: 700;
+  font-size: 0.95rem;
+  color: #374151;
 }
 
 .attr-input {
-  width: 46px;
+  width: 48px;
   border: 1px dotted #9ca3af;
   border-radius: 4px;
-  padding: 0.2rem;
+  padding: 0.3rem 0.2rem;
   text-align: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: #ffffff;
+  outline: none;
+}
+
+.attr-input:focus {
+  border-color: #b70014;
 }
 
 .attr-mod, .save-val {
-  width: 25px;
+  width: 28px;
   text-align: center;
   font-weight: 600;
+  color: #111827;
 }
 
 .save-check {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.35rem;
   font-size: 0.88rem;
   cursor: pointer;
+  color: #4b5563;
+  margin-left: 0.2rem;
 }
 
 .hex-die {
-  width: 15px;
-  height: 17px;
+  width: 16px;
+  height: 18px;
   background-color: #b70014;
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
   display: inline-block;
   cursor: pointer;
-  transition: transform 0.1s ease-in-out;
+  transition: transform 0.15s ease;
+  margin-left: 0.25rem;
 }
 
 .hex-die:hover {
   transform: scale(1.25);
 }
 
+/* Skills Alignment */
 .skill-row {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  margin-bottom: 0.35rem;
-  font-size: 0.92rem;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+  font-size: 0.9rem;
 }
 
 .skill-label {
   flex: 1;
+  color: #374151;
 }
 
 .skill-val {
-  width: 20px;
+  width: 24px;
   text-align: right;
-  margin-right: 0.3rem;
+  margin-right: 0.35rem;
   font-weight: 600;
+  color: #111827;
 }
 
+/* Dice Bar & Coins */
 .dice-bar {
   display: flex;
   gap: 0.45rem;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.5rem;
+  background: #fafbfc;
+  padding: 0.75rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid #f0f2f5;
 }
 
 .dice-bar .btn.red {
-  padding: 0.35rem 0.8rem;
-  font-size: 0.88rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
 }
 
 .roll-output {
   font-weight: 700;
   color: #b70014;
-  margin-left: 0.5rem;
+  margin-left: 0.6rem;
+  font-size: 0.95rem;
 }
 
 .currency-bar {
   display: flex;
-  gap: 1.25rem;
-  margin-bottom: 1rem;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  align-items: center;
 }
 
 .coin-item {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
   font-size: 0.88rem;
   font-weight: 700;
+  color: #4b5563;
 }
 
 .coin-input {
-  width: 48px;
+  width: 52px;
   border: 1px dotted #9ca3af;
   border-radius: 4px;
-  padding: 0.2rem;
+  padding: 0.3rem 0.25rem;
   text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: #ffffff;
+  outline: none;
 }
 
+.coin-input:focus {
+  border-color: #b70014;
+}
+
+/* Weapons Table */
 .attacks-table {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .attack-headers {
@@ -446,15 +507,19 @@ body {
   grid-template-columns: 2fr 1fr 1.5fr 2fr 28px;
   gap: 0.5rem;
   font-weight: 700;
-  font-size: 0.9rem;
-  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+  margin-bottom: 0.45rem;
+  padding: 0 0.2rem;
 }
 
 .attack-entry {
   display: grid;
   grid-template-columns: 2fr 1fr 1.5fr 2fr 28px;
   gap: 0.5rem;
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.5rem;
   align-items: center;
 }
 
@@ -465,20 +530,20 @@ body {
 .weapon-delete-btn {
   background: transparent;
   border: none;
-  color: #b70014;
-  font-size: 1.3rem;
-  font-weight: bold;
+  color: #9ca3af;
+  font-size: 1.35rem;
   cursor: pointer;
   line-height: 1;
   text-align: center;
+  transition: color 0.15s ease;
 }
 
 .weapon-delete-btn:hover {
-  color: #000000;
+  color: #b70014;
 }
 
 .add-weapon-wrapper {
-  margin-top: 0.4rem;
+  margin-top: 0.6rem;
 }
 
 .btn-icon-plus {
@@ -500,139 +565,154 @@ body {
 
 .btn-icon-plus:hover {
   background-color: #920010;
-  transform: scale(1.1);
+  transform: scale(1.08);
 }
 
 .red-divider {
   border: none;
-  border-top: 1px solid #b70014;
-  margin: 1.3rem 0;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.75rem 0;
 }
 
+/* Spells Section */
 .spell-basics {
   display: flex;
-  gap: 1.5rem;
+  gap: 1.75rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .subsection-title {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  margin-bottom: 0.55rem;
+  color: #374151;
+  margin-bottom: 0.65rem;
 }
 
 .slots-grid {
   display: flex;
-  gap: 0.8rem;
+  gap: 0.85rem;
   flex-wrap: wrap;
   align-items: center;
-  margin-bottom: 1.3rem;
+  margin-bottom: 1.5rem;
 }
 
 .slot-item {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.35rem;
   font-size: 0.88rem;
+  color: #4b5563;
+  font-weight: 600;
 }
 
 .cantrips-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: 0.85rem;
+  margin-top: 1.25rem;
 }
 
 .btn-text-red {
   background: transparent;
   border: none;
   color: #b70014;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
-  padding: 0.2rem 0.4rem;
+  padding: 0.2rem 0.3rem;
+  transition: color 0.15s ease;
 }
 
 .btn-text-red:hover {
+  color: #920010;
   text-decoration: underline;
 }
 
 .block-text {
   width: 100%;
   border: 1px dotted #9ca3af;
-  border-radius: 4px;
-  padding: 0.55rem;
-  font-size: 0.92rem;
-  margin-bottom: 1rem;
+  border-radius: 6px;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
   background: #ffffff;
+  color: #1f2937;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.block-text:focus {
+  border-color: #b70014;
 }
 
 .journal-box {
-  line-height: 1.45;
+  line-height: 1.55;
 }
 
+/* Spell Cards */
 .spells-container {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  margin-top: 0.75rem;
+  gap: 0.75rem;
+  margin-top: 1rem;
   margin-bottom: 1.5rem;
 }
 
 .spell-card {
-  border: 1px dotted #9ca3af;
-  border-radius: 5px;
-  background: #fafafa;
-  padding: 0.65rem 0.85rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fafbfc;
+  padding: 0.75rem 0.95rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .spell-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 0.3rem;
+  border-bottom: 1px solid #edf0f2;
+  padding-bottom: 0.4rem;
 }
 
 .spell-card-title {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.98rem;
   color: #111827;
 }
 
 .spell-card-delete {
   background: transparent;
   border: none;
-  color: #b70014;
+  color: #9ca3af;
   font-size: 1.35rem;
   font-weight: bold;
   cursor: pointer;
   line-height: 1;
   padding: 0 0.25rem;
+  transition: color 0.15s ease;
 }
 
 .spell-card-delete:hover {
-  color: #000000;
+  color: #b70014;
 }
 
 .spell-card-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.85rem;
+  gap: 1rem;
   font-size: 0.82rem;
   color: #4b5563;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .spell-card-desc {
   font-size: 0.86rem;
   color: #374151;
-  line-height: 1.35;
-  margin-top: 0.25rem;
+  line-height: 1.45;
+  margin-top: 0.2rem;
 }
 
 /* Modals */
@@ -640,7 +720,8 @@ body {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
   z-index: 1000;
   align-items: center;
   justify-content: center;
@@ -655,8 +736,8 @@ body {
   width: 90%;
   max-width: 540px;
   max-height: 80vh;
-  border-radius: 6px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -676,45 +757,46 @@ body {
   align-items: center;
   background: #b70014;
   color: #ffffff;
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1.15rem;
 }
 
 .modal-header h3 {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 
 .modal-close-btn {
   background: transparent;
   border: none;
   color: #ffffff;
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   cursor: pointer;
   line-height: 1;
-  padding: 0 0.4rem;
+  padding: 0 0.25rem;
 }
 
 .help-modal-content {
-  padding: 1.5rem;
+  padding: 1.75rem 1.5rem;
   text-align: center;
 }
 
 .help-text {
-  font-size: 1.05rem;
-  line-height: 1.5;
-  color: #1f2937;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #374151;
 }
 
 .modal-search-bar {
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1.15rem;
   border-bottom: 1px solid #e5e7eb;
 }
 
 .modal-search-bar input {
   width: 100%;
-  padding: 0.55rem 0.75rem;
+  padding: 0.55rem 0.85rem;
   border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 0.95rem;
+  border-radius: 6px;
+  font-size: 0.92rem;
   outline: none;
 }
 
@@ -723,7 +805,7 @@ body {
 }
 
 .modal-list {
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1.15rem;
   overflow-y: auto;
   flex: 1;
 }
@@ -732,7 +814,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.65rem 0.5rem;
+  padding: 0.7rem 0.5rem;
   border-bottom: 1px solid #f3f4f6;
   gap: 0.5rem;
 }
@@ -749,8 +831,8 @@ body {
 }
 
 .char-item-name {
-  font-weight: 700;
-  font-size: 0.95rem;
+  font-weight: 600;
+  font-size: 0.92rem;
   color: #111827;
 }
 
@@ -762,17 +844,17 @@ body {
 .char-actions {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 
 .char-select-btn {
   background-color: #b70014;
   color: #ffffff;
   border: none;
-  border-radius: 3px;
-  padding: 0.25rem 0.55rem;
-  font-size: 0.8rem;
-  font-weight: 700;
+  border-radius: 4px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -783,18 +865,23 @@ body {
 .char-delete-btn {
   background: transparent;
   border: none;
-  color: #b70014;
-  font-size: 1.2rem;
+  color: #9ca3af;
+  font-size: 1.25rem;
   font-weight: bold;
   cursor: pointer;
   padding: 0 0.3rem;
+  transition: color 0.15s ease;
+}
+
+.char-delete-btn:hover {
+  color: #b70014;
 }
 
 .spell-option-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.55rem 0.4rem;
+  padding: 0.65rem 0.5rem;
   border-bottom: 1px solid #f3f4f6;
   cursor: pointer;
 }
@@ -806,27 +893,28 @@ body {
 .spell-add-badge {
   background: #b70014;
   color: #ffffff;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
   padding: 0.25rem 0.55rem;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .loading-text {
   font-style: italic;
   color: #6b7280;
   text-align: center;
-  padding: 1.2rem 0;
+  padding: 1.5rem 0;
 }
 
+/* Footer Section */
 .sheet-footer {
-  margin-top: 2.2rem;
+  margin-top: 3rem;
 }
 
 .footer-divider {
   border: none;
-  border-top: 1px solid #777777;
-  margin-bottom: 1rem;
+  border-top: 1px solid #e5e7eb;
+  margin-bottom: 1.25rem;
 }
 
 .footer-meta {
@@ -838,6 +926,7 @@ body {
 
 .footer-title {
   font-weight: 700;
+  color: #111827;
 }
 
 .footer-links {
@@ -845,7 +934,7 @@ body {
   color: #b70014;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
 }
 
 .footer-links li {
@@ -877,10 +966,10 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 0.75rem;
-  margin: 1.5rem 0;
+  gap: 0.85rem;
+  margin: 1.75rem 0 0.5rem 0;
   color: #b70014;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   flex-wrap: wrap;
 }
 
@@ -890,7 +979,7 @@ body {
   text-decoration: none;
   background: transparent;
   border: none;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   cursor: pointer;
   padding: 0;
 }
