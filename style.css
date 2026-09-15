@@ -13,7 +13,7 @@ body {
 }
 
 .sheet-container {
-  max-width: 1380px;
+  max-width: 1080px;
   margin: 0 auto;
   background-color: #151d2f;
   padding: 2.5rem;
@@ -739,10 +739,10 @@ body {
   line-height: 1.55;
 }
 
-/* 3-Column Spells Grid */
+/* 2-Column Spells Grid */
 .spells-grid-container {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 1.25rem;
   margin-top: 1rem;
   margin-bottom: 1.5rem;
@@ -1182,10 +1182,7 @@ body {
   text-decoration: underline;
 }
 
-/* ==================================================== */
-/* DEDICATED PHONE & MOBILE STYLES (UNDER 768px ONLY)   */
-/* These leave your desktop design 100% untouched       */
-/* ==================================================== */
+/* Mobile Adjustments Under 768px */
 @media (max-width: 768px) {
   body {
     padding: 0.75rem 0.5rem;
@@ -1196,7 +1193,6 @@ body {
     border-radius: 8px;
   }
 
-  /* Prevent Safari on iOS from auto-zooming into inputs */
   input,
   textarea,
   select {
@@ -1241,7 +1237,6 @@ body {
     padding: 0.4rem 0.5rem;
   }
 
-  /* Metadata Rows stack cleanly on mobile screens */
   .meta-row-grid {
     grid-template-columns: 1fr;
     gap: 0.5rem;
@@ -1266,7 +1261,6 @@ body {
     gap: 1.75rem;
   }
 
-  /* Horizontal scroll for Weapons so it never squishes */
   .attacks-table-wrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -1324,9 +1318,5 @@ body {
 
   .two-col-layout {
     grid-template-columns: 1fr;
-  }
-
-  .spells-grid-container {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
