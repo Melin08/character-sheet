@@ -480,7 +480,6 @@ const classInput = document.getElementById("charClass");
 const classDropdown = document.getElementById("classDropdown");
 const choiceModal = document.getElementById("choiceModal");
 const choiceModalTitle = document.getElementById("choiceModalTitle");
-const choiceModalBody = document.getElementById("choiceModalBody");
 
 async function fetchOfficialClasses() {
   if (allClassesCache.length > 0) return allClassesCache;
@@ -664,15 +663,13 @@ raceDropdown?.addEventListener("click", async (e) => {
     
     let raceText = "";
     if (details.traits && details.traits.length > 0) {
-        for (let traitRef of details.traits) {
-            try {
-                const traitData = await fetch(`https://www.dnd5eapi.co${traitRef.url}`).then(r => r.json());
-                const desc = Array.isArray(traitData.desc) ? traitData.desc.join("\n") : (traitData.desc || "");
-                raceText += `[${traitData.name}]\n${desc}\n\n`;
-            } catch (err) {
-                raceText += `[${traitRef.name}]\n(Description unavailable)\n\n`;
-            }
-        }
+        const traitPromises = details.traits.map(t => fetch(`https://www.dnd5eapi.co${t.url}`).then(r => r.json()));
+        const traitsData = await Promise.all(traitPromises);
+        
+        traitsData.forEach(td => {
+            const desc = Array.isArray(td.desc) ? td.desc.join("\n") : (td.desc || "");
+            raceText += `[${td.name}]\n${desc}\n\n`;
+        });
     }
     
     if (raceText) {
@@ -703,81 +700,132 @@ function isWeaponOrArmor(name) {
          lower.includes("rapier") || lower.includes("dart");
 }
 
-function getChoiceDetails(choice) {
-  let details = [];
-  if (!choice) return details;
-
-  if (choice.option_type === "counted_reference" && choice.of) {
-      details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.of.name}`);
-  } else if (choice.option_type === "choice" && choice.choice) {
-      const catDesc = choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option";
-      details.push(`Any ${catDesc}`);
-  } else if (choice.option_type === "multiple" && choice.items) {
-      choice.items.forEach(i => {
-          if (i.option_type === "counted_reference" && i.of) {
-              details.push(`${i.count > 1 ? i.count + "x " : ""}${i.of.name}`);
-          } else if (i.option_type === "choice" && i.choice) {
-              const catDesc = i.choice.desc || i.choice.from?.equipment_category?.name || "Option";
-              details.push(`Any ${catDesc}`);
-          } else if (i.of) {
-              details.push(`${i.count > 1 ? i.count + "x " : ""}${i.of.name}`);
-          } else if (i.item) {
-              details.push(`${i.count > 1 ? i.count + "x " : ""}${i.item.name}`);
-          }
-      });
-  } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
-      details.push(`${choice.count > 1 ? choice.count + "x " : ""}Any ${choice.equipment_category.name}`);
-  } else if (choice.equipment) {
-      details.push(`${choice.quantity > 1 ? choice.quantity + "x " : ""}${choice.equipment.name}`);
-  } else if (choice.equipment_category) {
-      details.push(`Any ${choice.equipment_category.name}`);
-  } else if (choice.item) {
-      details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.item.name}`);
-  } else {
-      details.push("Item(s)");
-  }
-  
-  if (details.length === 0) details.push("Equipment Option");
-  return details;
-}
-
-function extractItemsFromChoice(choice) {
+function parseOption(opt) {
+  if (!opt) return { label: "Equipment Option", details: [] };
   let items = [];
-  if (!choice) return items;
+  let label = "";
 
-  if (choice.option_type === "multiple" && choice.items) {
-      choice.items.forEach(i => {
-          if (i.option_type === "counted_reference" && i.of) {
-              items.push({ name: i.of.name, qty: i.count || 1 });
-          } else if (i.option_type === "choice" && i.choice) {
-              const catName = i.choice.from?.equipment_category?.name || "Equipment Option";
-              items.push({ name: `Any ${catName}`, qty: i.choice.choose || 1 });
-          } else if (i.of) {
-              items.push({ name: i.of.name, qty: i.count || 1 });
-          } else if (i.item) {
-              items.push({ name: i.item.name, qty: i.count || 1 });
-          }
-      });
-  } else if (choice.option_type === "counted_reference" && choice.of) {
-      items.push({ name: choice.of.name, qty: choice.count || 1 });
-  } else if (choice.option_type === "choice" && choice.choice) {
-      const catName = choice.choice.from?.equipment_category?.name || "Equipment Option";
-      items.push({ name: `Any ${catName}`, qty: choice.choice.choose || 1 });
-  } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
-      items.push({ name: `Any ${choice.equipment_category.name}`, qty: choice.count || 1 });
-  } else if (choice.equipment) {
-      items.push({ name: choice.equipment.name, qty: choice.quantity || 1 });
-  } else if (choice.equipment_category) {
-      items.push({ name: `Any ${choice.equipment_category.name}`, qty: 1 });
-  } else if (choice.item) {
-      items.push({ name: choice.item.name, qty: choice.count || 1 });
+  if (opt.option_type === "counted_reference" && opt.of) {
+      label = `${opt.count > 1 ? opt.count + "x " : ""}${opt.of.name}`;
+      items.push({ name: opt.of.name, qty: opt.count || 1 });
+  } else if (opt.option_type === "choice" && opt.choice) {
+      const cat = opt.choice?.desc || opt.choice?.from?.equipment_category?.name || "Equipment Option";
+      const num = opt.choice?.choose || 1;
+      label = `Any ${num} ${cat}`;
+      items.push({ name: `Any ${cat}`, qty: num });
+  } else if (opt.option_type === "multiple" && opt.items) {
+      const subItems = opt.items.map(i => parseOption(i));
+      label = subItems.map(s => s.label).join(" + ");
+      if (label.length > 35) label = label.substring(0, 32) + "...";
+      subItems.forEach(s => items.push(...s.details));
+  } else if (opt.option_type === "equipment_category" || opt.equipment_category) {
+      const cat = opt.equipment_category?.name || "Category";
+      label = `Any ${cat}`;
+      items.push({ name: `Any ${cat}`, qty: 1 });
+  } else if (opt.equipment) {
+      label = `${opt.quantity > 1 ? opt.quantity + "x " : ""}${opt.equipment.name}`;
+      items.push({ name: opt.equipment.name, qty: opt.quantity || 1 });
   } else {
-      items.push({ name: "Selected Item", qty: 1 });
+      label = "Equipment Option";
+      items.push({ name: "Equipment Option", qty: 1 });
   }
-  return items;
+
+  return { label: label, details: items };
 }
 
-function applyStartingEquipment(details) {
+function processEquipmentChoiceGroup(optGroup, weaponsList, gearList) {
+  return new Promise((resolve) => {
+      let chooseCount = optGroup.choose || 1;
+
+      if (optGroup.from && optGroup.from.option_set_type === "equipment_category") {
+          gearList.push(`${chooseCount}x Any ${optGroup.from.equipment_category.name}`);
+          resolve();
+          return;
+      }
+
+      let options = [];
+      if (optGroup.from && Array.isArray(optGroup.from.options)) {
+          options = optGroup.from.options;
+      } else if (Array.isArray(optGroup.from)) {
+          options = optGroup.from; 
+      }
+
+      if (options.length === 0) {
+          resolve();
+          return;
+      }
+
+      if (options.length === 1) {
+          const parsed = parseOption(options[0]);
+          parsed.details.forEach(item => {
+              const qtyStr = item.qty > 1 ? `${item.qty}x ` : "";
+              if (isWeaponOrArmor(item.name)) {
+                  weaponsList.push({ name: `${qtyStr}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
+              } else {
+                  gearList.push(`${qtyStr}${item.name}`);
+              }
+          });
+          resolve();
+          return;
+      }
+
+      const modal = document.getElementById("choiceModal");
+      const title = document.getElementById("choiceModalTitle");
+      const body = document.getElementById("choiceModalBody");
+
+      const updateTitle = () => {
+          title.textContent = `Choose ${chooseCount} Starting Option(s)`;
+      };
+      updateTitle();
+
+      let html = "";
+      options.forEach((opt, idx) => {
+          const parsed = parseOption(opt);
+          const tooltipHtml = parsed.details.map(d => `${d.qty}x ${d.name}`).join("<br>");
+          html += `
+              <div class="choice-option-wrapper" id="opt-wrap-${idx}">
+                  <button type="button" class="choice-option-btn" data-idx="${idx}">${escapeHtml(parsed.label)}</button>
+                  <div class="choice-tooltip">${tooltipHtml}</div>
+              </div>
+          `;
+      });
+
+      body.innerHTML = html;
+      modal.classList.add("open");
+
+      const handler = (e) => {
+          const btn = e.target.closest(".choice-option-btn");
+          if (!btn) return;
+          
+          const idx = parseInt(btn.dataset.idx, 10);
+          const parsed = parseOption(options[idx]);
+
+          parsed.details.forEach(item => {
+              const qtyStr = item.qty > 1 ? `${item.qty}x ` : "";
+              if (isWeaponOrArmor(item.name)) {
+                  weaponsList.push({ name: `${qtyStr}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
+              } else {
+                  gearList.push(`${qtyStr}${item.name}`);
+              }
+          });
+
+          const wrap = document.getElementById(`opt-wrap-${idx}`);
+          if(wrap) wrap.style.display = "none";
+          chooseCount--;
+
+          if (chooseCount <= 0) {
+              body.removeEventListener("click", handler);
+              modal.classList.remove("open");
+              resolve();
+          } else {
+              updateTitle();
+          }
+      };
+      body.addEventListener("click", handler);
+  });
+}
+
+async function applyStartingEquipment(details) {
   let weaponsList = [];
   let gearList = [];
   
@@ -815,116 +863,12 @@ function applyStartingEquipment(details) {
   }
 
   if (details.starting_equipment_options && details.starting_equipment_options.length > 0) {
-    processEquipmentOptions(details.starting_equipment_options, 0, weaponsList, gearList, featuresText);
-  } else {
-    finalizeEquipmentApplication(weaponsList, gearList, featuresText);
-  }
-}
-
-function processEquipmentOptions(options, index, weaponsList, gearList, featuresText) {
-  if (index >= options.length) {
-    finalizeEquipmentApplication(weaponsList, gearList, featuresText);
-    return;
+      for (const optGroup of details.starting_equipment_options) {
+          await processEquipmentChoiceGroup(optGroup, weaponsList, gearList);
+      }
   }
 
-  const optGroup = options[index];
-  let chooseAmount = optGroup.choose || 1;
-  choiceModalTitle.textContent = optGroup.desc || `Choose ${chooseAmount} Starting Option(s)`;
-
-  let choicesArray = [];
-  if (Array.isArray(optGroup.from)) {
-    choicesArray = optGroup.from;
-  } else if (optGroup.from && optGroup.from.option_set_type === "options_array") {
-    choicesArray = optGroup.from.options;
-  } else if (optGroup.from && optGroup.from.option_set_type === "equipment_category") {
-    choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: chooseAmount }];
-    chooseAmount = 1; // Simplified click
-  } else if (optGroup.from && optGroup.from.equipment_category) {
-    choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: chooseAmount }];
-    chooseAmount = 1;
-  } else if (optGroup.from && optGroup.from.options) {
-    choicesArray = optGroup.from.options;
-  }
-
-  if (!choicesArray || choicesArray.length === 0) {
-    processEquipmentOptions(options, index + 1, weaponsList, gearList, featuresText);
-    return;
-  }
-
-  // If there's only one option, automatically resolve it without annoying the user
-  if (choicesArray.length === 1) {
-      const chosenChoice = choicesArray[0];
-      const itemsToAdd = extractItemsFromChoice(chosenChoice);
-      itemsToAdd.forEach(item => {
-         const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
-         if (isWeaponOrArmor(item.name)) {
-           weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
-         } else {
-           gearList.push(`${qtyPrefix}${item.name}`);
-         }
-      });
-      processEquipmentOptions(options, index + 1, weaponsList, gearList, featuresText);
-      return;
-  }
-
-  let html = "";
-  choicesArray.forEach((choice, choiceIdx) => {
-    const detailsArr = getChoiceDetails(choice);
-    const tooltipText = detailsArr.join("\n");
-    
-    let label = detailsArr.join(" + ");
-    if (label.length > 35) {
-      label = label.substring(0, 32) + "..."; 
-    }
-    if (!label || label === "Item Option" || label === "Item(s)") {
-      label = "Equipment Option";
-    }
-
-    html += `
-      <div class="choice-option-wrapper">
-        <button type="button" class="choice-option-btn" data-opt-index="${choiceIdx}">${escapeHtml(label)}</button>
-        <div class="choice-tooltip">${escapeHtml(tooltipText).replace(/\n/g, '<br>')}</div>
-      </div>
-    `;
-  });
-
-  const choiceModalBody = document.getElementById("choiceModalBody");
-  choiceModalBody.innerHTML = html;
-  choiceModal.classList.add("open");
-
-  const newBody = choiceModalBody.cloneNode(true);
-  choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-  const activeModalBody = document.getElementById("choiceModalBody");
-
-  activeModalBody.addEventListener("click", (e) => {
-    const btn = e.target.closest(".choice-option-btn");
-    if (!btn) return;
-    const chosenIdx = parseInt(btn.dataset.optIndex, 10);
-    const chosenChoice = choicesArray[chosenIdx];
-
-    const itemsToAdd = extractItemsFromChoice(chosenChoice);
-
-    itemsToAdd.forEach(item => {
-       const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
-       if (isWeaponOrArmor(item.name)) {
-         weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
-       } else {
-         gearList.push(`${qtyPrefix}${item.name}`);
-       }
-    });
-
-    chooseAmount--;
-    if (chooseAmount > 0) {
-       btn.closest(".choice-option-wrapper").style.display = "none"; 
-       choiceModalTitle.textContent = `Choose ${chooseAmount} MORE option(s)`;
-    } else {
-       choiceModal.classList.remove("open");
-       processEquipmentOptions(options, index + 1, weaponsList, gearList, featuresText);
-    }
-  });
-}
-
-function finalizeEquipmentApplication(weaponsList, gearList, featuresText) {
+  // Finalize Equipment Application
   if (weaponsList.length > 0) {
     myCharacterWeapons = weaponsList;
   } else {
@@ -1080,6 +1024,7 @@ function renderMySpells() {
 function attachSpellDragEvents() {
   const cards = document.querySelectorAll(".spell-card");
   cards.forEach((card) => {
+    // Desktop Mouse Drag
     card.addEventListener("dragstart", (e) => {
       if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) {
         e.preventDefault();
@@ -1209,7 +1154,6 @@ document.addEventListener("keydown", (e) => {
     closeSpellModal();
     document.getElementById("loadModal")?.classList.remove("open");
     document.getElementById("helpModal")?.classList.remove("open");
-    document.getElementById("choiceModal")?.classList.remove("open");
   }
 });
 
