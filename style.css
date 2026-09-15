@@ -306,6 +306,36 @@ body {
   text-align: center;
 }
 
+/* Choice Modal for Equipment Packages */
+.choice-modal-box {
+  max-width: 480px;
+}
+
+.choice-modal-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.choice-option-btn {
+  background: #080d18;
+  border: 1.5px solid #3b4c68;
+  color: #f8fafc;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.choice-option-btn:hover {
+  border-color: #dc2626;
+  background: #1a2337;
+}
+
 /* Vitals Bar */
 .vitals-row {
   display: flex;
