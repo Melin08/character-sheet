@@ -10,16 +10,26 @@
 <body id="top">
   <div class="sheet-container">
     <header class="top-nav">
-      <button class="btn red" id="saveBtn" type="button">Save</button>
-      <button class="btn red" id="loadBtn" type="button">Load</button>
-      <button class="btn red" id="newBtn" type="button">New</button>
-      <button class="btn red" id="backupBtn" type="button">Backup</button>
-      <label class="btn red file-label">
-        Restore
-        <input type="file" id="restoreFile" accept=".json" />
-      </label>
-      <button class="btn red" id="deleteBtn" type="button">Delete</button>
-      <span id="saveStatus" class="status-msg"></span>
+      <div class="top-nav-left">
+        <button class="btn red" id="saveBtn" type="button">Save</button>
+        <button class="btn red" id="loadBtn" type="button">Load</button>
+        <button class="btn red" id="newBtn" type="button">New</button>
+        <button class="btn red" id="backupBtn" type="button">Backup</button>
+        <label class="btn red file-label">
+          Restore
+          <input type="file" id="restoreFile" accept=".json" />
+        </label>
+        <button class="btn red" id="deleteBtn" type="button">Delete</button>
+        <span id="saveStatus" class="status-msg"></span>
+      </div>
+      
+      <div class="wiki-box">
+        <p>Wikis for any D&D information you could ever need!</p>
+        <div class="wiki-links">
+          <a href="https://dnd5e.wikidot.com/" target="_blank" rel="noopener noreferrer">D&D 5e Wikidot</a>
+          <a href="https://roll20.net/compendium/dnd5e/Weapons#content" target="_blank" rel="noopener noreferrer">Roll20 Weapons</a>
+        </div>
+      </div>
     </header>
 
     <div class="name-box">
@@ -31,18 +41,16 @@
       <button class="main-tab" data-target="tab-journal" type="button">Notes, Personality, NPCs, etc.</button>
     </div>
 
-    <!-- MAIN TAB 1: Statistics & Combat -->
     <div id="tab-stats" class="tab-page active">
-      <!-- Top Row 1 -->
       <div class="meta-row-grid">
         <div class="field-pill dropdown-pill-wrapper">
           <span class="pill-label">Class</span>
-          <input type="text" id="charClass" class="save-field pill-input" autocomplete="off" placeholder="" />
+          <input type="text" id="charClass" class="save-field pill-input" autocomplete="off" placeholder="Search..." />
           <div id="classDropdown" class="dropdown-menu"></div>
         </div>
         <div class="field-pill dropdown-pill-wrapper">
           <span class="pill-label">Race</span>
-          <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="" />
+          <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="Search..." />
           <div id="raceDropdown" class="dropdown-menu"></div>
         </div>
         <div class="field-pill">
@@ -59,7 +67,6 @@
         </div>
       </div>
 
-      <!-- Top Row 2 -->
       <div class="meta-row-grid">
         <div class="field-pill">
           <span class="pill-label">Experience</span>
@@ -87,7 +94,6 @@
         </div>
       </div>
 
-      <!-- Vitals Row -->
       <div class="vitals-row">
         <div class="vital-unit">
           <span>Armor Class</span>
@@ -137,7 +143,6 @@
         </div>
       </div>
 
-      <!-- Attributes and Combat Section -->
       <div class="two-col-layout">
         <div class="left-pane">
           <h2 class="section-title">Attributes</h2>
@@ -403,7 +408,6 @@
           <h2 class="section-title tight-title">Equipment &amp; Gear</h2>
           <textarea id="inventory" class="save-field block-text" rows="5" placeholder="Detailed inventory, weights, magic items, containers..."></textarea>
 
-          <!-- Abilities & Features Section (4 Columns) -->
           <div class="abilities-header">
             <h2 class="section-title tight-title">Abilities &amp; Features</h2>
             <button class="btn-text-red" id="addTraitBtn" type="button">+ Add Ability</button>
@@ -412,7 +416,6 @@
         </div>
       </div>
 
-      <!-- Spells Section -->
       <section class="spells-full-section">
         <hr class="red-divider" />
         <h2 class="section-title">Spells</h2>
@@ -535,7 +538,6 @@
       </section>
     </div>
 
-    <!-- MAIN TAB 2: Notes, Personality, NPCs -->
     <div id="tab-journal" class="tab-page">
       <div class="subtab-controls">
         <button class="sub-tab active" data-sub="sub-notes" type="button">General Notes</button>
@@ -621,18 +623,6 @@
     </div>
   </div>
 
-  <!-- Center Screen Class Loadout Modal -->
-  <div id="choiceModal" class="modal-backdrop" role="dialog" aria-modal="true">
-    <div class="modal-box choice-modal-box">
-      <div class="modal-header">
-        <h3 id="choiceModalTitle">Class Starting Loadout</h3>
-        <button id="closeChoiceModal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
-      </div>
-      <div class="choice-modal-content" id="choiceModalBody"></div>
-    </div>
-  </div>
-
-  <!-- Spell Picker Modal -->
   <div id="spellModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-header">
@@ -647,7 +637,6 @@
     </div>
   </div>
 
-  <!-- Trait / Ability Picker Modal -->
   <div id="traitModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-header">
