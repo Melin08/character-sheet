@@ -421,13 +421,10 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Extremely robust fetch engine
+// Extremely robust fetch engine (No timeout controllers)
 async function fetchAPI(url) {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); 
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
+    const res = await fetch(url);
     if (!res.ok) return null;
     return await res.json();
   } catch (e) {
@@ -441,7 +438,7 @@ async function buildSpellCache() {
     if (data && data.results) {
       spellCache = data.results.map(s => ({
         name: s.name,
-        type: s.level === 0 ? "Cantrip" : `Level ${s.level} Spell`,
+        type: "Official Spell",
         url: s.url
       }));
     }
@@ -603,7 +600,7 @@ function renderMyTraits() {
   if (!container) return;
 
   if (myCharacterTraits.length === 0) {
-    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.85rem; color: #64748b; font-style: italic;">No abilities added yet. Click "+ Add Ability" above to add one.</p>`;
+    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.85rem; color: #64748b; font-style: italic;">No skills/abilities added yet. Click "+ Add Skill / Ability" above to add one.</p>`;
     return;
   }
 
@@ -982,13 +979,13 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   const badge = row.querySelector(".spell-add-badge");
   if (badge) badge.textContent = "Adding...";
 
-  let finalDesc = details.desc || "";
+  let finalDesc = "";
   let finalType = details.type || "Spell";
   let finalCast = "1 Action";
   let finalRange = "30 ft";
   let finalDur = "Instantaneous";
 
-  if (details.url && !finalDesc) {
+  if (details.url) {
     const fetched = await fetchAPI("https://www.dnd5eapi.co" + details.url);
     if (fetched) {
       finalDesc = Array.isArray(fetched.desc) ? fetched.desc.join("\n\n") : (fetched.desc || "");
@@ -1101,6 +1098,10 @@ document.addEventListener("input", (e) => {
     saveSheet();
   }
 });
+
+// Preload Background data
+buildSpellCache();
+buildTraitCache();
 
 // Init
 loadSheet();
