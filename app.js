@@ -538,6 +538,18 @@ let loadoutState = {
   selectedSkills: []
 };
 
+function isWeaponOrArmor(name) {
+  if (!name) return false;
+  const lower = name.toLowerCase();
+  return lower.includes("sword") || lower.includes("bow") || lower.includes("dagger") || 
+         lower.includes("axe") || lower.includes("mace") || lower.includes("crossbow") || 
+         lower.includes("staff") || lower.includes("hammer") || lower.includes("spear") || 
+         lower.includes("shield") || lower.includes("armor") || lower.includes("mail") || 
+         lower.includes("javelin") || lower.includes("glaive") || lower.includes("halberd") || 
+         lower.includes("pike") || lower.includes("flail") || lower.includes("club") || 
+         lower.includes("rapier") || lower.includes("dart");
+}
+
 async function formatItemWithStats(name, url, count) {
   let qtyStr = count > 1 ? `<span style="color:#f87171">${count}x</span> ` : "";
   let statStr = "";
@@ -545,9 +557,18 @@ async function formatItemWithStats(name, url, count) {
     const data = await fetchAPI("https://www.dnd5eapi.co" + url);
     if (data) {
       let extras = [];
-      if (data.equipment_category?.name === "Weapon" && data.damage?.damage_dice) {
-        let dmgType = data.damage.damage_type?.name ? data.damage.damage_type.name.toLowerCase() : "";
-        extras.push(`⚔️ ${data.damage.damage_dice} ${dmgType}`);
+      if (data.equipment_category?.name === "Weapon") {
+        let dmgStr = "";
+        if (data.damage && data.damage.damage_dice) {
+          let dmgType = data.damage.damage_type?.name ? data.damage.damage_type.name.toLowerCase() : "";
+          dmgStr = `🎲 ${data.damage.damage_dice} ${dmgType}`.trim();
+          extras.push(dmgStr);
+        }
+        if (data.range && data.range.long) {
+          extras.push(`🎯 Range ${data.range.normal}/${data.range.long}`);
+        } else if (data.weapon_range === "Ranged" && data.range && data.range.normal) {
+          extras.push(`🎯 Range ${data.range.normal}`);
+        }
       }
       if (data.armor_class) {
         extras.push(`🛡️ AC ${data.armor_class.base}${data.armor_class.dex_bonus ? ' + Dex' : ''}`);
@@ -643,6 +664,9 @@ async function extractConcreteItemsAndDrillDowns(choice) {
 }
 
 async function processConcreteItems(items) {
+   let newAcBase = 0;
+   let newShield = 0;
+
    for (let item of items) {
       let dmg = "";
       let dmgType = "";
@@ -651,6 +675,7 @@ async function processConcreteItems(items) {
       let isShield = false;
       let contentsStr = "";
       let descStr = "";
+      let rangeStr = "";
 
       if (item.url) {
          const data = await fetchAPI("https://www.dnd5eapi.co" + item.url);
@@ -661,9 +686,23 @@ async function processConcreteItems(items) {
                dmg = data.damage.damage_dice;
                dmgType = data.damage.damage_type?.name || "";
             }
+            
+            if (category === "Weapon") {
+               if (data.range && data.range.long) {
+                  rangeStr = `Range ${data.range.normal}/${data.range.long}`;
+               } else if (data.weapon_range === "Ranged" && data.range?.normal) {
+                  rangeStr = `Range ${data.range.normal}`;
+               }
+            }
+
             if (data.armor_class) {
                baseAc = data.armor_class.base;
-               if (data.armor_category === "Shield") isShield = true;
+               if (data.armor_category === "Shield") {
+                  isShield = true;
+                  newShield += 2;
+               } else if (baseAc > newAcBase) {
+                  newAcBase = baseAc;
+               }
             }
             if (data.contents && data.contents.length > 0) {
                contentsStr = data.contents.map(c => `${c.quantity}x ${c.item.name}`).join(", ");
@@ -676,7 +715,12 @@ async function processConcreteItems(items) {
 
       let fullName = item.name;
       if (contentsStr) fullName += ` (Contains: ${contentsStr})`;
+      
       let notes = descStr;
+      if (rangeStr) {
+         notes = notes ? `${rangeStr}, ${notes}` : rangeStr;
+      }
+
       const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
 
       if (category === "Weapon") {
@@ -689,24 +733,20 @@ async function processConcreteItems(items) {
       } else {
          loadoutState.gearList.push(`${qtyPrefix}${fullName}`);
       }
+   }
 
-      if (baseAc) {
-         const acField = document.getElementById("ac");
-         if (acField) {
-             let curAc = parseInt(acField.value) || 10;
-             if (isShield) {
-                acField.value = curAc + 2;
-             } else {
-                acField.value = baseAc;
-             }
-         }
-      }
+   if (newAcBase > 0 || newShield > 0) {
+       const acField = document.getElementById("ac");
+       if (acField) {
+           let base = newAcBase > 0 ? newAcBase : parseInt(acField.value) || 10;
+           acField.value = base + newShield;
+       }
    }
 }
 
 function finalizeLoadout() {
   if (loadoutState.weaponsList.length > 0) {
-    let updatedWeps = loadoutState.weaponsList.map(w => ({ name: w.name, atk: "+5", dmg: w.dmg, dmg_type: w.dmg_type, notes: w.notes }));
+    let updatedWeps = loadoutState.weaponsList.map(w => ({ name: w.name, dmg: w.dmg, dmg_type: w.dmg_type, notes: w.notes }));
     while (updatedWeps.length < 2) updatedWeps.push({ name: "", dmg: "", dmg_type: "", notes: "" });
     myCharacterWeapons = updatedWeps;
   }
@@ -780,12 +820,22 @@ async function runLoadoutStep() {
       return;
     }
 
-    // Auto skip if there's only 1 choice (and no drill down needed)
     if (choicesArray.length === 1) {
       const { concreteItems, drillDownSteps } = await extractConcreteItemsAndDrillDowns(choicesArray[0]);
       await processConcreteItems(concreteItems);
       loadoutState.equipOptions.shift();
-      if (drillDownSteps.length > 0) loadoutState.equipOptions.unshift(...drillDownSteps);
+      if (drillDownSteps.length > 0) {
+        let normalizedSteps = [];
+        drillDownSteps.forEach(s => {
+           let c = s.choose || 1;
+           for(let i=0; i<c; i++) {
+              let stepCopy = JSON.parse(JSON.stringify(s));
+              stepCopy.choose = 1;
+              normalizedSteps.push(stepCopy);
+           }
+        });
+        loadoutState.equipOptions.unshift(...normalizedSteps);
+      }
       runLoadoutStep();
       return;
     }
@@ -794,7 +844,7 @@ async function runLoadoutStep() {
       <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
         <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🎒</span>
         It's dangerous to go alone! Let's get you geared up.<br>
-        You get to pick <strong style="color: #38bdf8; font-size: 1.3rem;">1</strong> item from this list:
+        You get to pick <strong style="color: #38bdf8; font-size: 1.3rem;" id="wizChooseCount">${chooseAmount}</strong> item(s) from this list:
       </div>
       <div class="equip-options-grid">
     `;
@@ -831,21 +881,39 @@ async function runLoadoutStep() {
       const { concreteItems, drillDownSteps } = await extractConcreteItemsAndDrillDowns(chosenChoice);
       await processConcreteItems(concreteItems);
 
-      loadoutState.equipOptions.shift();
-      if (drillDownSteps.length > 0) {
-        // Enforce choose:1 formatting for new steps to keep logic sequential and clean
-        let normalizedSteps = [];
-        drillDownSteps.forEach(s => {
-           let c = s.choose || 1;
-           for(let i=0; i<c; i++) {
-              let stepCopy = JSON.parse(JSON.stringify(s));
-              stepCopy.choose = 1;
-              normalizedSteps.push(stepCopy);
-           }
-        });
-        loadoutState.equipOptions.unshift(...normalizedSteps);
+      chooseAmount--;
+      if (chooseAmount > 0) {
+        btn.closest(".choice-option-wrapper").style.display = "none"; 
+        const countSpan = document.getElementById("wizChooseCount");
+        if (countSpan) countSpan.textContent = chooseAmount;
+        if (drillDownSteps.length > 0) {
+          let normalizedSteps = [];
+          drillDownSteps.forEach(s => {
+             let c = s.choose || 1;
+             for(let i=0; i<c; i++) {
+                let stepCopy = JSON.parse(JSON.stringify(s));
+                stepCopy.choose = 1;
+                normalizedSteps.push(stepCopy);
+             }
+          });
+          loadoutState.equipOptions.splice(1, 0, ...normalizedSteps);
+        }
+      } else {
+        loadoutState.equipOptions.shift();
+        if (drillDownSteps.length > 0) {
+          let normalizedSteps = [];
+          drillDownSteps.forEach(s => {
+             let c = s.choose || 1;
+             for(let i=0; i<c; i++) {
+                let stepCopy = JSON.parse(JSON.stringify(s));
+                stepCopy.choose = 1;
+                normalizedSteps.push(stepCopy);
+             }
+          });
+          loadoutState.equipOptions.unshift(...normalizedSteps);
+        }
+        runLoadoutStep();
       }
-      runLoadoutStep();
     });
     return;
   }
@@ -1019,7 +1087,6 @@ classDropdown?.addEventListener("click", async (e) => {
       selectedSkills: []
     };
 
-    // Normalize starting equipment choices so each click handles exactly 1 pick
     if (finalEquip?.starting_equipment_options) {
       finalEquip.starting_equipment_options.forEach(opt => {
         let c = opt.choose || 1;
@@ -1032,7 +1099,6 @@ classDropdown?.addEventListener("click", async (e) => {
       });
     }
     
-    // Process automatic guaranteed equipment immediately
     if (finalEquip?.starting_equipment) {
       const concreteItems = [];
       finalEquip.starting_equipment.forEach(stItem => {
