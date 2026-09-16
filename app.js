@@ -46,6 +46,15 @@ const COMMON_TRAITS = [
   { name: "Lucky", url: "/api/traits/lucky", type: "Racial Trait" }
 ];
 
+const SKILL_MAP = {
+  "Skill: Acrobatics": "cb_acro_p", "Skill: Animal Handling": "cb_anim_p", "Skill: Arcana": "cb_arca_p",
+  "Skill: Athletics": "cb_athl_p", "Skill: Deception": "cb_dec_p", "Skill: History": "cb_hist_p",
+  "Skill: Insight": "cb_ins_p", "Skill: Intimidation": "cb_intm_p", "Skill: Investigation": "cb_inv_p",
+  "Skill: Medicine": "cb_med_p", "Skill: Nature": "cb_nat_p", "Skill: Perception": "cb_perc_p",
+  "Skill: Performance": "cb_perf_p", "Skill: Persuasion": "cb_pers_p", "Skill: Religion": "cb_rel_p",
+  "Skill: Sleight of Hand": "cb_slt_p", "Skill: Stealth": "cb_ste_p", "Skill: Survival": "cb_surv_p"
+};
+
 function escapeHtml(str) {
   if (typeof str !== "string") return "";
   return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -58,13 +67,8 @@ function showStatus(text) {
   setTimeout(() => { statusElem.textContent = ""; }, 2500);
 }
 
-function getModifier(score) {
-  return Math.floor((score - 10) / 2);
-}
-
-function getProfBonus(level) {
-  return Math.ceil(1 + level / 4);
-}
+function getModifier(score) { return Math.floor((score - 10) / 2); }
+function getProfBonus(level) { return Math.ceil(1 + level / 4); }
 
 function autoResizeStatInput(input) {
   if (!input) return;
@@ -81,7 +85,6 @@ function recalculateAll() {
   const levelInput = document.getElementById("charLevel");
   const level = parseInt(levelInput?.value, 10) || 1;
   const prof = getProfBonus(level);
-
   const profBonusDisplay = document.getElementById("profBonusDisplay");
   if (profBonusDisplay) profBonusDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
 
@@ -124,9 +127,7 @@ function renderWeapons() {
     myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
   }
 
-  container.innerHTML = myCharacterWeapons
-    .map(
-      (wpn, idx) => `
+  container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
       <div class="attack-entry" data-index="${idx}">
         <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
         <input type="text" class="inline-input wpn-field" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
@@ -134,9 +135,7 @@ function renderWeapons() {
         <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes" />
         <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
       </div>
-    `
-    )
-    .join("");
+    `).join("");
 }
 
 document.getElementById("addWeaponBtn")?.addEventListener("click", () => {
@@ -269,10 +268,7 @@ function resetSheet() {
 
   myCharacterSpells = [];
   myCharacterTraits = [];
-  myCharacterWeapons = [
-    { name: "", atk: "", dmg: "", notes: "" },
-    { name: "", atk: "", dmg: "", notes: "" }
-  ];
+  myCharacterWeapons = [{ name: "", atk: "", dmg: "", notes: "" }, { name: "", atk: "", dmg: "", notes: "" }];
   diceRollHistory = [];
   
   renderDiceHistory();
@@ -446,7 +442,7 @@ document.addEventListener("click", (e) => {
 });
 
 /* =========================================================
-   DYNAMIC API SEARCH ENGINE & EQUIPMENT LOADOUT
+   DYNAMIC API SEARCH ENGINE & STEP-BY-STEP LOADOUT
    ========================================================= */
 
 async function fetchAPI(url) {
@@ -475,19 +471,60 @@ async function searchTraits(query) {
   let combined = [];
   if (featRes && featRes.results) combined.push(...featRes.results);
   if (traitRes && traitRes.results) combined.push(...traitRes.results);
-
-  if (combined.length > 0) {
-    return combined.map(item => {
-      let label = "Trait / Feature";
-      if(item.url.includes("/features/")) label = "Class Feature";
-      if(item.url.includes("/traits/")) label = "Racial Trait";
-      return { ...item, type: label };
-    });
-  }
+  if (combined.length > 0) return combined;
   return COMMON_TRAITS.filter(t => t.name.toLowerCase().includes(query.toLowerCase()));
 }
 
+/* --- Detailed Tag Fetchers --- */
+
+async function fetchDetailedSpells(matches) {
+  const top = matches.slice(0, 15);
+  return await Promise.all(top.map(async m => {
+    if (m.url && !m.fetchedDetails) {
+      const det = await fetchAPI("https://www.dnd5eapi.co" + m.url);
+      if (det) {
+        return { 
+          ...m, 
+          levelTag: det.level === 0 ? "Cantrip" : `Level ${det.level}`,
+          schoolTag: det.school?.name,
+          classesTag: det.classes?.map(c => c.name).join(", "),
+          fetchedDetails: true
+        };
+      }
+    }
+    return m;
+  }));
+}
+
+async function fetchDetailedTraits(matches) {
+  const top = matches.slice(0, 15);
+  return await Promise.all(top.map(async m => {
+    if (m.url && !m.fetchedDetails) {
+      const det = await fetchAPI("https://www.dnd5eapi.co" + m.url);
+      if (det) {
+        let parentName = det.parent?.name || det.class?.name || det.subclass?.name;
+        if (!parentName && m.url.includes("/races/")) parentName = "Race";
+        return { 
+          ...m, 
+          type: m.url.includes("/features/") ? "Class Feature" : "Racial Trait",
+          parentTag: parentName,
+          fetchedDetails: true
+        };
+      }
+    }
+    return m;
+  }));
+}
+
 /* --- Class Equipment Logic --- */
+
+let loadoutState = {
+  equipOptions: [],
+  profOptions: [],
+  weaponsList: [],
+  gearList: [],
+  selectedSkills: []
+};
 
 function isWeaponOrArmor(name) {
   if (!name) return false;
@@ -504,37 +541,20 @@ function isWeaponOrArmor(name) {
 function getChoiceDetails(choice) {
   let details = [];
   if (!choice) return details;
-
-  if (choice.option_type === "counted_reference" && choice.of) {
-      details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.of.name}`);
-  } else if (choice.option_type === "choice" && choice.choice) {
-      const catDesc = choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option";
-      details.push(`Any ${catDesc}`);
-  } else if (choice.option_type === "multiple" && choice.items) {
+  if (choice.option_type === "counted_reference" && choice.of) details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.of.name}`);
+  else if (choice.option_type === "choice" && choice.choice) details.push(`Any ${choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option"}`);
+  else if (choice.option_type === "multiple" && choice.items) {
       choice.items.forEach(i => {
-          if (i.option_type === "counted_reference" && i.of) {
-              details.push(`${i.count > 1 ? i.count + "x " : ""}${i.of.name}`);
-          } else if (i.option_type === "choice" && i.choice) {
-              const catDesc = i.choice.desc || i.choice.from?.equipment_category?.name || "Option";
-              details.push(`Any ${catDesc}`);
-          } else if (i.of) {
-              details.push(`${i.count > 1 ? i.count + "x " : ""}${i.of.name}`);
-          } else if (i.item) {
-              details.push(`${i.count > 1 ? i.count + "x " : ""}${i.item.name}`);
-          }
+          if (i.option_type === "counted_reference" && i.of) details.push(`${i.count > 1 ? i.count + "x " : ""}${i.of.name}`);
+          else if (i.option_type === "choice" && i.choice) details.push(`Any ${i.choice.desc || i.choice.from?.equipment_category?.name || "Option"}`);
+          else if (i.of) details.push(`${i.count > 1 ? i.count + "x " : ""}${i.of.name}`);
+          else if (i.item) details.push(`${i.count > 1 ? i.count + "x " : ""}${i.item.name}`);
       });
-  } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
-      details.push(`${choice.count > 1 ? choice.count + "x " : ""}Any ${choice.equipment_category.name}`);
-  } else if (choice.equipment) {
-      details.push(`${choice.quantity > 1 ? choice.quantity + "x " : ""}${choice.equipment.name}`);
-  } else if (choice.equipment_category) {
-      details.push(`Any ${choice.equipment_category.name}`);
-  } else if (choice.item) {
-      details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.item.name}`);
-  } else {
-      details.push(choice.desc || "Item Option");
-  }
-  
+  } else if (choice.option_type === "equipment_category" && choice.equipment_category) details.push(`${choice.count > 1 ? choice.count + "x " : ""}Any ${choice.equipment_category.name}`);
+  else if (choice.equipment) details.push(`${choice.quantity > 1 ? choice.quantity + "x " : ""}${choice.equipment.name}`);
+  else if (choice.equipment_category) details.push(`Any ${choice.equipment_category.name}`);
+  else if (choice.item) details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.item.name}`);
+  else details.push(choice.desc || "Item Option");
   if (details.length === 0) details.push("Equipment Option");
   return details;
 }
@@ -542,65 +562,54 @@ function getChoiceDetails(choice) {
 function extractItemsFromChoice(choice) {
   let items = [];
   if (!choice) return items;
-
   if (choice.option_type === "multiple" && choice.items) {
       choice.items.forEach(i => {
-          if (i.option_type === "counted_reference" && i.of) {
-              items.push({ name: i.of.name, qty: i.count || 1 });
-          } else if (i.option_type === "choice" && i.choice) {
-              const catName = i.choice.from?.equipment_category?.name || "Equipment Option";
-              items.push({ name: `Any ${catName}`, qty: i.choice.choose || 1 });
-          } else if (i.of) {
-              items.push({ name: i.of.name, qty: i.count || 1 });
-          } else if (i.item) {
-              items.push({ name: i.item.name, qty: i.count || 1 });
-          }
+          if (i.option_type === "counted_reference" && i.of) items.push({ name: i.of.name, qty: i.count || 1 });
+          else if (i.option_type === "choice" && i.choice) items.push({ name: `Any ${i.choice.from?.equipment_category?.name || "Equipment Option"}`, qty: i.choice.choose || 1 });
+          else if (i.of) items.push({ name: i.of.name, qty: i.count || 1 });
+          else if (i.item) items.push({ name: i.item.name, qty: i.count || 1 });
       });
-  } else if (choice.option_type === "counted_reference" && choice.of) {
-      items.push({ name: choice.of.name, qty: choice.count || 1 });
-  } else if (choice.option_type === "choice" && choice.choice) {
-      const catName = choice.choice.from?.equipment_category?.name || "Equipment Option";
-      items.push({ name: `Any ${catName}`, qty: choice.choice.choose || 1 });
-  } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
-      items.push({ name: `Any ${choice.equipment_category.name}`, qty: choice.count || 1 });
-  } else if (choice.equipment) {
-      items.push({ name: choice.equipment.name, qty: choice.quantity || 1 });
-  } else if (choice.equipment_category) {
-      items.push({ name: `Any ${choice.equipment_category.name}`, qty: 1 });
-  } else if (choice.item) {
-      items.push({ name: choice.item.name, qty: choice.count || 1 });
-  } else {
-      items.push({ name: "Selected Item", qty: 1 });
-  }
+  } else if (choice.option_type === "counted_reference" && choice.of) items.push({ name: choice.of.name, qty: choice.count || 1 });
+  else if (choice.option_type === "choice" && choice.choice) items.push({ name: `Any ${choice.choice.from?.equipment_category?.name || "Equipment Option"}`, qty: choice.choice.choose || 1 });
+  else if (choice.option_type === "equipment_category" && choice.equipment_category) items.push({ name: `Any ${choice.equipment_category.name}`, qty: choice.count || 1 });
+  else if (choice.equipment) items.push({ name: choice.equipment.name, qty: choice.quantity || 1 });
+  else if (choice.equipment_category) items.push({ name: `Any ${choice.equipment_category.name}`, qty: 1 });
+  else if (choice.item) items.push({ name: choice.item.name, qty: choice.count || 1 });
+  else items.push({ name: "Selected Item", qty: 1 });
   return items;
 }
 
-function finalizeEquipmentApplication(weaponsList, gearList) {
-  if (weaponsList.length > 0) {
-    let updatedWeps = weaponsList.map(w => ({ name: w.name, atk: w.atk, dmg: w.dmg, notes: w.notes }));
-    while (updatedWeps.length < 2) {
-      updatedWeps.push({ name: "", atk: "", dmg: "", notes: "" });
-    }
+function finalizeLoadout() {
+  if (loadoutState.weaponsList.length > 0) {
+    let updatedWeps = loadoutState.weaponsList.map(w => ({ name: w.name, atk: w.atk, dmg: w.dmg, notes: w.notes }));
+    while (updatedWeps.length < 2) updatedWeps.push({ name: "", atk: "", dmg: "", notes: "" });
     myCharacterWeapons = updatedWeps;
   }
   renderWeapons();
 
   const invBox = document.getElementById("inventory");
-  if (invBox && gearList.length > 0) {
+  if (invBox && loadoutState.gearList.length > 0) {
     const currentInv = invBox.value.trim();
-    const newInv = gearList.join("\n");
+    const newInv = loadoutState.gearList.join("\n");
     invBox.value = currentInv ? currentInv + "\n\n" + newInv : newInv;
     autoExpandTextarea(invBox);
   }
 
+  loadoutState.selectedSkills.forEach(skillName => {
+    const cbId = SKILL_MAP[skillName];
+    if (cbId) {
+      const cb = document.getElementById(cbId);
+      if (cb) cb.checked = true;
+    }
+  });
+
   saveSheet();
   recalculateAll();
 
-  // Show a final success screen so the modal doesn't just instantly vanish!
   document.getElementById("choiceModalTitle").textContent = "Loadout Complete";
   document.getElementById("choiceModalBody").innerHTML = `
     <p style="color: #34d399; font-weight: bold; text-align: center; font-size: 1.05rem; padding: 1rem 0;">
-      Equipment successfully added to your inventory!
+      Equipment and Skills successfully applied to your sheet!
     </p>
     <button class="btn red confirm-loadout-btn" id="finishLoadoutBtn">Awesome</button>
   `;
@@ -610,90 +619,148 @@ function finalizeEquipmentApplication(weaponsList, gearList) {
   });
 }
 
-function processEquipmentOptions(options, index, weaponsList, gearList) {
+function runLoadoutStep() {
   const choiceModal = document.getElementById("choiceModal");
-  if (index >= options.length) {
-    finalizeEquipmentApplication(weaponsList, gearList);
-    return;
-  }
 
-  const optGroup = options[index];
-  let chooseAmount = optGroup.choose || 1;
-  document.getElementById("choiceModalTitle").textContent = optGroup.desc || `Choose ${chooseAmount} Starting Option(s)`;
+  // Step 1: Equipment Options
+  if (loadoutState.equipOptions.length > 0) {
+    const optGroup = loadoutState.equipOptions[0];
+    let chooseAmount = optGroup.choose || 1;
+    document.getElementById("choiceModalTitle").textContent = optGroup.desc || `Choose ${chooseAmount} Starting Option(s)`;
 
-  let choicesArray = [];
-  if (optGroup.from) {
-      if (Array.isArray(optGroup.from)) choicesArray = optGroup.from;
-      else if (optGroup.from.options) choicesArray = optGroup.from.options;
-      else if (optGroup.from.equipment_category) {
-          choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: chooseAmount }];
-          chooseAmount = 1;
-      }
-  }
-  if (!choicesArray.length && optGroup.options) choicesArray = optGroup.options;
-  if (!choicesArray.length && Array.isArray(optGroup)) choicesArray = optGroup;
-
-  if (!choicesArray || choicesArray.length === 0) {
-    processEquipmentOptions(options, index + 1, weaponsList, gearList);
-    return;
-  }
-
-  if (choicesArray.length === 1) {
-    const itemsToAdd = extractItemsFromChoice(choicesArray[0]);
-    itemsToAdd.forEach(item => {
-      const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
-      if (isWeaponOrArmor(item.name)) weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
-      else gearList.push(`${qtyPrefix}${item.name}`);
-    });
-    processEquipmentOptions(options, index + 1, weaponsList, gearList);
-    return;
-  }
-
-  let html = "";
-  choicesArray.forEach((choice, choiceIdx) => {
-    const detailsArr = getChoiceDetails(choice);
-    const tooltipText = detailsArr.join("\n");
-    let label = detailsArr.join(" + ");
-    if (label.length > 35) label = label.substring(0, 32) + "..."; 
-    if (!label || label === "Item Option" || label === "Item(s)") label = "Equipment Option";
-
-    html += `
-      <div class="choice-option-wrapper">
-        <button type="button" class="choice-option-btn" data-opt-index="${choiceIdx}">${escapeHtml(label)}</button>
-        <div class="choice-tooltip">${escapeHtml(tooltipText).replace(/\n/g, '<br>')}</div>
-      </div>
-    `;
-  });
-
-  const choiceModalBody = document.getElementById("choiceModalBody");
-  choiceModalBody.innerHTML = html;
-  choiceModal.classList.add("open");
-
-  const newBody = choiceModalBody.cloneNode(true);
-  choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-  const activeModalBody = document.getElementById("choiceModalBody");
-
-  activeModalBody.addEventListener("click", (e) => {
-    const btn = e.target.closest(".choice-option-btn");
-    if (!btn) return;
-    const chosenIdx = parseInt(btn.dataset.optIndex, 10);
-    const chosenChoice = choicesArray[chosenIdx];
-
-    const itemsToAdd = extractItemsFromChoice(chosenChoice);
-    itemsToAdd.forEach(item => {
-      const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
-      if (isWeaponOrArmor(item.name)) weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
-      else gearList.push(`${qtyPrefix}${item.name}`);
-    });
-
-    chooseAmount--;
-    if (chooseAmount > 0) {
-      btn.closest(".choice-option-wrapper").style.display = "none"; 
-      document.getElementById("choiceModalTitle").textContent = `Choose ${chooseAmount} MORE option(s)`;
-    } else {
-      processEquipmentOptions(options, index + 1, weaponsList, gearList);
+    let choicesArray = [];
+    if (optGroup.from) {
+        if (Array.isArray(optGroup.from)) choicesArray = optGroup.from;
+        else if (optGroup.from.options) choicesArray = optGroup.from.options;
+        else if (optGroup.from.equipment_category) {
+            choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: chooseAmount }];
+            chooseAmount = 1;
+        }
     }
-  });
+    if (!choicesArray.length && optGroup.options) choicesArray = optGroup.options;
+    if (!choicesArray.length && Array.isArray(optGroup)) choicesArray = optGroup;
+
+    if (!choicesArray || choicesArray.length === 0) {
+      loadoutState.equipOptions.shift();
+      runLoadoutStep();
+      return;
+    }
+
+    if (choicesArray.length === 1) {
+      extractItemsFromChoice(choicesArray[0]).forEach(item => {
+        const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
+        if (isWeaponOrArmor(item.name)) loadoutState.weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
+        else loadoutState.gearList.push(`${qtyPrefix}${item.name}`);
+      });
+      loadoutState.equipOptions.shift();
+      runLoadoutStep();
+      return;
+    }
+
+    let html = "";
+    choicesArray.forEach((choice, choiceIdx) => {
+      const detailsArr = getChoiceDetails(choice);
+      const tooltipText = detailsArr.join("\n");
+      let label = detailsArr.join(" + ");
+      if (label.length > 35) label = label.substring(0, 32) + "..."; 
+      if (!label || label === "Item Option" || label === "Item(s)") label = "Equipment Option";
+
+      html += `
+        <div class="choice-option-wrapper">
+          <button type="button" class="choice-option-btn" data-opt-index="${choiceIdx}">${escapeHtml(label)}</button>
+          <div class="choice-tooltip">${escapeHtml(tooltipText).replace(/\n/g, '<br>')}</div>
+        </div>
+      `;
+    });
+
+    const choiceModalBody = document.getElementById("choiceModalBody");
+    choiceModalBody.innerHTML = html;
+    choiceModal.classList.add("open");
+
+    const newBody = choiceModalBody.cloneNode(true);
+    choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
+    document.getElementById("choiceModalBody").addEventListener("click", (e) => {
+      const btn = e.target.closest(".choice-option-btn");
+      if (!btn) return;
+      const chosenIdx = parseInt(btn.dataset.optIndex, 10);
+      extractItemsFromChoice(choicesArray[chosenIdx]).forEach(item => {
+        const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
+        if (isWeaponOrArmor(item.name)) loadoutState.weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
+        else loadoutState.gearList.push(`${qtyPrefix}${item.name}`);
+      });
+      chooseAmount--;
+      if (chooseAmount > 0) {
+        btn.closest(".choice-option-wrapper").style.display = "none"; 
+        document.getElementById("choiceModalTitle").textContent = `Choose ${chooseAmount} MORE option(s)`;
+      } else {
+        loadoutState.equipOptions.shift();
+        runLoadoutStep();
+      }
+    });
+    return;
+  }
+
+  // Step 2: Skill Proficiencies
+  if (loadoutState.profOptions.length > 0) {
+    const profGroup = loadoutState.profOptions[0];
+    const chooseAmount = profGroup.choose || 1;
+    document.getElementById("choiceModalTitle").textContent = `Choose ${chooseAmount} Skill(s)`;
+
+    let optionsArray = [];
+    if (profGroup.from && profGroup.from.options) optionsArray = profGroup.from.options;
+    else if (Array.isArray(profGroup.from)) optionsArray = profGroup.from;
+
+    const skillChoices = optionsArray.map(opt => opt.item?.name || opt.name).filter(name => name?.startsWith("Skill:"));
+
+    if (skillChoices.length === 0) {
+      loadoutState.profOptions.shift();
+      runLoadoutStep();
+      return;
+    }
+
+    let html = `<p style="color:#94a3b8; font-size:0.9rem; text-align:center;">Select up to ${chooseAmount} proficiencies below.</p>`;
+    html += `<div class="loadout-skill-grid">`;
+    skillChoices.forEach((skill, idx) => {
+      const cleanName = skill.replace("Skill: ", "");
+      html += `<button type="button" class="skill-toggle-btn" data-skill="${escapeHtml(skill)}">${escapeHtml(cleanName)}</button>`;
+    });
+    html += `</div>`;
+    html += `<button type="button" class="btn red confirm-loadout-btn" id="confirmSkillsBtn">Confirm Skills</button>`;
+
+    const choiceModalBody = document.getElementById("choiceModalBody");
+    choiceModalBody.innerHTML = html;
+    choiceModal.classList.add("open");
+
+    const newBody = choiceModalBody.cloneNode(true);
+    choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
+    const activeBody = document.getElementById("choiceModalBody");
+
+    let currentSelections = [];
+    activeBody.addEventListener("click", (e) => {
+      if (e.target.classList.contains("skill-toggle-btn")) {
+        const btn = e.target;
+        const skill = btn.dataset.skill;
+        if (btn.classList.contains("active")) {
+          btn.classList.remove("active");
+          currentSelections = currentSelections.filter(s => s !== skill);
+        } else {
+          if (currentSelections.length < chooseAmount) {
+            btn.classList.add("active");
+            currentSelections.push(skill);
+          }
+        }
+      } else if (e.target.id === "confirmSkillsBtn") {
+        if (currentSelections.length === 0 && !confirm("You haven't selected any skills. Proceed anyway?")) return;
+        loadoutState.selectedSkills.push(...currentSelections);
+        loadoutState.profOptions.shift();
+        runLoadoutStep();
+      }
+    });
+    return;
+  }
+
+  // Finished
+  finalizeLoadout();
 }
 
 document.getElementById("closeChoiceModal")?.addEventListener("click", () => {
@@ -701,7 +768,6 @@ document.getElementById("closeChoiceModal")?.addEventListener("click", () => {
 });
 
 /* --- Dropdowns --- */
-
 const classInput = document.getElementById("charClass");
 const classDropdown = document.getElementById("classDropdown");
 const raceInput = document.getElementById("charRace");
@@ -756,45 +822,34 @@ classDropdown?.addEventListener("click", async (e) => {
   const classIdx = item.dataset.index;
   if (classIdx) {
     document.getElementById("choiceModalTitle").textContent = `${item.dataset.name} Loadout`;
-    document.getElementById("choiceModalBody").innerHTML = `<p class="loading-text">Fetching starting equipment...</p>`;
+    document.getElementById("choiceModalBody").innerHTML = `<p class="loading-text">Fetching loadout options...</p>`;
     document.getElementById("choiceModal").classList.add("open");
 
-    // Dual-fetch safety net!
-    let equipRes = await fetchAPI(`https://www.dnd5eapi.co/api/classes/${classIdx}/starting-equipment`);
-    if (!equipRes || !equipRes.starting_equipment_options) {
-        equipRes = await fetchAPI(`https://www.dnd5eapi.co/api/starting-equipment/${classIdx}`);
-    }
+    const [equipRes1, equipRes2, classRes] = await Promise.all([
+      fetchAPI(`https://www.dnd5eapi.co/api/classes/${classIdx}/starting-equipment`),
+      fetchAPI(`https://www.dnd5eapi.co/api/starting-equipment/${classIdx}`),
+      fetchAPI(`https://www.dnd5eapi.co/api/classes/${classIdx}`)
+    ]);
 
-    if (equipRes) {
-      let weaponsList = [];
-      let gearList = [];
-      
-      if (equipRes.starting_equipment) {
-        equipRes.starting_equipment.forEach(item => {
-          const qtyPrefix = item.quantity > 1 ? `${item.quantity}x ` : "";
-          if (isWeaponOrArmor(item.equipment.name)) weaponsList.push({ name: `${qtyPrefix}${item.equipment.name}`, atk: "+5", dmg: "1d8", notes: "" });
-          else gearList.push(`${qtyPrefix}${item.equipment.name}`);
-        });
-      }
+    const finalEquip = equipRes1?.starting_equipment_options ? equipRes1 : equipRes2;
 
-      if (equipRes.starting_equipment_options && equipRes.starting_equipment_options.length > 0) {
-        processEquipmentOptions(equipRes.starting_equipment_options, 0, weaponsList, gearList);
-      } else {
-        finalizeEquipmentApplication(weaponsList, gearList);
-      }
-    } else {
-      // If the API completely fails, don't just vanish. Tell the user.
-      document.getElementById("choiceModalTitle").textContent = "Loadout Complete";
-      document.getElementById("choiceModalBody").innerHTML = `
-        <p style="color: #cbd5e1; text-align: center; font-size: 0.95rem; padding: 1rem 0;">
-          No choices required, or class gear was already loaded!
-        </p>
-        <button class="btn red confirm-loadout-btn" id="fallbackCloseChoiceBtn">Continue</button>
-      `;
-      document.getElementById("fallbackCloseChoiceBtn")?.addEventListener("click", () => {
-        document.getElementById("choiceModal").classList.remove("open");
+    loadoutState = {
+      equipOptions: finalEquip?.starting_equipment_options || [],
+      profOptions: classRes?.proficiency_choices || [],
+      weaponsList: [],
+      gearList: [],
+      selectedSkills: []
+    };
+    
+    if (finalEquip?.starting_equipment) {
+      finalEquip.starting_equipment.forEach(item => {
+        const qtyPrefix = item.quantity > 1 ? `${item.quantity}x ` : "";
+        if (isWeaponOrArmor(item.equipment.name)) loadoutState.weaponsList.push({ name: `${qtyPrefix}${item.equipment.name}`, atk: "+5", dmg: "1d8", notes: "" });
+        else loadoutState.gearList.push(`${qtyPrefix}${item.equipment.name}`);
       });
     }
+
+    runLoadoutStep();
   }
 });
 
@@ -907,15 +962,19 @@ function renderModalTraitsList(matches) {
     return;
   }
 
-  container.innerHTML = matches.slice(0, 150).map((trait) => `
+  container.innerHTML = matches.map((trait) => {
+    let tagsHtml = `<span class="tag-pill blue">${escapeHtml(trait.type || 'Feature')}</span>`;
+    if (trait.parentTag) tagsHtml += `<span class="tag-pill purple">${escapeHtml(trait.parentTag)}</span>`;
+
+    return `
     <div class="spell-option-item trait-option-item" data-url="${trait.url}" data-name="${escapeHtml(trait.name)}" data-type="${escapeHtml(trait.type || '')}">
       <div>
-        <span style="font-weight: 600; color: #f8fafc;">${escapeHtml(trait.name)}</span>
-        <span style="font-size: 0.75rem; color: #34d399; margin-left: 0.5rem; text-transform: uppercase;">${escapeHtml(trait.type || 'Feature')}</span>
+        <div style="font-weight: 600; color: #f8fafc;">${escapeHtml(trait.name)}</div>
+        <div class="spell-meta-tags">${tagsHtml}</div>
       </div>
       <span class="spell-add-badge">+ Add</span>
     </div>
-  `).join("");
+  `}).join("");
 }
 
 document.getElementById("addTraitBtn")?.addEventListener("click", async () => {
@@ -940,22 +999,17 @@ document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   traitSearchTimeout = setTimeout(async () => {
     document.getElementById("traitApiList").innerHTML = `<p class="loading-text">Searching D&D API...</p>`;
     const results = await searchTraits(query);
-    renderModalTraitsList(results);
+    const detailed = await fetchDetailedTraits(results);
+    renderModalTraitsList(detailed);
   }, 400);
 });
 
 document.getElementById("addCustomTraitBtn")?.addEventListener("click", (e) => {
   e.preventDefault();
-  myCharacterTraits.push({
-    name: "",
-    type: "",
-    desc: "",
-    isExpanded: true
-  });
+  myCharacterTraits.push({ name: "", type: "", desc: "", isExpanded: true });
   saveSheet();
   renderMyTraits();
   document.getElementById("traitModal")?.classList.remove("open");
-
   const cards = document.querySelectorAll("#traitsList .trait-card");
   const lastCard = cards[cards.length - 1];
   if (lastCard) {
@@ -998,16 +1052,22 @@ function renderModalSpellsList(matches) {
     return;
   }
 
-  container.innerHTML = matches.slice(0, 150).map((spell) => {
-    let typeTag = "Spell";
-    if (spell.level === 0) typeTag = "Cantrip";
-    else if (spell.level > 0) typeTag = `Level ${spell.level} Spell`;
+  container.innerHTML = matches.map((spell) => {
+    let lvlTag = spell.levelTag || "Spell";
+    if (spell.name === "Fire Bolt" || spell.name === "Mage Hand" || spell.name === "Prestidigitation") lvlTag = "Cantrip";
+    else if (spell.name === "Shield" || spell.name === "Magic Missile" || spell.name === "Cure Wounds" || spell.name === "Healing Word") lvlTag = "Level 1";
+    else if (spell.name === "Misty Step") lvlTag = "Level 2";
+    else if (spell.name === "Fireball" || spell.name === "Counterspell") lvlTag = "Level 3";
+
+    let tagsHtml = `<span class="tag-pill green">${escapeHtml(lvlTag)}</span>`;
+    if (spell.schoolTag) tagsHtml += `<span class="tag-pill purple">${escapeHtml(spell.schoolTag)}</span>`;
+    if (spell.classesTag) tagsHtml += `<span class="tag-pill blue" style="opacity:0.8;">${escapeHtml(spell.classesTag)}</span>`;
 
     return `
     <div class="spell-option-item spell-add-item" data-url="${spell.url}" data-name="${escapeHtml(spell.name)}">
       <div>
-        <span style="font-weight: 600; color: #f8fafc;">${escapeHtml(spell.name)}</span>
-        <span style="font-size: 0.75rem; color: #f87171; margin-left: 0.5rem;">${typeTag}</span>
+        <div style="font-weight: 600; color: #f8fafc;">${escapeHtml(spell.name)}</div>
+        <div class="spell-meta-tags">${tagsHtml}</div>
       </div>
       <span class="spell-add-badge">+ Add</span>
     </div>
@@ -1169,24 +1229,17 @@ document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   spellSearchTimeout = setTimeout(async () => {
     document.getElementById("spellApiList").innerHTML = `<p class="loading-text">Searching D&D API...</p>`;
     const results = await searchSpells(query);
-    renderModalSpellsList(results);
+    const detailed = await fetchDetailedSpells(results);
+    renderModalSpellsList(detailed);
   }, 400);
 });
 
 document.getElementById("addCustomSpellBtn")?.addEventListener("click", (e) => {
   e.preventDefault();
-  myCharacterSpells.push({
-    name: "",
-    type: "",
-    casting_time: "",
-    range: "",
-    duration: "",
-    desc: ""
-  });
+  myCharacterSpells.push({ name: "", type: "", casting_time: "", range: "", duration: "", desc: "" });
   saveSheet();
   renderMySpells();
   document.getElementById("spellModal")?.classList.remove("open");
-
   const cards = document.querySelectorAll("#spellsList .spell-card");
   const lastCard = cards[cards.length - 1];
   if (lastCard) {
