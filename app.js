@@ -532,7 +532,7 @@ function getChoiceDetails(choice) {
   } else if (choice.item) {
       details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.item.name}`);
   } else {
-      details.push("Item(s)");
+      details.push(choice.desc || "Item Option");
   }
   
   if (details.length === 0) details.push("Equipment Option");
@@ -577,7 +577,6 @@ function extractItemsFromChoice(choice) {
 
 function finalizeEquipmentApplication(weaponsList, gearList) {
   if (weaponsList.length > 0) {
-    // Only map the ones that are populated, or pad to 2
     let updatedWeps = weaponsList.map(w => ({ name: w.name, atk: w.atk, dmg: w.dmg, notes: w.notes }));
     while (updatedWeps.length < 2) {
       updatedWeps.push({ name: "", atk: "", dmg: "", notes: "" });
@@ -595,14 +594,25 @@ function finalizeEquipmentApplication(weaponsList, gearList) {
   }
 
   saveSheet();
-  showStatus("Class gear loaded!");
   recalculateAll();
+
+  // Show a final success screen so the modal doesn't just instantly vanish!
+  document.getElementById("choiceModalTitle").textContent = "Loadout Complete";
+  document.getElementById("choiceModalBody").innerHTML = `
+    <p style="color: #34d399; font-weight: bold; text-align: center; font-size: 1.05rem; padding: 1rem 0;">
+      Equipment successfully added to your inventory!
+    </p>
+    <button class="btn red confirm-loadout-btn" id="finishLoadoutBtn">Awesome</button>
+  `;
+
+  document.getElementById("finishLoadoutBtn")?.addEventListener("click", () => {
+    document.getElementById("choiceModal").classList.remove("open");
+  });
 }
 
 function processEquipmentOptions(options, index, weaponsList, gearList) {
   const choiceModal = document.getElementById("choiceModal");
   if (index >= options.length) {
-    choiceModal.classList.remove("open");
     finalizeEquipmentApplication(weaponsList, gearList);
     return;
   }
@@ -612,12 +622,16 @@ function processEquipmentOptions(options, index, weaponsList, gearList) {
   document.getElementById("choiceModalTitle").textContent = optGroup.desc || `Choose ${chooseAmount} Starting Option(s)`;
 
   let choicesArray = [];
-  if (Array.isArray(optGroup.from)) choicesArray = optGroup.from;
-  else if (optGroup.from?.option_set_type === "options_array") choicesArray = optGroup.from.options;
-  else if (optGroup.from?.equipment_category) {
-    choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: chooseAmount }];
-    chooseAmount = 1;
-  } else if (optGroup.from?.options) choicesArray = optGroup.from.options;
+  if (optGroup.from) {
+      if (Array.isArray(optGroup.from)) choicesArray = optGroup.from;
+      else if (optGroup.from.options) choicesArray = optGroup.from.options;
+      else if (optGroup.from.equipment_category) {
+          choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: chooseAmount }];
+          chooseAmount = 1;
+      }
+  }
+  if (!choicesArray.length && optGroup.options) choicesArray = optGroup.options;
+  if (!choicesArray.length && Array.isArray(optGroup)) choicesArray = optGroup;
 
   if (!choicesArray || choicesArray.length === 0) {
     processEquipmentOptions(options, index + 1, weaponsList, gearList);
@@ -742,10 +756,15 @@ classDropdown?.addEventListener("click", async (e) => {
   const classIdx = item.dataset.index;
   if (classIdx) {
     document.getElementById("choiceModalTitle").textContent = `${item.dataset.name} Loadout`;
-    document.getElementById("choiceModalBody").innerHTML = `<p class="loading-text">Loading starting equipment...</p>`;
+    document.getElementById("choiceModalBody").innerHTML = `<p class="loading-text">Fetching starting equipment...</p>`;
     document.getElementById("choiceModal").classList.add("open");
 
-    const equipRes = await fetchAPI(`https://www.dnd5eapi.co/api/starting-equipment/${classIdx}`);
+    // Dual-fetch safety net!
+    let equipRes = await fetchAPI(`https://www.dnd5eapi.co/api/classes/${classIdx}/starting-equipment`);
+    if (!equipRes || !equipRes.starting_equipment_options) {
+        equipRes = await fetchAPI(`https://www.dnd5eapi.co/api/starting-equipment/${classIdx}`);
+    }
+
     if (equipRes) {
       let weaponsList = [];
       let gearList = [];
@@ -761,11 +780,20 @@ classDropdown?.addEventListener("click", async (e) => {
       if (equipRes.starting_equipment_options && equipRes.starting_equipment_options.length > 0) {
         processEquipmentOptions(equipRes.starting_equipment_options, 0, weaponsList, gearList);
       } else {
-        document.getElementById("choiceModal").classList.remove("open");
         finalizeEquipmentApplication(weaponsList, gearList);
       }
     } else {
-      document.getElementById("choiceModal").classList.remove("open");
+      // If the API completely fails, don't just vanish. Tell the user.
+      document.getElementById("choiceModalTitle").textContent = "Loadout Complete";
+      document.getElementById("choiceModalBody").innerHTML = `
+        <p style="color: #cbd5e1; text-align: center; font-size: 0.95rem; padding: 1rem 0;">
+          No choices required, or class gear was already loaded!
+        </p>
+        <button class="btn red confirm-loadout-btn" id="fallbackCloseChoiceBtn">Continue</button>
+      `;
+      document.getElementById("fallbackCloseChoiceBtn")?.addEventListener("click", () => {
+        document.getElementById("choiceModal").classList.remove("open");
+      });
     }
   }
 });
