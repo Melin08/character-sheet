@@ -29,8 +29,7 @@ const COMMON_SPELLS = [
   { name: "Cure Wounds", url: "/api/spells/cure-wounds", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid, Paladin, Ranger" },
   { name: "Healing Word", url: "/api/spells/healing-word", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid" },
   { name: "Misty Step", url: "/api/spells/misty-step", levelTag: "Level 2", schoolTag: "Conjuration", classesTag: "Sorcerer, Warlock, Wizard" },
-  { name: "Fireball", url: "/api/spells/fireball", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard" },
-  { name: "Counterspell", url: "/api/spells/counterspell", levelTag: "Level 3", schoolTag: "Abjuration", classesTag: "Sorcerer, Warlock, Wizard" }
+  { name: "Fireball", url: "/api/spells/fireball", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard" }
 ];
 
 const COMMON_TRAITS = [
@@ -38,12 +37,7 @@ const COMMON_TRAITS = [
   { name: "Sneak Attack", url: "/api/features/sneak-attack", type: "Class Feature", parentTag: "Rogue" },
   { name: "Rage", url: "/api/features/rage", type: "Class Feature", parentTag: "Barbarian" },
   { name: "Bardic Inspiration", url: "/api/features/bardic-inspiration-d6", type: "Class Feature", parentTag: "Bard" },
-  { name: "Divine Smite", url: "/api/features/divine-smite", type: "Class Feature", parentTag: "Paladin" },
-  { name: "Wild Shape", url: "/api/features/wild-shape", type: "Class Feature", parentTag: "Druid" },
-  { name: "Cunning Action", url: "/api/features/cunning-action", type: "Class Feature", parentTag: "Rogue" },
-  { name: "Darkvision", url: "/api/traits/darkvision", type: "Racial Trait", parentTag: "Elf, Dwarf, etc." },
-  { name: "Fey Ancestry", url: "/api/traits/fey-ancestry", type: "Racial Trait", parentTag: "Elf" },
-  { name: "Lucky", url: "/api/traits/lucky", type: "Racial Trait", parentTag: "Halfling" }
+  { name: "Divine Smite", url: "/api/features/divine-smite", type: "Class Feature", parentTag: "Paladin" }
 ];
 
 const SKILL_MAP = {
@@ -558,7 +552,8 @@ async function formatItemWithStats(name, url, count) {
     if (data) {
       let extras = [];
       if (data.damage && data.damage.damage_dice) {
-        extras.push(`🎲 ${data.damage.damage_dice} ${data.damage.damage_type?.name || ''}`.trim());
+        let dmgType = data.damage.damage_type?.name ? " " + data.damage.damage_type.name.toLowerCase() : "";
+        extras.push(`🎲 ${data.damage.damage_dice}${dmgType}`);
       }
       if (data.armor_class) {
         extras.push(`🛡️ AC ${data.armor_class.base}${data.armor_class.dex_bonus ? ' + Dex' : ''}`);
@@ -568,11 +563,11 @@ async function formatItemWithStats(name, url, count) {
         extras.push(`🎒 Contains: ${contentsText}`);
       }
       if (extras.length > 0) {
-        statStr = `<span class="subtext">${extras.join("<br>")}</span>`;
+        statStr = `<span class="subtext" style="color:#94a3b8; font-weight:normal; margin-top:0.4rem; display:block;">${extras.join("<br>")}</span>`;
       }
     }
   }
-  return `<strong>${qtyStr}${escapeHtml(name)}</strong>${statStr ? '<br>' + statStr : ''}`;
+  return `<strong style="font-size:1.1rem; color:#f8fafc;">${qtyStr}${escapeHtml(name)}</strong>${statStr}`;
 }
 
 async function getAsyncChoiceDetails(choice) {
@@ -582,68 +577,112 @@ async function getAsyncChoiceDetails(choice) {
   if (choice.option_type === "counted_reference" && choice.of) {
     details.push(await formatItemWithStats(choice.of.name, choice.of.url, choice.count));
   } else if (choice.option_type === "choice" && choice.choice) {
-    details.push(`<strong>Any ${choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option"}</strong>`);
+    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Any ${choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option"}</strong><br><span class="subtext" style="color:#34d399;">Click to open choices!</span>`);
   } else if (choice.option_type === "multiple" && choice.items) {
     for (let i of choice.items) {
       if (i.option_type === "counted_reference" && i.of) details.push(await formatItemWithStats(i.of.name, i.of.url, i.count));
-      else if (i.option_type === "choice" && i.choice) details.push(`<strong>Any ${i.choice.desc || i.choice.from?.equipment_category?.name || "Option"}</strong>`);
+      else if (i.option_type === "choice" && i.choice) details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Any ${i.choice.desc || i.choice.from?.equipment_category?.name || "Option"}</strong><br><span class="subtext" style="color:#34d399;">Click to open choices!</span>`);
       else if (i.of) details.push(await formatItemWithStats(i.of.name, i.of.url, i.count));
       else if (i.item) details.push(await formatItemWithStats(i.item.name, i.item.url, i.count));
     }
   } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
-    details.push(`<strong>${choice.count > 1 ? choice.count + "x " : ""}Any ${choice.equipment_category.name}</strong>`);
+    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Choose ${choice.count > 1 ? choice.count + " " : ""}${choice.equipment_category.name}</strong><br><span class="subtext" style="color:#34d399;">Click to open choices!</span>`);
   } else if (choice.equipment) {
     details.push(await formatItemWithStats(choice.equipment.name, choice.equipment.url, choice.quantity));
   } else if (choice.equipment_category) {
-    details.push(`<strong>Any ${choice.equipment_category.name}</strong>`);
+    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Choose from ${choice.equipment_category.name}</strong><br><span class="subtext" style="color:#34d399;">Click to open choices!</span>`);
   } else if (choice.item) {
     details.push(await formatItemWithStats(choice.item.name, choice.item.url, choice.count));
   } else {
-    details.push(`<strong>${choice.desc || "Item Option"}</strong>`);
+    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">${choice.desc || "Item Option"}</strong>`);
   }
   
   if (details.length === 0) details.push("<strong>Equipment Option</strong>");
   return details;
 }
 
-async function extractItemsFromChoiceAsync(choice) {
-  let items = [];
-  if (!choice) return items;
+// Intercepts categories and breaks them down into new selectable steps
+async function processChosenOption(c, weaponsList, gearList) {
+  let pendingSteps = [];
 
   async function pushEnrichedItem(name, url, qty) {
     let finalDmg = "1d8";
+    let isWpn = isWeaponOrArmor(name);
+    let contentStr = "";
     if (url) {
-      const data = await fetchAPI("https://www.dnd5eapi.co" + url);
-      if (data && data.damage && data.damage.damage_dice) {
-        finalDmg = data.damage.damage_dice;
-      }
+       const data = await fetchAPI("https://www.dnd5eapi.co" + url);
+       if (data) {
+          if (data.damage && data.damage.damage_dice) {
+             finalDmg = data.damage.damage_dice;
+             if (data.damage.damage_type && data.damage.damage_type.name) {
+                finalDmg += " " + data.damage.damage_type.name.toLowerCase();
+             }
+          }
+          if (data.contents && data.contents.length > 0) {
+             const cText = data.contents.map(cnt => `${cnt.quantity}x ${cnt.item.name}`).join(', ');
+             contentStr = ` (Contains: ${cText})`;
+          }
+       }
     }
-    items.push({ name, qty, dmg: finalDmg });
+    const fullName = name + contentStr;
+    const qtyPrefix = qty > 1 ? `${qty}x ` : "";
+    if (isWpn) weaponsList.push({ name: `${qtyPrefix}${fullName}`, atk: "+5", dmg: finalDmg, notes: "" });
+    else gearList.push(`${qtyPrefix}${fullName}`);
   }
 
-  if (choice.option_type === "multiple" && choice.items) {
-    for (let i of choice.items) {
-      if (i.option_type === "counted_reference" && i.of) await pushEnrichedItem(i.of.name, i.of.url, i.count || 1);
-      else if (i.option_type === "choice" && i.choice) items.push({ name: `Any ${i.choice.from?.equipment_category?.name || "Equipment Option"}`, qty: i.choice.choose || 1, dmg: "1d8" });
-      else if (i.of) await pushEnrichedItem(i.of.name, i.of.url, i.count || 1);
-      else if (i.item) await pushEnrichedItem(i.item.name, i.item.url, i.count || 1);
+  // Recursive parsing to handle multi-nested choices gracefully
+  async function parse(c_in) {
+    if (c_in.option_type === "multiple" && c_in.items) {
+       for (let i of c_in.items) await parse(i);
+    } else if (c_in.option_type === "choice" && c_in.choice) {
+       let catUrl = c_in.choice.from?.equipment_category?.url;
+       if (catUrl) {
+          const catData = await fetchAPI("https://www.dnd5eapi.co" + catUrl);
+          if (catData && catData.equipment) {
+             pendingSteps.push({
+                desc: `Select ${c_in.choice.choose || 1} from ${c_in.choice.from.equipment_category.name}`,
+                choose: c_in.choice.choose || 1,
+                options: catData.equipment.map(eq => ({ option_type: "item", item: eq }))
+             });
+          }
+       } else if (c_in.choice.from?.options) {
+          pendingSteps.push({
+             desc: `Choose ${c_in.choice.choose || 1} Option(s)`,
+             choose: c_in.choice.choose || 1,
+             options: c_in.choice.from.options
+          });
+       }
+    } else if (c_in.option_type === "equipment_category" && c_in.equipment_category) {
+       const catData = await fetchAPI("https://www.dnd5eapi.co" + c_in.equipment_category.url);
+       if (catData && catData.equipment) {
+          pendingSteps.push({
+             desc: `Select 1 from ${c_in.equipment_category.name}`,
+             choose: 1,
+             options: catData.equipment.map(eq => ({ option_type: "item", item: eq }))
+          });
+       }
+    } else if (c_in.option_type === "counted_reference" && c_in.of) {
+       await pushEnrichedItem(c_in.of.name, c_in.of.url, c_in.count || 1);
+    } else if (c_in.equipment) {
+       await pushEnrichedItem(c_in.equipment.name, c_in.equipment.url, c_in.quantity || 1);
+    } else if (c_in.item) {
+       await pushEnrichedItem(c_in.item.name, c_in.item.url, c_in.count || 1);
+    } else if (c_in.equipment_category) {
+       const catData = await fetchAPI("https://www.dnd5eapi.co" + c_in.equipment_category.url);
+       if (catData && catData.equipment) {
+          pendingSteps.push({
+             desc: `Select 1 from ${c_in.equipment_category.name}`,
+             choose: 1,
+             options: catData.equipment.map(eq => ({ option_type: "item", item: eq }))
+          });
+       }
+    } else {
+       gearList.push("1x " + (c_in.desc || "Selected Option"));
     }
-  } else if (choice.option_type === "counted_reference" && choice.of) {
-    await pushEnrichedItem(choice.of.name, choice.of.url, choice.count || 1);
-  } else if (choice.option_type === "choice" && choice.choice) {
-    items.push({ name: `Any ${choice.choice.from?.equipment_category?.name || "Equipment Option"}`, qty: choice.choice.choose || 1, dmg: "1d8" });
-  } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
-    items.push({ name: `Any ${choice.equipment_category.name}`, qty: choice.count || 1, dmg: "1d8" });
-  } else if (choice.equipment) {
-    await pushEnrichedItem(choice.equipment.name, choice.equipment.url, choice.quantity || 1);
-  } else if (choice.equipment_category) {
-    items.push({ name: `Any ${choice.equipment_category.name}`, qty: 1, dmg: "1d8" });
-  } else if (choice.item) {
-    await pushEnrichedItem(choice.item.name, choice.item.url, choice.count || 1);
-  } else {
-    items.push({ name: "Selected Item", qty: 1, dmg: "1d8" });
   }
-  return items;
+
+  await parse(c);
+  return pendingSteps;
 }
 
 function finalizeLoadout() {
@@ -673,12 +712,12 @@ function finalizeLoadout() {
   saveSheet();
   recalculateAll();
 
-  document.getElementById("choiceModalTitle").textContent = "Loadout Complete!";
+  document.getElementById("choiceModalTitle").textContent = "Loadout Complete! 🎉";
   document.getElementById("choiceModalBody").innerHTML = `
-    <div class="wizard-intro" style="font-size: 1.2rem; color: #34d399; font-weight: 800; padding: 1.5rem 0;">
+    <div class="wizard-intro" style="font-size: 1.25rem; color: #34d399; font-weight: 800; padding: 1.5rem 0;">
       Awesome! Your equipment and skills are successfully applied to your sheet!
     </div>
-    <button class="btn red confirm-loadout-btn" id="finishLoadoutBtn">Let's Go!</button>
+    <button class="btn red confirm-loadout-btn" id="finishLoadoutBtn" style="font-size: 1.25rem; padding: 1.2rem;">Let's Go!</button>
   `;
 
   document.getElementById("finishLoadoutBtn")?.addEventListener("click", () => {
@@ -697,47 +736,24 @@ async function runLoadoutStep() {
 
     const choiceModalBody = document.getElementById("choiceModalBody");
     choiceModalBody.innerHTML = `
-      <div class="wizard-intro">Pick your starting equipment! You get to choose <strong>${chooseAmount}</strong> option(s) from this list.</div>
+      <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
+        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🎒</span>
+        It's dangerous to go alone! Let's get you geared up.
+      </div>
       <p class="loading-text">Fetching weapon & armor stats...</p>
     `;
 
-    let initialChoices = [];
-    if (optGroup.from) {
-        if (Array.isArray(optGroup.from)) initialChoices = optGroup.from;
-        else if (optGroup.from.options) initialChoices = optGroup.from.options;
-        else if (optGroup.from.equipment_category) {
-            initialChoices = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: 1 }];
-        }
-    }
-    if (!initialChoices.length && optGroup.options) initialChoices = optGroup.options;
-    if (!initialChoices.length && Array.isArray(optGroup)) initialChoices = optGroup;
-
-    // Expand categories (like "Any Simple Weapon") into their individual items for the wizard UI
     let choicesArray = [];
-    for (let c of initialChoices) {
-      let catUrl = null;
-      let qty = c.count || 1;
-      
-      if (c.option_type === "choice" && c.choice?.from?.equipment_category) {
-        catUrl = c.choice.from.equipment_category.url;
-        qty = c.choice.choose || 1;
-      } else if (c.equipment_category) {
-        catUrl = c.equipment_category.url;
-      } else if (c.option_type === "equipment_category" && c.equipment_category) {
-        catUrl = c.equipment_category.url;
-      }
-      
-      if (catUrl) {
-        const catData = await fetchAPI("https://www.dnd5eapi.co" + catUrl);
-        if (catData && catData.equipment) {
-          catData.equipment.forEach(eq => {
-            choicesArray.push({ option_type: "item", item: eq, count: qty });
-          });
+    if (optGroup.from) {
+        if (Array.isArray(optGroup.from)) choicesArray = optGroup.from;
+        else if (optGroup.from.options) choicesArray = optGroup.from.options;
+        else if (optGroup.from.equipment_category) {
+            choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: chooseAmount }];
+            chooseAmount = 1;
         }
-      } else {
-        choicesArray.push(c);
-      }
     }
+    if (!choicesArray.length && optGroup.options) choicesArray = optGroup.options;
+    if (!choicesArray.length && Array.isArray(optGroup)) choicesArray = optGroup;
 
     if (!choicesArray || choicesArray.length === 0) {
       loadoutState.equipOptions.shift();
@@ -745,23 +761,27 @@ async function runLoadoutStep() {
       return;
     }
 
+    // Auto-skip if there's only 1 category choice so you jump straight into the drill-down
     if (choicesArray.length === 1) {
-      const itemsToAdd = await extractItemsFromChoiceAsync(choicesArray[0]);
-      itemsToAdd.forEach(item => {
-        const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
-        if (isWeaponOrArmor(item.name)) loadoutState.weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: item.dmg, notes: "" });
-        else loadoutState.gearList.push(`${qtyPrefix}${item.name}`);
-      });
+      const newSteps = await processChosenOption(choicesArray[0], loadoutState.weaponsList, loadoutState.gearList);
       loadoutState.equipOptions.shift();
+      if (newSteps.length > 0) loadoutState.equipOptions.unshift(...newSteps);
       runLoadoutStep();
       return;
     }
 
-    let html = `<div class="wizard-intro">Pick your starting equipment! You get to choose <strong id="wizChooseCount">${chooseAmount}</strong> option(s) from this list.</div><div class="equip-options-grid">`;
+    let html = `
+      <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
+        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🎒</span>
+        It's dangerous to go alone! Let's get you geared up.<br>
+        You get to pick <strong style="color: #38bdf8; font-size: 1.3rem;" id="wizChooseCount">${chooseAmount}</strong> item(s) from this list:
+      </div>
+      <div class="equip-options-grid">
+    `;
     for (let choiceIdx = 0; choiceIdx < choicesArray.length; choiceIdx++) {
       const choice = choicesArray[choiceIdx];
       const detailsArr = await getAsyncChoiceDetails(choice);
-      let label = detailsArr.join('<br><span style="color:#64748b; font-size:0.8rem; font-weight:800; display:block; margin:0.3rem 0;">AND</span>');
+      let label = detailsArr.join('<br><span style="color:#64748b; font-size:0.8rem; font-weight:800; display:block; margin:0.6rem 0;">AND</span>');
       if (!label || label === "Item Option" || label === "Item(s)") label = "<strong>Equipment Option</strong>";
 
       html += `
@@ -782,24 +802,21 @@ async function runLoadoutStep() {
       if (!btn) return;
 
       btn.style.opacity = "0.5";
-      btn.innerHTML = "<strong>Loading...</strong>";
+      btn.innerHTML = "<strong style='color:#34d399;'>Loading Choice...</strong>";
       btn.disabled = true;
 
       const chosenIdx = parseInt(btn.dataset.optIndex, 10);
-      const itemsToAdd = await extractItemsFromChoiceAsync(choicesArray[chosenIdx]);
-      itemsToAdd.forEach(item => {
-        const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
-        if (isWeaponOrArmor(item.name)) loadoutState.weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: item.dmg, notes: "" });
-        else loadoutState.gearList.push(`${qtyPrefix}${item.name}`);
-      });
+      const newSteps = await processChosenOption(choicesArray[chosenIdx], loadoutState.weaponsList, loadoutState.gearList);
 
       chooseAmount--;
       if (chooseAmount > 0) {
         btn.closest(".choice-option-wrapper").style.display = "none"; 
         const countSpan = document.getElementById("wizChooseCount");
         if (countSpan) countSpan.textContent = chooseAmount;
+        if (newSteps.length > 0) loadoutState.equipOptions.splice(1, 0, ...newSteps);
       } else {
         loadoutState.equipOptions.shift();
+        if (newSteps.length > 0) loadoutState.equipOptions.unshift(...newSteps);
         runLoadoutStep();
       }
     });
@@ -824,14 +841,20 @@ async function runLoadoutStep() {
       return;
     }
 
-    let html = `<div class="wizard-intro">Select up to <strong>${chooseAmount}</strong> of the skills below to add them to your proficiencies!</div>`;
-    html += `<div class="loadout-skill-grid">`;
+    let html = `
+      <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
+        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🧠</span>
+        What are you good at?
+        <br>Pick <strong style="color: #38bdf8; font-size: 1.3rem;">${chooseAmount}</strong> skill(s) to master:
+      </div>
+      <div class="loadout-skill-grid">
+    `;
     skillChoices.forEach((skill) => {
       const cleanName = skill.replace("Skill: ", "");
       html += `<button type="button" class="skill-toggle-btn" data-skill="${escapeHtml(skill)}">${escapeHtml(cleanName)}</button>`;
     });
     html += `</div>`;
-    html += `<button type="button" class="btn red confirm-loadout-btn" id="confirmSkillsBtn">Confirm Skills</button>`;
+    html += `<button type="button" class="btn red confirm-loadout-btn" id="confirmSkillsBtn" style="font-size: 1.15rem; padding: 1.1rem; margin-top: 1.5rem;">Confirm Skills</button>`;
 
     const choiceModalBody = document.getElementById("choiceModalBody");
     choiceModalBody.innerHTML = html;
@@ -927,7 +950,7 @@ classDropdown?.addEventListener("click", async (e) => {
   const classIdx = item.dataset.index;
   if (classIdx) {
     document.getElementById("choiceModalTitle").textContent = `Setting up your ${item.dataset.name}...`;
-    document.getElementById("choiceModalBody").innerHTML = `<div class="wizard-intro">We're grabbing your class choices from the database! Hang tight...</div><p class="loading-text">Fetching loadout options...</p>`;
+    document.getElementById("choiceModalBody").innerHTML = `<div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center;">We're grabbing your class choices from the database! Hang tight...</div><p class="loading-text">Fetching loadout options...</p>`;
     document.getElementById("choiceModal").classList.add("open");
 
     const [equipRes1, equipRes2, classRes] = await Promise.all([
@@ -944,10 +967,12 @@ classDropdown?.addEventListener("click", async (e) => {
         .join(", ");
         
       if (otherProfs) {
-        const profBox = document.getElementById("otherProfs");
+        // Automatically injects into Bio/Notes or an Other Proficiencies box if available
+        const profBox = document.getElementById("otherProfs") || document.getElementById("proficiencies") || document.getElementById("other_proficiencies") || document.getElementById("bio");
         if (profBox) {
           const current = profBox.value.trim();
-          profBox.value = current ? current + ", " + otherProfs : otherProfs;
+          const prefixText = profBox.id === "bio" ? "Other Proficiencies:\n" : "";
+          profBox.value = current ? current + "\n\n" + prefixText + otherProfs : prefixText + otherProfs;
           autoExpandTextarea(profBox);
         }
       }
@@ -969,19 +994,33 @@ classDropdown?.addEventListener("click", async (e) => {
       selectedSkills: []
     };
     
+    // Process automatic guaranteed equipment immediately
     if (finalEquip?.starting_equipment) {
-      for (const item of finalEquip.starting_equipment) {
-        const qtyPrefix = item.quantity > 1 ? `${item.quantity}x ` : "";
-        if (isWeaponOrArmor(item.equipment.name)) {
-          let finalDmg = "1d8";
-          if (item.equipment.url) {
-             const wpnData = await fetchAPI("https://www.dnd5eapi.co" + item.equipment.url);
-             if (wpnData && wpnData.damage) finalDmg = wpnData.damage.damage_dice || finalDmg;
-          }
-          loadoutState.weaponsList.push({ name: `${qtyPrefix}${item.equipment.name}`, atk: "+5", dmg: finalDmg, notes: "" });
-        } else {
-          loadoutState.gearList.push(`${qtyPrefix}${item.equipment.name}`);
+      for (const stItem of finalEquip.starting_equipment) {
+        const qtyPrefix = stItem.quantity > 1 ? `${stItem.quantity}x ` : "";
+        let isWpn = isWeaponOrArmor(stItem.equipment.name);
+        let finalDmg = "1d8";
+        let contentStr = "";
+        
+        if (stItem.equipment.url) {
+           const data = await fetchAPI("https://www.dnd5eapi.co" + stItem.equipment.url);
+           if (data) {
+              if (data.damage && data.damage.damage_dice) {
+                 finalDmg = data.damage.damage_dice;
+                 if (data.damage.damage_type && data.damage.damage_type.name) {
+                    finalDmg += " " + data.damage.damage_type.name.toLowerCase();
+                 }
+              }
+              if (data.contents && data.contents.length > 0) {
+                 const cText = data.contents.map(cnt => `${cnt.quantity}x ${cnt.item.name}`).join(', ');
+                 contentStr = ` (Contains: ${cText})`;
+              }
+           }
         }
+        
+        const fullName = stItem.equipment.name + contentStr;
+        if (isWpn) loadoutState.weaponsList.push({ name: `${qtyPrefix}${fullName}`, atk: "+5", dmg: finalDmg, notes: "" });
+        else loadoutState.gearList.push(`${qtyPrefix}${fullName}`);
       }
     }
 
