@@ -8,8 +8,8 @@ let activeCharId = localStorage.getItem(ACTIVE_CHAR_ID_KEY) || "default";
 let myCharacterSpells = [];
 let myCharacterTraits = [];
 let myCharacterWeapons = [
-  { name: "", atk: "", dmg: "", notes: "" },
-  { name: "", atk: "", dmg: "", notes: "" }
+  { name: "", dmg: "", dmg_type: "", notes: "" },
+  { name: "", dmg: "", dmg_type: "", notes: "" }
 ];
 let diceRollHistory = [];
 
@@ -29,7 +29,8 @@ const COMMON_SPELLS = [
   { name: "Cure Wounds", url: "/api/spells/cure-wounds", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid, Paladin, Ranger" },
   { name: "Healing Word", url: "/api/spells/healing-word", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid" },
   { name: "Misty Step", url: "/api/spells/misty-step", levelTag: "Level 2", schoolTag: "Conjuration", classesTag: "Sorcerer, Warlock, Wizard" },
-  { name: "Fireball", url: "/api/spells/fireball", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard" }
+  { name: "Fireball", url: "/api/spells/fireball", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard" },
+  { name: "Counterspell", url: "/api/spells/counterspell", levelTag: "Level 3", schoolTag: "Abjuration", classesTag: "Sorcerer, Warlock, Wizard" }
 ];
 
 const COMMON_TRAITS = [
@@ -37,7 +38,12 @@ const COMMON_TRAITS = [
   { name: "Sneak Attack", url: "/api/features/sneak-attack", type: "Class Feature", parentTag: "Rogue" },
   { name: "Rage", url: "/api/features/rage", type: "Class Feature", parentTag: "Barbarian" },
   { name: "Bardic Inspiration", url: "/api/features/bardic-inspiration-d6", type: "Class Feature", parentTag: "Bard" },
-  { name: "Divine Smite", url: "/api/features/divine-smite", type: "Class Feature", parentTag: "Paladin" }
+  { name: "Divine Smite", url: "/api/features/divine-smite", type: "Class Feature", parentTag: "Paladin" },
+  { name: "Wild Shape", url: "/api/features/wild-shape", type: "Class Feature", parentTag: "Druid" },
+  { name: "Cunning Action", url: "/api/features/cunning-action", type: "Class Feature", parentTag: "Rogue" },
+  { name: "Darkvision", url: "/api/traits/darkvision", type: "Racial Trait", parentTag: "Elf, Dwarf, etc." },
+  { name: "Fey Ancestry", url: "/api/traits/fey-ancestry", type: "Racial Trait", parentTag: "Elf" },
+  { name: "Lucky", url: "/api/traits/lucky", type: "Racial Trait", parentTag: "Halfling" }
 ];
 
 const SKILL_MAP = {
@@ -118,14 +124,14 @@ function renderWeapons() {
   if (!container) return;
 
   while (myCharacterWeapons.length < 2) {
-    myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+    myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" });
   }
 
   container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
       <div class="attack-entry" data-index="${idx}">
         <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
-        <input type="text" class="inline-input wpn-field" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
         <input type="text" class="inline-input wpn-field" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
+        <input type="text" class="inline-input wpn-field" data-prop="dmg_type" value="${escapeHtml(wpn.dmg_type || "")}" placeholder="Piercing" />
         <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes" />
         <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
       </div>
@@ -133,7 +139,7 @@ function renderWeapons() {
 }
 
 document.getElementById("addWeaponBtn")?.addEventListener("click", () => {
-  myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+  myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" });
   saveSheet();
   renderWeapons();
 });
@@ -153,7 +159,7 @@ document.getElementById("weaponsContainer")?.addEventListener("click", (e) => {
     const index = parseInt(e.target.dataset.index, 10);
     myCharacterWeapons.splice(index, 1);
     while (myCharacterWeapons.length < 2) {
-      myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+      myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" });
     }
     saveSheet();
     renderWeapons();
@@ -215,8 +221,8 @@ function applyCharacterData(charData) {
   myCharacterSpells = charData.spells || [];
   myCharacterTraits = charData.traits || [];
   myCharacterWeapons = charData.weapons && charData.weapons.length >= 2 ? charData.weapons : [
-    { name: "", atk: "", dmg: "", notes: "" },
-    { name: "", atk: "", dmg: "", notes: "" }
+    { name: "", dmg: "", dmg_type: "", notes: "" },
+    { name: "", dmg: "", dmg_type: "", notes: "" }
   ];
 
   renderWeapons();
@@ -262,7 +268,7 @@ function resetSheet() {
 
   myCharacterSpells = [];
   myCharacterTraits = [];
-  myCharacterWeapons = [{ name: "", atk: "", dmg: "", notes: "" }, { name: "", atk: "", dmg: "", notes: "" }];
+  myCharacterWeapons = [{ name: "", dmg: "", dmg_type: "", notes: "" }, { name: "", dmg: "", dmg_type: "", notes: "" }];
   diceRollHistory = [];
   
   renderDiceHistory();
@@ -532,18 +538,6 @@ let loadoutState = {
   selectedSkills: []
 };
 
-function isWeaponOrArmor(name) {
-  if (!name) return false;
-  const lower = name.toLowerCase();
-  return lower.includes("sword") || lower.includes("bow") || lower.includes("dagger") || 
-         lower.includes("axe") || lower.includes("mace") || lower.includes("crossbow") || 
-         lower.includes("staff") || lower.includes("hammer") || lower.includes("spear") || 
-         lower.includes("shield") || lower.includes("armor") || lower.includes("mail") || 
-         lower.includes("javelin") || lower.includes("glaive") || lower.includes("halberd") || 
-         lower.includes("pike") || lower.includes("flail") || lower.includes("club") || 
-         lower.includes("rapier") || lower.includes("dart");
-}
-
 async function formatItemWithStats(name, url, count) {
   let qtyStr = count > 1 ? `<span style="color:#f87171">${count}x</span> ` : "";
   let statStr = "";
@@ -551,9 +545,9 @@ async function formatItemWithStats(name, url, count) {
     const data = await fetchAPI("https://www.dnd5eapi.co" + url);
     if (data) {
       let extras = [];
-      if (data.damage && data.damage.damage_dice) {
-        let dmgType = data.damage.damage_type?.name ? " " + data.damage.damage_type.name.toLowerCase() : "";
-        extras.push(`🎲 ${data.damage.damage_dice}${dmgType}`);
+      if (data.equipment_category?.name === "Weapon" && data.damage?.damage_dice) {
+        let dmgType = data.damage.damage_type?.name ? data.damage.damage_type.name.toLowerCase() : "";
+        extras.push(`⚔️ ${data.damage.damage_dice} ${dmgType}`);
       }
       if (data.armor_class) {
         extras.push(`🛡️ AC ${data.armor_class.base}${data.armor_class.dex_bonus ? ' + Dex' : ''}`);
@@ -562,12 +556,17 @@ async function formatItemWithStats(name, url, count) {
         const contentsText = data.contents.map(c => `${c.quantity}x ${c.item.name}`).join(', ');
         extras.push(`🎒 Contains: ${contentsText}`);
       }
+      if (data.desc && data.desc.length > 0) {
+         let dText = data.desc.join(" ").substring(0, 120);
+         if (data.desc.join(" ").length > 120) dText += "...";
+         extras.push(`📝 ${dText}`);
+      }
       if (extras.length > 0) {
         statStr = `<span class="subtext" style="color:#94a3b8; font-weight:normal; margin-top:0.4rem; display:block;">${extras.join("<br>")}</span>`;
       }
     }
   }
-  return `<strong style="font-size:1.1rem; color:#f8fafc;">${qtyStr}${escapeHtml(name)}</strong>${statStr}`;
+  return `<strong style="font-size:1.1rem; color:#f8fafc;">${qtyStr}${escapeHtml(name)}</strong>${statStr ? '<br>' + statStr : ''}`;
 }
 
 async function getAsyncChoiceDetails(choice) {
@@ -577,20 +576,20 @@ async function getAsyncChoiceDetails(choice) {
   if (choice.option_type === "counted_reference" && choice.of) {
     details.push(await formatItemWithStats(choice.of.name, choice.of.url, choice.count));
   } else if (choice.option_type === "choice" && choice.choice) {
-    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Any ${choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option"}</strong><br><span class="subtext" style="color:#34d399;">Click to open choices!</span>`);
+    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Choose Any ${choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option"}</strong><br><span class="subtext" style="color:#34d399;">Click to see options!</span>`);
   } else if (choice.option_type === "multiple" && choice.items) {
     for (let i of choice.items) {
       if (i.option_type === "counted_reference" && i.of) details.push(await formatItemWithStats(i.of.name, i.of.url, i.count));
-      else if (i.option_type === "choice" && i.choice) details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Any ${i.choice.desc || i.choice.from?.equipment_category?.name || "Option"}</strong><br><span class="subtext" style="color:#34d399;">Click to open choices!</span>`);
+      else if (i.option_type === "choice" && i.choice) details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Choose Any ${i.choice.desc || i.choice.from?.equipment_category?.name || "Option"}</strong><br><span class="subtext" style="color:#34d399;">Click to see options!</span>`);
       else if (i.of) details.push(await formatItemWithStats(i.of.name, i.of.url, i.count));
       else if (i.item) details.push(await formatItemWithStats(i.item.name, i.item.url, i.count));
     }
   } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
-    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Choose ${choice.count > 1 ? choice.count + " " : ""}${choice.equipment_category.name}</strong><br><span class="subtext" style="color:#34d399;">Click to open choices!</span>`);
+    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Choose ${choice.count > 1 ? choice.count + " " : ""}${choice.equipment_category.name}</strong><br><span class="subtext" style="color:#34d399;">Click to open category!</span>`);
   } else if (choice.equipment) {
     details.push(await formatItemWithStats(choice.equipment.name, choice.equipment.url, choice.quantity));
   } else if (choice.equipment_category) {
-    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Choose from ${choice.equipment_category.name}</strong><br><span class="subtext" style="color:#34d399;">Click to open choices!</span>`);
+    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Choose from ${choice.equipment_category.name}</strong><br><span class="subtext" style="color:#34d399;">Click to open category!</span>`);
   } else if (choice.item) {
     details.push(await formatItemWithStats(choice.item.name, choice.item.url, choice.count));
   } else {
@@ -601,94 +600,114 @@ async function getAsyncChoiceDetails(choice) {
   return details;
 }
 
-// Intercepts categories and breaks them down into new selectable steps
-async function processChosenOption(c, weaponsList, gearList) {
-  let pendingSteps = [];
+async function extractConcreteItemsAndDrillDowns(choice) {
+   let concreteItems = [];
+   let drillDownSteps = [];
 
-  async function pushEnrichedItem(name, url, qty) {
-    let finalDmg = "1d8";
-    let isWpn = isWeaponOrArmor(name);
-    let contentStr = "";
-    if (url) {
-       const data = await fetchAPI("https://www.dnd5eapi.co" + url);
-       if (data) {
-          if (data.damage && data.damage.damage_dice) {
-             finalDmg = data.damage.damage_dice;
-             if (data.damage.damage_type && data.damage.damage_type.name) {
-                finalDmg += " " + data.damage.damage_type.name.toLowerCase();
+   async function parse(c) {
+      let catUrl = null;
+      let qty = c.count || 1;
+      if (c.option_type === "choice" && c.choice?.from?.equipment_category) {
+         catUrl = c.choice.from.equipment_category.url;
+         qty = c.choice.choose || 1;
+      } else if (c.equipment_category) {
+         catUrl = c.equipment_category.url;
+      } else if (c.option_type === "equipment_category" && c.equipment_category) {
+         catUrl = c.equipment_category.url;
+      }
+
+      if (catUrl) {
+         const catData = await fetchAPI("https://www.dnd5eapi.co" + catUrl);
+         if (catData && catData.equipment) {
+            drillDownSteps.push({
+               desc: `Select ${qty} from ${catData.name}`,
+               choose: qty,
+               options: catData.equipment.map(eq => ({ option_type: "item", item: eq, count: 1 }))
+            });
+         }
+      } else if (c.option_type === "multiple" && c.items) {
+         for (let i of c.items) await parse(i);
+      } else if (c.option_type === "counted_reference" && c.of) {
+         concreteItems.push({ name: c.of.name, url: c.of.url, qty: c.count || 1 });
+      } else if (c.equipment) {
+         concreteItems.push({ name: c.equipment.name, url: c.equipment.url, qty: c.quantity || 1 });
+      } else if (c.item) {
+         concreteItems.push({ name: c.item.name, url: c.item.url, qty: c.count || 1 });
+      } else if (c.desc) {
+         concreteItems.push({ name: c.desc, qty: 1 });
+      }
+   }
+   
+   await parse(choice);
+   return { concreteItems, drillDownSteps };
+}
+
+async function processConcreteItems(items) {
+   for (let item of items) {
+      let dmg = "";
+      let dmgType = "";
+      let category = "Gear";
+      let baseAc = null;
+      let isShield = false;
+      let contentsStr = "";
+      let descStr = "";
+
+      if (item.url) {
+         const data = await fetchAPI("https://www.dnd5eapi.co" + item.url);
+         if (data) {
+            category = data.equipment_category?.name || category;
+
+            if (data.damage && data.damage.damage_dice) {
+               dmg = data.damage.damage_dice;
+               dmgType = data.damage.damage_type?.name || "";
+            }
+            if (data.armor_class) {
+               baseAc = data.armor_class.base;
+               if (data.armor_category === "Shield") isShield = true;
+            }
+            if (data.contents && data.contents.length > 0) {
+               contentsStr = data.contents.map(c => `${c.quantity}x ${c.item.name}`).join(", ");
+            }
+            if (data.desc && data.desc.length > 0) {
+               descStr = data.desc.join(" ");
+            }
+         }
+      }
+
+      let fullName = item.name;
+      if (contentsStr) fullName += ` (Contains: ${contentsStr})`;
+      let notes = descStr;
+      const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
+
+      if (category === "Weapon") {
+         loadoutState.weaponsList.push({ 
+            name: `${qtyPrefix}${fullName}`, 
+            dmg: dmg, 
+            dmg_type: dmgType, 
+            notes: notes 
+         });
+      } else {
+         loadoutState.gearList.push(`${qtyPrefix}${fullName}`);
+      }
+
+      if (baseAc) {
+         const acField = document.getElementById("ac");
+         if (acField) {
+             let curAc = parseInt(acField.value) || 10;
+             if (isShield) {
+                acField.value = curAc + 2;
+             } else {
+                acField.value = baseAc;
              }
-          }
-          if (data.contents && data.contents.length > 0) {
-             const cText = data.contents.map(cnt => `${cnt.quantity}x ${cnt.item.name}`).join(', ');
-             contentStr = ` (Contains: ${cText})`;
-          }
-       }
-    }
-    const fullName = name + contentStr;
-    const qtyPrefix = qty > 1 ? `${qty}x ` : "";
-    if (isWpn) weaponsList.push({ name: `${qtyPrefix}${fullName}`, atk: "+5", dmg: finalDmg, notes: "" });
-    else gearList.push(`${qtyPrefix}${fullName}`);
-  }
-
-  // Recursive parsing to handle multi-nested choices gracefully
-  async function parse(c_in) {
-    if (c_in.option_type === "multiple" && c_in.items) {
-       for (let i of c_in.items) await parse(i);
-    } else if (c_in.option_type === "choice" && c_in.choice) {
-       let catUrl = c_in.choice.from?.equipment_category?.url;
-       if (catUrl) {
-          const catData = await fetchAPI("https://www.dnd5eapi.co" + catUrl);
-          if (catData && catData.equipment) {
-             pendingSteps.push({
-                desc: `Select ${c_in.choice.choose || 1} from ${c_in.choice.from.equipment_category.name}`,
-                choose: c_in.choice.choose || 1,
-                options: catData.equipment.map(eq => ({ option_type: "item", item: eq }))
-             });
-          }
-       } else if (c_in.choice.from?.options) {
-          pendingSteps.push({
-             desc: `Choose ${c_in.choice.choose || 1} Option(s)`,
-             choose: c_in.choice.choose || 1,
-             options: c_in.choice.from.options
-          });
-       }
-    } else if (c_in.option_type === "equipment_category" && c_in.equipment_category) {
-       const catData = await fetchAPI("https://www.dnd5eapi.co" + c_in.equipment_category.url);
-       if (catData && catData.equipment) {
-          pendingSteps.push({
-             desc: `Select 1 from ${c_in.equipment_category.name}`,
-             choose: 1,
-             options: catData.equipment.map(eq => ({ option_type: "item", item: eq }))
-          });
-       }
-    } else if (c_in.option_type === "counted_reference" && c_in.of) {
-       await pushEnrichedItem(c_in.of.name, c_in.of.url, c_in.count || 1);
-    } else if (c_in.equipment) {
-       await pushEnrichedItem(c_in.equipment.name, c_in.equipment.url, c_in.quantity || 1);
-    } else if (c_in.item) {
-       await pushEnrichedItem(c_in.item.name, c_in.item.url, c_in.count || 1);
-    } else if (c_in.equipment_category) {
-       const catData = await fetchAPI("https://www.dnd5eapi.co" + c_in.equipment_category.url);
-       if (catData && catData.equipment) {
-          pendingSteps.push({
-             desc: `Select 1 from ${c_in.equipment_category.name}`,
-             choose: 1,
-             options: catData.equipment.map(eq => ({ option_type: "item", item: eq }))
-          });
-       }
-    } else {
-       gearList.push("1x " + (c_in.desc || "Selected Option"));
-    }
-  }
-
-  await parse(c);
-  return pendingSteps;
+         }
+      }
+   }
 }
 
 function finalizeLoadout() {
   if (loadoutState.weaponsList.length > 0) {
-    let updatedWeps = loadoutState.weaponsList.map(w => ({ name: w.name, atk: w.atk, dmg: w.dmg, notes: w.notes }));
-    while (updatedWeps.length < 2) updatedWeps.push({ name: "", atk: "", dmg: "", notes: "" });
+    let updatedWeps = loadoutState.weaponsList.map(w => ({ name: w.name, atk: "+5", dmg: w.dmg, dmg_type: w.dmg_type, notes: w.notes }));
+    while (updatedWeps.length < 2) updatedWeps.push({ name: "", dmg: "", dmg_type: "", notes: "" });
     myCharacterWeapons = updatedWeps;
   }
   renderWeapons();
@@ -738,7 +757,7 @@ async function runLoadoutStep() {
     choiceModalBody.innerHTML = `
       <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
         <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🎒</span>
-        It's dangerous to go alone! Let's get you geared up.
+        It's dangerous to go alone! Let's get you geared up.<br>
       </div>
       <p class="loading-text">Fetching weapon & armor stats...</p>
     `;
@@ -761,11 +780,12 @@ async function runLoadoutStep() {
       return;
     }
 
-    // Auto-skip if there's only 1 category choice so you jump straight into the drill-down
+    // Auto skip if there's only 1 choice (and no drill down needed)
     if (choicesArray.length === 1) {
-      const newSteps = await processChosenOption(choicesArray[0], loadoutState.weaponsList, loadoutState.gearList);
+      const { concreteItems, drillDownSteps } = await extractConcreteItemsAndDrillDowns(choicesArray[0]);
+      await processConcreteItems(concreteItems);
       loadoutState.equipOptions.shift();
-      if (newSteps.length > 0) loadoutState.equipOptions.unshift(...newSteps);
+      if (drillDownSteps.length > 0) loadoutState.equipOptions.unshift(...drillDownSteps);
       runLoadoutStep();
       return;
     }
@@ -774,7 +794,7 @@ async function runLoadoutStep() {
       <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
         <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🎒</span>
         It's dangerous to go alone! Let's get you geared up.<br>
-        You get to pick <strong style="color: #38bdf8; font-size: 1.3rem;" id="wizChooseCount">${chooseAmount}</strong> item(s) from this list:
+        You get to pick <strong style="color: #38bdf8; font-size: 1.3rem;">1</strong> item from this list:
       </div>
       <div class="equip-options-grid">
     `;
@@ -806,19 +826,26 @@ async function runLoadoutStep() {
       btn.disabled = true;
 
       const chosenIdx = parseInt(btn.dataset.optIndex, 10);
-      const newSteps = await processChosenOption(choicesArray[chosenIdx], loadoutState.weaponsList, loadoutState.gearList);
+      const chosenChoice = choicesArray[chosenIdx];
 
-      chooseAmount--;
-      if (chooseAmount > 0) {
-        btn.closest(".choice-option-wrapper").style.display = "none"; 
-        const countSpan = document.getElementById("wizChooseCount");
-        if (countSpan) countSpan.textContent = chooseAmount;
-        if (newSteps.length > 0) loadoutState.equipOptions.splice(1, 0, ...newSteps);
-      } else {
-        loadoutState.equipOptions.shift();
-        if (newSteps.length > 0) loadoutState.equipOptions.unshift(...newSteps);
-        runLoadoutStep();
+      const { concreteItems, drillDownSteps } = await extractConcreteItemsAndDrillDowns(chosenChoice);
+      await processConcreteItems(concreteItems);
+
+      loadoutState.equipOptions.shift();
+      if (drillDownSteps.length > 0) {
+        // Enforce choose:1 formatting for new steps to keep logic sequential and clean
+        let normalizedSteps = [];
+        drillDownSteps.forEach(s => {
+           let c = s.choose || 1;
+           for(let i=0; i<c; i++) {
+              let stepCopy = JSON.parse(JSON.stringify(s));
+              stepCopy.choose = 1;
+              normalizedSteps.push(stepCopy);
+           }
+        });
+        loadoutState.equipOptions.unshift(...normalizedSteps);
       }
+      runLoadoutStep();
     });
     return;
   }
@@ -959,7 +986,6 @@ classDropdown?.addEventListener("click", async (e) => {
       fetchAPI(`https://www.dnd5eapi.co/api/classes/${classIdx}`)
     ]);
 
-    // Apply Other Proficiencies and Saves immediately!
     if (classRes?.proficiencies) {
       const otherProfs = classRes.proficiencies
         .filter(p => !p.index.startsWith("skill-") && !p.index.startsWith("saving-throw-"))
@@ -967,7 +993,6 @@ classDropdown?.addEventListener("click", async (e) => {
         .join(", ");
         
       if (otherProfs) {
-        // Automatically injects into Bio/Notes or an Other Proficiencies box if available
         const profBox = document.getElementById("otherProfs") || document.getElementById("proficiencies") || document.getElementById("other_proficiencies") || document.getElementById("bio");
         if (profBox) {
           const current = profBox.value.trim();
@@ -987,41 +1012,33 @@ classDropdown?.addEventListener("click", async (e) => {
     const finalEquip = equipRes1?.starting_equipment_options ? equipRes1 : equipRes2;
 
     loadoutState = {
-      equipOptions: finalEquip?.starting_equipment_options || [],
+      equipOptions: [],
       profOptions: classRes?.proficiency_choices || [],
       weaponsList: [],
       gearList: [],
       selectedSkills: []
     };
+
+    // Normalize starting equipment choices so each click handles exactly 1 pick
+    if (finalEquip?.starting_equipment_options) {
+      finalEquip.starting_equipment_options.forEach(opt => {
+        let c = opt.choose || 1;
+        for(let i=0; i<c; i++) {
+           let step = JSON.parse(JSON.stringify(opt));
+           step.choose = 1;
+           if (c > 1) step.desc = (opt.desc || "Choose an option") + ` (Choice ${i+1} of ${c})`;
+           loadoutState.equipOptions.push(step);
+        }
+      });
+    }
     
     // Process automatic guaranteed equipment immediately
     if (finalEquip?.starting_equipment) {
-      for (const stItem of finalEquip.starting_equipment) {
-        const qtyPrefix = stItem.quantity > 1 ? `${stItem.quantity}x ` : "";
-        let isWpn = isWeaponOrArmor(stItem.equipment.name);
-        let finalDmg = "1d8";
-        let contentStr = "";
-        
-        if (stItem.equipment.url) {
-           const data = await fetchAPI("https://www.dnd5eapi.co" + stItem.equipment.url);
-           if (data) {
-              if (data.damage && data.damage.damage_dice) {
-                 finalDmg = data.damage.damage_dice;
-                 if (data.damage.damage_type && data.damage.damage_type.name) {
-                    finalDmg += " " + data.damage.damage_type.name.toLowerCase();
-                 }
-              }
-              if (data.contents && data.contents.length > 0) {
-                 const cText = data.contents.map(cnt => `${cnt.quantity}x ${cnt.item.name}`).join(', ');
-                 contentStr = ` (Contains: ${cText})`;
-              }
-           }
-        }
-        
-        const fullName = stItem.equipment.name + contentStr;
-        if (isWpn) loadoutState.weaponsList.push({ name: `${qtyPrefix}${fullName}`, atk: "+5", dmg: finalDmg, notes: "" });
-        else loadoutState.gearList.push(`${qtyPrefix}${fullName}`);
-      }
+      const concreteItems = [];
+      finalEquip.starting_equipment.forEach(stItem => {
+         concreteItems.push({ name: stItem.equipment.name, url: stItem.equipment.url, qty: stItem.quantity });
+      });
+      await processConcreteItems(concreteItems);
     }
 
     runLoadoutStep();
