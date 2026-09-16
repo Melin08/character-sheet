@@ -446,7 +446,7 @@ document.addEventListener("click", (e) => {
 });
 
 /* =========================================================
-   NEW ULTRA-LIGHTWEIGHT DYNAMIC SEARCH ENGINE
+   DYNAMIC ON-DEMAND SEARCH ENGINE
    ========================================================= */
 
 async function fetchAPI(url) {
@@ -478,7 +478,7 @@ async function searchTraits(query) {
 
   if (combined.length > 0) {
     return combined.map(item => {
-      let label = "Official Trait / Feature";
+      let label = "Trait / Feature";
       if(item.url.includes("/features/")) label = "Class Feature";
       if(item.url.includes("/traits/")) label = "Racial Trait";
       return { ...item, type: label };
@@ -537,6 +537,17 @@ classDropdown?.addEventListener("click", (e) => {
   classInput.value = item.dataset.name;
   classDropdown.classList.remove("open");
   saveSheet();
+
+  const choiceModal = document.getElementById("choiceModal");
+  if (choiceModal) {
+    document.getElementById("choiceModalTitle").textContent = `${item.dataset.name} Loadout`;
+    document.getElementById("choiceModalBody").innerHTML = `
+      <p style="color: #cbd5e1; font-size: 0.95rem; text-align: center;">
+        I opened this loadout menu for you when you picked your class, but I don't have access to past chats to remember what it's supposed to look like! Please remind me how you want this menu to function!
+      </p>
+    `;
+    choiceModal.classList.add("open");
+  }
 });
 
 raceDropdown?.addEventListener("click", (e) => {
@@ -551,8 +562,8 @@ document.addEventListener("click", (e) => {
   if (!e.target.closest(".dropdown-pill-wrapper")) {
     document.querySelectorAll(".dropdown-menu").forEach(m => m.classList.remove("open"));
   }
-  if (e.target.classList.contains("modal-backdrop")) {
-    e.target.classList.remove("open");
+  if (e.target.classList.contains("modal-backdrop") || e.target.classList.contains("modal-close-btn")) {
+    e.target.closest('.modal-backdrop').classList.remove("open");
   }
 });
 
@@ -652,7 +663,7 @@ function renderModalTraitsList(matches) {
     <div class="spell-option-item trait-option-item" data-url="${trait.url}" data-name="${escapeHtml(trait.name)}" data-type="${escapeHtml(trait.type || '')}">
       <div>
         <span style="font-weight: 600; color: #f8fafc;">${escapeHtml(trait.name)}</span>
-        <span style="font-size: 0.75rem; color: #34d399; margin-left: 0.5rem; text-transform: uppercase;">${escapeHtml(trait.type || 'Official Feature')}</span>
+        <span style="font-size: 0.75rem; color: #34d399; margin-left: 0.5rem; text-transform: uppercase;">${escapeHtml(trait.type || 'Feature')}</span>
       </div>
       <span class="spell-add-badge">+ Add</span>
     </div>
@@ -720,7 +731,7 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
 
   myCharacterTraits.push({
     name: row.dataset.name,
-    type: row.dataset.type || "Official Feature",
+    type: row.dataset.type || "Feature",
     desc: finalDesc,
     isExpanded: false
   });
@@ -740,7 +751,7 @@ function renderModalSpellsList(matches) {
   }
 
   container.innerHTML = matches.slice(0, 150).map((spell) => {
-    let typeTag = "Official Spell";
+    let typeTag = "Spell";
     if (spell.level === 0) typeTag = "Cantrip";
     else if (spell.level > 0) typeTag = `Level ${spell.level} Spell`;
 
