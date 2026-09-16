@@ -28,25 +28,24 @@ body {
   gap: 1rem;
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .wiki-box {
   background: #080d18;
-  border: 1px solid #3b4c68;
-  border-radius: 6px;
-  padding: 0.4rem 0.75rem;
+  border: 1.5px solid #3b4c68;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem; 
   max-width: 320px;
   box-shadow: 0 4px 6px rgba(0,0,0,0.3);
   text-align: right;
-  margin-left: auto;
 }
 
-.wiki-title {
-  font-size: 0.7rem;
+.wiki-box p {
+  font-size: 0.72rem;
   font-weight: bold;
   color: #94a3b8;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
   text-transform: uppercase;
   line-height: 1.15;
 }
@@ -339,7 +338,6 @@ body {
   text-align: center;
 }
 
-/* Center Screen Loadout Modal */
 .modal-box.choice-modal-box {
   max-width: 680px;
   max-height: 85vh;
