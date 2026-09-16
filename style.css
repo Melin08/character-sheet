@@ -339,6 +339,7 @@ body {
   text-align: center;
 }
 
+/* Center Screen Loadout Modal */
 .modal-box.choice-modal-box {
   max-width: 680px;
   max-height: 85vh;
@@ -975,7 +976,7 @@ textarea.tight-block {
   margin: 1.75rem 0;
 }
 
-/* Abilities & Features (4 Columns) */
+/* Skills & Abilities (3 Columns) */
 .abilities-header {
   display: flex;
   align-items: center;
@@ -986,7 +987,7 @@ textarea.tight-block {
 
 .traits-grid-container {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
@@ -1802,7 +1803,7 @@ textarea.tight-block {
   }
 
   .traits-grid-container {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -1903,11 +1904,11 @@ textarea.tight-block {
   }
 
   .traits-grid-container {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 
   .trait-card.expanded {
-    grid-column: span 2;
+    grid-column: span 1;
   }
 
   .spell-basics {
