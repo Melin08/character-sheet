@@ -41,7 +41,7 @@ const COMMON_TRAITS = [
   { name: "Divine Smite", url: "/api/features/divine-smite", type: "Class Feature", parentTag: "Paladin" },
   { name: "Wild Shape", url: "/api/features/wild-shape", type: "Class Feature", parentTag: "Druid" },
   { name: "Cunning Action", url: "/api/features/cunning-action", type: "Class Feature", parentTag: "Rogue" },
-  { name: "Darkvision", url: "/api/traits/darkvision", type: "Racial Trait", parentTag: "Race" },
+  { name: "Darkvision", url: "/api/traits/darkvision", type: "Racial Trait", parentTag: "Elf, Dwarf, etc." },
   { name: "Fey Ancestry", url: "/api/traits/fey-ancestry", type: "Racial Trait", parentTag: "Elf" },
   { name: "Lucky", url: "/api/traits/lucky", type: "Racial Trait", parentTag: "Halfling" }
 ];
@@ -67,13 +67,8 @@ function showStatus(text) {
   setTimeout(() => { statusElem.textContent = ""; }, 2500);
 }
 
-function getModifier(score) {
-  return Math.floor((score - 10) / 2);
-}
-
-function getProfBonus(level) {
-  return Math.ceil(1 + level / 4);
-}
+function getModifier(score) { return Math.floor((score - 10) / 2); }
+function getProfBonus(level) { return Math.ceil(1 + level / 4); }
 
 function autoResizeStatInput(input) {
   if (!input) return;
@@ -90,7 +85,6 @@ function recalculateAll() {
   const levelInput = document.getElementById("charLevel");
   const level = parseInt(levelInput?.value, 10) || 1;
   const prof = getProfBonus(level);
-
   const profBonusDisplay = document.getElementById("profBonusDisplay");
   if (profBonusDisplay) profBonusDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
 
@@ -133,9 +127,7 @@ function renderWeapons() {
     myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
   }
 
-  container.innerHTML = myCharacterWeapons
-    .map(
-      (wpn, idx) => `
+  container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
       <div class="attack-entry" data-index="${idx}">
         <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
         <input type="text" class="inline-input wpn-field" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
@@ -143,9 +135,7 @@ function renderWeapons() {
         <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes" />
         <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
       </div>
-    `
-    )
-    .join("");
+    `).join("");
 }
 
 document.getElementById("addWeaponBtn")?.addEventListener("click", () => {
@@ -512,12 +502,19 @@ async function fetchDetailedTraits(matches) {
     if (m.url && !m.fetchedDetails) {
       const det = await fetchAPI("https://www.dnd5eapi.co" + m.url);
       if (det) {
-        let parentName = det.parent?.name || det.class?.name || det.subclass?.name;
-        if (!parentName && m.url.includes("/races/")) parentName = "Race";
+        let parentNames = [];
+        if (det.races && det.races.length > 0) parentNames.push(...det.races.map(r => r.name));
+        if (det.subraces && det.subraces.length > 0) parentNames.push(...det.subraces.map(sr => sr.name));
+        if (det.class && det.class.name) parentNames.push(det.class.name);
+        if (det.subclass && det.subclass.name) parentNames.push(det.subclass.name);
+        if (det.parent && det.parent.name) parentNames.push(det.parent.name);
+
+        let pTag = parentNames.length > 0 ? parentNames.join(", ") : (m.url.includes("/races/") ? "Various Races" : "");
+
         return { 
           ...m, 
           type: m.url.includes("/features/") ? "Class Feature" : "Racial Trait",
-          parentTag: parentName,
+          parentTag: pTag,
           fetchedDetails: true
         };
       }
@@ -549,23 +546,24 @@ function isWeaponOrArmor(name) {
 }
 
 async function formatItemWithStats(name, url, count) {
-  let str = count > 1 ? `${count}x ${name}` : name;
+  let qtyStr = count > 1 ? `<span style="color:#f87171">${count}x</span> ` : "";
+  let statStr = "";
   if (url) {
     const data = await fetchAPI("https://www.dnd5eapi.co" + url);
     if (data) {
       let extras = [];
       if (data.damage && data.damage.damage_dice) {
-        extras.push(`${data.damage.damage_dice} ${data.damage.damage_type?.name || ''}`.trim());
+        extras.push(`🎲 ${data.damage.damage_dice} ${data.damage.damage_type?.name || ''}`.trim());
       }
       if (data.armor_class) {
-        extras.push(`AC ${data.armor_class.base}${data.armor_class.dex_bonus ? ' + Dex' : ''}`);
+        extras.push(`🛡️ AC ${data.armor_class.base}${data.armor_class.dex_bonus ? ' + Dex' : ''}`);
       }
       if (extras.length > 0) {
-        str += ` [${extras.join(", ")}]`;
+        statStr = `<span class="subtext">${extras.join(" | ")}</span>`;
       }
     }
   }
-  return str;
+  return `<strong>${qtyStr}${escapeHtml(name)}</strong>${statStr ? '<br>' + statStr : ''}`;
 }
 
 async function getAsyncChoiceDetails(choice) {
@@ -575,27 +573,27 @@ async function getAsyncChoiceDetails(choice) {
   if (choice.option_type === "counted_reference" && choice.of) {
     details.push(await formatItemWithStats(choice.of.name, choice.of.url, choice.count));
   } else if (choice.option_type === "choice" && choice.choice) {
-    details.push(`Any ${choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option"}`);
+    details.push(`<strong>Any ${choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option"}</strong>`);
   } else if (choice.option_type === "multiple" && choice.items) {
     for (let i of choice.items) {
       if (i.option_type === "counted_reference" && i.of) details.push(await formatItemWithStats(i.of.name, i.of.url, i.count));
-      else if (i.option_type === "choice" && i.choice) details.push(`Any ${i.choice.desc || i.choice.from?.equipment_category?.name || "Option"}`);
+      else if (i.option_type === "choice" && i.choice) details.push(`<strong>Any ${i.choice.desc || i.choice.from?.equipment_category?.name || "Option"}</strong>`);
       else if (i.of) details.push(await formatItemWithStats(i.of.name, i.of.url, i.count));
       else if (i.item) details.push(await formatItemWithStats(i.item.name, i.item.url, i.count));
     }
   } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
-    details.push(`${choice.count > 1 ? choice.count + "x " : ""}Any ${choice.equipment_category.name}`);
+    details.push(`<strong>${choice.count > 1 ? choice.count + "x " : ""}Any ${choice.equipment_category.name}</strong>`);
   } else if (choice.equipment) {
     details.push(await formatItemWithStats(choice.equipment.name, choice.equipment.url, choice.quantity));
   } else if (choice.equipment_category) {
-    details.push(`Any ${choice.equipment_category.name}`);
+    details.push(`<strong>Any ${choice.equipment_category.name}</strong>`);
   } else if (choice.item) {
     details.push(await formatItemWithStats(choice.item.name, choice.item.url, choice.count));
   } else {
-    details.push(choice.desc || "Item Option");
+    details.push(`<strong>${choice.desc || "Item Option"}</strong>`);
   }
   
-  if (details.length === 0) details.push("Equipment Option");
+  if (details.length === 0) details.push("<strong>Equipment Option</strong>");
   return details;
 }
 
@@ -666,12 +664,12 @@ function finalizeLoadout() {
   saveSheet();
   recalculateAll();
 
-  document.getElementById("choiceModalTitle").textContent = "Loadout Complete";
+  document.getElementById("choiceModalTitle").textContent = "Loadout Complete!";
   document.getElementById("choiceModalBody").innerHTML = `
-    <p style="color: #34d399; font-weight: bold; text-align: center; font-size: 1.05rem; padding: 1rem 0;">
-      Equipment and Skills successfully applied to your sheet!
-    </p>
-    <button class="btn red confirm-loadout-btn" id="finishLoadoutBtn">Awesome</button>
+    <div class="wizard-intro" style="font-size: 1.2rem; color: #34d399; font-weight: 800; padding: 1.5rem 0;">
+      Awesome! Your equipment and skills are successfully applied to your sheet!
+    </div>
+    <button class="btn red confirm-loadout-btn" id="finishLoadoutBtn">Let's Go!</button>
   `;
 
   document.getElementById("finishLoadoutBtn")?.addEventListener("click", () => {
@@ -686,10 +684,13 @@ async function runLoadoutStep() {
   if (loadoutState.equipOptions.length > 0) {
     const optGroup = loadoutState.equipOptions[0];
     let chooseAmount = optGroup.choose || 1;
-    document.getElementById("choiceModalTitle").textContent = optGroup.desc || `Choose ${chooseAmount} Starting Option(s)`;
+    document.getElementById("choiceModalTitle").textContent = "Gear Up!";
 
     const choiceModalBody = document.getElementById("choiceModalBody");
-    choiceModalBody.innerHTML = `<p class="loading-text">Fetching weapon & armor details...</p>`;
+    choiceModalBody.innerHTML = `
+      <div class="wizard-intro">Pick your starting equipment! You get to choose <strong>${chooseAmount}</strong> option(s) from this list.</div>
+      <p class="loading-text">Fetching weapon & armor stats...</p>
+    `;
 
     let choicesArray = [];
     if (optGroup.from) {
@@ -721,20 +722,16 @@ async function runLoadoutStep() {
       return;
     }
 
-    let html = `<div class="equip-options-grid">`;
+    let html = `<div class="wizard-intro">Pick your starting equipment! You get to choose <strong>${chooseAmount}</strong> option(s) from this list.</div><div class="equip-options-grid">`;
     for (let choiceIdx = 0; choiceIdx < choicesArray.length; choiceIdx++) {
       const choice = choicesArray[choiceIdx];
       const detailsArr = await getAsyncChoiceDetails(choice);
-      const tooltipText = detailsArr.join("\n");
-      
-      let label = detailsArr.join("\n+ ");
-      if (label.length > 80) label = label.substring(0, 77) + "..."; 
-      if (!label || label === "Item Option" || label === "Item(s)") label = "Equipment Option";
+      let label = detailsArr.join('<br><span style="color:#64748b; font-size:0.8rem; font-weight:800; display:block; margin:0.3rem 0;">AND</span>');
+      if (!label || label === "Item Option" || label === "Item(s)") label = "<strong>Equipment Option</strong>";
 
       html += `
         <div class="choice-option-wrapper">
-          <button type="button" class="choice-option-btn" data-opt-index="${choiceIdx}">${escapeHtml(label)}</button>
-          <div class="choice-tooltip">${escapeHtml(tooltipText).replace(/\n/g, '<br>')}</div>
+          <button type="button" class="choice-option-btn" data-opt-index="${choiceIdx}">${label}</button>
         </div>
       `;
     }
@@ -750,7 +747,7 @@ async function runLoadoutStep() {
       if (!btn) return;
 
       btn.style.opacity = "0.5";
-      btn.textContent = "Loading...";
+      btn.innerHTML = "<strong>Loading...</strong>";
       btn.disabled = true;
 
       const chosenIdx = parseInt(btn.dataset.optIndex, 10);
@@ -764,7 +761,7 @@ async function runLoadoutStep() {
       chooseAmount--;
       if (chooseAmount > 0) {
         btn.closest(".choice-option-wrapper").style.display = "none"; 
-        document.getElementById("choiceModalTitle").textContent = `Choose ${chooseAmount} MORE option(s)`;
+        document.querySelector(".wizard-intro strong").textContent = chooseAmount;
       } else {
         loadoutState.equipOptions.shift();
         runLoadoutStep();
@@ -777,7 +774,7 @@ async function runLoadoutStep() {
   if (loadoutState.profOptions.length > 0) {
     const profGroup = loadoutState.profOptions[0];
     const chooseAmount = profGroup.choose || 1;
-    document.getElementById("choiceModalTitle").textContent = `Choose ${chooseAmount} Skill(s)`;
+    document.getElementById("choiceModalTitle").textContent = "Time to learn some skills!";
 
     let optionsArray = [];
     if (profGroup.from && profGroup.from.options) optionsArray = profGroup.from.options;
@@ -791,7 +788,7 @@ async function runLoadoutStep() {
       return;
     }
 
-    let html = `<p style="color:#94a3b8; font-size:0.9rem; text-align:center;">Select up to ${chooseAmount} proficiencies below.</p>`;
+    let html = `<div class="wizard-intro">Select up to <strong>${chooseAmount}</strong> of the skills below to add them to your proficiencies!</div>`;
     html += `<div class="loadout-skill-grid">`;
     skillChoices.forEach((skill, idx) => {
       const cleanName = skill.replace("Skill: ", "");
@@ -823,7 +820,7 @@ async function runLoadoutStep() {
           }
         }
       } else if (e.target.id === "confirmSkillsBtn") {
-        if (currentSelections.length === 0 && !confirm("You haven't selected any skills. Proceed anyway?")) return;
+        if (currentSelections.length === 0 && !confirm("You haven't selected any skills! Are you sure you want to skip this?")) return;
         loadoutState.selectedSkills.push(...currentSelections);
         loadoutState.profOptions.shift();
         runLoadoutStep();
@@ -893,8 +890,8 @@ classDropdown?.addEventListener("click", async (e) => {
 
   const classIdx = item.dataset.index;
   if (classIdx) {
-    document.getElementById("choiceModalTitle").textContent = `${item.dataset.name} Loadout`;
-    document.getElementById("choiceModalBody").innerHTML = `<p class="loading-text">Fetching loadout options...</p>`;
+    document.getElementById("choiceModalTitle").textContent = `Setting up your ${item.dataset.name}...`;
+    document.getElementById("choiceModalBody").innerHTML = `<div class="wizard-intro">We're grabbing your class choices from the database! Hang tight...</div><p class="loading-text">Fetching loadout options...</p>`;
     document.getElementById("choiceModal").classList.add("open");
 
     const [equipRes1, equipRes2, classRes] = await Promise.all([
