@@ -22,6 +22,9 @@ let allTraitsCache = [];
 let allClassesCache = [];
 let allRacesCache = [];
 
+let isSpellsLoaded = false;
+let isTraitsLoaded = false;
+
 function escapeHtml(str) {
   if (typeof str !== "string") return "";
   return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -421,11 +424,12 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Async Massive Fetch Engine
+
+// FAST API ENGINE
 async function fetchAPI(url) {
   try {
     const res = await fetch(url);
-    if (!res.ok) throw new Error("API fail");
+    if (!res.ok) return null;
     return await res.json();
   } catch (e) {
     return null;
@@ -433,85 +437,62 @@ async function fetchAPI(url) {
 }
 
 async function buildSpellCache() {
-  try {
-    const open5eSpells = await fetchAPI("https://api.open5e.com/v1/spells/?limit=3000");
-    if (open5eSpells && open5eSpells.results) {
-      spellCache = open5eSpells.results.map(s => ({
-        name: s.name,
-        type: s.level === "Cantrip" ? "Cantrip" : `Level ${s.level} ${s.school}`,
-        desc: `${s.casting_time} | ${s.range} | ${s.duration}\n\n${s.desc}`
-      }));
-    }
-    const dnd5eSpells = await fetchAPI("https://www.dnd5eapi.co/api/spells");
-    if (dnd5eSpells && dnd5eSpells.results) {
-      const existingNames = new Set(spellCache.map(s => s.name.toLowerCase()));
-      dnd5eSpells.results.forEach(s => {
-        if(!existingNames.has(s.name.toLowerCase())) {
-          spellCache.push({ name: s.name, type: "Spell", url: s.url }); 
-        }
-      });
-    }
-  } catch(e) { console.log(e); }
+  const data = await fetchAPI("https://www.dnd5eapi.co/api/spells");
+  if (data && data.results) {
+    spellCache = data.results.map(s => ({
+      name: s.name,
+      type: "Official Spell",
+      url: s.url
+    }));
+  }
 }
 
 async function buildTraitCache() {
-  try {
-    const [classesRes, racesRes, featsRes, traitsRes] = await Promise.all([
-      fetchAPI("https://www.dnd5eapi.co/api/classes"),
-      fetchAPI("https://www.dnd5eapi.co/api/races"),
+  const [classes, races] = await Promise.all([
+    fetchAPI("https://www.dnd5eapi.co/api/classes"),
+    fetchAPI("https://www.dnd5eapi.co/api/races")
+  ]);
+
+  let temp = [];
+  
+  if (classes && classes.results) {
+    const classReqs = classes.results.map(c => 
+      fetchAPI(`https://www.dnd5eapi.co/api/classes/${c.index}/features`).then(res => {
+        if(res && res.results) {
+          res.results.forEach(f => temp.push({ name: f.name, type: `Class: ${c.name}`, url: f.url }));
+        }
+      })
+    );
+    await Promise.all(classReqs);
+  }
+
+  if (races && races.results) {
+    const raceReqs = races.results.map(r => 
+      fetchAPI(`https://www.dnd5eapi.co/api/races/${r.index}/traits`).then(res => {
+        if(res && res.results) {
+          res.results.forEach(t => temp.push({ name: t.name, type: `Race: ${r.name}`, url: t.url }));
+        }
+      })
+    );
+    await Promise.all(raceReqs);
+  }
+
+  const seen = new Set();
+  traitCache = temp.filter(t => {
+    const id = t.name + t.type;
+    if(seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+
+  if (traitCache.length === 0) {
+    const [feats, traits] = await Promise.all([
       fetchAPI("https://www.dnd5eapi.co/api/features"),
       fetchAPI("https://www.dnd5eapi.co/api/traits")
     ]);
-
-    let tempTraits = [];
-
-    if (classesRes && classesRes.results) {
-      const classPromises = classesRes.results.map(c => 
-        fetchAPI(`https://www.dnd5eapi.co/api/classes/${c.index}/features`).then(res => ({ className: c.name, features: res?.results || [] }))
-      );
-      const classData = await Promise.all(classPromises);
-      classData.forEach(cd => {
-        cd.features.forEach(f => {
-          tempTraits.push({ name: f.name, type: `Class Exclusive (${cd.className})`, url: f.url });
-        });
-      });
-    }
-
-    if (racesRes && racesRes.results) {
-      const racePromises = racesRes.results.map(r => 
-        fetchAPI(`https://www.dnd5eapi.co/api/races/${r.index}/traits`).then(res => ({ raceName: r.name, traits: res?.results || [] }))
-      );
-      const raceData = await Promise.all(racePromises);
-      raceData.forEach(rd => {
-        rd.traits.forEach(t => {
-          tempTraits.push({ name: t.name, type: `Racial Exclusive (${rd.raceName})`, url: t.url });
-        });
-      });
-    }
-
-    if (featsRes && featsRes.results) {
-      featsRes.results.forEach(f => {
-        tempTraits.push({ name: f.name, type: "Official Feature", url: f.url });
-      });
-    }
-    if (traitsRes && traitsRes.results) {
-      traitsRes.results.forEach(t => {
-        tempTraits.push({ name: t.name, type: "Official Trait", url: t.url });
-      });
-    }
-
-    const uniqueTraits = [];
-    const seen = new Set();
-    tempTraits.forEach(t => {
-      const id = `${t.name}-${t.type}`;
-      if (!seen.has(id)) {
-        seen.add(id);
-        uniqueTraits.push(t);
-      }
-    });
-
-    traitCache = uniqueTraits;
-  } catch(e) { console.log(e); }
+    if (feats) feats.results.forEach(f => traitCache.push({ name: f.name, type: "Class Feature", url: f.url }));
+    if (traits) traits.results.forEach(t => traitCache.push({ name: t.name, type: "Racial Trait", url: t.url }));
+  }
 }
 
 const classInput = document.getElementById("charClass");
@@ -689,14 +670,17 @@ function renderModalTraits(filterText = "") {
   `).join("");
 }
 
-document.getElementById("addTraitBtn")?.addEventListener("click", () => {
+document.getElementById("addTraitBtn")?.addEventListener("click", async () => {
   const modal = document.getElementById("traitModal");
   modal?.classList.add("open");
-  if (traitCache.length === 0) {
-    document.getElementById("traitApiList").innerHTML = `<p class="loading-text">Loading massive abilities library... Please wait.</p>`;
-  } else {
-    renderModalTraits(document.getElementById("traitSearchInput")?.value || "");
+  
+  if (!isTraitsLoaded) {
+    document.getElementById("traitApiList").innerHTML = `<p class="loading-text">Loading massive official database... please wait.</p>`;
+    await buildTraitCache();
+    isTraitsLoaded = true;
   }
+  
+  renderModalTraits(document.getElementById("traitSearchInput")?.value || "");
 });
 
 document.getElementById("closeTraitModal")?.addEventListener("click", () => {
@@ -741,7 +725,7 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
   let finalDesc = "Description not available.";
   if (selected.url) {
     const detail = await fetchAPI("https://www.dnd5eapi.co" + selected.url);
-    if (detail) finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n") : detail.desc;
+    if (detail) finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n\n") : detail.desc;
   }
 
   myCharacterTraits.push({
@@ -912,14 +896,17 @@ function attachSpellDragEvents() {
   });
 }
 
-document.getElementById("addSpellBtn")?.addEventListener("click", () => {
+document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
   const modal = document.getElementById("spellModal");
   modal?.classList.add("open");
-  if (spellCache.length === 0) {
-    document.getElementById("spellApiList").innerHTML = `<p class="loading-text">Loading massive spell library... Please wait.</p>`;
-  } else {
-    renderModalSpells(document.getElementById("spellSearchInput")?.value || "");
+  
+  if (!isSpellsLoaded) {
+    document.getElementById("spellApiList").innerHTML = `<p class="loading-text">Loading massive official database... please wait.</p>`;
+    await buildSpellCache();
+    isSpellsLoaded = true;
   }
+  
+  renderModalSpells(document.getElementById("spellSearchInput")?.value || "");
 });
 
 document.getElementById("closeSpellModal")?.addEventListener("click", () => {
@@ -963,18 +950,30 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   const badge = row.querySelector(".spell-add-badge");
   if (badge) badge.textContent = "Adding...";
 
-  let finalDesc = details.desc || "";
-  if (details.url && !finalDesc) {
+  let finalDesc = details.desc || "Description not available.";
+  let finalType = details.type || "Spell";
+  let finalCast = "1 Action";
+  let finalRange = "30 ft";
+  let finalDur = "Instantaneous";
+
+  if (details.url) {
     const fetched = await fetchAPI("https://www.dnd5eapi.co" + details.url);
-    if (fetched) finalDesc = Array.isArray(fetched.desc) ? fetched.desc.join("\n\n") : (fetched.desc || "");
+    if (fetched) {
+      finalDesc = Array.isArray(fetched.desc) ? fetched.desc.join("\n\n") : (fetched.desc || "");
+      if (fetched.higher_level) finalDesc += "\n\nAt Higher Levels: " + (Array.isArray(fetched.higher_level) ? fetched.higher_level.join(" ") : fetched.higher_level);
+      finalType = fetched.level === 0 ? "Cantrip" : `Level ${fetched.level} ${fetched.school?.name || ""}`.trim();
+      finalCast = fetched.casting_time || finalCast;
+      finalRange = fetched.range || finalRange;
+      finalDur = fetched.duration || finalDur;
+    }
   }
 
   myCharacterSpells.push({
     name: details.name,
-    type: details.type || "",
-    casting_time: details.casting_time || "1 Action",
-    range: details.range || "30 ft",
-    duration: details.duration || "Instantaneous",
+    type: finalType,
+    casting_time: finalCast,
+    range: finalRange,
+    duration: finalDur,
     desc: finalDesc
   });
 
@@ -1071,8 +1070,6 @@ document.addEventListener("input", (e) => {
   }
 });
 
-// Start fetching and initialize sheet
-buildSpellCache();
-buildTraitCache();
+// Init
 loadSheet();
 renderMyTraits();
