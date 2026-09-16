@@ -3,10 +3,6 @@
 const ROSTER_STORAGE_KEY = "badman_char_roster_v1";
 const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
 
-let allSpellsCache = [];
-let allClassesCache = [];
-let allRacesCache = [];
-let allTraitsCache = [];
 let activeCharId = localStorage.getItem(ACTIVE_CHAR_ID_KEY) || "default";
 
 let myCharacterSpells = [];
@@ -21,318 +17,465 @@ let draggedSpellIndex = null;
 let touchDraggedIndex = null;
 let currentDropTarget = null;
 
-// Built-in SRD 5e Spells Backup Catalog so it never hangs
-const SRD_SPELLS_BACKUP = [
+// Official 5e SRD Fallback Spells - Loaded immediately with zero wait
+const SRD_SPELLS_LIBRARY = [
   { name: "Fire Bolt", level: 0, school: "Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You hurl a mote of fire at a creature or object within range. Make a ranged spell attack. On a hit, the target takes 1d10 fire damage." },
-  { name: "Mage Hand", level: 0, school: "Conjuration", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears at a point you choose within range. You can use your action to control the hand." },
+  { name: "Mage Hand", level: 0, school: "Conjuration", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears at a point you choose within range. You can use your action to control the hand to manipulate objects up to 10 pounds." },
   { name: "Eldritch Blast", level: 0, school: "Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "A beam of crackling energy streaks toward a creature within range. Make a ranged spell attack against the target. On a hit, the target takes 1d10 force damage." },
   { name: "Vicious Mockery", level: 0, school: "Enchantment", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "You unleash a string of insults laced with subtle enchantments at one creature you can see. If it fails a Wisdom saving throw, it takes 1d4 psychic damage and has disadvantage on its next attack." },
-  { name: "Magic Missile", level: 1, school: "Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range, dealing 1d4 + 1 force damage." },
-  { name: "Shield", level: 1, school: "Abjuration", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "An invisible barrier of magical force appears and protects you. Until the start of your next turn, you have a +5 bonus to AC, including against the triggering attack." },
-  { name: "Cure Wounds", level: 1, school: "Evocation", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "A creature you touch regains a number of hit points equal to 1d8 + your spellcasting ability modifier." },
-  { name: "Healing Word", level: 1, school: "Evocation", casting_time: "1 Bonus Action", range: "60 ft", duration: "Instantaneous", desc: "A creature of your choice that you can see within range regains hit points equal to 1d4 + your spellcasting ability modifier." },
+  { name: "Prestidigitation", level: 0, school: "Transmutation", casting_time: "1 Action", range: "10 ft", duration: "Up to 1 hour", desc: "This spell is a minor magical trick that novice spellcasters use for practice. Create harmless sensory effects, light or snuff candles, or clean/soil objects." },
+  { name: "Sacred Flame", level: 0, school: "Evocation", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "Flame-like radiance descends on a creature that you can see within range. The target must succeed on a Dexterity saving throw or take 1d8 radiant damage." },
+  { name: "Minor Illusion", level: 0, school: "Illusion", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "You create a sound or an image of an object within range that lasts for the duration. The illusion ends if you dismiss it or cast this spell again." },
+  { name: "Ray of Frost", level: 0, school: "Evocation", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "A frigid beam of blue-white light streaks toward a creature within range. On a hit, it takes 1d8 cold damage, and its speed is reduced by 10 feet until the start of your next turn." },
+  { name: "Magic Missile", level: 1, school: "Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range, dealing 1d4 + 1 force damage to its target. The darts all strike simultaneously." },
+  { name: "Shield", level: 1, school: "Abjuration", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "An invisible barrier of magical force appears and protects you. Until the start of your next turn, you have a +5 bonus to AC, including against the triggering attack, and you take no damage from magic missile." },
+  { name: "Cure Wounds", level: 1, school: "Evocation", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "A creature you touch regains a number of hit points equal to 1d8 + your spellcasting ability modifier. This spell has no effect on undead or constructs." },
+  { name: "Healing Word", level: 1, school: "Evocation", casting_time: "1 Bonus Action", range: "60 ft", duration: "Instantaneous", desc: "A creature of your choice that you can see within range regains hit points equal to 1d4 + your spellcasting ability modifier. This spell has no effect on undead or constructs." },
+  { name: "Thunderwave", level: 1, school: "Evocation", casting_time: "1 Action", range: "Self (15-foot cube)", duration: "Instantaneous", desc: "A wave of thunderous force sweeps out from you. Each creature in a 15-foot cube originating from you must make a Constitution saving throw or take 2d8 thunder damage and be pushed 10 feet away." },
+  { name: "Guiding Bolt", level: 1, school: "Evocation", casting_time: "1 Action", range: "120 ft", duration: "1 round", desc: "A flash of light streaks toward a creature of your choice within range. On a hit, the target takes 4d6 radiant damage, and the next attack roll made against this target before the end of your next turn has advantage." },
   { name: "Misty Step", level: 2, school: "Conjuration", casting_time: "1 Bonus Action", range: "Self", duration: "Instantaneous", desc: "Briefly surrounded by silvery mist, you teleport up to 30 feet to an unoccupied space that you can see." },
-  { name: "Fireball", level: 3, school: "Evocation", casting_time: "1 Action", range: "150 ft", duration: "Instantaneous", desc: "A bright streak flashes from your pointing finger to a point you choose within range and then blossoms with a low roar into an explosion of flame. Each creature in a 20-foot-radius sphere must make a Dex save or take 8d6 fire damage." }
+  { name: "Invisibility", level: 2, school: "Illusion", casting_time: "1 Action", range: "Touch", duration: "Concentration, up to 1 hour", desc: "A creature you touch becomes invisible until the spell ends. Anything the target is wearing or carrying is invisible as long as it is on the target's person. The spell ends if the target attacks or casts a spell." },
+  { name: "Hold Person", level: 2, school: "Enchantment", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 minute", desc: "Choose a humanoid that you can see within range. The target must succeed on a Wisdom saving throw or be paralyzed for the duration." },
+  { name: "Fireball", level: 3, school: "Evocation", casting_time: "1 Action", range: "150 ft", duration: "Instantaneous", desc: "A bright streak flashes from your pointing finger to a point you choose within range and blossoms into an explosion of flame. Each creature in a 20-foot-radius sphere must make a Dex save, taking 8d6 fire damage on a failure, or half on a success." },
+  { name: "Counterspell", level: 3, school: "Abjuration", casting_time: "1 Reaction", range: "60 ft", duration: "Instantaneous", desc: "You attempt to interrupt a creature in the process of casting a spell. If the creature is casting a spell of 3rd level or lower, its spell fails and has no effect." },
+  { name: "Haste", level: 3, school: "Transmutation", casting_time: "1 Action", range: "30 ft", duration: "Concentration, up to 1 minute", desc: "Choose a willing creature within range. Until the spell ends, the target's speed is doubled, it gains a +2 bonus to AC, advantage on Dex saving throws, and an additional action on each of its turns." }
 ];
 
-// Official 5e SRD Fallback Database to guarantee immediate pop-up
-const SRD_CLASS_EQUIPMENT = {
-  barbarian: {
-    name: "Barbarian", hitDie: 12, saves: ["Strength", "Constitution"],
-    proficiencies: ["Light armor", "Medium armor", "Shields", "Simple weapons", "Martial weapons"],
-    fixed: [{ name: "Explorer's Pack", qty: 1 }, { name: "Javelin", qty: 4 }],
-    choices: [
-      { desc: "Choose your primary weapon", choose: 1, options: [
-        { label: "A Greataxe", items: [{ name: "Greataxe", qty: 1, desc: "1d12 slashing, heavy, two-handed" }] },
-        { label: "Any Martial Melee Weapon", items: [{ name: "Longsword", qty: 1, desc: "1d8 slashing, versatile (1d10)" }] }
-      ]},
-      { desc: "Choose your secondary weapons", choose: 1, options: [
-        { label: "Two Handaxes", items: [{ name: "Handaxe", qty: 2, desc: "1d6 slashing, light, thrown (20/60)" }] },
-        { label: "Any Simple Weapon", items: [{ name: "Shortbow & 20 Arrows", qty: 1, desc: "1d6 piercing, two-handed, range 80/320" }] }
-      ]}
-    ]
-  },
-  bard: {
-    name: "Bard", hitDie: 8, saves: ["Dexterity", "Charisma"],
-    proficiencies: ["Light armor", "Simple weapons", "Hand crossbows", "Longswords", "Rapiers", "Shortswords", "Three musical instruments"],
-    fixed: [{ name: "Leather Armor", qty: 1 }, { name: "Dagger", qty: 1 }],
-    choices: [
-      { desc: "Choose your primary weapon", choose: 1, options: [
-        { label: "A Rapier", items: [{ name: "Rapier", qty: 1, desc: "1d8 piercing, finesse" }] },
-        { label: "A Longsword", items: [{ name: "Longsword", qty: 1, desc: "1d8 slashing, versatile (1d10)" }] },
-        { label: "Any Simple Weapon", items: [{ name: "Dagger", qty: 1, desc: "1d4 piercing, finesse, light, thrown" }] }
-      ]},
-      { desc: "Choose your pack", choose: 1, options: [
-        { label: "Diplomat's Pack", items: [{ name: "Diplomat's Pack", qty: 1, desc: "Chest, fine clothes, ink, pen, lamp, oil, rations" }] },
-        { label: "Entertainer's Pack", items: [{ name: "Entertainer's Pack", qty: 1, desc: "Backpack, bedroll, costumes, candles, rations, waterskin" }] }
-      ]},
-      { desc: "Choose your musical instrument", choose: 1, options: [
-        { label: "A Lute", items: [{ name: "Lute", qty: 1, desc: "Musical instrument" }] },
-        { label: "Any Musical Instrument", items: [{ name: "Flute", qty: 1, desc: "Musical instrument" }] }
-      ]}
-    ]
-  },
-  cleric: {
-    name: "Cleric", hitDie: 8, saves: ["Wisdom", "Charisma"],
-    proficiencies: ["Light armor", "Medium armor", "Shields", "Simple weapons"],
-    fixed: [{ name: "Shield", qty: 1 }, { name: "Holy Symbol", qty: 1 }],
-    choices: [
-      { desc: "Choose your primary weapon", choose: 1, options: [
-        { label: "A Mace", items: [{ name: "Mace", qty: 1, desc: "1d6 bludgeoning" }] },
-        { label: "A Warhammer (if proficient)", items: [{ name: "Warhammer", qty: 1, desc: "1d8 bludgeoning, versatile (1d10)" }] }
-      ]},
-      { desc: "Choose your armor", choose: 1, options: [
-        { label: "Scale Mail", items: [{ name: "Scale Mail", qty: 1, desc: "AC 14 + Dex mod (max 2), Disadv on Stealth" }] },
-        { label: "Leather Armor", items: [{ name: "Leather Armor", qty: 1, desc: "AC 11 + Dex mod" }] },
-        { label: "Chain Mail (if proficient)", items: [{ name: "Chain Mail", qty: 1, desc: "AC 16, Str 13 req, Disadv on Stealth" }] }
-      ]},
-      { desc: "Choose your ranged weapon", choose: 1, options: [
-        { label: "Light Crossbow & 20 Bolts", items: [{ name: "Light Crossbow", qty: 1, desc: "1d8 piercing, range 80/320, loading" }, { name: "Crossbow Bolts", qty: 20, desc: "Ammunition" }] },
-        { label: "Any Simple Weapon", items: [{ name: "Javelin", qty: 2, desc: "1d6 piercing, thrown (30/120)" }] }
-      ]},
-      { desc: "Choose your pack", choose: 1, options: [
-        { label: "Priest's Pack", items: [{ name: "Priest's Pack", qty: 1, desc: "Backpack, blanket, candles, alms box, censer, vestments" }] },
-        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
-      ]}
-    ]
-  },
-  druid: {
-    name: "Druid", hitDie: 8, saves: ["Intelligence", "Wisdom"],
-    proficiencies: ["Light armor (non-metal)", "Medium armor (non-metal)", "Shields (non-metal)", "Clubs", "Daggers", "Darts", "Javelins", "Maces", "Quarterstaffs", "Scimitars", "Sickles", "Slings", "Spears", "Herbalism kit"],
-    fixed: [{ name: "Leather Armor", qty: 1 }, { name: "Explorer's Pack", qty: 1 }, { name: "Druidic Focus", qty: 1 }],
-    choices: [
-      { desc: "Choose your shield or weapon", choose: 1, options: [
-        { label: "A Wooden Shield", items: [{ name: "Wooden Shield", qty: 1, desc: "+2 Armor Class" }] },
-        { label: "Any Simple Weapon", items: [{ name: "Quarterstaff", qty: 1, desc: "1d6 bludgeoning, versatile (1d8)" }] }
-      ]},
-      { desc: "Choose your primary melee weapon", choose: 1, options: [
-        { label: "A Scimitar", items: [{ name: "Scimitar", qty: 1, desc: "1d6 slashing, finesse, light" }] },
-        { label: "Any Simple Melee Weapon", items: [{ name: "Spear", qty: 1, desc: "1d6 piercing, thrown (20/60), versatile (1d8)" }] }
-      ]}
-    ]
-  },
-  fighter: {
-    name: "Fighter", hitDie: 10, saves: ["Strength", "Constitution"],
-    proficiencies: ["All armor", "Shields", "Simple weapons", "Martial weapons"],
-    fixed: [],
-    choices: [
-      { desc: "Choose your armor", choose: 1, options: [
-        { label: "Chain Mail", items: [{ name: "Chain Mail", qty: 1, desc: "AC 16, Str 13 req, Disadv on Stealth" }] },
-        { label: "Leather Armor & Longbow (20 Arrows)", items: [{ name: "Leather Armor", qty: 1, desc: "AC 11 + Dex mod" }, { name: "Longbow", qty: 1, desc: "1d8 piercing, heavy, two-handed, 150/600" }, { name: "Arrows", qty: 20, desc: "Ammunition" }] }
-      ]},
-      { desc: "Choose your weapon setup", choose: 1, options: [
-        { label: "A Martial Weapon & Shield", items: [{ name: "Longsword", qty: 1, desc: "1d8 slashing, versatile (1d10)" }, { name: "Shield", qty: 1, desc: "+2 Armor Class" }] },
-        { label: "Two Martial Weapons", items: [{ name: "Greatsword", qty: 1, desc: "2d6 slashing, heavy, two-handed" }, { name: "Shortsword", qty: 1, desc: "1d6 piercing, finesse, light" }] }
-      ]},
-      { desc: "Choose secondary ranged", choose: 1, options: [
-        { label: "Light Crossbow & 20 Bolts", items: [{ name: "Light Crossbow", qty: 1, desc: "1d8 piercing, range 80/320, loading" }, { name: "Crossbow Bolts", qty: 20, desc: "Ammunition" }] },
-        { label: "Two Handaxes", items: [{ name: "Handaxe", qty: 2, desc: "1d6 slashing, light, thrown (20/60)" }] }
-      ]},
-      { desc: "Choose your pack", choose: 1, options: [
-        { label: "Dungeoneer's Pack", items: [{ name: "Dungeoneer's Pack", qty: 1, desc: "Backpack, crowbar, hammer, pitons, torches, rations" }] },
-        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
-      ]}
-    ]
-  },
-  monk: {
-    name: "Monk", hitDie: 8, saves: ["Strength", "Dexterity"],
-    proficiencies: ["Simple weapons", "Shortswords", "One type of artisan's tools or musical instrument"],
-    fixed: [{ name: "Dart", qty: 10 }],
-    choices: [
-      { desc: "Choose your primary weapon", choose: 1, options: [
-        { label: "A Shortsword", items: [{ name: "Shortsword", qty: 1, desc: "1d6 piercing, finesse, light" }] },
-        { label: "Any Simple Weapon", items: [{ name: "Quarterstaff", qty: 1, desc: "1d6 bludgeoning, versatile (1d8)" }] }
-      ]},
-      { desc: "Choose your pack", choose: 1, options: [
-        { label: "Dungeoneer's Pack", items: [{ name: "Dungeoneer's Pack", qty: 1, desc: "Backpack, crowbar, hammer, pitons, torches, rations" }] },
-        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
-      ]}
-    ]
-  },
-  paladin: {
-    name: "Paladin", hitDie: 10, saves: ["Wisdom", "Charisma"],
-    proficiencies: ["All armor", "Shields", "Simple weapons", "Martial weapons"],
-    fixed: [{ name: "Chain Mail", qty: 1 }, { name: "Holy Symbol", qty: 1 }],
-    choices: [
-      { desc: "Choose your weapons", choose: 1, options: [
-        { label: "A Martial Weapon & Shield", items: [{ name: "Longsword", qty: 1, desc: "1d8 slashing, versatile (1d10)" }, { name: "Shield", qty: 1, desc: "+2 Armor Class" }] },
-        { label: "Two Martial Weapons", items: [{ name: "Greatsword", qty: 1, desc: "2d6 slashing, heavy, two-handed" }, { name: "Warhammer", qty: 1, desc: "1d8 bludgeoning, versatile (1d10)" }] }
-      ]},
-      { desc: "Choose secondary weapons", choose: 1, options: [
-        { label: "Five Javelins", items: [{ name: "Javelin", qty: 5, desc: "1d6 piercing, thrown (30/120)" }] },
-        { label: "Any Simple Melee Weapon", items: [{ name: "Mace", qty: 1, desc: "1d6 bludgeoning" }] }
-      ]},
-      { desc: "Choose your pack", choose: 1, options: [
-        { label: "Priest's Pack", items: [{ name: "Priest's Pack", qty: 1, desc: "Backpack, blanket, candles, tinderbox, alms box, rations" }] },
-        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
-      ]}
-    ]
-  },
-  ranger: {
-    name: "Ranger", hitDie: 10, saves: ["Strength", "Dexterity"],
-    proficiencies: ["Light armor", "Medium armor", "Shields", "Simple weapons", "Martial weapons"],
-    fixed: [{ name: "Longbow", qty: 1 }, { name: "Quiver & 20 Arrows", qty: 1 }],
-    choices: [
-      { desc: "Choose your armor", choose: 1, options: [
-        { label: "Scale Mail", items: [{ name: "Scale Mail", qty: 1, desc: "AC 14 + Dex mod (max 2), Disadv on Stealth" }] },
-        { label: "Leather Armor", items: [{ name: "Leather Armor", qty: 1, desc: "AC 11 + Dex mod" }] }
-      ]},
-      { desc: "Choose your melee setup", choose: 1, options: [
-        { label: "Two Shortswords", items: [{ name: "Shortsword", qty: 2, desc: "1d6 piercing, finesse, light" }] },
-        { label: "Two Simple Melee Weapons", items: [{ name: "Handaxe", qty: 2, desc: "1d6 slashing, light, thrown (20/60)" }] }
-      ]},
-      { desc: "Choose your pack", choose: 1, options: [
-        { label: "Dungeoneer's Pack", items: [{ name: "Dungeoneer's Pack", qty: 1, desc: "Backpack, crowbar, hammer, pitons, torches, rations" }] },
-        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
-      ]}
-    ]
-  },
-  rogue: {
-    name: "Rogue", hitDie: 8, saves: ["Dexterity", "Intelligence"],
-    proficiencies: ["Light armor", "Simple weapons", "Hand crossbows", "Longswords", "Rapiers", "Shortswords", "Thieves' tools"],
-    fixed: [{ name: "Leather Armor", qty: 1 }, { name: "Dagger", qty: 2 }, { name: "Thieves' Tools", qty: 1 }],
-    choices: [
-      { desc: "Choose your primary weapon", choose: 1, options: [
-        { label: "A Rapier", items: [{ name: "Rapier", qty: 1, desc: "1d8 piercing, finesse" }] },
-        { label: "A Shortsword", items: [{ name: "Shortsword", qty: 1, desc: "1d6 piercing, finesse, light" }] }
-      ]},
-      { desc: "Choose secondary ranged", choose: 1, options: [
-        { label: "Shortbow & 20 Arrows", items: [{ name: "Shortbow", qty: 1, desc: "1d6 piercing, two-handed, range 80/320" }, { name: "Arrows", qty: 20, desc: "Ammunition" }] },
-        { label: "A Shortsword", items: [{ name: "Shortsword", qty: 1, desc: "1d6 piercing, finesse, light" }] }
-      ]},
-      { desc: "Choose your pack", choose: 1, options: [
-        { label: "Burglar's Pack", items: [{ name: "Burglar's Pack", qty: 1, desc: "Backpack, ball bearings, string, bell, candles, crowbar" }] },
-        { label: "Dungeoneer's Pack", items: [{ name: "Dungeoneer's Pack", qty: 1, desc: "Backpack, crowbar, hammer, pitons, torches, rations" }] },
-        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
-      ]}
-    ]
-  },
-  sorcerer: {
-    name: "Sorcerer", hitDie: 6, saves: ["Constitution", "Charisma"],
-    proficiencies: ["Daggers", "Darts", "Slings", "Quarterstaffs", "Light crossbows"],
-    fixed: [{ name: "Dagger", qty: 2 }],
-    choices: [
-      { desc: "Choose secondary weapon", choose: 1, options: [
-        { label: "Light Crossbow & 20 Bolts", items: [{ name: "Light Crossbow", qty: 1, desc: "1d8 piercing, range 80/320, loading" }, { name: "Crossbow Bolts", qty: 20, desc: "Ammunition" }] },
-        { label: "Any Simple Weapon", items: [{ name: "Quarterstaff", qty: 1, desc: "1d6 bludgeoning, versatile (1d8)" }] }
-      ]},
-      { desc: "Choose your spell focus", choose: 1, options: [
-        { label: "Component Pouch", items: [{ name: "Component Pouch", qty: 1, desc: "Basic spellcasting focus" }] },
-        { label: "Arcane Focus", items: [{ name: "Arcane Focus (Wand)", qty: 1, desc: "Arcane spellcasting focus" }] }
-      ]},
-      { desc: "Choose your pack", choose: 1, options: [
-        { label: "Dungeoneer's Pack", items: [{ name: "Dungeoneer's Pack", qty: 1, desc: "Backpack, crowbar, hammer, pitons, torches, rations" }] },
-        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
-      ]}
-    ]
-  },
-  warlock: {
-    name: "Warlock", hitDie: 8, saves: ["Wisdom", "Charisma"],
-    proficiencies: ["Light armor", "Simple weapons"],
-    fixed: [{ name: "Leather Armor", qty: 1 }, { name: "Dagger", qty: 2 }],
-    choices: [
-      { desc: "Choose your primary weapon", choose: 1, options: [
-        { label: "Light Crossbow & 20 Bolts", items: [{ name: "Light Crossbow", qty: 1, desc: "1d8 piercing, range 80/320, loading" }, { name: "Crossbow Bolts", qty: 20, desc: "Ammunition" }] },
-        { label: "Any Simple Weapon", items: [{ name: "Quarterstaff", qty: 1, desc: "1d6 bludgeoning, versatile (1d8)" }] }
-      ]},
-      { desc: "Choose your spell focus", choose: 1, options: [
-        { label: "Component Pouch", items: [{ name: "Component Pouch", qty: 1, desc: "Basic spellcasting focus" }] },
-        { label: "Arcane Focus", items: [{ name: "Arcane Focus (Orb)", qty: 1, desc: "Arcane spellcasting focus" }] }
-      ]},
-      { desc: "Choose your pack", choose: 1, options: [
-        { label: "Scholar's Pack", items: [{ name: "Scholar's Pack", qty: 1, desc: "Backpack, book of lore, ink, pen, parchment, sand" }] },
-        { label: "Dungeoneer's Pack", items: [{ name: "Dungeoneer's Pack", qty: 1, desc: "Backpack, crowbar, hammer, pitons, torches, rations" }] }
-      ]}
-    ]
-  },
-  wizard: {
-    name: "Wizard", hitDie: 6, saves: ["Intelligence", "Wisdom"],
-    proficiencies: ["Daggers", "Darts", "Slings", "Quarterstaffs", "Light crossbows"],
-    fixed: [{ name: "Spellbook", qty: 1 }],
-    choices: [
-      { desc: "Choose your weapon", choose: 1, options: [
-        { label: "A Quarterstaff", items: [{ name: "Quarterstaff", qty: 1, desc: "1d6 bludgeoning, versatile (1d8)" }] },
-        { label: "A Dagger", items: [{ name: "Dagger", qty: 1, desc: "1d4 piercing, finesse, light, thrown" }] }
-      ]},
-      { desc: "Choose your spell focus", choose: 1, options: [
-        { label: "Component Pouch", items: [{ name: "Component Pouch", qty: 1, desc: "Basic spellcasting focus" }] },
-        { label: "Arcane Focus", items: [{ name: "Arcane Focus (Wand)", qty: 1, desc: "Arcane spellcasting focus" }] }
-      ]},
-      { desc: "Choose your pack", choose: 1, options: [
-        { label: "Scholar's Pack", items: [{ name: "Scholar's Pack", qty: 1, desc: "Backpack, book of lore, ink, pen, parchment, sand" }] },
-        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
-      ]}
-    ]
-  }
-};
-
-const SRD_RACE_DATA = {
-  dwarf: { speed: 25, traits: [
-    { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
-    { name: "Dwarven Resilience", type: "Racial", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." },
-    { name: "Stonecunning", type: "Racial", desc: "Whenever you make an Intelligence (History) check related to the origin of stonework, you add double your proficiency bonus." }
-  ]},
-  elf: { speed: 30, traits: [
-    { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
-    { name: "Keen Senses", type: "Racial", desc: "You have proficiency in the Perception skill." },
-    { name: "Fey Ancestry", type: "Racial", desc: "You have advantage on saving throws against being charmed, and magic can't put you to sleep." },
-    { name: "Trance", type: "Racial", desc: "Elves don't need to sleep. Instead, they meditate deeply for 4 hours a day." }
-  ]},
-  halfling: { speed: 25, traits: [
-    { name: "Lucky", type: "Racial", desc: "When you roll a 1 on the d20 for an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll." },
-    { name: "Brave", type: "Racial", desc: "You have advantage on saving throws against being frightened." },
-    { name: "Halfling Nimbleness", type: "Racial", desc: "You can move through the space of any creature that is of a size larger than yours." }
-  ]},
-  human: { speed: 30, traits: [
-    { name: "Versatile", type: "Racial", desc: "Humans gain +1 to all ability scores and an extra language." }
-  ]},
-  dragonborn: { speed: 30, traits: [
-    { name: "Draconic Ancestry", type: "Racial", desc: "You have draconic ancestry. Your breath weapon and damage resistance are determined by dragon type." },
-    { name: "Breath Weapon", type: "Racial", desc: "You can use your action to exhale destructive energy determined by your draconic ancestry." },
-    { name: "Damage Resistance", type: "Racial", desc: "You have resistance to the damage type associated with your draconic ancestry." }
-  ]},
-  gnome: { speed: 25, traits: [
-    { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
-    { name: "Gnome Cunning", type: "Racial", desc: "You have advantage on all Intelligence, Wisdom, and Charisma saving throws against magic." }
-  ]},
-  "half-elf": { speed: 30, traits: [
-    { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
-    { name: "Fey Ancestry", type: "Racial", desc: "You have advantage on saving throws against being charmed, and magic can't put you to sleep." },
-    { name: "Skill Versatility", type: "Racial", desc: "You gain proficiency in two skills of your choice." }
-  ]},
-  "half-orc": { speed: 30, traits: [
-    { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
-    { name: "Menacing", type: "Racial", desc: "You gain proficiency in the Intimidation skill." },
-    { name: "Relentless Endurance", type: "Racial", desc: "When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead once per long rest." },
-    { name: "Savage Attacks", type: "Racial", desc: "When you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage." }
-  ]},
-  tiefling: { speed: 30, traits: [
-    { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
-    { name: "Hellish Resistance", type: "Racial", desc: "You have resistance to fire damage." },
-    { name: "Infernal Legacy", type: "Racial", desc: "You know the Thaumaturgy cantrip. Charisma is your spellcasting ability for these spells." }
-  ]}
-};
-
-const SRD_GENERAL_FEATURES = [
-  { name: "Rage", type: "Class Ability", desc: "In battle, you fight with primal ferocity. On your turn, you can enter a rage as a bonus action." },
-  { name: "Reckless Attack", type: "Class Ability", desc: "Starting at 2nd level, you can throw aside all concern for defense to attack with fierce desperation." },
-  { name: "Action Surge", type: "Class Ability", desc: "On your turn, you can take one additional action on top of your regular action and possible bonus action." },
-  { name: "Second Wind", type: "Class Ability", desc: "You have a limited well of stamina. On your turn, you can use a bonus action to regain hit points equal to 1d10 + your fighter level." },
-  { name: "Sneak Attack", type: "Class Ability", desc: "Beginning at 1st level, you know how to strike subtly and exploit a foe's distraction to deal extra damage." },
-  { name: "Cunning Action", type: "Class Ability", desc: "Starting at 2nd level, your quick thinking and agility allow you to move and act quickly. You can take a bonus action to Dash, Disengage, or Hide." },
-  { name: "Divine Smite", type: "Class Ability", desc: "Starting at 2nd level, when you hit a creature with a melee weapon attack, you can expend one spell slot to deal radiant damage to the target." },
-  { name: "Lay on Hands", type: "Class Ability", desc: "Your blessed touch can heal wounds. You have a pool of healing power that replenishes when you take a long rest." },
-  { name: "Wild Shape", type: "Class Ability", desc: "Starting at 2nd level, you can use your action to magically assume the shape of a beast that you have seen before." },
-  { name: "Bardic Inspiration", type: "Class Ability", desc: "You can inspire others through stirring words or music. Use a bonus action on your turn to choose one creature other than yourself within 60 feet." },
-  { name: "Channel Divinity", type: "Class Ability", desc: "You gain the ability to channel divine energy directly from your deity, using that energy to fuel magical effects." },
+// Official 5e SRD Fallback Traits & Features - Loaded immediately with zero wait
+const SRD_TRAITS_LIBRARY = [
+  { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray." },
+  { name: "Fey Ancestry", type: "Racial", desc: "You have advantage on saving throws against being charmed, and magic cannot put you to sleep." },
+  { name: "Dwarven Resilience", type: "Racial", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." },
+  { name: "Lucky", type: "Racial", desc: "When you roll a 1 on the d20 for an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll." },
+  { name: "Relentless Endurance", type: "Racial", desc: "When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead. You can't use this feature again until you finish a long rest." },
+  { name: "Savage Attacks", type: "Racial", desc: "When you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage." },
+  { name: "Breath Weapon", type: "Racial", desc: "You can use your action to exhale destructive energy determined by your draconic ancestry. Each creature in the area must make a saving throw based on your dragon type." },
+  { name: "Hellish Resistance", type: "Racial", desc: "You have resistance to fire damage." },
+  { name: "Gnome Cunning", type: "Racial", desc: "You have advantage on all Intelligence, Wisdom, and Charisma saving throws against magic." },
+  { name: "Rage", type: "Class Ability", desc: "In battle, you fight with primal ferocity. On your turn, you can enter a rage as a bonus action, gaining advantage on Strength checks, bonus melee damage, and resistance to bludgeoning, piercing, and slashing damage." },
+  { name: "Reckless Attack", type: "Class Ability", desc: "Starting at 2nd level, you can throw aside all concern for defense. Doing so gives you advantage on melee weapon attack rolls using Strength during this turn, but attack rolls against you have advantage until your next turn." },
+  { name: "Action Surge", type: "Class Ability", desc: "On your turn, you can push yourself beyond your normal limits for a moment. You can take one additional action on top of your regular action and a possible bonus action." },
+  { name: "Second Wind", type: "Class Ability", desc: "You have a limited well of stamina that you can draw on to protect yourself from harm. On your turn, you can use a bonus action to regain hit points equal to 1d10 + your fighter level." },
+  { name: "Sneak Attack", type: "Class Ability", desc: "Beginning at 1st level, you know how to strike subtly and exploit a foe's distraction. Once per turn, you can deal an extra 1d6 damage to one creature you hit with an attack if you have advantage on the attack roll." },
+  { name: "Cunning Action", type: "Class Ability", desc: "Starting at 2nd level, your quick thinking and agility allow you to move and act quickly. You can take a bonus action on each of your turns in combat to Dash, Disengage, or Hide." },
+  { name: "Divine Smite", type: "Class Ability", desc: "Starting at 2nd level, when you hit a creature with a melee weapon attack, you can expend one spell slot to deal radiant damage to the target, in addition to the weapon's damage (2d8 for a 1st-level slot + 1d8 each higher level)." },
+  { name: "Lay on Hands", type: "Class Ability", desc: "Your blessed touch can heal wounds. You have a pool of healing power that replenishes when you take a long rest. With that pool, you can restore a total number of hit points equal to your paladin level x 5." },
+  { name: "Wild Shape", type: "Class Ability", desc: "Starting at 2nd level, you can use your action to magically assume the shape of a beast that you have seen before twice per short or long rest." },
+  { name: "Bardic Inspiration", type: "Class Ability", desc: "You can inspire others through stirring words or music. To do so, you use a bonus action on your turn to choose one creature other than yourself within 60 feet. Once within the next 10 minutes, the creature can add a d6 to one ability check, attack roll, or saving throw." },
+  { name: "Channel Divinity", type: "Class Ability", desc: "You gain the ability to channel divine energy directly from your deity, using that energy to fuel magical effects specific to your sacred domain." },
   { name: "Flurry of Blows", type: "Class Ability", desc: "Immediately after you take the Attack action on your turn, you can spend 1 ki point to make two unarmed strikes as a bonus action." },
-  { name: "Pact Magic", type: "Class Ability", desc: "Your arcane research and the magic bestowed on you by your patron have given you facility with spells." },
-  { name: "Arcane Recovery", type: "Class Ability", desc: "Once per day when you finish a short rest, you can choose expended spell slots to recover." },
-  { name: "Alert", type: "Feat", desc: "Always on the lookout for danger. You gain a +5 bonus to initiative and you can't be surprised while you are conscious." },
-  { name: "Lucky", type: "Feat", desc: "You have 3 luck points. Whenever you make an attack roll, an ability check, or a saving throw, you can spend one luck point to roll an additional d20." },
-  { name: "War Caster", type: "Feat", desc: "You have advantage on Constitution saving throws that you make to maintain your concentration on a spell when you take damage." }
+  { name: "Pact Magic", type: "Class Ability", desc: "Your arcane research and the magic bestowed on you by your patron have given you facility with spells. Your spell slots are always cast at your highest available slot level and recover on a short rest." },
+  { name: "Arcane Recovery", type: "Class Ability", desc: "Once per day when you finish a short rest, you can choose expended spell slots to recover. The spell slots can have a combined level that is equal to or less than half your wizard level (rounded up)." },
+  { name: "Alert", type: "Feat", desc: "Always on the lookout for danger. You gain a +5 bonus to initiative and you cannot be surprised while you are conscious. Other creatures don't gain advantage on attack rolls against you as a result of being unseen by you." },
+  { name: "War Caster", type: "Feat", desc: "You have advantage on Constitution saving throws that you make to maintain your concentration on a spell when you take damage. You can perform the somatic components of spells even when you have weapons or a shield in one or both hands." },
+  { name: "Sharpshooter", type: "Feat", desc: "Attacking at long range doesn't impose disadvantage on your ranged weapon attack rolls. Your ranged weapon attacks ignore half cover and three-quarters cover. You can choose to take a -5 penalty to the attack roll to add +10 to the damage." }
 ];
 
+let allSpellsCache = [...SRD_SPELLS_LIBRARY];
+let allTraitsCache = [...SRD_TRAITS_LIBRARY];
+let allClassesCache = [];
+let allRacesCache = [];
+
+function escapeHtml(str) {
+  if (typeof str !== "string") return "";
+  return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function showStatus(text) {
+  const statusElem = document.getElementById("saveStatus");
+  if (!statusElem) return;
+  statusElem.textContent = text;
+  setTimeout(() => { statusElem.textContent = ""; }, 2500);
+}
+
+function getModifier(score) {
+  return Math.floor((score - 10) / 2);
+}
+
+function getProfBonus(level) {
+  return Math.ceil(1 + level / 4);
+}
+
+function autoResizeStatInput(input) {
+  if (!input) return;
+  if (input.classList.contains("concentration-input")) return;
+  const content = input.value || input.placeholder || "";
+  input.style.width = Math.max(3, content.length + 1.5) + "ch";
+}
+
+function syncAllStatInputs() {
+  document.querySelectorAll(".spell-stat-input").forEach(autoResizeStatInput);
+}
+
+function recalculateAll() {
+  const levelInput = document.getElementById("charLevel");
+  const level = parseInt(levelInput?.value, 10) || 1;
+  const prof = getProfBonus(level);
+
+  const profBonusDisplay = document.getElementById("profBonusDisplay");
+  if (profBonusDisplay) profBonusDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
+
+  const stats = ["str", "dex", "con", "int", "wis", "cha"];
+  const mods = {};
+
+  stats.forEach((stat) => {
+    const scoreVal = parseInt(document.getElementById(`attr_${stat}`)?.value, 10) || 10;
+    const mod = getModifier(scoreVal);
+    mods[stat] = mod;
+
+    const modElem = document.getElementById(`mod_${stat}`);
+    if (modElem) modElem.textContent = mod;
+
+    const isSaveChecked = document.getElementById(`save_${stat}`)?.checked;
+    const saveValElem = document.getElementById(`save_val_${stat}`);
+    if (saveValElem) saveValElem.textContent = isSaveChecked ? mod + prof : mod;
+  });
+
+  document.querySelectorAll(".skill-row").forEach((row) => {
+    const stat = row.dataset.stat;
+    const statMod = mods[stat] ?? 0;
+    const isProf = row.querySelector(".prof-cb")?.checked;
+    const isExp = row.querySelector(".exp-cb")?.checked;
+
+    let total = statMod;
+    if (isProf) total += prof;
+    if (isExp) total += prof;
+
+    const valElem = row.querySelector(".skill-val");
+    if (valElem) valElem.textContent = total;
+  });
+}
+
+function renderWeapons() {
+  const container = document.getElementById("weaponsContainer");
+  if (!container) return;
+
+  while (myCharacterWeapons.length < 2) {
+    myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+  }
+
+  container.innerHTML = myCharacterWeapons
+    .map(
+      (wpn, idx) => `
+      <div class="attack-entry" data-index="${idx}">
+        <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
+        <input type="text" class="inline-input wpn-field" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
+        <input type="text" class="inline-input wpn-field" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
+        <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes" />
+        <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
+      </div>
+    `
+    )
+    .join("");
+}
+
+document.getElementById("addWeaponBtn")?.addEventListener("click", () => {
+  myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+  saveSheet();
+  renderWeapons();
+});
+
+document.getElementById("weaponsContainer")?.addEventListener("input", (e) => {
+  if (e.target.classList.contains("wpn-field")) {
+    const entry = e.target.closest(".attack-entry");
+    const index = parseInt(entry.dataset.index, 10);
+    const prop = e.target.dataset.prop;
+    myCharacterWeapons[index][prop] = e.target.value;
+    saveSheet();
+  }
+});
+
+document.getElementById("weaponsContainer")?.addEventListener("click", (e) => {
+  if (e.target.classList.contains("weapon-delete-btn")) {
+    const index = parseInt(e.target.dataset.index, 10);
+    myCharacterWeapons.splice(index, 1);
+    while (myCharacterWeapons.length < 2) {
+      myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+    }
+    saveSheet();
+    renderWeapons();
+  }
+});
+
+function getRoster() {
+  try { return JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY)) || {}; } 
+  catch (e) { return {}; }
+}
+
+function saveRoster(roster) {
+  localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(roster));
+}
+
+function getCurrentSheetData() {
+  const fields = {};
+  document.querySelectorAll(".save-field").forEach((field) => {
+    if (field.type === "checkbox") fields[field.id] = field.checked;
+    else fields[field.id] = field.value;
+  });
+  return fields;
+}
+
+function saveSheet() {
+  const roster = getRoster();
+  const fields = getCurrentSheetData();
+  const name = fields.charName?.trim() || "Unnamed Character";
+  const charClass = fields.charClass?.trim() || "";
+  const level = fields.charLevel || 1;
+
+  roster[activeCharId] = {
+    id: activeCharId,
+    name: name,
+    summary: charClass ? `${charClass} (Lvl ${level})` : `Level ${level}`,
+    updatedAt: Date.now(),
+    fields: fields,
+    spells: myCharacterSpells,
+    traits: myCharacterTraits,
+    weapons: myCharacterWeapons
+  };
+
+  saveRoster(roster);
+  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+  showStatus("Saved!");
+}
+
+function applyCharacterData(charData) {
+  if (!charData) return;
+  const fields = charData.fields || {};
+  Object.keys(fields).forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      if (el.type === "checkbox") el.checked = fields[id];
+      else el.value = fields[id];
+    }
+  });
+
+  myCharacterSpells = charData.spells || [];
+  myCharacterTraits = charData.traits || [];
+  myCharacterWeapons = charData.weapons && charData.weapons.length >= 2 ? charData.weapons : [
+    { name: "", atk: "", dmg: "", notes: "" },
+    { name: "", atk: "", dmg: "", notes: "" }
+  ];
+
+  renderWeapons();
+  renderMySpells();
+  renderMyTraits();
+  recalculateAll();
+  syncAllStatInputs();
+}
+
+function loadSheet() {
+  const roster = getRoster();
+  if (roster[activeCharId]) {
+    applyCharacterData(roster[activeCharId]);
+  } else {
+    const keys = Object.keys(roster);
+    if (keys.length > 0) {
+      activeCharId = keys[0];
+      localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+      applyCharacterData(roster[activeCharId]);
+    } else {
+      recalculateAll();
+      renderWeapons();
+      renderMySpells();
+      renderMyTraits();
+      syncAllStatInputs();
+    }
+  }
+}
+
+function resetSheet() {
+  activeCharId = "char_" + Date.now();
+  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+
+  document.querySelectorAll(".save-field").forEach((field) => {
+    if (field.type === "checkbox") field.checked = false;
+    else if (field.id === "charLevel") field.value = 1;
+    else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") field.value = 10;
+    else if (field.classList.contains("attr-input")) field.value = 10;
+    else if (field.id === "charSpeed") field.value = 30;
+    else if (field.classList.contains("dual-input") || field.classList.contains("coin-input") || field.classList.contains("slot-input")) field.value = 0;
+    else field.value = "";
+  });
+
+  myCharacterSpells = [];
+  myCharacterTraits = [];
+  myCharacterWeapons = [
+    { name: "", atk: "", dmg: "", notes: "" },
+    { name: "", atk: "", dmg: "", notes: "" }
+  ];
+  diceRollHistory = [];
+  
+  renderDiceHistory();
+  recalculateAll();
+  renderWeapons();
+  renderMySpells();
+  renderMyTraits();
+  syncAllStatInputs();
+  saveSheet();
+  showStatus("New Character Created!");
+}
+
+function renderCharList() {
+  const container = document.getElementById("charList");
+  if (!container) return;
+  const roster = getRoster();
+  const keys = Object.keys(roster);
+
+  if (keys.length === 0) {
+    container.innerHTML = `<p class="loading-text">No saved characters found.</p>`;
+    return;
+  }
+
+  container.innerHTML = keys.map((id) => {
+    const char = roster[id];
+    const isActive = id === activeCharId;
+    return `
+      <div class="char-item-row" data-id="${id}">
+        <div class="char-item-info">
+          <span class="char-item-name">${escapeHtml(char.name || "Unnamed Character")}</span>
+          <span class="char-item-sub">${escapeHtml(char.summary || "")}</span>
+        </div>
+        <div class="char-actions">
+          <button type="button" class="char-select-btn ${isActive ? "active" : ""}">${isActive ? "Active" : "Select"}</button>
+          <button type="button" class="char-delete-btn" title="Delete character">&times;</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+document.getElementById("loadBtn")?.addEventListener("click", () => {
+  renderCharList();
+  document.getElementById("loadModal")?.classList.add("open");
+});
+
+document.getElementById("closeLoadModal")?.addEventListener("click", () => {
+  document.getElementById("loadModal")?.classList.remove("open");
+});
+
+document.getElementById("charList")?.addEventListener("click", (e) => {
+  const row = e.target.closest(".char-item-row");
+  if (!row) return;
+  const targetId = row.dataset.id;
+  const roster = getRoster();
+
+  if (e.target.classList.contains("char-delete-btn")) {
+    e.stopPropagation();
+    if (confirm(`Delete character "${roster[targetId]?.name || "Unnamed"}"?`)) {
+      delete roster[targetId];
+      saveRoster(roster);
+      if (activeCharId === targetId) {
+        const remaining = Object.keys(roster);
+        if (remaining.length > 0) {
+          activeCharId = remaining[0];
+          localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+          loadSheet();
+        } else resetSheet();
+      }
+      renderCharList();
+    }
+    return;
+  }
+
+  activeCharId = targetId;
+  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+  applyCharacterData(roster[activeCharId]);
+  document.getElementById("loadModal")?.classList.remove("open");
+  showStatus("Character Loaded!");
+});
+
+document.getElementById("helpLinkBtn")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.add("open"));
+document.getElementById("closeHelpModal")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.remove("open"));
+
+function switchMainTab(targetId) {
+  document.querySelectorAll(".main-tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".tab-page").forEach(p => p.classList.remove("active"));
+  const targetBtn = document.querySelector(`.main-tab[data-target="${targetId}"]`);
+  if (targetBtn) targetBtn.classList.add("active");
+  const tabEl = document.getElementById(targetId);
+  if (tabEl) tabEl.classList.add("active");
+}
+
+document.querySelectorAll(".main-tab").forEach(btn => {
+  btn.addEventListener("click", () => switchMainTab(btn.dataset.target));
+});
+
+document.querySelectorAll(".sub-tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".sub-tab").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".subtab-page").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    const target = btn.dataset.sub;
+    const tabEl = document.getElementById(target);
+    if (tabEl) tabEl.classList.add("active");
+  });
+});
+
+document.querySelectorAll(".footer-nav-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    switchMainTab(btn.dataset.tab);
+    const targetId = btn.dataset.scroll === "attr" ? ".attributes-group" : 
+                     btn.dataset.scroll === "skills" ? ".skills-group" : 
+                     btn.dataset.scroll === "spells" ? "#spellsList" : "#tab-journal";
+    const el = document.querySelector(targetId);
+    if(el) el.scrollIntoView({ behavior: "smooth" });
+  });
+});
+
+function addDiceHistory(desc, total) {
+  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  diceRollHistory.unshift({ desc, total, time });
+  if (diceRollHistory.length > 25) diceRollHistory.pop();
+  renderDiceHistory();
+}
+
+function renderDiceHistory() {
+  const container = document.getElementById("diceHistoryList");
+  if (!container) return;
+  if (diceRollHistory.length === 0) {
+    container.innerHTML = `<span class="dice-history-empty">No rolls logged yet.</span>`;
+    return;
+  }
+  container.innerHTML = diceRollHistory.map(item => `
+    <div class="dice-history-item">
+      <span class="dice-history-desc">${escapeHtml(item.desc)} <small style="color:#64748b;">(${item.time})</small></span>
+      <span class="dice-history-val">${escapeHtml(String(item.total))}</span>
+    </div>
+  `).join("");
+}
+
+document.querySelectorAll(".dice-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const sides = parseInt(btn.dataset.sides, 10);
+    const roll = Math.floor(Math.random() * sides) + 1;
+    const out = document.getElementById("rollResult");
+    if (out) out.textContent = roll;
+    addDiceHistory(`1d${sides}`, roll);
+  });
+});
+
+document.addEventListener("click", (e) => {
+  if (e.target.classList.contains("roll-btn")) {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    let bonus = 0, label = "";
+    if (e.target.dataset.type === "save") {
+      const attr = e.target.dataset.attr;
+      bonus = parseInt(document.getElementById(`save_val_${attr}`)?.textContent, 10) || 0;
+      label = `${attr.toUpperCase()} Save`;
+    } else if (e.target.dataset.type === "skill") {
+      const id = e.target.dataset.id;
+      bonus = parseInt(document.getElementById(`val_${id}`)?.textContent, 10) || 0;
+      label = document.querySelector(`#row_${id} .skill-label`)?.textContent || "Skill";
+    }
+    const total = roll + bonus;
+    const out = document.getElementById("rollResult");
+    if (out) out.textContent = total;
+    const sign = bonus >= 0 ? `+ ${bonus}` : `- ${Math.abs(bonus)}`;
+    addDiceHistory(`${label} (${roll} ${sign})`, total);
+  }
+});
+
+// Dropdowns & D&D 5e API Fetching
 const classInput = document.getElementById("charClass");
 const classDropdown = document.getElementById("classDropdown");
 const raceInput = document.getElementById("charRace");
@@ -574,7 +717,7 @@ raceDropdown?.addEventListener("click", (e) => {
     if (raceInfo.traits && raceInfo.traits.length > 0) {
       raceInfo.traits.forEach(t => {
         if (!myCharacterTraits.some(existing => existing.name.toLowerCase() === t.name.toLowerCase())) {
-          myCharacterTraits.push({ name: t.name, type: t.type || "Racial", desc: t.desc || "" });
+          myCharacterTraits.push({ name: t.name, type: t.type || "Racial", desc: t.desc || "", isExpanded: false });
         }
       });
       renderMyTraits();
@@ -589,8 +732,14 @@ document.addEventListener("click", (e) => {
   if (!e.target.closest(".dropdown-pill-wrapper")) {
     document.querySelectorAll(".dropdown-menu").forEach(m => m.classList.remove("open"));
   }
-  if (e.target.classList.contains("modal-backdrop") || e.target.classList.contains("modal-close-btn") || e.target.id === "closeChoiceModal") {
-    e.target.closest(".modal-backdrop")?.classList.remove("open");
+  if (e.target.classList.contains("modal-backdrop")) {
+    e.target.classList.remove("open");
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
   }
 });
 
@@ -611,13 +760,16 @@ function renderMyTraits() {
   }
 
   container.innerHTML = myCharacterTraits.map((trait, idx) => `
-    <div class="trait-card" data-index="${idx}">
+    <div class="trait-card ${trait.isExpanded ? 'expanded' : ''}" data-index="${idx}">
       <div class="trait-card-header">
-        <span class="trait-card-title">${escapeHtml(trait.name)}</span>
+        <input type="text" class="trait-name-input custom-trait-field" data-prop="name" value="${escapeHtml(trait.name || '')}" placeholder="Ability Name" />
         <button class="trait-card-delete" data-index="${idx}" type="button" title="Remove ability">&times;</button>
       </div>
-      <span class="trait-card-type">${escapeHtml(trait.type || "Ability")}</span>
-      <div class="trait-card-snippet">${escapeHtml(trait.desc || "No description provided.")}</div>
+      <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || '')}" placeholder="Type (Racial, Feat, etc.)" />
+      <textarea class="trait-desc-input custom-trait-field" data-prop="desc" placeholder="Ability description and rules...">${escapeHtml(trait.desc || '')}</textarea>
+      <div class="trait-card-footer">
+        <button type="button" class="trait-expand-btn">${trait.isExpanded ? 'Collapse' : 'Expand'}</button>
+      </div>
     </div>
   `).join("");
 }
@@ -632,13 +784,45 @@ document.getElementById("traitsList")?.addEventListener("click", (e) => {
     return;
   }
 
-  const card = e.target.closest(".trait-card");
-  if (card) {
+  const expandBtn = e.target.closest(".trait-expand-btn");
+  if (expandBtn) {
+    e.stopPropagation();
+    const card = expandBtn.closest(".trait-card");
+    const idx = parseInt(card.dataset.index, 10);
     card.classList.toggle("expanded");
+    const isExp = card.classList.contains("expanded");
+    expandBtn.textContent = isExp ? "Collapse" : "Expand";
+    if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp;
+    saveSheet();
+    return;
+  }
+
+  if (e.target.classList.contains("custom-trait-field")) {
+    const card = e.target.closest(".trait-card");
+    if (card && !card.classList.contains("expanded")) {
+      card.classList.add("expanded");
+      const btn = card.querySelector(".trait-expand-btn");
+      if (btn) btn.textContent = "Collapse";
+      const idx = parseInt(card.dataset.index, 10);
+      if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = true;
+      saveSheet();
+    }
   }
 });
 
-// Trait / Ability Search Modal with Timeout Fallback
+document.getElementById("traitsList")?.addEventListener("input", (e) => {
+  if (e.target.classList.contains("custom-trait-field")) {
+    const card = e.target.closest(".trait-card");
+    const idx = parseInt(card.dataset.index, 10);
+    const prop = e.target.dataset.prop;
+    if (myCharacterTraits[idx]) {
+      myCharacterTraits[idx][prop] = e.target.value;
+      saveSheet();
+    }
+  }
+});
+
+// Trait / Ability Search Modal
 function renderModalTraits(filterText = "") {
   const container = document.getElementById("traitApiList");
   if (!container) return;
@@ -661,33 +845,10 @@ function renderModalTraits(filterText = "") {
   `).join("");
 }
 
-async function fetchOfficialTraits() {
-  if (allTraitsCache.length > 0) return;
-  allTraitsCache = [...SRD_GENERAL_FEATURES];
-  
-  // Try fetching API with 2.5 second timeout so it never hangs
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2500);
-    const res = await fetch("https://www.dnd5eapi.co/api/features", { signal: controller.signal });
-    clearTimeout(timer);
-    if (res.ok) {
-      const data = await res.json();
-      const apiFeatures = (data.results || []).map(f => ({ name: f.name, type: "Feature", url: f.url }));
-      allTraitsCache.push(...apiFeatures);
-    }
-  } catch (err) {
-    // Falls back seamlessly to SRD features
-  }
-}
-
-document.getElementById("addTraitBtn")?.addEventListener("click", async () => {
+document.getElementById("addTraitBtn")?.addEventListener("click", () => {
   const modal = document.getElementById("traitModal");
   modal?.classList.add("open");
-  if (allTraitsCache.length === 0) {
-    await fetchOfficialTraits();
-  }
-  renderModalTraits();
+  renderModalTraits(document.getElementById("traitSearchInput")?.value || "");
 });
 
 document.getElementById("closeTraitModal")?.addEventListener("click", () => {
@@ -698,16 +859,28 @@ document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   renderModalTraits(e.target.value);
 });
 
-document.getElementById("addCustomTraitBtn")?.addEventListener("click", () => {
-  const customName = prompt("Enter ability name:") || "New Custom Ability";
-  const customDesc = prompt("Enter ability description:") || "";
-  myCharacterTraits.push({ name: customName, type: "Custom", desc: customDesc });
+// Add Custom Trait: create an identical box without any text at all
+document.getElementById("addCustomTraitBtn")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  myCharacterTraits.push({
+    name: "",
+    type: "",
+    desc: "",
+    isExpanded: true
+  });
   saveSheet();
   renderMyTraits();
   document.getElementById("traitModal")?.classList.remove("open");
+
+  const cards = document.querySelectorAll("#traitsList .trait-card");
+  const lastCard = cards[cards.length - 1];
+  if (lastCard) {
+    const input = lastCard.querySelector(".trait-name-input");
+    if (input) input.focus();
+  }
 });
 
-document.getElementById("traitApiList")?.addEventListener("click", async (e) => {
+document.getElementById("traitApiList")?.addEventListener("click", (e) => {
   const row = e.target.closest(".trait-option-item");
   if (!row) return;
 
@@ -715,23 +888,11 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
   const selected = allTraitsCache[idx];
   if (!selected) return;
 
-  let desc = selected.desc || "";
-  if (!desc && selected.url) {
-    try {
-      const res = await fetch(`https://www.dnd5eapi.co${selected.url}`);
-      if (res.ok) {
-        const data = await res.json();
-        desc = Array.isArray(data.desc) ? data.desc.join("\n\n") : (data.desc || "");
-      }
-    } catch (err) {
-      desc = "No description available.";
-    }
-  }
-
   myCharacterTraits.push({
     name: selected.name,
     type: selected.type || "Feature",
-    desc: desc || "No description provided."
+    desc: selected.desc || "",
+    isExpanded: false
   });
 
   saveSheet();
@@ -739,37 +900,7 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
   document.getElementById("traitModal")?.classList.remove("open");
 });
 
-// Official Spells Implementation with Timeout Fallback
-async function fetchOfficialSpells() {
-  if (allSpellsCache.length > 0) return;
-  allSpellsCache = [...SRD_SPELLS_BACKUP];
-
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2500);
-    const res = await fetch("https://www.dnd5eapi.co/api/spells", { signal: controller.signal });
-    clearTimeout(timer);
-    if (res.ok) {
-      const data = await res.json();
-      allSpellsCache = data.results || SRD_SPELLS_BACKUP;
-    }
-  } catch (err) {
-    // Falls back to backup catalog
-  }
-}
-
-async function fetchSpellDetails(spellIndex) {
-  const localMatch = SRD_SPELLS_BACKUP.find(s => s.name.toLowerCase() === spellIndex.toLowerCase() || s.name.toLowerCase().replace(/\s+/g, '-') === spellIndex);
-  if (localMatch) return localMatch;
-
-  try {
-    const res = await fetch(`https://www.dnd5eapi.co/api/spells/${spellIndex}`);
-    return await res.json();
-  } catch (err) {
-    return { name: spellIndex, level: 1, school: { name: "Magic" }, casting_time: "1 Action", range: "30 ft", duration: "Instantaneous", desc: "Custom spell" };
-  }
-}
-
+// Official Spells Implementation
 function renderModalSpells(filterText = "") {
   const container = document.getElementById("spellApiList");
   if (!container) return;
@@ -781,9 +912,12 @@ function renderModalSpells(filterText = "") {
     return;
   }
 
-  container.innerHTML = matches.map(spell => `
-    <div class="spell-option-item" data-index="${spell.index || spell.name.toLowerCase().replace(/\s+/g, '-')}" data-name="${escapeHtml(spell.name)}">
-      <span>${escapeHtml(spell.name)}</span>
+  container.innerHTML = matches.map((spell, idx) => `
+    <div class="spell-option-item" data-idx="${idx}">
+      <div>
+        <span style="font-weight: 600; color: #f8fafc;">${escapeHtml(spell.name)}</span>
+        <span style="font-size: 0.75rem; color: #f87171; margin-left: 0.5rem;">${spell.level === 0 ? "Cantrip" : "Level " + spell.level} ${spell.school || ""}</span>
+      </div>
       <span class="spell-add-badge">+ Add</span>
     </div>
   `).join("");
@@ -799,7 +933,7 @@ function renderMySpells() {
   }
 
   container.innerHTML = myCharacterSpells.map((spell, idx) => {
-    let typeVal = spell.type || `Level ${spell.level || 1} ${spell.school?.name || ""}`.trim();
+    let typeVal = spell.type || (spell.level !== undefined ? (spell.level === 0 ? "Cantrip" : `Level ${spell.level} ${spell.school || ""}`.trim()) : "");
     let descVal = Array.isArray(spell.desc) ? spell.desc.join("\n\n") : (spell.desc || "");
     return `
       <div class="spell-card" draggable="true" data-index="${idx}">
@@ -815,18 +949,18 @@ function renderMySpells() {
           </div>
           <div class="meta-field-group">
             <span class="meta-label">Cast</span>
-            <input type="text" class="spell-meta-input custom-spell-field" data-prop="casting_time" value="${escapeHtml(spell.casting_time || "1 Action")}" />
+            <input type="text" class="spell-meta-input custom-spell-field" data-prop="casting_time" value="${escapeHtml(spell.casting_time || "")}" placeholder="1 Action" />
           </div>
           <div class="meta-field-group">
             <span class="meta-label">Range</span>
-            <input type="text" class="spell-meta-input custom-spell-field" data-prop="range" value="${escapeHtml(spell.range || "30 ft")}" />
+            <input type="text" class="spell-meta-input custom-spell-field" data-prop="range" value="${escapeHtml(spell.range || "")}" placeholder="30 ft" />
           </div>
           <div class="meta-field-group">
             <span class="meta-label">Duration</span>
-            <input type="text" class="spell-meta-input custom-spell-field" data-prop="duration" value="${escapeHtml(spell.duration || "Instantaneous")}" />
+            <input type="text" class="spell-meta-input custom-spell-field" data-prop="duration" value="${escapeHtml(spell.duration || "")}" placeholder="Instantaneous" />
           </div>
         </div>
-        <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description...">${escapeHtml(descVal)}</textarea>
+        <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description and effects...">${escapeHtml(descVal)}</textarea>
       </div>
     `;
   }).join("");
@@ -922,13 +1056,10 @@ function attachSpellDragEvents() {
   });
 }
 
-document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
+document.getElementById("addSpellBtn")?.addEventListener("click", () => {
   const modal = document.getElementById("spellModal");
   modal?.classList.add("open");
-  if (allSpellsCache.length === 0) {
-    await fetchOfficialSpells();
-  }
-  renderModalSpells();
+  renderModalSpells(document.getElementById("spellSearchInput")?.value || "");
 });
 
 document.getElementById("closeSpellModal")?.addEventListener("click", () => {
@@ -939,36 +1070,49 @@ document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   renderModalSpells(e.target.value);
 });
 
-document.getElementById("addCustomSpellBtn")?.addEventListener("click", () => {
-  const customName = prompt("Enter spell name:") || "New Custom Spell";
-  const customDesc = prompt("Enter spell description:") || "";
-  myCharacterSpells.push({ name: customName, type: "1st Level", casting_time: "1 Action", range: "30 ft", duration: "Instantaneous", desc: customDesc });
+// Add Custom Spell: create an identical box without any text at all
+document.getElementById("addCustomSpellBtn")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  myCharacterSpells.push({
+    name: "",
+    type: "",
+    casting_time: "",
+    range: "",
+    duration: "",
+    desc: ""
+  });
   saveSheet();
   renderMySpells();
   document.getElementById("spellModal")?.classList.remove("open");
+
+  const cards = document.querySelectorAll("#spellsList .spell-card");
+  const lastCard = cards[cards.length - 1];
+  if (lastCard) {
+    const input = lastCard.querySelector(".spell-custom-title-input");
+    if (input) input.focus();
+  }
 });
 
-document.getElementById("spellApiList")?.addEventListener("click", async (e) => {
+document.getElementById("spellApiList")?.addEventListener("click", (e) => {
   const row = e.target.closest(".spell-option-item");
   if (!row) return;
-  const badge = row.querySelector(".spell-add-badge");
-  if (badge) badge.textContent = "Adding...";
-  
-  const details = await fetchSpellDetails(row.dataset.index);
-  if (details) {
-    myCharacterSpells.push({
-      name: details.name,
-      type: `${details.level === 0 ? "Cantrip" : "Level " + details.level} ${details.school?.name || details.school || ""}`.trim(),
-      casting_time: details.casting_time || "1 Action",
-      range: details.range || "30 ft",
-      duration: details.duration || "Instantaneous",
-      desc: Array.isArray(details.desc) ? details.desc.join("\n\n") : (details.desc || "")
-    });
-    saveSheet();
-    renderMySpells();
-  }
+
+  const idx = parseInt(row.dataset.idx, 10);
+  const details = allSpellsCache[idx];
+  if (!details) return;
+
+  myCharacterSpells.push({
+    name: details.name,
+    type: details.type || (details.level === 0 ? "Cantrip" : `Level ${details.level} ${details.school || ""}`.trim()),
+    casting_time: details.casting_time || "1 Action",
+    range: details.range || "30 ft",
+    duration: details.duration || "Instantaneous",
+    desc: Array.isArray(details.desc) ? details.desc.join("\n\n") : (details.desc || "")
+  });
+
+  saveSheet();
+  renderMySpells();
   document.getElementById("spellModal")?.classList.remove("open");
-  if (badge) badge.textContent = "+ Add";
 });
 
 document.getElementById("spellsList")?.addEventListener("input", (e) => {
@@ -1058,5 +1202,6 @@ document.addEventListener("input", (e) => {
   }
 });
 
+// Initialize sheet and abilities
 loadSheet();
 renderMyTraits();
