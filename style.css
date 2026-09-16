@@ -339,7 +339,6 @@ body {
   text-align: center;
 }
 
-/* Center Screen Loadout Modal */
 .modal-box.choice-modal-box {
   max-width: 680px;
   max-height: 85vh;
@@ -1803,7 +1802,7 @@ textarea.tight-block {
   }
 
   .traits-grid-container {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
