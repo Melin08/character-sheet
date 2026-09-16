@@ -21,29 +21,29 @@ let allClassesCache = [];
 let allRacesCache = [];
 
 const COMMON_SPELLS = [
-  { name: "Fire Bolt", url: "/api/spells/fire-bolt" },
-  { name: "Mage Hand", url: "/api/spells/mage-hand" },
-  { name: "Prestidigitation", url: "/api/spells/prestidigitation" },
-  { name: "Shield", url: "/api/spells/shield" },
-  { name: "Magic Missile", url: "/api/spells/magic-missile" },
-  { name: "Cure Wounds", url: "/api/spells/cure-wounds" },
-  { name: "Healing Word", url: "/api/spells/healing-word" },
-  { name: "Misty Step", url: "/api/spells/misty-step" },
-  { name: "Fireball", url: "/api/spells/fireball" },
-  { name: "Counterspell", url: "/api/spells/counterspell" }
+  { name: "Fire Bolt", url: "/api/spells/fire-bolt", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard" },
+  { name: "Mage Hand", url: "/api/spells/mage-hand", levelTag: "Cantrip", schoolTag: "Conjuration", classesTag: "Bard, Sorcerer, Warlock, Wizard" },
+  { name: "Prestidigitation", url: "/api/spells/prestidigitation", levelTag: "Cantrip", schoolTag: "Transmutation", classesTag: "Bard, Sorcerer, Warlock, Wizard" },
+  { name: "Shield", url: "/api/spells/shield", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Sorcerer, Wizard" },
+  { name: "Magic Missile", url: "/api/spells/magic-missile", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard" },
+  { name: "Cure Wounds", url: "/api/spells/cure-wounds", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid, Paladin, Ranger" },
+  { name: "Healing Word", url: "/api/spells/healing-word", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid" },
+  { name: "Misty Step", url: "/api/spells/misty-step", levelTag: "Level 2", schoolTag: "Conjuration", classesTag: "Sorcerer, Warlock, Wizard" },
+  { name: "Fireball", url: "/api/spells/fireball", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard" },
+  { name: "Counterspell", url: "/api/spells/counterspell", levelTag: "Level 3", schoolTag: "Abjuration", classesTag: "Sorcerer, Warlock, Wizard" }
 ];
 
 const COMMON_TRAITS = [
-  { name: "Action Surge", url: "/api/features/action-surge-1-use", type: "Class Feature" },
-  { name: "Sneak Attack", url: "/api/features/sneak-attack", type: "Class Feature" },
-  { name: "Rage", url: "/api/features/rage", type: "Class Feature" },
-  { name: "Bardic Inspiration", url: "/api/features/bardic-inspiration-d6", type: "Class Feature" },
-  { name: "Divine Smite", url: "/api/features/divine-smite", type: "Class Feature" },
-  { name: "Wild Shape", url: "/api/features/wild-shape", type: "Class Feature" },
-  { name: "Cunning Action", url: "/api/features/cunning-action", type: "Class Feature" },
-  { name: "Darkvision", url: "/api/traits/darkvision", type: "Racial Trait" },
-  { name: "Fey Ancestry", url: "/api/traits/fey-ancestry", type: "Racial Trait" },
-  { name: "Lucky", url: "/api/traits/lucky", type: "Racial Trait" }
+  { name: "Action Surge", url: "/api/features/action-surge-1-use", type: "Class Feature", parentTag: "Fighter" },
+  { name: "Sneak Attack", url: "/api/features/sneak-attack", type: "Class Feature", parentTag: "Rogue" },
+  { name: "Rage", url: "/api/features/rage", type: "Class Feature", parentTag: "Barbarian" },
+  { name: "Bardic Inspiration", url: "/api/features/bardic-inspiration-d6", type: "Class Feature", parentTag: "Bard" },
+  { name: "Divine Smite", url: "/api/features/divine-smite", type: "Class Feature", parentTag: "Paladin" },
+  { name: "Wild Shape", url: "/api/features/wild-shape", type: "Class Feature", parentTag: "Druid" },
+  { name: "Cunning Action", url: "/api/features/cunning-action", type: "Class Feature", parentTag: "Rogue" },
+  { name: "Darkvision", url: "/api/traits/darkvision", type: "Racial Trait", parentTag: "Race" },
+  { name: "Fey Ancestry", url: "/api/traits/fey-ancestry", type: "Racial Trait", parentTag: "Elf" },
+  { name: "Lucky", url: "/api/traits/lucky", type: "Racial Trait", parentTag: "Halfling" }
 ];
 
 const SKILL_MAP = {
@@ -67,8 +67,13 @@ function showStatus(text) {
   setTimeout(() => { statusElem.textContent = ""; }, 2500);
 }
 
-function getModifier(score) { return Math.floor((score - 10) / 2); }
-function getProfBonus(level) { return Math.ceil(1 + level / 4); }
+function getModifier(score) {
+  return Math.floor((score - 10) / 2);
+}
+
+function getProfBonus(level) {
+  return Math.ceil(1 + level / 4);
+}
 
 function autoResizeStatInput(input) {
   if (!input) return;
@@ -85,6 +90,7 @@ function recalculateAll() {
   const levelInput = document.getElementById("charLevel");
   const level = parseInt(levelInput?.value, 10) || 1;
   const prof = getProfBonus(level);
+
   const profBonusDisplay = document.getElementById("profBonusDisplay");
   if (profBonusDisplay) profBonusDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
 
@@ -127,7 +133,9 @@ function renderWeapons() {
     myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
   }
 
-  container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
+  container.innerHTML = myCharacterWeapons
+    .map(
+      (wpn, idx) => `
       <div class="attack-entry" data-index="${idx}">
         <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
         <input type="text" class="inline-input wpn-field" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
@@ -135,7 +143,9 @@ function renderWeapons() {
         <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes" />
         <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
       </div>
-    `).join("");
+    `
+    )
+    .join("");
 }
 
 document.getElementById("addWeaponBtn")?.addEventListener("click", () => {
@@ -538,44 +548,94 @@ function isWeaponOrArmor(name) {
          lower.includes("rapier") || lower.includes("dart");
 }
 
-function getChoiceDetails(choice) {
+async function formatItemWithStats(name, url, count) {
+  let str = count > 1 ? `${count}x ${name}` : name;
+  if (url) {
+    const data = await fetchAPI("https://www.dnd5eapi.co" + url);
+    if (data) {
+      let extras = [];
+      if (data.damage && data.damage.damage_dice) {
+        extras.push(`${data.damage.damage_dice} ${data.damage.damage_type?.name || ''}`.trim());
+      }
+      if (data.armor_class) {
+        extras.push(`AC ${data.armor_class.base}${data.armor_class.dex_bonus ? ' + Dex' : ''}`);
+      }
+      if (extras.length > 0) {
+        str += ` [${extras.join(", ")}]`;
+      }
+    }
+  }
+  return str;
+}
+
+async function getAsyncChoiceDetails(choice) {
   let details = [];
   if (!choice) return details;
-  if (choice.option_type === "counted_reference" && choice.of) details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.of.name}`);
-  else if (choice.option_type === "choice" && choice.choice) details.push(`Any ${choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option"}`);
-  else if (choice.option_type === "multiple" && choice.items) {
-      choice.items.forEach(i => {
-          if (i.option_type === "counted_reference" && i.of) details.push(`${i.count > 1 ? i.count + "x " : ""}${i.of.name}`);
-          else if (i.option_type === "choice" && i.choice) details.push(`Any ${i.choice.desc || i.choice.from?.equipment_category?.name || "Option"}`);
-          else if (i.of) details.push(`${i.count > 1 ? i.count + "x " : ""}${i.of.name}`);
-          else if (i.item) details.push(`${i.count > 1 ? i.count + "x " : ""}${i.item.name}`);
-      });
-  } else if (choice.option_type === "equipment_category" && choice.equipment_category) details.push(`${choice.count > 1 ? choice.count + "x " : ""}Any ${choice.equipment_category.name}`);
-  else if (choice.equipment) details.push(`${choice.quantity > 1 ? choice.quantity + "x " : ""}${choice.equipment.name}`);
-  else if (choice.equipment_category) details.push(`Any ${choice.equipment_category.name}`);
-  else if (choice.item) details.push(`${choice.count > 1 ? choice.count + "x " : ""}${choice.item.name}`);
-  else details.push(choice.desc || "Item Option");
+
+  if (choice.option_type === "counted_reference" && choice.of) {
+    details.push(await formatItemWithStats(choice.of.name, choice.of.url, choice.count));
+  } else if (choice.option_type === "choice" && choice.choice) {
+    details.push(`Any ${choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option"}`);
+  } else if (choice.option_type === "multiple" && choice.items) {
+    for (let i of choice.items) {
+      if (i.option_type === "counted_reference" && i.of) details.push(await formatItemWithStats(i.of.name, i.of.url, i.count));
+      else if (i.option_type === "choice" && i.choice) details.push(`Any ${i.choice.desc || i.choice.from?.equipment_category?.name || "Option"}`);
+      else if (i.of) details.push(await formatItemWithStats(i.of.name, i.of.url, i.count));
+      else if (i.item) details.push(await formatItemWithStats(i.item.name, i.item.url, i.count));
+    }
+  } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
+    details.push(`${choice.count > 1 ? choice.count + "x " : ""}Any ${choice.equipment_category.name}`);
+  } else if (choice.equipment) {
+    details.push(await formatItemWithStats(choice.equipment.name, choice.equipment.url, choice.quantity));
+  } else if (choice.equipment_category) {
+    details.push(`Any ${choice.equipment_category.name}`);
+  } else if (choice.item) {
+    details.push(await formatItemWithStats(choice.item.name, choice.item.url, choice.count));
+  } else {
+    details.push(choice.desc || "Item Option");
+  }
+  
   if (details.length === 0) details.push("Equipment Option");
   return details;
 }
 
-function extractItemsFromChoice(choice) {
+async function extractItemsFromChoiceAsync(choice) {
   let items = [];
   if (!choice) return items;
+
+  async function pushEnrichedItem(name, url, qty) {
+    let finalDmg = "1d8";
+    if (url) {
+      const data = await fetchAPI("https://www.dnd5eapi.co" + url);
+      if (data && data.damage && data.damage.damage_dice) {
+        finalDmg = data.damage.damage_dice;
+      }
+    }
+    items.push({ name, qty, dmg: finalDmg });
+  }
+
   if (choice.option_type === "multiple" && choice.items) {
-      choice.items.forEach(i => {
-          if (i.option_type === "counted_reference" && i.of) items.push({ name: i.of.name, qty: i.count || 1 });
-          else if (i.option_type === "choice" && i.choice) items.push({ name: `Any ${i.choice.from?.equipment_category?.name || "Equipment Option"}`, qty: i.choice.choose || 1 });
-          else if (i.of) items.push({ name: i.of.name, qty: i.count || 1 });
-          else if (i.item) items.push({ name: i.item.name, qty: i.count || 1 });
-      });
-  } else if (choice.option_type === "counted_reference" && choice.of) items.push({ name: choice.of.name, qty: choice.count || 1 });
-  else if (choice.option_type === "choice" && choice.choice) items.push({ name: `Any ${choice.choice.from?.equipment_category?.name || "Equipment Option"}`, qty: choice.choice.choose || 1 });
-  else if (choice.option_type === "equipment_category" && choice.equipment_category) items.push({ name: `Any ${choice.equipment_category.name}`, qty: choice.count || 1 });
-  else if (choice.equipment) items.push({ name: choice.equipment.name, qty: choice.quantity || 1 });
-  else if (choice.equipment_category) items.push({ name: `Any ${choice.equipment_category.name}`, qty: 1 });
-  else if (choice.item) items.push({ name: choice.item.name, qty: choice.count || 1 });
-  else items.push({ name: "Selected Item", qty: 1 });
+    for (let i of choice.items) {
+      if (i.option_type === "counted_reference" && i.of) await pushEnrichedItem(i.of.name, i.of.url, i.count || 1);
+      else if (i.option_type === "choice" && i.choice) items.push({ name: `Any ${i.choice.from?.equipment_category?.name || "Equipment Option"}`, qty: i.choice.choose || 1, dmg: "1d8" });
+      else if (i.of) await pushEnrichedItem(i.of.name, i.of.url, i.count || 1);
+      else if (i.item) await pushEnrichedItem(i.item.name, i.item.url, i.count || 1);
+    }
+  } else if (choice.option_type === "counted_reference" && choice.of) {
+    await pushEnrichedItem(choice.of.name, choice.of.url, choice.count || 1);
+  } else if (choice.option_type === "choice" && choice.choice) {
+    items.push({ name: `Any ${choice.choice.from?.equipment_category?.name || "Equipment Option"}`, qty: choice.choice.choose || 1, dmg: "1d8" });
+  } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
+    items.push({ name: `Any ${choice.equipment_category.name}`, qty: choice.count || 1, dmg: "1d8" });
+  } else if (choice.equipment) {
+    await pushEnrichedItem(choice.equipment.name, choice.equipment.url, choice.quantity || 1);
+  } else if (choice.equipment_category) {
+    items.push({ name: `Any ${choice.equipment_category.name}`, qty: 1, dmg: "1d8" });
+  } else if (choice.item) {
+    await pushEnrichedItem(choice.item.name, choice.item.url, choice.count || 1);
+  } else {
+    items.push({ name: "Selected Item", qty: 1, dmg: "1d8" });
+  }
   return items;
 }
 
@@ -619,7 +679,7 @@ function finalizeLoadout() {
   });
 }
 
-function runLoadoutStep() {
+async function runLoadoutStep() {
   const choiceModal = document.getElementById("choiceModal");
 
   // Step 1: Equipment Options
@@ -627,6 +687,9 @@ function runLoadoutStep() {
     const optGroup = loadoutState.equipOptions[0];
     let chooseAmount = optGroup.choose || 1;
     document.getElementById("choiceModalTitle").textContent = optGroup.desc || `Choose ${chooseAmount} Starting Option(s)`;
+
+    const choiceModalBody = document.getElementById("choiceModalBody");
+    choiceModalBody.innerHTML = `<p class="loading-text">Fetching weapon & armor details...</p>`;
 
     let choicesArray = [];
     if (optGroup.from) {
@@ -647,9 +710,10 @@ function runLoadoutStep() {
     }
 
     if (choicesArray.length === 1) {
-      extractItemsFromChoice(choicesArray[0]).forEach(item => {
+      const itemsToAdd = await extractItemsFromChoiceAsync(choicesArray[0]);
+      itemsToAdd.forEach(item => {
         const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
-        if (isWeaponOrArmor(item.name)) loadoutState.weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
+        if (isWeaponOrArmor(item.name)) loadoutState.weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: item.dmg, notes: "" });
         else loadoutState.gearList.push(`${qtyPrefix}${item.name}`);
       });
       loadoutState.equipOptions.shift();
@@ -657,12 +721,14 @@ function runLoadoutStep() {
       return;
     }
 
-    let html = "";
-    choicesArray.forEach((choice, choiceIdx) => {
-      const detailsArr = getChoiceDetails(choice);
+    let html = `<div class="equip-options-grid">`;
+    for (let choiceIdx = 0; choiceIdx < choicesArray.length; choiceIdx++) {
+      const choice = choicesArray[choiceIdx];
+      const detailsArr = await getAsyncChoiceDetails(choice);
       const tooltipText = detailsArr.join("\n");
-      let label = detailsArr.join(" + ");
-      if (label.length > 35) label = label.substring(0, 32) + "..."; 
+      
+      let label = detailsArr.join("\n+ ");
+      if (label.length > 80) label = label.substring(0, 77) + "..."; 
       if (!label || label === "Item Option" || label === "Item(s)") label = "Equipment Option";
 
       html += `
@@ -671,23 +737,30 @@ function runLoadoutStep() {
           <div class="choice-tooltip">${escapeHtml(tooltipText).replace(/\n/g, '<br>')}</div>
         </div>
       `;
-    });
+    }
+    html += `</div>`;
 
-    const choiceModalBody = document.getElementById("choiceModalBody");
     choiceModalBody.innerHTML = html;
     choiceModal.classList.add("open");
 
     const newBody = choiceModalBody.cloneNode(true);
     choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-    document.getElementById("choiceModalBody").addEventListener("click", (e) => {
+    document.getElementById("choiceModalBody").addEventListener("click", async (e) => {
       const btn = e.target.closest(".choice-option-btn");
       if (!btn) return;
+
+      btn.style.opacity = "0.5";
+      btn.textContent = "Loading...";
+      btn.disabled = true;
+
       const chosenIdx = parseInt(btn.dataset.optIndex, 10);
-      extractItemsFromChoice(choicesArray[chosenIdx]).forEach(item => {
+      const itemsToAdd = await extractItemsFromChoiceAsync(choicesArray[chosenIdx]);
+      itemsToAdd.forEach(item => {
         const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
-        if (isWeaponOrArmor(item.name)) loadoutState.weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: "1d8", notes: "" });
+        if (isWeaponOrArmor(item.name)) loadoutState.weaponsList.push({ name: `${qtyPrefix}${item.name}`, atk: "+5", dmg: item.dmg, notes: "" });
         else loadoutState.gearList.push(`${qtyPrefix}${item.name}`);
       });
+
       chooseAmount--;
       if (chooseAmount > 0) {
         btn.closest(".choice-option-wrapper").style.display = "none"; 
@@ -759,7 +832,6 @@ function runLoadoutStep() {
     return;
   }
 
-  // Finished
   finalizeLoadout();
 }
 
@@ -842,11 +914,19 @@ classDropdown?.addEventListener("click", async (e) => {
     };
     
     if (finalEquip?.starting_equipment) {
-      finalEquip.starting_equipment.forEach(item => {
+      for (const item of finalEquip.starting_equipment) {
         const qtyPrefix = item.quantity > 1 ? `${item.quantity}x ` : "";
-        if (isWeaponOrArmor(item.equipment.name)) loadoutState.weaponsList.push({ name: `${qtyPrefix}${item.equipment.name}`, atk: "+5", dmg: "1d8", notes: "" });
-        else loadoutState.gearList.push(`${qtyPrefix}${item.equipment.name}`);
-      });
+        if (isWeaponOrArmor(item.equipment.name)) {
+          let finalDmg = "1d8";
+          if (item.equipment.url) {
+             const wpnData = await fetchAPI("https://www.dnd5eapi.co" + item.equipment.url);
+             if (wpnData && wpnData.damage) finalDmg = wpnData.damage.damage_dice || finalDmg;
+          }
+          loadoutState.weaponsList.push({ name: `${qtyPrefix}${item.equipment.name}`, atk: "+5", dmg: finalDmg, notes: "" });
+        } else {
+          loadoutState.gearList.push(`${qtyPrefix}${item.equipment.name}`);
+        }
+      }
     }
 
     runLoadoutStep();
