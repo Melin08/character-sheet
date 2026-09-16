@@ -132,7 +132,7 @@ function renderWeapons() {
         <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
         <input type="text" class="inline-input wpn-field" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
         <input type="text" class="inline-input wpn-field" data-prop="dmg_type" value="${escapeHtml(wpn.dmg_type || "")}" placeholder="Piercing" />
-        <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes" />
+        <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes, Range, etc..." />
         <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
       </div>
     `).join("");
@@ -480,8 +480,6 @@ async function searchTraits(query) {
   return COMMON_TRAITS.filter(t => t.name.toLowerCase().includes(query.toLowerCase()));
 }
 
-/* --- Detailed Tag Fetchers --- */
-
 async function fetchDetailedSpells(matches) {
   const top = matches.slice(0, 15);
   return await Promise.all(top.map(async m => {
@@ -528,8 +526,6 @@ async function fetchDetailedTraits(matches) {
   }));
 }
 
-/* --- Class Equipment Logic --- */
-
 let loadoutState = {
   equipOptions: [],
   profOptions: [],
@@ -564,10 +560,9 @@ async function formatItemWithStats(name, url, count) {
           dmgStr = `🎲 ${data.damage.damage_dice} ${dmgType}`.trim();
           extras.push(dmgStr);
         }
-        if (data.range && data.range.long) {
-          extras.push(`🎯 Range ${data.range.normal}/${data.range.long}`);
-        } else if (data.weapon_range === "Ranged" && data.range && data.range.normal) {
-          extras.push(`🎯 Range ${data.range.normal}`);
+        if (data.range) {
+           if (data.range.long) extras.push(`🎯 Range ${data.range.normal}/${data.range.long} ft.`);
+           else if (data.range.normal > 5) extras.push(`🎯 Range ${data.range.normal} ft.`);
         }
       }
       if (data.armor_class) {
@@ -687,11 +682,11 @@ async function processConcreteItems(items) {
                dmgType = data.damage.damage_type?.name || "";
             }
             
-            if (category === "Weapon") {
-               if (data.range && data.range.long) {
-                  rangeStr = `Range ${data.range.normal}/${data.range.long}`;
-               } else if (data.weapon_range === "Ranged" && data.range?.normal) {
-                  rangeStr = `Range ${data.range.normal}`;
+            if (category === "Weapon" && data.range) {
+               if (data.range.long) {
+                  rangeStr = `Range ${data.range.normal}/${data.range.long} ft.`;
+               } else if (data.range.normal > 5) {
+                  rangeStr = `Range ${data.range.normal} ft.`;
                }
             }
 
@@ -1061,11 +1056,10 @@ classDropdown?.addEventListener("click", async (e) => {
         .join(", ");
         
       if (otherProfs) {
-        const profBox = document.getElementById("otherProfs") || document.getElementById("proficiencies") || document.getElementById("other_proficiencies") || document.getElementById("bio");
+        const profBox = document.getElementById("otherProfs");
         if (profBox) {
           const current = profBox.value.trim();
-          const prefixText = profBox.id === "bio" ? "Other Proficiencies:\n" : "";
-          profBox.value = current ? current + "\n\n" + prefixText + otherProfs : prefixText + otherProfs;
+          profBox.value = current ? current + "\n\n" + otherProfs : otherProfs;
           autoExpandTextarea(profBox);
         }
       }
@@ -1626,11 +1620,23 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
   reader.readAsText(file);
 });
 
+// Fix modal clicks trapping buttons
+document.addEventListener("click", (e) => {
+  if (e.target.classList.contains("modal-backdrop") || e.target.classList.contains("modal-close-btn")) {
+    e.target.closest('.modal-backdrop')?.classList.remove("open");
+  }
+});
+
 document.addEventListener("input", (e) => {
   if (e.target.classList.contains("save-field")) {
     recalculateAll();
     saveSheet();
   }
+});
+
+document.getElementById("loadBtn")?.addEventListener("click", () => {
+  renderCharList();
+  document.getElementById("loadModal")?.classList.add("open");
 });
 
 // Init
