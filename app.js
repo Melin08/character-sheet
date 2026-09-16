@@ -1,424 +1,34 @@
-"use strict";
+const STORAGE_KEY = "rpg_sheet_data_final";
+const DND_API = "https://www.dnd5eapi.co/api";
+const OPEN5E_API = "https://api.open5e.com/v1";
 
-const ROSTER_STORAGE_KEY = "badman_char_roster_v1";
-const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
+let character = {
+  meta: {},
+  weapons: [
+    { id: Date.now(), name: "", atk: "", dmg: "", notes: "" },
+    { id: Date.now() + 1, name: "", atk: "", dmg: "", notes: "" }
+  ],
+  traits: [],
+  spells: []
+};
 
-let activeCharId = localStorage.getItem(ACTIVE_CHAR_ID_KEY) || "default";
+let draggedItemIndex = null;
+let currentDragContext = null;
 
-let myCharacterSpells = [];
-let myCharacterTraits = [];
-let myCharacterWeapons = [
-  { name: "", atk: "", dmg: "", notes: "" },
-  { name: "", atk: "", dmg: "", notes: "" }
-];
-let diceRollHistory = [];
+let spellCachePromise = null;
+let traitCachePromise = null;
+let spellCache = [];
+let traitCache = [];
 
-let draggedSpellIndex = null;
-let touchDraggedIndex = null;
-let currentDropTarget = null;
-
-let allSpellsCache = [];
-let allTraitsCache = [];
-let allClassesCache = [];
-let allRacesCache = [];
-
-function escapeHtml(str) {
-  if (typeof str !== "string") return "";
-  return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function showStatus(text) {
-  const statusElem = document.getElementById("saveStatus");
-  if (!statusElem) return;
-  statusElem.textContent = text;
-  setTimeout(() => { statusElem.textContent = ""; }, 2500);
-}
-
-function getModifier(score) {
-  return Math.floor((score - 10) / 2);
-}
-
-function getProfBonus(level) {
-  return Math.ceil(1 + level / 4);
-}
-
-function autoResizeStatInput(input) {
-  if (!input) return;
-  if (input.classList.contains("concentration-input")) return;
-  const content = input.value || input.placeholder || "";
-  input.style.width = Math.max(3, content.length + 1.5) + "ch";
-}
-
-function syncAllStatInputs() {
-  document.querySelectorAll(".spell-stat-input").forEach(autoResizeStatInput);
-}
-
-function recalculateAll() {
-  const levelInput = document.getElementById("charLevel");
-  const level = parseInt(levelInput?.value, 10) || 1;
-  const prof = getProfBonus(level);
-
-  const profBonusDisplay = document.getElementById("profBonusDisplay");
-  if (profBonusDisplay) profBonusDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
-
-  const stats = ["str", "dex", "con", "int", "wis", "cha"];
-  const mods = {};
-
-  stats.forEach((stat) => {
-    const scoreVal = parseInt(document.getElementById(`attr_${stat}`)?.value, 10) || 10;
-    const mod = getModifier(scoreVal);
-    mods[stat] = mod;
-
-    const modElem = document.getElementById(`mod_${stat}`);
-    if (modElem) modElem.textContent = mod;
-
-    const isSaveChecked = document.getElementById(`save_${stat}`)?.checked;
-    const saveValElem = document.getElementById(`save_val_${stat}`);
-    if (saveValElem) saveValElem.textContent = isSaveChecked ? mod + prof : mod;
-  });
-
-  document.querySelectorAll(".skill-row").forEach((row) => {
-    const stat = row.dataset.stat;
-    const statMod = mods[stat] ?? 0;
-    const isProf = row.querySelector(".prof-cb")?.checked;
-    const isExp = row.querySelector(".exp-cb")?.checked;
-
-    let total = statMod;
-    if (isProf) total += prof;
-    if (isExp) total += prof;
-
-    const valElem = row.querySelector(".skill-val");
-    if (valElem) valElem.textContent = total;
-  });
-}
-
-function renderWeapons() {
-  const container = document.getElementById("weaponsContainer");
-  if (!container) return;
-
-  while (myCharacterWeapons.length < 2) {
-    myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
-  }
-
-  container.innerHTML = myCharacterWeapons
-    .map(
-      (wpn, idx) => `
-      <div class="attack-entry" data-index="${idx}">
-        <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
-        <input type="text" class="inline-input wpn-field" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
-        <input type="text" class="inline-input wpn-field" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
-        <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes" />
-        <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
-      </div>
-    `
-    )
-    .join("");
-}
-
-document.getElementById("addWeaponBtn")?.addEventListener("click", () => {
-  myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
-  saveSheet();
-  renderWeapons();
-});
-
-document.getElementById("weaponsContainer")?.addEventListener("input", (e) => {
-  if (e.target.classList.contains("wpn-field")) {
-    const entry = e.target.closest(".attack-entry");
-    const index = parseInt(entry.dataset.index, 10);
-    const prop = e.target.dataset.prop;
-    myCharacterWeapons[index][prop] = e.target.value;
-    saveSheet();
-  }
-});
-
-document.getElementById("weaponsContainer")?.addEventListener("click", (e) => {
-  if (e.target.classList.contains("weapon-delete-btn")) {
-    const index = parseInt(e.target.dataset.index, 10);
-    myCharacterWeapons.splice(index, 1);
-    while (myCharacterWeapons.length < 2) {
-      myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
-    }
-    saveSheet();
-    renderWeapons();
-  }
-});
-
-function getRoster() {
-  try { return JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY)) || {}; } 
-  catch (e) { return {}; }
-}
-
-function saveRoster(roster) {
-  localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(roster));
-}
-
-function getCurrentSheetData() {
-  const fields = {};
-  document.querySelectorAll(".save-field").forEach((field) => {
-    if (field.type === "checkbox") fields[field.id] = field.checked;
-    else fields[field.id] = field.value;
-  });
-  return fields;
-}
-
-function saveSheet() {
-  const roster = getRoster();
-  const fields = getCurrentSheetData();
-  const name = fields.charName?.trim() || "Unnamed Character";
-  const charClass = fields.charClass?.trim() || "";
-  const level = fields.charLevel || 1;
-
-  roster[activeCharId] = {
-    id: activeCharId,
-    name: name,
-    summary: charClass ? `${charClass} (Lvl ${level})` : `Level ${level}`,
-    updatedAt: Date.now(),
-    fields: fields,
-    spells: myCharacterSpells,
-    traits: myCharacterTraits,
-    weapons: myCharacterWeapons
-  };
-
-  saveRoster(roster);
-  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-  showStatus("Saved!");
-}
-
-function applyCharacterData(charData) {
-  if (!charData) return;
-  const fields = charData.fields || {};
-  Object.keys(fields).forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) {
-      if (el.type === "checkbox") el.checked = fields[id];
-      else el.value = fields[id];
-    }
-  });
-
-  myCharacterSpells = charData.spells || [];
-  myCharacterTraits = charData.traits || [];
-  myCharacterWeapons = charData.weapons && charData.weapons.length >= 2 ? charData.weapons : [
-    { name: "", atk: "", dmg: "", notes: "" },
-    { name: "", atk: "", dmg: "", notes: "" }
-  ];
-
-  renderWeapons();
-  renderMySpells();
-  renderMyTraits();
-  recalculateAll();
-  syncAllStatInputs();
-}
-
-function loadSheet() {
-  const roster = getRoster();
-  if (roster[activeCharId]) {
-    applyCharacterData(roster[activeCharId]);
-  } else {
-    const keys = Object.keys(roster);
-    if (keys.length > 0) {
-      activeCharId = keys[0];
-      localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-      applyCharacterData(roster[activeCharId]);
-    } else {
-      recalculateAll();
-      renderWeapons();
-      renderMySpells();
-      renderMyTraits();
-      syncAllStatInputs();
-    }
-  }
-}
-
-function resetSheet() {
-  activeCharId = "char_" + Date.now();
-  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-
-  document.querySelectorAll(".save-field").forEach((field) => {
-    if (field.type === "checkbox") field.checked = false;
-    else if (field.id === "charLevel") field.value = 1;
-    else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") field.value = 10;
-    else if (field.classList.contains("attr-input")) field.value = 10;
-    else if (field.id === "charSpeed") field.value = 30;
-    else if (field.classList.contains("dual-input") || field.classList.contains("coin-input") || field.classList.contains("slot-input")) field.value = 0;
-    else field.value = "";
-  });
-
-  myCharacterSpells = [];
-  myCharacterTraits = [];
-  myCharacterWeapons = [
-    { name: "", atk: "", dmg: "", notes: "" },
-    { name: "", atk: "", dmg: "", notes: "" }
-  ];
-  diceRollHistory = [];
+document.addEventListener("DOMContentLoaded", () => {
+  loadData();
+  setupTabs();
+  setupAutoExpand();
+  setupStaticListeners();
+  renderAll();
   
-  renderDiceHistory();
-  recalculateAll();
-  renderWeapons();
-  renderMySpells();
-  renderMyTraits();
-  syncAllStatInputs();
-  saveSheet();
-  showStatus("New Character Created!");
-}
-
-function renderCharList() {
-  const container = document.getElementById("charList");
-  if (!container) return;
-  const roster = getRoster();
-  const keys = Object.keys(roster);
-
-  if (keys.length === 0) {
-    container.innerHTML = `<p class="loading-text">No saved characters found.</p>`;
-    return;
-  }
-
-  container.innerHTML = keys.map((id) => {
-    const char = roster[id];
-    const isActive = id === activeCharId;
-    return `
-      <div class="char-item-row" data-id="${id}">
-        <div class="char-item-info">
-          <span class="char-item-name">${escapeHtml(char.name || "Unnamed Character")}</span>
-          <span class="char-item-sub">${escapeHtml(char.summary || "")}</span>
-        </div>
-        <div class="char-actions">
-          <button type="button" class="char-select-btn ${isActive ? "active" : ""}">${isActive ? "Active" : "Select"}</button>
-          <button type="button" class="char-delete-btn" title="Delete character">&times;</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-document.getElementById("loadBtn")?.addEventListener("click", () => {
-  renderCharList();
-  document.getElementById("loadModal")?.classList.add("open");
-});
-
-document.getElementById("closeLoadModal")?.addEventListener("click", () => {
-  document.getElementById("loadModal")?.classList.remove("open");
-});
-
-document.getElementById("charList")?.addEventListener("click", (e) => {
-  const row = e.target.closest(".char-item-row");
-  if (!row) return;
-  const targetId = row.dataset.id;
-  const roster = getRoster();
-
-  if (e.target.classList.contains("char-delete-btn")) {
-    e.stopPropagation();
-    if (confirm(`Delete character "${roster[targetId]?.name || "Unnamed"}"?`)) {
-      delete roster[targetId];
-      saveRoster(roster);
-      if (activeCharId === targetId) {
-        const remaining = Object.keys(roster);
-        if (remaining.length > 0) {
-          activeCharId = remaining[0];
-          localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-          loadSheet();
-        } else resetSheet();
-      }
-      renderCharList();
-    }
-    return;
-  }
-
-  activeCharId = targetId;
-  localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-  applyCharacterData(roster[activeCharId]);
-  document.getElementById("loadModal")?.classList.remove("open");
-  showStatus("Character Loaded!");
-});
-
-document.getElementById("helpLinkBtn")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.add("open"));
-document.getElementById("closeHelpModal")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.remove("open"));
-
-function switchMainTab(targetId) {
-  document.querySelectorAll(".main-tab").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".tab-page").forEach(p => p.classList.remove("active"));
-  const targetBtn = document.querySelector(`.main-tab[data-target="${targetId}"]`);
-  if (targetBtn) targetBtn.classList.add("active");
-  const tabEl = document.getElementById(targetId);
-  if (tabEl) tabEl.classList.add("active");
-}
-
-document.querySelectorAll(".main-tab").forEach(btn => {
-  btn.addEventListener("click", () => switchMainTab(btn.dataset.target));
-});
-
-document.querySelectorAll(".sub-tab").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".sub-tab").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".subtab-page").forEach(p => p.classList.remove("active"));
-    btn.classList.add("active");
-    const target = btn.dataset.sub;
-    const tabEl = document.getElementById(target);
-    if (tabEl) tabEl.classList.add("active");
-  });
-});
-
-document.querySelectorAll(".footer-nav-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    switchMainTab(btn.dataset.tab);
-    const targetId = btn.dataset.scroll === "attr" ? ".attributes-group" : 
-                     btn.dataset.scroll === "skills" ? ".skills-group" : 
-                     btn.dataset.scroll === "spells" ? "#spellsList" : "#tab-journal";
-    const el = document.querySelector(targetId);
-    if(el) el.scrollIntoView({ behavior: "smooth" });
-  });
-});
-
-function addDiceHistory(desc, total) {
-  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  diceRollHistory.unshift({ desc, total, time });
-  if (diceRollHistory.length > 25) diceRollHistory.pop();
-  renderDiceHistory();
-}
-
-function renderDiceHistory() {
-  const container = document.getElementById("diceHistoryList");
-  if (!container) return;
-  if (diceRollHistory.length === 0) {
-    container.innerHTML = `<span class="dice-history-empty">No rolls logged yet.</span>`;
-    return;
-  }
-  container.innerHTML = diceRollHistory.map(item => `
-    <div class="dice-history-item">
-      <span class="dice-history-desc">${escapeHtml(item.desc)} <small style="color:#64748b;">(${item.time})</small></span>
-      <span class="dice-history-val">${escapeHtml(String(item.total))}</span>
-    </div>
-  `).join("");
-}
-
-document.querySelectorAll(".dice-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const sides = parseInt(btn.dataset.sides, 10);
-    const roll = Math.floor(Math.random() * sides) + 1;
-    const out = document.getElementById("rollResult");
-    if (out) out.textContent = roll;
-    addDiceHistory(`1d${sides}`, roll);
-  });
-});
-
-document.addEventListener("click", (e) => {
-  if (e.target.classList.contains("roll-btn")) {
-    const roll = Math.floor(Math.random() * 20) + 1;
-    let bonus = 0, label = "";
-    if (e.target.dataset.type === "save") {
-      const attr = e.target.dataset.attr;
-      bonus = parseInt(document.getElementById(`save_val_${attr}`)?.textContent, 10) || 0;
-      label = `${attr.toUpperCase()} Save`;
-    } else if (e.target.dataset.type === "skill") {
-      const id = e.target.dataset.id;
-      bonus = parseInt(document.getElementById(`val_${id}`)?.textContent, 10) || 0;
-      label = document.querySelector(`#row_${id} .skill-label`)?.textContent || "Skill";
-    }
-    const total = roll + bonus;
-    const out = document.getElementById("rollResult");
-    if (out) out.textContent = total;
-    const sign = bonus >= 0 ? `+ ${bonus}` : `- ${Math.abs(bonus)}`;
-    addDiceHistory(`${label} (${roll} ${sign})`, total);
-  }
+  spellCachePromise = buildSpellCache();
+  traitCachePromise = buildTraitCache();
 });
 
 async function fetchAPI(url) {
@@ -431,544 +41,605 @@ async function fetchAPI(url) {
   }
 }
 
-const classInput = document.getElementById("charClass");
-const classDropdown = document.getElementById("classDropdown");
-const raceInput = document.getElementById("charRace");
-const raceDropdown = document.getElementById("raceDropdown");
-
-function renderDropdown(dropdownEl, items, filter = "") {
-  if (!dropdownEl) return;
-  const q = filter.toLowerCase().trim();
-  const filtered = items.filter(i => i.name.toLowerCase().includes(q));
-  dropdownEl.innerHTML = filtered.map(i => `<div class="dropdown-item" data-index="${i.index}" data-name="${escapeHtml(i.name)}">${escapeHtml(i.name)}</div>`).join("");
+async function buildSpellCache() {
+  try {
+    const open5eSpells = await fetchAPI(`${OPEN5E_API}/spells/?limit=3000`);
+    if (open5eSpells && open5eSpells.results) {
+      spellCache = open5eSpells.results.map(s => ({
+        name: s.name,
+        type: s.level === "Cantrip" ? "Cantrip" : `Level ${s.level} ${s.school}`,
+        desc: `${s.casting_time} | ${s.range} | ${s.duration}\n\n${s.desc}`
+      }));
+    }
+    const dnd5eSpells = await fetchAPI(`${DND_API}/spells`);
+    if (dnd5eSpells && dnd5eSpells.results) {
+      const existingNames = new Set(spellCache.map(s => s.name.toLowerCase()));
+      dnd5eSpells.results.forEach(s => {
+        if(!existingNames.has(s.name.toLowerCase())) {
+          spellCache.push({ name: s.name, type: "Spell", url: s.url }); 
+        }
+      });
+    }
+  } catch(e) {
+    console.log("Spell fetch failed", e);
+  }
 }
 
-classInput?.addEventListener("focus", async () => {
-  if (!classDropdown.classList.contains("open")) {
-    if (allClassesCache.length === 0) {
-      const data = await fetchAPI("https://www.dnd5eapi.co/api/classes");
-      if (data) allClassesCache = data.results;
+async function buildTraitCache() {
+  try {
+    const [classesRes, racesRes, featsRes] = await Promise.all([
+      fetchAPI(`${DND_API}/classes`),
+      fetchAPI(`${DND_API}/races`),
+      fetchAPI(`${DND_API}/features`) 
+    ]);
+
+    let tempTraits = [];
+
+    if (classesRes && classesRes.results) {
+      const classPromises = classesRes.results.map(c => 
+        fetchAPI(`${DND_API}/classes/${c.index}/features`).then(res => ({ className: c.name, features: res?.results || [] }))
+      );
+      const classData = await Promise.all(classPromises);
+      classData.forEach(cd => {
+        cd.features.forEach(f => {
+          tempTraits.push({ name: f.name, type: `Class Feature (${cd.className})`, url: f.url });
+        });
+      });
     }
-    renderDropdown(classDropdown, allClassesCache, classInput.value);
-    classDropdown.classList.add("open");
-  }
-});
 
-classInput?.addEventListener("input", () => {
-  renderDropdown(classDropdown, allClassesCache, classInput.value);
-  classDropdown.classList.add("open");
-});
-
-raceInput?.addEventListener("focus", async () => {
-  if (!raceDropdown.classList.contains("open")) {
-    if (allRacesCache.length === 0) {
-      const data = await fetchAPI("https://www.dnd5eapi.co/api/races");
-      if (data) allRacesCache = data.results;
+    if (racesRes && racesRes.results) {
+      const racePromises = racesRes.results.map(r => 
+        fetchAPI(`${DND_API}/races/${r.index}/traits`).then(res => ({ raceName: r.name, traits: res?.results || [] }))
+      );
+      const raceData = await Promise.all(racePromises);
+      raceData.forEach(rd => {
+        rd.traits.forEach(t => {
+          tempTraits.push({ name: t.name, type: `Racial Trait (${rd.raceName})`, url: t.url });
+        });
+      });
     }
-    renderDropdown(raceDropdown, allRacesCache, raceInput.value);
-    raceDropdown.classList.add("open");
+
+    if (featsRes && featsRes.results) {
+      featsRes.results.forEach(f => {
+        tempTraits.push({ name: f.name, type: "Official Feature / Feat", url: f.url });
+      });
+    }
+
+    const uniqueTraits = [];
+    const seen = new Set();
+    tempTraits.forEach(t => {
+      const id = `${t.name}-${t.type}`;
+      if (!seen.has(id)) {
+        seen.add(id);
+        uniqueTraits.push(t);
+      }
+    });
+
+    traitCache = uniqueTraits;
+  } catch(e) {
+    console.log("Trait fetch failed", e);
   }
-});
-
-raceInput?.addEventListener("input", () => {
-  renderDropdown(raceDropdown, allRacesCache, raceInput.value);
-  raceDropdown.classList.add("open");
-});
-
-classDropdown?.addEventListener("click", (e) => {
-  const item = e.target.closest(".dropdown-item");
-  if (!item) return;
-  classInput.value = item.dataset.name;
-  classDropdown.classList.remove("open");
-  saveSheet();
-});
-
-raceDropdown?.addEventListener("click", (e) => {
-  const item = e.target.closest(".dropdown-item");
-  if (!item) return;
-  raceInput.value = item.dataset.name;
-  raceDropdown.classList.remove("open");
-  saveSheet();
-});
-
-document.addEventListener("click", (e) => {
-  if (!e.target.closest(".dropdown-pill-wrapper")) {
-    document.querySelectorAll(".dropdown-menu").forEach(m => m.classList.remove("open"));
-  }
-  if (e.target.classList.contains("modal-backdrop")) {
-    e.target.classList.remove("open");
-  }
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
-  }
-});
-
-function autoExpandTextarea(el) {
-  if (!el) return;
-  el.style.height = "auto";
-  el.style.height = el.scrollHeight + "px";
 }
 
-function renderMyTraits() {
-  const container = document.getElementById("traitsList");
-  if (!container) return;
-
-  if (myCharacterTraits.length === 0) {
-    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.85rem; color: #64748b; font-style: italic;">No abilities added yet. Click "+ Add Ability" above to add one.</p>`;
-    return;
-  }
-
-  container.innerHTML = myCharacterTraits.map((trait, idx) => `
-    <div class="trait-card ${trait.isExpanded ? 'expanded' : ''}" data-index="${idx}">
-      <div class="trait-card-header">
-        <input type="text" class="trait-name-input custom-trait-field" data-prop="name" value="${escapeHtml(trait.name || '')}" placeholder="Ability Name" />
-        <button class="trait-card-delete" data-index="${idx}" type="button" title="Remove ability">&times;</button>
-      </div>
-      <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || '')}" placeholder="Type (Racial, Feat, etc.)" />
-      <textarea class="trait-desc-input custom-trait-field" data-prop="desc" placeholder="Ability description and rules...">${escapeHtml(trait.desc || '')}</textarea>
-      <div class="trait-card-footer">
-        <button type="button" class="trait-expand-btn">${trait.isExpanded ? 'Collapse' : 'Expand'}</button>
-      </div>
-    </div>
-  `).join("");
+function renderAll() {
+  renderAttributesAndSkills();
+  renderWeapons();
+  renderTraits();
+  renderSpells();
+  populateFields();
 }
 
-document.getElementById("traitsList")?.addEventListener("click", (e) => {
-  if (e.target.classList.contains("trait-card-delete")) {
-    e.stopPropagation();
-    const idx = parseInt(e.target.dataset.index, 10);
-    myCharacterTraits.splice(idx, 1);
-    saveSheet();
-    renderMyTraits();
-    return;
-  }
-
-  const expandBtn = e.target.closest(".trait-expand-btn");
-  if (expandBtn) {
-    e.stopPropagation();
-    const card = expandBtn.closest(".trait-card");
-    const idx = parseInt(card.dataset.index, 10);
-    card.classList.toggle("expanded");
-    const isExp = card.classList.contains("expanded");
-    expandBtn.textContent = isExp ? "Collapse" : "Expand";
-    if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp;
-    saveSheet();
-    return;
-  }
-
-  if (e.target.classList.contains("custom-trait-field")) {
-    const card = e.target.closest(".trait-card");
-    if (card && !card.classList.contains("expanded")) {
-      card.classList.add("expanded");
-      const btn = card.querySelector(".trait-expand-btn");
-      if (btn) btn.textContent = "Collapse";
-      const idx = parseInt(card.dataset.index, 10);
-      if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = true;
-      saveSheet();
+function loadData() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      character = { ...character, ...parsed };
+    } catch (e) {
+      console.error("Save error.", e);
     }
   }
-});
-
-document.getElementById("traitsList")?.addEventListener("input", (e) => {
-  if (e.target.classList.contains("custom-trait-field")) {
-    const card = e.target.closest(".trait-card");
-    const idx = parseInt(card.dataset.index, 10);
-    const prop = e.target.dataset.prop;
-    if (myCharacterTraits[idx]) {
-      myCharacterTraits[idx][prop] = e.target.value;
-      saveSheet();
-    }
-  }
-});
-
-function renderModalTraits(filterText = "") {
-  const container = document.getElementById("traitApiList");
-  if (!container) return;
-  const q = filterText.toLowerCase().trim();
-  const matches = allTraitsCache.filter(t => t.name.toLowerCase().includes(q));
-
-  if (matches.length === 0) {
-    container.innerHTML = `<p class="loading-text">No matching features found.</p>`;
-    return;
-  }
-
-  container.innerHTML = matches.slice(0, 150).map((trait, idx) => `
-    <div class="spell-option-item trait-option-item" data-idx="${allTraitsCache.indexOf(trait)}">
-      <div>
-        <span style="font-weight: 600; color: #f8fafc;">${escapeHtml(trait.name)}</span>
-        <span style="font-size: 0.75rem; color: #34d399; margin-left: 0.5rem; text-transform: uppercase;">${escapeHtml(trait.type || "Feature")}</span>
-      </div>
-      <span class="spell-add-badge">+ Add</span>
-    </div>
-  `).join("");
 }
 
-document.getElementById("addTraitBtn")?.addEventListener("click", async () => {
-  const modal = document.getElementById("traitModal");
-  modal?.classList.add("open");
-  
-  if (allTraitsCache.length === 0) {
-    document.getElementById("traitApiList").innerHTML = `<p class="loading-text">Loading official features...</p>`;
-    const dataFeatures = await fetchAPI("https://www.dnd5eapi.co/api/features");
-    const dataTraits = await fetchAPI("https://www.dnd5eapi.co/api/traits");
-    let combined = [];
-    if (dataFeatures) combined = combined.concat(dataFeatures.results);
-    if (dataTraits) combined = combined.concat(dataTraits.results);
-    allTraitsCache = combined;
-  }
-  
-  renderModalTraits(document.getElementById("traitSearchInput")?.value || "");
-});
-
-document.getElementById("closeTraitModal")?.addEventListener("click", () => {
-  document.getElementById("traitModal")?.classList.remove("open");
-});
-
-document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
-  renderModalTraits(e.target.value);
-});
-
-document.getElementById("addCustomTraitBtn")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  myCharacterTraits.push({ name: "", type: "", desc: "", isExpanded: true });
-  saveSheet();
-  renderMyTraits();
-  document.getElementById("traitModal")?.classList.remove("open");
-  const cards = document.querySelectorAll("#traitsList .trait-card");
-  const lastCard = cards[cards.length - 1];
-  if (lastCard) {
-    const input = lastCard.querySelector(".trait-name-input");
-    if (input) input.focus();
-  }
-});
-
-document.getElementById("traitApiList")?.addEventListener("click", async (e) => {
-  const row = e.target.closest(".trait-option-item");
-  if (!row) return;
-
-  const idx = parseInt(row.dataset.idx, 10);
-  const selected = allTraitsCache[idx];
-  if (!selected) return;
-
-  let finalDesc = "Description not available.";
-  if (selected.url) {
-    const detail = await fetchAPI("https://www.dnd5eapi.co" + selected.url);
-    if (detail) finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n") : detail.desc;
-  }
-
-  myCharacterTraits.push({
-    name: selected.name,
-    type: selected.type || (selected.url && selected.url.includes("traits") ? "Racial Trait" : "Class Feature"),
-    desc: finalDesc,
-    isExpanded: false
+function saveData() {
+  document.querySelectorAll(".data-bind").forEach(el => {
+    if (el.id) {
+      character.meta[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+    }
   });
-
-  saveSheet();
-  renderMyTraits();
-  document.getElementById("traitModal")?.classList.remove("open");
-});
-
-function renderModalSpells(filterText = "") {
-  const container = document.getElementById("spellApiList");
-  if (!container) return;
-  const query = filterText.toLowerCase().trim();
-  const matches = allSpellsCache.filter((s) => s.name.toLowerCase().includes(query));
-
-  if (matches.length === 0) {
-    container.innerHTML = `<p class="loading-text">No matching spells found.</p>`;
-    return;
-  }
-
-  container.innerHTML = matches.slice(0, 150).map((spell) => `
-    <div class="spell-option-item spell-add-item" data-idx="${allSpellsCache.indexOf(spell)}">
-      <div>
-        <span style="font-weight: 600; color: #f8fafc;">${escapeHtml(spell.name)}</span>
-        <span style="font-size: 0.75rem; color: #f87171; margin-left: 0.5rem;">${spell.level === "Cantrip" ? "Cantrip" : "Level " + spell.level} ${spell.school || ""}</span>
-      </div>
-      <span class="spell-add-badge">+ Add</span>
-    </div>
-  `).join("");
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(character));
+  
+  const indicator = document.getElementById("save-indicator");
+  indicator.textContent = "Saved!";
+  setTimeout(() => indicator.textContent = "", 2000);
 }
 
-function renderMySpells() {
-  const container = document.getElementById("spellsList");
-  if (!container) return;
+function populateFields() {
+  document.querySelectorAll(".data-bind").forEach(el => {
+    if (character.meta[el.id] !== undefined) {
+      if (el.type === 'checkbox') {
+        el.checked = character.meta[el.id];
+      } else {
+        el.value = character.meta[el.id];
+      }
+    }
+  });
+}
 
-  if (myCharacterSpells.length === 0) {
-    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.9rem; color: #64748b;">No spells added yet.</p>`;
-    return;
+document.addEventListener("input", (e) => {
+  if (e.target.classList.contains("data-bind")) {
+    saveData();
+    if (["char-level", "ac"].includes(e.target.id) || e.target.id.startsWith("attr-") || e.target.classList.contains("prof-check")) {
+      renderAttributesAndSkills();
+    }
   }
+});
 
-  container.innerHTML = myCharacterSpells.map((spell, idx) => {
-    let typeVal = spell.type || (spell.level !== undefined ? (spell.level === "Cantrip" || spell.level === 0 ? "Cantrip" : `Level ${spell.level} ${spell.school || ""}`.trim()) : "");
-    let descVal = Array.isArray(spell.desc) ? spell.desc.join("\n\n") : (spell.desc || "");
-    return `
-      <div class="spell-card" draggable="true" data-index="${idx}">
-        <div class="spell-card-header">
-          <span class="spell-drag-handle" title="Drag to reorder">⋮⋮</span>
-          <input type="text" class="spell-custom-title-input custom-spell-field" data-prop="name" value="${escapeHtml(spell.name || "")}" placeholder="Spell Name" />
-          <button class="spell-card-delete" data-index="${idx}" type="button" title="Remove spell">&times;</button>
-        </div>
-        <div class="spell-card-meta">
-          <div class="meta-field-group">
-            <span class="meta-label">Type</span>
-            <input type="text" class="spell-meta-input custom-spell-field" data-prop="type" value="${escapeHtml(typeVal)}" placeholder="Cantrip" />
-          </div>
-          <div class="meta-field-group">
-            <span class="meta-label">Cast</span>
-            <input type="text" class="spell-meta-input custom-spell-field" data-prop="casting_time" value="${escapeHtml(spell.casting_time || "")}" placeholder="1 Action" />
-          </div>
-          <div class="meta-field-group">
-            <span class="meta-label">Range</span>
-            <input type="text" class="spell-meta-input custom-spell-field" data-prop="range" value="${escapeHtml(spell.range || "")}" placeholder="30 ft" />
-          </div>
-          <div class="meta-field-group">
-            <span class="meta-label">Duration</span>
-            <input type="text" class="spell-meta-input custom-spell-field" data-prop="duration" value="${escapeHtml(spell.duration || "")}" placeholder="Instantaneous" />
-          </div>
-        </div>
-        <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description and effects...">${escapeHtml(descVal)}</textarea>
+function getMod(score) {
+  return Math.floor((score - 10) / 2);
+}
+
+function getProfBonus() {
+  const level = parseInt(character.meta["char-level"]) || 1;
+  return Math.ceil(1 + (level / 4));
+}
+
+const STATS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
+const SKILLS = [
+  { id: "acro", name: "Acrobatics", stat: "DEX" },
+  { id: "anim", name: "Animal Handling", stat: "WIS" },
+  { id: "arca", name: "Arcana", stat: "INT" },
+  { id: "athl", name: "Athletics", stat: "STR" },
+  { id: "dece", name: "Deception", stat: "CHA" },
+  { id: "hist", name: "History", stat: "INT" },
+  { id: "insi", name: "Insight", stat: "WIS" },
+  { id: "inti", name: "Intimidation", stat: "CHA" },
+  { id: "inve", name: "Investigation", stat: "INT" },
+  { id: "medi", name: "Medicine", stat: "WIS" },
+  { id: "natu", name: "Nature", stat: "INT" },
+  { id: "perc", name: "Perception", stat: "WIS" },
+  { id: "perf", name: "Performance", stat: "CHA" },
+  { id: "pers", name: "Persuasion", stat: "CHA" },
+  { id: "reli", name: "Religion", stat: "INT" },
+  { id: "slei", name: "Sleight of Hand", stat: "DEX" },
+  { id: "stea", name: "Stealth", stat: "DEX" },
+  { id: "surv", name: "Survival", stat: "WIS" }
+];
+
+function renderAttributesAndSkills() {
+  const prof = getProfBonus();
+  document.getElementById("prof-display").textContent = `+${prof}`;
+
+  const attrContainer = document.getElementById("attributes-container");
+  attrContainer.innerHTML = "";
+  const mods = {};
+
+  STATS.forEach(stat => {
+    const fieldId = `attr-${stat.toLowerCase()}`;
+    const saveId = `save-${stat.toLowerCase()}`;
+    const score = parseInt(character.meta[fieldId]) || 10;
+    const mod = getMod(score);
+    mods[stat] = mod;
+    
+    const isProficient = character.meta[saveId] === true || character.meta[saveId] === "true";
+    const saveTotal = isProficient ? mod + prof : mod;
+    
+    attrContainer.innerHTML += `
+      <div class="attr-row">
+        <span class="attr-name">${stat}</span>
+        <input type="number" id="${fieldId}" class="data-bind attr-score" value="${score}" />
+        <span class="attr-mod">${mod >= 0 ? '+'+mod : mod}</span>
+        <input type="checkbox" id="${saveId}" class="data-bind prof-check" ${isProficient ? "checked" : ""} />
+        <span style="font-size:0.8rem; width:50px;">Save: ${saveTotal >= 0 ? '+'+saveTotal : saveTotal}</span>
+        <button class="roll-btn" data-roll="1d20+${saveTotal}" data-label="${stat} Save">Roll</button>
       </div>
     `;
-  }).join("");
+  });
 
-  document.querySelectorAll(".spell-custom-desc-textarea").forEach(autoExpandTextarea);
-  attachSpellDragEvents();
+  const skillContainer = document.getElementById("skills-container");
+  skillContainer.innerHTML = "";
+  
+  SKILLS.forEach(skill => {
+    const profId = `skill-${skill.id}`;
+    const isProficient = character.meta[profId] === true || character.meta[profId] === "true";
+    const total = mods[skill.stat] + (isProficient ? prof : 0);
+    
+    skillContainer.innerHTML += `
+      <div class="skill-row">
+        <input type="checkbox" id="${profId}" class="data-bind prof-check" ${isProficient ? "checked" : ""} />
+        <span class="skill-name">${skill.name} <small>(${skill.stat})</small></span>
+        <span class="skill-total">${total >= 0 ? '+'+total : total}</span>
+        <button class="roll-btn" data-roll="1d20+${total}" data-label="${skill.name}">Roll</button>
+      </div>
+    `;
+  });
 }
 
-function attachSpellDragEvents() {
-  const cards = document.querySelectorAll(".spell-card");
-  cards.forEach((card) => {
+function renderWeapons() {
+  const container = document.getElementById("weapons-list");
+  container.innerHTML = "";
+  character.weapons.forEach((wpn, index) => {
+    container.innerHTML += `
+      <div class="weapon-row">
+        <input type="text" value="${wpn.name}" oninput="updateWeapon(${index}, 'name', this.value)" placeholder="Sword" />
+        <input type="text" value="${wpn.atk}" oninput="updateWeapon(${index}, 'atk', this.value)" placeholder="+5" />
+        <input type="text" value="${wpn.dmg}" oninput="updateWeapon(${index}, 'dmg', this.value)" placeholder="1d8+3" />
+        <input type="text" value="${wpn.notes}" oninput="updateWeapon(${index}, 'notes', this.value)" placeholder="Slashing" />
+        <button class="delete-btn" onclick="deleteWeapon(${index})">&times;</button>
+      </div>
+    `;
+  });
+}
+
+window.updateWeapon = function(index, field, value) {
+  character.weapons[index][field] = value;
+  saveData();
+};
+
+window.deleteWeapon = function(index) {
+  character.weapons.splice(index, 1);
+  saveData();
+  renderWeapons();
+};
+
+document.getElementById("btn-add-weapon").addEventListener("click", () => {
+  character.weapons.push({ id: Date.now(), name: "", atk: "", dmg: "", notes: "" });
+  saveData();
+  renderWeapons();
+});
+
+function renderTraits() {
+  const grid = document.getElementById("traits-grid");
+  grid.innerHTML = "";
+  character.traits.forEach((trait, index) => {
+    grid.innerHTML += `
+      <div class="data-card trait-card" draggable="true" data-index="${index}" data-context="traits" onclick="this.classList.toggle('expanded')">
+        <div class="card-header">
+          <span class="drag-handle">⋮⋮</span>
+          <input type="text" class="card-title-input" value="${trait.name}" onclick="event.stopPropagation()" oninput="updateItem('traits', ${index}, 'name', this.value)" placeholder="Ability Name"/>
+          <button class="delete-btn" onclick="event.stopPropagation(); deleteItem('traits', ${index})">&times;</button>
+        </div>
+        <input type="text" class="card-meta-input" value="${trait.type}" onclick="event.stopPropagation()" oninput="updateItem('traits', ${index}, 'type', this.value)" placeholder="Type"/>
+        <textarea class="card-desc-input" onclick="event.stopPropagation()" oninput="updateItem('traits', ${index}, 'desc', this.value)" placeholder="Description...">${trait.desc}</textarea>
+      </div>
+    `;
+  });
+  attachDragEvents();
+}
+
+function renderSpells() {
+  const grid = document.getElementById("spells-grid");
+  grid.innerHTML = "";
+  character.spells.forEach((spell, index) => {
+    grid.innerHTML += `
+      <div class="data-card spell-card" draggable="true" data-index="${index}" data-context="spells" onclick="this.classList.toggle('expanded')">
+        <div class="card-header">
+          <span class="drag-handle">⋮⋮</span>
+          <input type="text" class="card-title-input" value="${spell.name}" onclick="event.stopPropagation()" oninput="updateItem('spells', ${index}, 'name', this.value)" placeholder="Spell Name"/>
+          <button class="delete-btn" onclick="event.stopPropagation(); deleteItem('spells', ${index})">&times;</button>
+        </div>
+        <input type="text" class="card-meta-input" value="${spell.type}" onclick="event.stopPropagation()" oninput="updateItem('spells', ${index}, 'type', this.value)" placeholder="Level & School"/>
+        <textarea class="card-desc-input" onclick="event.stopPropagation()" oninput="updateItem('spells', ${index}, 'desc', this.value)" placeholder="Description...">${spell.desc}</textarea>
+      </div>
+    `;
+  });
+  attachDragEvents();
+}
+
+window.updateItem = function(collection, index, field, value) {
+  character[collection][index][field] = value;
+  saveData();
+};
+
+window.deleteItem = function(collection, index) {
+  character[collection].splice(index, 1);
+  saveData();
+  if (collection === 'traits') renderTraits();
+  if (collection === 'spells') renderSpells();
+};
+
+document.getElementById("btn-add-custom-trait").addEventListener("click", () => {
+  character.traits.push({ id: Date.now(), name: "", type: "", desc: "" });
+  saveData();
+  renderTraits();
+});
+
+document.getElementById("btn-add-custom-spell").addEventListener("click", () => {
+  character.spells.push({ id: Date.now(), name: "", type: "", desc: "" });
+  saveData();
+  renderSpells();
+});
+
+function attachDragEvents() {
+  const cards = document.querySelectorAll(".data-card");
+  cards.forEach(card => {
     card.addEventListener("dragstart", (e) => {
       if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) {
-        e.preventDefault(); return;
+        e.preventDefault();
+        return;
       }
-      draggedSpellIndex = parseInt(card.dataset.index, 10);
+      draggedItemIndex = parseInt(card.dataset.index, 10);
+      currentDragContext = card.dataset.context;
       e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", draggedSpellIndex);
-      card.classList.add("dragging");
+      card.style.opacity = "0.5";
     });
 
     card.addEventListener("dragend", () => {
-      card.classList.remove("dragging");
-      document.querySelectorAll(".spell-card").forEach(c => c.classList.remove("drag-over"));
-      draggedSpellIndex = null;
+      card.style.opacity = "1";
+      document.querySelectorAll(".data-card").forEach(c => c.style.border = "");
+      draggedItemIndex = null;
+      currentDragContext = null;
     });
 
     card.addEventListener("dragover", (e) => {
       e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-    });
-
-    card.addEventListener("dragenter", () => {
-      if (draggedSpellIndex !== null && parseInt(card.dataset.index, 10) !== draggedSpellIndex) {
-        card.classList.add("drag-over");
+      if (card.dataset.context === currentDragContext) {
+        card.style.border = "1px solid #dc2626";
       }
     });
 
     card.addEventListener("dragleave", () => {
-      card.classList.remove("drag-over");
+      card.style.border = "";
     });
 
     card.addEventListener("drop", (e) => {
       e.preventDefault();
-      card.classList.remove("drag-over");
-      if (draggedSpellIndex === null) return;
+      card.style.border = "";
+      if (draggedItemIndex === null || card.dataset.context !== currentDragContext) return;
+      
       const targetIndex = parseInt(card.dataset.index, 10);
-      if (draggedSpellIndex === targetIndex) return;
+      if (draggedItemIndex === targetIndex) return;
 
-      const movedSpell = myCharacterSpells.splice(draggedSpellIndex, 1)[0];
-      myCharacterSpells.splice(targetIndex, 0, movedSpell);
-      saveSheet();
-      renderMySpells();
+      const collection = currentDragContext;
+      const movedItem = character[collection].splice(draggedItemIndex, 1)[0];
+      character[collection].splice(targetIndex, 0, movedItem);
+      
+      saveData();
+      if (collection === 'traits') renderTraits();
+      if (collection === 'spells') renderSpells();
     });
-
-    const handle = card.querySelector(".spell-drag-handle");
-    if (handle) {
-      handle.addEventListener("touchstart", () => {
-        touchDraggedIndex = parseInt(card.dataset.index, 10);
-        card.classList.add("dragging");
-      }, { passive: true });
-
-      handle.addEventListener("touchmove", (e) => {
-        const touch = e.touches[0];
-        const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
-        const targetCard = targetElement ? targetElement.closest(".spell-card") : null;
-
-        document.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
-        if (targetCard && targetCard !== card) {
-          targetCard.classList.add("drag-over");
-          currentDropTarget = targetCard;
-        } else {
-          currentDropTarget = null;
-        }
-      });
-
-      handle.addEventListener("touchend", () => {
-        card.classList.remove("dragging");
-        document.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
-        if (touchDraggedIndex !== null && currentDropTarget) {
-          const targetIndex = parseInt(currentDropTarget.dataset.index, 10);
-          if (touchDraggedIndex !== targetIndex) {
-            const moved = myCharacterSpells.splice(touchDraggedIndex, 1)[0];
-            myCharacterSpells.splice(targetIndex, 0, moved);
-            saveSheet();
-            renderMySpells();
-          }
-        }
-        touchDraggedIndex = null;
-        currentDropTarget = null;
-      });
-    }
   });
 }
 
-document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
-  const modal = document.getElementById("spellModal");
-  modal?.classList.add("open");
+document.addEventListener("click", (e) => {
+  if (e.target.classList.contains("roll-btn")) {
+    const rollData = e.target.dataset.roll;
+    const label = e.target.dataset.label;
+    executeRoll(20, parseInt(rollData.split('+')[1] || rollData.split('-')[1] * -1 || 0), label);
+  }
+  if (e.target.classList.contains("die-btn")) {
+    const sides = parseInt(e.target.dataset.die);
+    executeRoll(sides, 0, `d${sides}`);
+  }
+});
+
+function executeRoll(sides, modifier, label) {
+  const roll = Math.floor(Math.random() * sides) + 1;
+  const total = roll + modifier;
+  const modStr = modifier === 0 ? "" : (modifier > 0 ? `+${modifier}` : modifier);
   
-  if (allSpellsCache.length === 0) {
-    document.getElementById("spellApiList").innerHTML = `<p class="loading-text">Fetching massive Open5e spell library...</p>`;
-    const data = await fetchAPI("https://api.open5e.com/v1/spells/?limit=3000");
-    if (data && data.results) {
-      allSpellsCache = data.results;
-    } else {
-      document.getElementById("spellApiList").innerHTML = `<p class="loading-text">Failed to fetch spells.</p>`;
-      return;
+  const history = document.getElementById("dice-history");
+  if (history.querySelector(".empty-text")) history.innerHTML = "";
+  
+  const entry = document.createElement("div");
+  entry.className = "log-entry";
+  entry.innerHTML = `<span>${label} (${roll}${modStr})</span> <span class="log-result">${total}</span>`;
+  
+  history.prepend(entry);
+  if (history.children.length > 25) history.removeChild(history.lastChild);
+}
+
+const classInput = document.getElementById("char-class");
+let allClassesCache = [];
+const raceInput = document.getElementById("char-race");
+let allRacesCache = [];
+
+async function setupClassRaceSearch() {
+  classInput.addEventListener("focus", async () => {
+    if(!allClassesCache.length) {
+      const data = await fetchAPI("https://www.dnd5eapi.co/api/classes");
+      if(data) allClassesCache = data.results;
     }
-  }
-  
-  renderModalSpells(document.getElementById("spellSearchInput")?.value || "");
-});
-
-document.getElementById("closeSpellModal")?.addEventListener("click", () => {
-  document.getElementById("spellModal")?.classList.remove("open");
-});
-
-document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
-  renderModalSpells(e.target.value);
-});
-
-document.getElementById("addCustomSpellBtn")?.addEventListener("click", (e) => {
-  e.preventDefault();
-  myCharacterSpells.push({ name: "", type: "", casting_time: "", range: "", duration: "", desc: "" });
-  saveSheet();
-  renderMySpells();
-  document.getElementById("spellModal")?.classList.remove("open");
-
-  const cards = document.querySelectorAll("#spellsList .spell-card");
-  const lastCard = cards[cards.length - 1];
-  if (lastCard) {
-    const input = lastCard.querySelector(".spell-custom-title-input");
-    if (input) input.focus();
-  }
-});
-
-document.getElementById("spellApiList")?.addEventListener("click", (e) => {
-  const row = e.target.closest(".spell-add-item");
-  if (!row) return;
-
-  const idx = parseInt(row.dataset.idx, 10);
-  const details = allSpellsCache[idx];
-  if (!details) return;
-
-  myCharacterSpells.push({
-    name: details.name,
-    type: details.level === "Cantrip" ? "Cantrip" : `Level ${details.level} ${details.school || ""}`.trim(),
-    casting_time: details.casting_time || "1 Action",
-    range: details.range || "30 ft",
-    duration: details.duration || "Instantaneous",
-    desc: details.desc || ""
+    showApiDropdown("class-dropdown", allClassesCache, classInput.value, (item) => {
+      classInput.value = item.name;
+      document.getElementById("class-dropdown").classList.remove("show");
+      saveData();
+    });
   });
 
-  saveSheet();
-  renderMySpells();
-  document.getElementById("spellModal")?.classList.remove("open");
-});
-
-document.getElementById("spellsList")?.addEventListener("input", (e) => {
-  if (e.target.classList.contains("custom-spell-field")) {
-    const card = e.target.closest(".spell-card");
-    const idx = parseInt(card.dataset.index, 10);
-    const prop = e.target.dataset.prop;
-    if (myCharacterSpells[idx]) {
-      myCharacterSpells[idx][prop] = e.target.value;
-      saveSheet();
+  raceInput.addEventListener("focus", async () => {
+    if(!allRacesCache.length) {
+      const data = await fetchAPI("https://www.dnd5eapi.co/api/races");
+      if(data) allRacesCache = data.results;
     }
-    if (e.target.tagName.toLowerCase() === "textarea") autoExpandTextarea(e.target);
+    showApiDropdown("race-dropdown", allRacesCache, raceInput.value, (item) => {
+      raceInput.value = item.name;
+      document.getElementById("race-dropdown").classList.remove("show");
+      saveData();
+    });
+  });
+
+  classInput.addEventListener("input", () => showApiDropdown("class-dropdown", allClassesCache, classInput.value));
+  raceInput.addEventListener("input", () => showApiDropdown("race-dropdown", allRacesCache, raceInput.value));
+}
+
+function showApiDropdown(dropdownId, list, filter, onClick) {
+  const drop = document.getElementById(dropdownId);
+  drop.innerHTML = "";
+  const filtered = list.filter(i => i.name.toLowerCase().includes(filter.toLowerCase()));
+  
+  filtered.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "api-item";
+    div.textContent = item.name;
+    if(onClick) div.onclick = () => onClick(item);
+    drop.appendChild(div);
+  });
+  drop.classList.add("show");
+}
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".api-search-wrapper")) {
+    document.querySelectorAll(".api-dropdown").forEach(d => d.classList.remove("show"));
   }
 });
 
-document.getElementById("spellsList")?.addEventListener("click", (e) => {
-  if (e.target.classList.contains("spell-card-delete")) {
-    myCharacterSpells.splice(parseInt(e.target.dataset.index, 10), 1);
-    saveSheet();
-    renderMySpells();
+const modal = document.getElementById("api-modal");
+let currentModalContext = "";
+
+document.getElementById("btn-open-spell-modal").addEventListener("click", async () => {
+  openModal("Search All Spells", "spells");
+  if(spellCache.length === 0) {
+    document.getElementById("modal-results").innerHTML = "<p>Loading massive spell library...</p>";
+    await spellCachePromise;
   }
+  renderModalList(spellCache);
 });
 
-document.getElementById("saveBtn")?.addEventListener("click", saveSheet);
-document.getElementById("newBtn")?.addEventListener("click", () => { if (confirm("Create a new blank character sheet?")) resetSheet(); });
-
-document.getElementById("deleteBtn")?.addEventListener("click", () => {
-  const roster = getRoster();
-  if (confirm("Permanently delete current character?")) {
-    delete roster[activeCharId];
-    saveRoster(roster);
-    const keys = Object.keys(roster);
-    if (keys.length > 0) {
-      activeCharId = keys[0];
-      localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-      loadSheet();
-    } else {
-      resetSheet();
-    }
+document.getElementById("btn-open-trait-modal").addEventListener("click", async () => {
+  openModal("Search Official Features & Feats", "traits");
+  if(traitCache.length === 0) {
+    document.getElementById("modal-results").innerHTML = "<p>Loading abilities library...</p>";
+    await traitCachePromise;
   }
+  renderModalList(traitCache);
 });
 
-document.getElementById("backupBtn")?.addEventListener("click", () => {
-  const roster = getRoster();
-  const currentChar = roster[activeCharId] || { 
-    id: activeCharId, 
-    name: "Character", 
-    fields: getCurrentSheetData(), 
-    spells: myCharacterSpells, 
-    traits: myCharacterTraits,
-    weapons: myCharacterWeapons 
-  };
-  const blob = new Blob([JSON.stringify({ character: currentChar, allRoster: roster }, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `character-backup.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showStatus("Backup downloaded!");
+function openModal(title, context) {
+  currentModalContext = context;
+  document.getElementById("modal-title").textContent = title;
+  document.getElementById("modal-search").value = "";
+  document.getElementById("modal-results").innerHTML = "<p>Loading data...</p>";
+  modal.classList.remove("hidden");
+}
+
+document.getElementById("modal-close").addEventListener("click", () => modal.classList.add("hidden"));
+
+document.getElementById("modal-search").addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase();
+  const list = currentModalContext === "spells" ? spellCache : traitCache;
+  const filtered = list.filter(i => i.name.toLowerCase().includes(q));
+  renderModalList(filtered);
 });
 
-document.getElementById("restoreFile")?.addEventListener("change", (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (evt) => {
-    try {
-      const parsed = JSON.parse(evt.target.result);
-      const roster = getRoster();
-      if (parsed.allRoster) Object.assign(roster, parsed.allRoster);
-      else if (parsed.character) roster[parsed.character.id || "char_1"] = parsed.character;
-      saveRoster(roster);
-      loadSheet();
-      showStatus("Restored successfully!");
-    } catch (err) {
-      alert("Invalid backup file.");
+function renderModalList(list) {
+  const container = document.getElementById("modal-results");
+  container.innerHTML = "";
+  
+  const displayList = list.slice(0, 100); 
+  
+  displayList.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "modal-list-item";
+    div.innerHTML = `
+      <div>
+        <strong>${item.name}</strong>
+        ${item.type ? `<span class="modal-list-desc">${item.type}</span>` : ''}
+      </div>
+      <button class="modal-add-btn">+ Add</button>
+    `;
+    div.onclick = () => handleModalAdd(item);
+    container.appendChild(div);
+  });
+  
+  if(list.length > 100) {
+    const p = document.createElement("p");
+    p.textContent = `...and ${list.length - 100} more. Keep typing to filter.`;
+    p.style.textAlign = "center";
+    p.style.color = "#94a3b8";
+    p.style.marginTop = "1rem";
+    container.appendChild(p);
+  }
+}
+
+async function handleModalAdd(item) {
+  if (currentModalContext === "spells") {
+    let finalDesc = item.desc || "";
+    if (item.url && !finalDesc) {
+      const detail = await fetchAPI(DND_API + item.url.replace("/api", ""));
+      if (detail) finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n") : detail.desc;
     }
-  };
-  reader.readAsText(file);
-});
+    
+    character.spells.push({
+      id: Date.now(),
+      name: item.name,
+      type: item.type,
+      desc: finalDesc
+    });
+    renderSpells();
+  } else {
+    let finalDesc = "Description not available.";
+    if (item.url) {
+      const detail = await fetchAPI(DND_API + item.url.replace("/api", ""));
+      if (detail) finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n") : detail.desc;
+    }
+    character.traits.push({
+      id: Date.now(),
+      name: item.name,
+      type: item.type,
+      desc: finalDesc
+    });
+    renderTraits();
+  }
+  saveData();
+  modal.classList.add("hidden");
+}
 
-// Init
-loadSheet();
-renderMyTraits();
+function setupTabs() {
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+}
+
+function setupAutoExpand() {
+  document.querySelectorAll(".auto-expand").forEach(ta => {
+    ta.addEventListener("input", function() {
+      this.style.height = "auto";
+      this.style.height = (this.scrollHeight) + "px";
+    });
+  });
+}
+
+function setupStaticListeners() {
+  setupClassRaceSearch();
+  
+  document.getElementById("btn-save").addEventListener("click", saveData);
+  
+  document.getElementById("btn-reset").addEventListener("click", () => {
+    if (confirm("Wipe all data? This cannot be undone.")) {
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    }
+  });
+
+  document.getElementById("btn-export").addEventListener("click", () => {
+    saveData();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(character));
+    const a = document.createElement("a");
+    a.href = dataStr;
+    a.download = "character_backup.json";
+    a.click();
+  });
+
+  document.getElementById("file-import").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        character = parsed;
+        saveData();
+        renderAll();
+      } catch (err) {
+        alert("Invalid file format.");
+      }
+    };
+    reader.readAsText(file);
+  });
+}
