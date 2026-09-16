@@ -403,7 +403,7 @@
           <h2 class="section-title tight-title">Equipment &amp; Gear</h2>
           <textarea id="inventory" class="save-field block-text" rows="5" placeholder="Detailed inventory, weights, magic items, containers..."></textarea>
 
-          <!-- Abilities & Features Section -->
+          <!-- Abilities & Features Section (4 Columns) -->
           <div class="abilities-header">
             <h2 class="section-title tight-title">Abilities &amp; Features</h2>
             <button class="btn-text-red" id="addTraitBtn" type="button">+ Add Ability</button>
@@ -643,9 +643,7 @@
         <input type="text" id="spellSearchInput" placeholder="Search official 5e spells..." autocomplete="off" />
         <button type="button" class="btn red custom-spell-btn" id="addCustomSpellBtn">+ Add Custom Spell</button>
       </div>
-      <div id="spellApiList" class="modal-list">
-        <p class="loading-text">Loading spells...</p>
-      </div>
+      <div id="spellApiList" class="modal-list"></div>
     </div>
   </div>
 
@@ -660,9 +658,7 @@
         <input type="text" id="traitSearchInput" placeholder="Search official traits, racial skills &amp; features..." autocomplete="off" />
         <button type="button" class="btn red custom-spell-btn" id="addCustomTraitBtn">+ Add Custom Ability</button>
       </div>
-      <div id="traitApiList" class="modal-list">
-        <p class="loading-text">Loading official features...</p>
-      </div>
+      <div id="traitApiList" class="modal-list"></div>
     </div>
   </div>
 
