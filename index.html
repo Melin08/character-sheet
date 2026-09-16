@@ -10,16 +10,27 @@
 <body id="top">
   <div class="sheet-container">
     <header class="top-nav">
-      <button class="btn red" id="saveBtn" type="button">Save</button>
-      <button class="btn red" id="loadBtn" type="button">Load</button>
-      <button class="btn red" id="newBtn" type="button">New</button>
-      <button class="btn red" id="backupBtn" type="button">Backup</button>
-      <label class="btn red file-label">
-        Restore
-        <input type="file" id="restoreFile" accept=".json" />
-      </label>
-      <button class="btn red" id="deleteBtn" type="button">Delete</button>
-      <span id="saveStatus" class="status-msg"></span>
+      <div class="nav-actions">
+        <button class="btn red" id="saveBtn" type="button">Save</button>
+        <button class="btn red" id="loadBtn" type="button">Load</button>
+        <button class="btn red" id="newBtn" type="button">New</button>
+        <button class="btn red" id="backupBtn" type="button">Backup</button>
+        <label class="btn red file-label">
+          Restore
+          <input type="file" id="restoreFile" accept=".json" />
+        </label>
+        <button class="btn red" id="deleteBtn" type="button">Delete</button>
+        <span id="saveStatus" class="status-msg"></span>
+      </div>
+
+      <div class="wiki-box">
+        <div class="wiki-title">Quick Wiki Links</div>
+        <div class="wiki-links">
+          <a href="https://5e.tools/" target="_blank">5e.tools</a>
+          <a href="https://roll20.net/compendium/dnd5e/BookIndex" target="_blank">Roll20 Compendium</a>
+          <a href="https://dnd5e.wikidot.com/" target="_blank">D&D 5e Wikidot</a>
+        </div>
+      </div>
     </header>
 
     <div class="name-box">
@@ -373,6 +384,7 @@
           <h2 class="section-title">Weapons &amp; Attacks</h2>
           <div class="attacks-table-wrapper">
             <div class="attacks-table">
+              <!-- Reordered Attack Headers Here -->
               <div class="attack-headers">
                 <span>Name</span>
                 <span>Damage</span>
