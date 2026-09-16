@@ -17,62 +17,8 @@ let draggedSpellIndex = null;
 let touchDraggedIndex = null;
 let currentDropTarget = null;
 
-// Official 5e SRD Fallback Spells - Loaded immediately with zero wait
-const SRD_SPELLS_LIBRARY = [
-  { name: "Fire Bolt", level: 0, school: "Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You hurl a mote of fire at a creature or object within range. Make a ranged spell attack. On a hit, the target takes 1d10 fire damage." },
-  { name: "Mage Hand", level: 0, school: "Conjuration", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears at a point you choose within range. You can use your action to control the hand to manipulate objects up to 10 pounds." },
-  { name: "Eldritch Blast", level: 0, school: "Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "A beam of crackling energy streaks toward a creature within range. Make a ranged spell attack against the target. On a hit, the target takes 1d10 force damage." },
-  { name: "Vicious Mockery", level: 0, school: "Enchantment", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "You unleash a string of insults laced with subtle enchantments at one creature you can see. If it fails a Wisdom saving throw, it takes 1d4 psychic damage and has disadvantage on its next attack." },
-  { name: "Prestidigitation", level: 0, school: "Transmutation", casting_time: "1 Action", range: "10 ft", duration: "Up to 1 hour", desc: "This spell is a minor magical trick that novice spellcasters use for practice. Create harmless sensory effects, light or snuff candles, or clean/soil objects." },
-  { name: "Sacred Flame", level: 0, school: "Evocation", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "Flame-like radiance descends on a creature that you can see within range. The target must succeed on a Dexterity saving throw or take 1d8 radiant damage." },
-  { name: "Minor Illusion", level: 0, school: "Illusion", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "You create a sound or an image of an object within range that lasts for the duration. The illusion ends if you dismiss it or cast this spell again." },
-  { name: "Ray of Frost", level: 0, school: "Evocation", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "A frigid beam of blue-white light streaks toward a creature within range. On a hit, it takes 1d8 cold damage, and its speed is reduced by 10 feet until the start of your next turn." },
-  { name: "Magic Missile", level: 1, school: "Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range, dealing 1d4 + 1 force damage to its target. The darts all strike simultaneously." },
-  { name: "Shield", level: 1, school: "Abjuration", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "An invisible barrier of magical force appears and protects you. Until the start of your next turn, you have a +5 bonus to AC, including against the triggering attack, and you take no damage from magic missile." },
-  { name: "Cure Wounds", level: 1, school: "Evocation", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "A creature you touch regains a number of hit points equal to 1d8 + your spellcasting ability modifier. This spell has no effect on undead or constructs." },
-  { name: "Healing Word", level: 1, school: "Evocation", casting_time: "1 Bonus Action", range: "60 ft", duration: "Instantaneous", desc: "A creature of your choice that you can see within range regains hit points equal to 1d4 + your spellcasting ability modifier. This spell has no effect on undead or constructs." },
-  { name: "Thunderwave", level: 1, school: "Evocation", casting_time: "1 Action", range: "Self (15-foot cube)", duration: "Instantaneous", desc: "A wave of thunderous force sweeps out from you. Each creature in a 15-foot cube originating from you must make a Constitution saving throw or take 2d8 thunder damage and be pushed 10 feet away." },
-  { name: "Guiding Bolt", level: 1, school: "Evocation", casting_time: "1 Action", range: "120 ft", duration: "1 round", desc: "A flash of light streaks toward a creature of your choice within range. On a hit, the target takes 4d6 radiant damage, and the next attack roll made against this target before the end of your next turn has advantage." },
-  { name: "Misty Step", level: 2, school: "Conjuration", casting_time: "1 Bonus Action", range: "Self", duration: "Instantaneous", desc: "Briefly surrounded by silvery mist, you teleport up to 30 feet to an unoccupied space that you can see." },
-  { name: "Invisibility", level: 2, school: "Illusion", casting_time: "1 Action", range: "Touch", duration: "Concentration, up to 1 hour", desc: "A creature you touch becomes invisible until the spell ends. Anything the target is wearing or carrying is invisible as long as it is on the target's person. The spell ends if the target attacks or casts a spell." },
-  { name: "Hold Person", level: 2, school: "Enchantment", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 minute", desc: "Choose a humanoid that you can see within range. The target must succeed on a Wisdom saving throw or be paralyzed for the duration." },
-  { name: "Fireball", level: 3, school: "Evocation", casting_time: "1 Action", range: "150 ft", duration: "Instantaneous", desc: "A bright streak flashes from your pointing finger to a point you choose within range and blossoms into an explosion of flame. Each creature in a 20-foot-radius sphere must make a Dex save, taking 8d6 fire damage on a failure, or half on a success." },
-  { name: "Counterspell", level: 3, school: "Abjuration", casting_time: "1 Reaction", range: "60 ft", duration: "Instantaneous", desc: "You attempt to interrupt a creature in the process of casting a spell. If the creature is casting a spell of 3rd level or lower, its spell fails and has no effect." },
-  { name: "Haste", level: 3, school: "Transmutation", casting_time: "1 Action", range: "30 ft", duration: "Concentration, up to 1 minute", desc: "Choose a willing creature within range. Until the spell ends, the target's speed is doubled, it gains a +2 bonus to AC, advantage on Dex saving throws, and an additional action on each of its turns." }
-];
-
-// Official 5e SRD Fallback Traits & Features - Loaded immediately with zero wait
-const SRD_TRAITS_LIBRARY = [
-  { name: "Darkvision", type: "Racial", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray." },
-  { name: "Fey Ancestry", type: "Racial", desc: "You have advantage on saving throws against being charmed, and magic cannot put you to sleep." },
-  { name: "Dwarven Resilience", type: "Racial", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." },
-  { name: "Lucky", type: "Racial", desc: "When you roll a 1 on the d20 for an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll." },
-  { name: "Relentless Endurance", type: "Racial", desc: "When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead. You can't use this feature again until you finish a long rest." },
-  { name: "Savage Attacks", type: "Racial", desc: "When you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage." },
-  { name: "Breath Weapon", type: "Racial", desc: "You can use your action to exhale destructive energy determined by your draconic ancestry. Each creature in the area must make a saving throw based on your dragon type." },
-  { name: "Hellish Resistance", type: "Racial", desc: "You have resistance to fire damage." },
-  { name: "Gnome Cunning", type: "Racial", desc: "You have advantage on all Intelligence, Wisdom, and Charisma saving throws against magic." },
-  { name: "Rage", type: "Class Ability", desc: "In battle, you fight with primal ferocity. On your turn, you can enter a rage as a bonus action, gaining advantage on Strength checks, bonus melee damage, and resistance to bludgeoning, piercing, and slashing damage." },
-  { name: "Reckless Attack", type: "Class Ability", desc: "Starting at 2nd level, you can throw aside all concern for defense. Doing so gives you advantage on melee weapon attack rolls using Strength during this turn, but attack rolls against you have advantage until your next turn." },
-  { name: "Action Surge", type: "Class Ability", desc: "On your turn, you can push yourself beyond your normal limits for a moment. You can take one additional action on top of your regular action and a possible bonus action." },
-  { name: "Second Wind", type: "Class Ability", desc: "You have a limited well of stamina that you can draw on to protect yourself from harm. On your turn, you can use a bonus action to regain hit points equal to 1d10 + your fighter level." },
-  { name: "Sneak Attack", type: "Class Ability", desc: "Beginning at 1st level, you know how to strike subtly and exploit a foe's distraction. Once per turn, you can deal an extra 1d6 damage to one creature you hit with an attack if you have advantage on the attack roll." },
-  { name: "Cunning Action", type: "Class Ability", desc: "Starting at 2nd level, your quick thinking and agility allow you to move and act quickly. You can take a bonus action on each of your turns in combat to Dash, Disengage, or Hide." },
-  { name: "Divine Smite", type: "Class Ability", desc: "Starting at 2nd level, when you hit a creature with a melee weapon attack, you can expend one spell slot to deal radiant damage to the target, in addition to the weapon's damage (2d8 for a 1st-level slot + 1d8 each higher level)." },
-  { name: "Lay on Hands", type: "Class Ability", desc: "Your blessed touch can heal wounds. You have a pool of healing power that replenishes when you take a long rest. With that pool, you can restore a total number of hit points equal to your paladin level x 5." },
-  { name: "Wild Shape", type: "Class Ability", desc: "Starting at 2nd level, you can use your action to magically assume the shape of a beast that you have seen before twice per short or long rest." },
-  { name: "Bardic Inspiration", type: "Class Ability", desc: "You can inspire others through stirring words or music. To do so, you use a bonus action on your turn to choose one creature other than yourself within 60 feet. Once within the next 10 minutes, the creature can add a d6 to one ability check, attack roll, or saving throw." },
-  { name: "Channel Divinity", type: "Class Ability", desc: "You gain the ability to channel divine energy directly from your deity, using that energy to fuel magical effects specific to your sacred domain." },
-  { name: "Flurry of Blows", type: "Class Ability", desc: "Immediately after you take the Attack action on your turn, you can spend 1 ki point to make two unarmed strikes as a bonus action." },
-  { name: "Pact Magic", type: "Class Ability", desc: "Your arcane research and the magic bestowed on you by your patron have given you facility with spells. Your spell slots are always cast at your highest available slot level and recover on a short rest." },
-  { name: "Arcane Recovery", type: "Class Ability", desc: "Once per day when you finish a short rest, you can choose expended spell slots to recover. The spell slots can have a combined level that is equal to or less than half your wizard level (rounded up)." },
-  { name: "Alert", type: "Feat", desc: "Always on the lookout for danger. You gain a +5 bonus to initiative and you cannot be surprised while you are conscious. Other creatures don't gain advantage on attack rolls against you as a result of being unseen by you." },
-  { name: "War Caster", type: "Feat", desc: "You have advantage on Constitution saving throws that you make to maintain your concentration on a spell when you take damage. You can perform the somatic components of spells even when you have weapons or a shield in one or both hands." },
-  { name: "Sharpshooter", type: "Feat", desc: "Attacking at long range doesn't impose disadvantage on your ranged weapon attack rolls. Your ranged weapon attacks ignore half cover and three-quarters cover. You can choose to take a -5 penalty to the attack roll to add +10 to the damage." }
-];
-
-let allSpellsCache = [...SRD_SPELLS_LIBRARY];
-let allTraitsCache = [...SRD_TRAITS_LIBRARY];
+let allSpellsCache = [];
+let allTraitsCache = [];
 let allClassesCache = [];
 let allRacesCache = [];
 
@@ -475,257 +421,74 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Dropdowns & D&D 5e API Fetching
+async function fetchAPI(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("API fail");
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
 const classInput = document.getElementById("charClass");
 const classDropdown = document.getElementById("classDropdown");
 const raceInput = document.getElementById("charRace");
 const raceDropdown = document.getElementById("raceDropdown");
-const choiceModal = document.getElementById("choiceModal");
-const choiceModalBody = document.getElementById("choiceModalBody");
-const choiceModalTitle = document.getElementById("choiceModalTitle");
 
-let activeClassLoadout = null;
-
-function isWeaponOrArmor(name) {
-  if (!name) return false;
-  const l = name.toLowerCase();
-  return l.includes("sword") || l.includes("bow") || l.includes("dagger") || l.includes("axe") || 
-         l.includes("mace") || l.includes("crossbow") || l.includes("staff") || l.includes("hammer") || 
-         l.includes("spear") || l.includes("shield") || l.includes("armor") || l.includes("mail") || 
-         l.includes("javelin") || l.includes("glaive") || l.includes("halberd") || l.includes("rapier") || 
-         l.includes("club") || l.includes("sickle") || l.includes("dart");
-}
-
-function openClassEquipmentModal(classKey, displayName) {
-  const data = SRD_CLASS_EQUIPMENT[classKey];
-  if (!data) return;
-
-  activeClassLoadout = JSON.parse(JSON.stringify(data));
-  activeClassLoadout.selectedChoices = [];
-
-  choiceModalTitle.textContent = `${displayName} Starting Loadout`;
-
-  let html = `<div class="equip-section-title">Granted Equipment</div>`;
-  if (activeClassLoadout.fixed.length > 0) {
-    html += `<ul class="equip-fixed-list">`;
-    activeClassLoadout.fixed.forEach(i => {
-      html += `<li>${i.qty > 1 ? i.qty + 'x ' : ''}${escapeHtml(i.name)}</li>`;
-    });
-    html += `</ul>`;
-  } else {
-    html += `<p style="color:#64748b; font-size:0.9rem;">None</p>`;
-  }
-
-  activeClassLoadout.choices.forEach((choiceGroup, gIdx) => {
-    html += `
-      <div class="equip-choice-group" id="choice-group-${gIdx}">
-        <div class="equip-choice-title">${escapeHtml(choiceGroup.desc)} (Choose ${choiceGroup.choose})</div>
-        <div class="equip-options-grid">
-    `;
-
-    choiceGroup.options.forEach((opt, oIdx) => {
-      const tooltipLines = opt.items.map(i => `${i.qty > 1 ? i.qty + 'x ' : ''}${i.name}${i.desc ? ' (' + i.desc + ')' : ''}`).join('\n');
-      html += `
-        <div class="choice-option-wrapper">
-          <button type="button" class="choice-option-btn" data-group="${gIdx}" data-option="${oIdx}">
-            ${escapeHtml(opt.label)}
-          </button>
-          <div class="choice-tooltip">${escapeHtml(tooltipLines).replace(/\n/g, '<br>')}</div>
-        </div>
-      `;
-    });
-
-    html += `</div></div>`;
-  });
-
-  html += `<button type="button" id="confirmLoadoutBtn" class="btn red confirm-loadout-btn">Confirm Loadout</button>`;
-
-  choiceModalBody.innerHTML = html;
-  choiceModal.classList.add("open");
-
-  const newBody = choiceModalBody.cloneNode(true);
-  choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-  const activeModalBody = document.getElementById("choiceModalBody");
-
-  activeModalBody.addEventListener("click", (e) => {
-    const btn = e.target.closest(".choice-option-btn");
-    if (btn) {
-      const gIdx = parseInt(btn.dataset.group, 10);
-      const oIdx = parseInt(btn.dataset.option, 10);
-      const groupEl = document.getElementById(`choice-group-${gIdx}`);
-
-      groupEl.querySelectorAll(".choice-option-btn").forEach(b => {
-        b.style.borderColor = "#3b4c68";
-        b.style.backgroundColor = "#151d2f";
-      });
-
-      btn.style.borderColor = "#dc2626";
-      btn.style.backgroundColor = "#3f0f0f";
-
-      activeClassLoadout.selectedChoices[gIdx] = oIdx;
-    }
-
-    if (e.target.id === "confirmLoadoutBtn") {
-      finalizeSelectedLoadout();
-    }
-  });
-}
-
-function finalizeSelectedLoadout() {
-  if (!activeClassLoadout) return;
-
-  let weaponsList = [];
-  let gearList = [];
-
-  activeClassLoadout.fixed.forEach(i => {
-    const q = i.qty > 1 ? `${i.qty}x ` : "";
-    if (isWeaponOrArmor(i.name)) weaponsList.push({ name: `${q}${i.name}`, atk: "+5", dmg: "1d8", notes: "" });
-    else gearList.push(`${q}${i.name}`);
-  });
-
-  activeClassLoadout.choices.forEach((group, gIdx) => {
-    const chosenOIdx = activeClassLoadout.selectedChoices[gIdx] ?? 0;
-    const chosenOpt = group.options[chosenOIdx];
-    if (chosenOpt) {
-      chosenOpt.items.forEach(i => {
-        const q = i.qty > 1 ? `${i.qty}x ` : "";
-        if (isWeaponOrArmor(i.name)) weaponsList.push({ name: `${q}${i.name}`, atk: "+5", dmg: "1d8", notes: i.desc || "" });
-        else gearList.push(`${q}${i.name}`);
-      });
-    }
-  });
-
-  while (weaponsList.length < 2) {
-    weaponsList.push({ name: "", atk: "", dmg: "", notes: "" });
-  }
-
-  myCharacterWeapons = weaponsList;
-  renderWeapons();
-
-  const invBox = document.getElementById("inventory");
-  if (invBox && gearList.length > 0) {
-    invBox.value = gearList.join("\n");
-    autoExpandTextarea(invBox);
-  }
-
-  let featText = `Hit Die: 1d${activeClassLoadout.hitDie} per level\n\nSaving Throws: ${activeClassLoadout.saves.join(", ")}\n\n`;
-  const featBox = document.getElementById("featuresTraits");
-  if (featBox) {
-    const cur = featBox.value.trim();
-    featBox.value = cur ? cur + "\n\n" + featText.trim() : featText.trim();
-    autoExpandTextarea(featBox);
-  }
-
-  const profBox = document.getElementById("otherProfs");
-  if (profBox && activeClassLoadout.proficiencies.length > 0) {
-    profBox.value = activeClassLoadout.proficiencies.join(", ");
-    autoExpandTextarea(profBox);
-  }
-
-  saveSheet();
-  recalculateAll();
-  choiceModal.classList.remove("open");
-  showStatus("Class Loadout applied!");
-}
-
-function renderDropdown(dropdownEl, items, filter = "", customId, customText) {
+function renderDropdown(dropdownEl, items, filter = "") {
   if (!dropdownEl) return;
   const q = filter.toLowerCase().trim();
   const filtered = items.filter(i => i.name.toLowerCase().includes(q));
-  let html = filtered.map(i => `<div class="dropdown-item" data-index="${i.index}" data-name="${escapeHtml(i.name)}">${escapeHtml(i.name)}</div>`).join("");
-  html += `<div class="dropdown-item dropdown-custom" id="${customId}">${customText}</div>`;
-  dropdownEl.innerHTML = html;
+  dropdownEl.innerHTML = filtered.map(i => `<div class="dropdown-item" data-index="${i.index}" data-name="${escapeHtml(i.name)}">${escapeHtml(i.name)}</div>`).join("");
 }
 
-classInput?.addEventListener("click", () => {
+classInput?.addEventListener("focus", async () => {
   if (!classDropdown.classList.contains("open")) {
     if (allClassesCache.length === 0) {
-      allClassesCache = Object.keys(SRD_CLASS_EQUIPMENT).map(k => ({ index: k, name: SRD_CLASS_EQUIPMENT[k].name }));
+      const data = await fetchAPI("https://www.dnd5eapi.co/api/classes");
+      if (data) allClassesCache = data.results;
     }
-    renderDropdown(classDropdown, allClassesCache, classInput.value, "addCustomClassOption", "+ Add Custom Class");
+    renderDropdown(classDropdown, allClassesCache, classInput.value);
     classDropdown.classList.add("open");
   }
 });
 
 classInput?.addEventListener("input", () => {
-  if (allClassesCache.length === 0) {
-    allClassesCache = Object.keys(SRD_CLASS_EQUIPMENT).map(k => ({ index: k, name: SRD_CLASS_EQUIPMENT[k].name }));
-  }
-  renderDropdown(classDropdown, allClassesCache, classInput.value, "addCustomClassOption", "+ Add Custom Class");
+  renderDropdown(classDropdown, allClassesCache, classInput.value);
   classDropdown.classList.add("open");
 });
 
-raceInput?.addEventListener("click", () => {
+raceInput?.addEventListener("focus", async () => {
   if (!raceDropdown.classList.contains("open")) {
     if (allRacesCache.length === 0) {
-      allRacesCache = Object.keys(SRD_RACE_DATA).map(k => ({ index: k, name: k.charAt(0).toUpperCase() + k.slice(1) }));
+      const data = await fetchAPI("https://www.dnd5eapi.co/api/races");
+      if (data) allRacesCache = data.results;
     }
-    renderDropdown(raceDropdown, allRacesCache, raceInput.value, "addCustomRaceOption", "+ Add Custom Race");
+    renderDropdown(raceDropdown, allRacesCache, raceInput.value);
     raceDropdown.classList.add("open");
   }
 });
 
 raceInput?.addEventListener("input", () => {
-  if (allRacesCache.length === 0) {
-    allRacesCache = Object.keys(SRD_RACE_DATA).map(k => ({ index: k, name: k.charAt(0).toUpperCase() + k.slice(1) }));
-  }
-  renderDropdown(raceDropdown, allRacesCache, raceInput.value, "addCustomRaceOption", "+ Add Custom Race");
+  renderDropdown(raceDropdown, allRacesCache, raceInput.value);
   raceDropdown.classList.add("open");
 });
 
 classDropdown?.addEventListener("click", (e) => {
   const item = e.target.closest(".dropdown-item");
   if (!item) return;
-
-  if (item.id === "addCustomClassOption") {
-    classInput.value = "";
-    classInput.focus();
-    classDropdown.classList.remove("open");
-    return;
-  }
-
-  const className = item.dataset.name;
-  const classIdx = item.dataset.index.toLowerCase();
-  classInput.value = className;
+  classInput.value = item.dataset.name;
   classDropdown.classList.remove("open");
   saveSheet();
-
-  openClassEquipmentModal(classIdx, className);
 });
 
 raceDropdown?.addEventListener("click", (e) => {
   const item = e.target.closest(".dropdown-item");
   if (!item) return;
-
-  if (item.id === "addCustomRaceOption") {
-    raceInput.value = "";
-    raceInput.focus();
-    raceDropdown.classList.remove("open");
-    return;
-  }
-
-  const raceName = item.dataset.name;
-  const raceIdx = item.dataset.index.toLowerCase();
-  raceInput.value = raceName;
+  raceInput.value = item.dataset.name;
   raceDropdown.classList.remove("open");
   saveSheet();
-
-  const raceInfo = SRD_RACE_DATA[raceIdx];
-  if (raceInfo) {
-    if (raceInfo.speed) document.getElementById("charSpeed").value = raceInfo.speed;
-    
-    if (raceInfo.traits && raceInfo.traits.length > 0) {
-      raceInfo.traits.forEach(t => {
-        if (!myCharacterTraits.some(existing => existing.name.toLowerCase() === t.name.toLowerCase())) {
-          myCharacterTraits.push({ name: t.name, type: t.type || "Racial", desc: t.desc || "", isExpanded: false });
-        }
-      });
-      renderMyTraits();
-    }
-
-    saveSheet();
-    showStatus("Racial abilities loaded!");
-  }
 });
 
 document.addEventListener("click", (e) => {
@@ -749,7 +512,6 @@ function autoExpandTextarea(el) {
   el.style.height = el.scrollHeight + "px";
 }
 
-// 4-Column Abilities & Features Implementation
 function renderMyTraits() {
   const container = document.getElementById("traitsList");
   if (!container) return;
@@ -822,7 +584,6 @@ document.getElementById("traitsList")?.addEventListener("input", (e) => {
   }
 });
 
-// Trait / Ability Search Modal
 function renderModalTraits(filterText = "") {
   const container = document.getElementById("traitApiList");
   if (!container) return;
@@ -834,20 +595,31 @@ function renderModalTraits(filterText = "") {
     return;
   }
 
-  container.innerHTML = matches.map((trait, idx) => `
-    <div class="spell-option-item trait-option-item" data-idx="${idx}">
+  container.innerHTML = matches.slice(0, 150).map((trait, idx) => `
+    <div class="spell-option-item trait-option-item" data-idx="${allTraitsCache.indexOf(trait)}">
       <div>
         <span style="font-weight: 600; color: #f8fafc;">${escapeHtml(trait.name)}</span>
-        <span style="font-size: 0.75rem; color: #34d399; margin-left: 0.5rem; text-transform: uppercase;">${escapeHtml(trait.type)}</span>
+        <span style="font-size: 0.75rem; color: #34d399; margin-left: 0.5rem; text-transform: uppercase;">${escapeHtml(trait.type || "Feature")}</span>
       </div>
       <span class="spell-add-badge">+ Add</span>
     </div>
   `).join("");
 }
 
-document.getElementById("addTraitBtn")?.addEventListener("click", () => {
+document.getElementById("addTraitBtn")?.addEventListener("click", async () => {
   const modal = document.getElementById("traitModal");
   modal?.classList.add("open");
+  
+  if (allTraitsCache.length === 0) {
+    document.getElementById("traitApiList").innerHTML = `<p class="loading-text">Loading official features...</p>`;
+    const dataFeatures = await fetchAPI("https://www.dnd5eapi.co/api/features");
+    const dataTraits = await fetchAPI("https://www.dnd5eapi.co/api/traits");
+    let combined = [];
+    if (dataFeatures) combined = combined.concat(dataFeatures.results);
+    if (dataTraits) combined = combined.concat(dataTraits.results);
+    allTraitsCache = combined;
+  }
+  
   renderModalTraits(document.getElementById("traitSearchInput")?.value || "");
 });
 
@@ -859,19 +631,12 @@ document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   renderModalTraits(e.target.value);
 });
 
-// Add Custom Trait: create an identical box without any text at all
 document.getElementById("addCustomTraitBtn")?.addEventListener("click", (e) => {
   e.preventDefault();
-  myCharacterTraits.push({
-    name: "",
-    type: "",
-    desc: "",
-    isExpanded: true
-  });
+  myCharacterTraits.push({ name: "", type: "", desc: "", isExpanded: true });
   saveSheet();
   renderMyTraits();
   document.getElementById("traitModal")?.classList.remove("open");
-
   const cards = document.querySelectorAll("#traitsList .trait-card");
   const lastCard = cards[cards.length - 1];
   if (lastCard) {
@@ -880,7 +645,7 @@ document.getElementById("addCustomTraitBtn")?.addEventListener("click", (e) => {
   }
 });
 
-document.getElementById("traitApiList")?.addEventListener("click", (e) => {
+document.getElementById("traitApiList")?.addEventListener("click", async (e) => {
   const row = e.target.closest(".trait-option-item");
   if (!row) return;
 
@@ -888,10 +653,16 @@ document.getElementById("traitApiList")?.addEventListener("click", (e) => {
   const selected = allTraitsCache[idx];
   if (!selected) return;
 
+  let finalDesc = "Description not available.";
+  if (selected.url) {
+    const detail = await fetchAPI("https://www.dnd5eapi.co" + selected.url);
+    if (detail) finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n") : detail.desc;
+  }
+
   myCharacterTraits.push({
     name: selected.name,
-    type: selected.type || "Feature",
-    desc: selected.desc || "",
+    type: selected.type || (selected.url && selected.url.includes("traits") ? "Racial Trait" : "Class Feature"),
+    desc: finalDesc,
     isExpanded: false
   });
 
@@ -900,7 +671,6 @@ document.getElementById("traitApiList")?.addEventListener("click", (e) => {
   document.getElementById("traitModal")?.classList.remove("open");
 });
 
-// Official Spells Implementation
 function renderModalSpells(filterText = "") {
   const container = document.getElementById("spellApiList");
   if (!container) return;
@@ -912,11 +682,11 @@ function renderModalSpells(filterText = "") {
     return;
   }
 
-  container.innerHTML = matches.map((spell, idx) => `
-    <div class="spell-option-item" data-idx="${idx}">
+  container.innerHTML = matches.slice(0, 150).map((spell) => `
+    <div class="spell-option-item spell-add-item" data-idx="${allSpellsCache.indexOf(spell)}">
       <div>
         <span style="font-weight: 600; color: #f8fafc;">${escapeHtml(spell.name)}</span>
-        <span style="font-size: 0.75rem; color: #f87171; margin-left: 0.5rem;">${spell.level === 0 ? "Cantrip" : "Level " + spell.level} ${spell.school || ""}</span>
+        <span style="font-size: 0.75rem; color: #f87171; margin-left: 0.5rem;">${spell.level === "Cantrip" ? "Cantrip" : "Level " + spell.level} ${spell.school || ""}</span>
       </div>
       <span class="spell-add-badge">+ Add</span>
     </div>
@@ -933,7 +703,7 @@ function renderMySpells() {
   }
 
   container.innerHTML = myCharacterSpells.map((spell, idx) => {
-    let typeVal = spell.type || (spell.level !== undefined ? (spell.level === 0 ? "Cantrip" : `Level ${spell.level} ${spell.school || ""}`.trim()) : "");
+    let typeVal = spell.type || (spell.level !== undefined ? (spell.level === "Cantrip" || spell.level === 0 ? "Cantrip" : `Level ${spell.level} ${spell.school || ""}`.trim()) : "");
     let descVal = Array.isArray(spell.desc) ? spell.desc.join("\n\n") : (spell.desc || "");
     return `
       <div class="spell-card" draggable="true" data-index="${idx}">
@@ -1056,9 +826,21 @@ function attachSpellDragEvents() {
   });
 }
 
-document.getElementById("addSpellBtn")?.addEventListener("click", () => {
+document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
   const modal = document.getElementById("spellModal");
   modal?.classList.add("open");
+  
+  if (allSpellsCache.length === 0) {
+    document.getElementById("spellApiList").innerHTML = `<p class="loading-text">Fetching massive Open5e spell library...</p>`;
+    const data = await fetchAPI("https://api.open5e.com/v1/spells/?limit=3000");
+    if (data && data.results) {
+      allSpellsCache = data.results;
+    } else {
+      document.getElementById("spellApiList").innerHTML = `<p class="loading-text">Failed to fetch spells.</p>`;
+      return;
+    }
+  }
+  
   renderModalSpells(document.getElementById("spellSearchInput")?.value || "");
 });
 
@@ -1070,17 +852,9 @@ document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   renderModalSpells(e.target.value);
 });
 
-// Add Custom Spell: create an identical box without any text at all
 document.getElementById("addCustomSpellBtn")?.addEventListener("click", (e) => {
   e.preventDefault();
-  myCharacterSpells.push({
-    name: "",
-    type: "",
-    casting_time: "",
-    range: "",
-    duration: "",
-    desc: ""
-  });
+  myCharacterSpells.push({ name: "", type: "", casting_time: "", range: "", duration: "", desc: "" });
   saveSheet();
   renderMySpells();
   document.getElementById("spellModal")?.classList.remove("open");
@@ -1094,7 +868,7 @@ document.getElementById("addCustomSpellBtn")?.addEventListener("click", (e) => {
 });
 
 document.getElementById("spellApiList")?.addEventListener("click", (e) => {
-  const row = e.target.closest(".spell-option-item");
+  const row = e.target.closest(".spell-add-item");
   if (!row) return;
 
   const idx = parseInt(row.dataset.idx, 10);
@@ -1103,11 +877,11 @@ document.getElementById("spellApiList")?.addEventListener("click", (e) => {
 
   myCharacterSpells.push({
     name: details.name,
-    type: details.type || (details.level === 0 ? "Cantrip" : `Level ${details.level} ${details.school || ""}`.trim()),
+    type: details.level === "Cantrip" ? "Cantrip" : `Level ${details.level} ${details.school || ""}`.trim(),
     casting_time: details.casting_time || "1 Action",
     range: details.range || "30 ft",
     duration: details.duration || "Instantaneous",
-    desc: Array.isArray(details.desc) ? details.desc.join("\n\n") : (details.desc || "")
+    desc: details.desc || ""
   });
 
   saveSheet();
@@ -1195,13 +969,6 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
   reader.readAsText(file);
 });
 
-document.addEventListener("input", (e) => {
-  if (e.target.classList.contains("save-field")) {
-    recalculateAll();
-    saveSheet();
-  }
-});
-
-// Initialize sheet and abilities
+// Init
 loadSheet();
 renderMyTraits();
