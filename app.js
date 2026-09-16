@@ -442,14 +442,19 @@ document.addEventListener("click", (e) => {
 });
 
 /* =========================================================
-   DYNAMIC API SEARCH ENGINE & STEP-BY-STEP LOADOUT
+   DYNAMIC API CACHE, SEARCH ENGINE & STEP-BY-STEP LOADOUT
    ========================================================= */
 
+const apiCache = {};
+
 async function fetchAPI(url) {
+  if (apiCache[url]) return apiCache[url];
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
-    return await res.json();
+    const data = await res.json();
+    apiCache[url] = data;
+    return data;
   } catch (e) {
     return null;
   }
@@ -558,8 +563,12 @@ async function formatItemWithStats(name, url, count) {
       if (data.armor_class) {
         extras.push(`🛡️ AC ${data.armor_class.base}${data.armor_class.dex_bonus ? ' + Dex' : ''}`);
       }
+      if (data.contents && data.contents.length > 0) {
+        const contentsText = data.contents.map(c => `${c.quantity}x ${c.item.name}`).join(', ');
+        extras.push(`🎒 Contains: ${contentsText}`);
+      }
       if (extras.length > 0) {
-        statStr = `<span class="subtext">${extras.join(" | ")}</span>`;
+        statStr = `<span class="subtext">${extras.join("<br>")}</span>`;
       }
     }
   }
@@ -692,17 +701,43 @@ async function runLoadoutStep() {
       <p class="loading-text">Fetching weapon & armor stats...</p>
     `;
 
-    let choicesArray = [];
+    let initialChoices = [];
     if (optGroup.from) {
-        if (Array.isArray(optGroup.from)) choicesArray = optGroup.from;
-        else if (optGroup.from.options) choicesArray = optGroup.from.options;
+        if (Array.isArray(optGroup.from)) initialChoices = optGroup.from;
+        else if (optGroup.from.options) initialChoices = optGroup.from.options;
         else if (optGroup.from.equipment_category) {
-            choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: chooseAmount }];
-            chooseAmount = 1;
+            initialChoices = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: 1 }];
         }
     }
-    if (!choicesArray.length && optGroup.options) choicesArray = optGroup.options;
-    if (!choicesArray.length && Array.isArray(optGroup)) choicesArray = optGroup;
+    if (!initialChoices.length && optGroup.options) initialChoices = optGroup.options;
+    if (!initialChoices.length && Array.isArray(optGroup)) initialChoices = optGroup;
+
+    // Expand categories (like "Any Simple Weapon") into their individual items for the wizard UI
+    let choicesArray = [];
+    for (let c of initialChoices) {
+      let catUrl = null;
+      let qty = c.count || 1;
+      
+      if (c.option_type === "choice" && c.choice?.from?.equipment_category) {
+        catUrl = c.choice.from.equipment_category.url;
+        qty = c.choice.choose || 1;
+      } else if (c.equipment_category) {
+        catUrl = c.equipment_category.url;
+      } else if (c.option_type === "equipment_category" && c.equipment_category) {
+        catUrl = c.equipment_category.url;
+      }
+      
+      if (catUrl) {
+        const catData = await fetchAPI("https://www.dnd5eapi.co" + catUrl);
+        if (catData && catData.equipment) {
+          catData.equipment.forEach(eq => {
+            choicesArray.push({ option_type: "item", item: eq, count: qty });
+          });
+        }
+      } else {
+        choicesArray.push(c);
+      }
+    }
 
     if (!choicesArray || choicesArray.length === 0) {
       loadoutState.equipOptions.shift();
@@ -722,7 +757,7 @@ async function runLoadoutStep() {
       return;
     }
 
-    let html = `<div class="wizard-intro">Pick your starting equipment! You get to choose <strong>${chooseAmount}</strong> option(s) from this list.</div><div class="equip-options-grid">`;
+    let html = `<div class="wizard-intro">Pick your starting equipment! You get to choose <strong id="wizChooseCount">${chooseAmount}</strong> option(s) from this list.</div><div class="equip-options-grid">`;
     for (let choiceIdx = 0; choiceIdx < choicesArray.length; choiceIdx++) {
       const choice = choicesArray[choiceIdx];
       const detailsArr = await getAsyncChoiceDetails(choice);
@@ -761,7 +796,8 @@ async function runLoadoutStep() {
       chooseAmount--;
       if (chooseAmount > 0) {
         btn.closest(".choice-option-wrapper").style.display = "none"; 
-        document.querySelector(".wizard-intro strong").textContent = chooseAmount;
+        const countSpan = document.getElementById("wizChooseCount");
+        if (countSpan) countSpan.textContent = chooseAmount;
       } else {
         loadoutState.equipOptions.shift();
         runLoadoutStep();
@@ -790,7 +826,7 @@ async function runLoadoutStep() {
 
     let html = `<div class="wizard-intro">Select up to <strong>${chooseAmount}</strong> of the skills below to add them to your proficiencies!</div>`;
     html += `<div class="loadout-skill-grid">`;
-    skillChoices.forEach((skill, idx) => {
+    skillChoices.forEach((skill) => {
       const cleanName = skill.replace("Skill: ", "");
       html += `<button type="button" class="skill-toggle-btn" data-skill="${escapeHtml(skill)}">${escapeHtml(cleanName)}</button>`;
     });
@@ -899,6 +935,29 @@ classDropdown?.addEventListener("click", async (e) => {
       fetchAPI(`https://www.dnd5eapi.co/api/starting-equipment/${classIdx}`),
       fetchAPI(`https://www.dnd5eapi.co/api/classes/${classIdx}`)
     ]);
+
+    // Apply Other Proficiencies and Saves immediately!
+    if (classRes?.proficiencies) {
+      const otherProfs = classRes.proficiencies
+        .filter(p => !p.index.startsWith("skill-") && !p.index.startsWith("saving-throw-"))
+        .map(p => p.name)
+        .join(", ");
+        
+      if (otherProfs) {
+        const profBox = document.getElementById("otherProfs");
+        if (profBox) {
+          const current = profBox.value.trim();
+          profBox.value = current ? current + ", " + otherProfs : otherProfs;
+          autoExpandTextarea(profBox);
+        }
+      }
+    }
+    if (classRes?.saving_throws) {
+      classRes.saving_throws.forEach(st => {
+        const cb = document.getElementById(`save_${st.index}`);
+        if (cb) cb.checked = true;
+      });
+    }
 
     const finalEquip = equipRes1?.starting_equipment_options ? equipRes1 : equipRes2;
 
