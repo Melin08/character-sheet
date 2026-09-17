@@ -370,7 +370,6 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
 document.getElementById("helpLinkBtn")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.add("open"));
 document.getElementById("closeHelpModal")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.remove("open"));
 
-// Useful Rest Buttons
 document.getElementById("longRestBtn")?.addEventListener("click", () => {
   if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
     const maxHp = document.getElementById("maxHp")?.value || 0;
@@ -520,7 +519,6 @@ async function searchTraits(query) {
   if (traitRes && traitRes.results) combined.push(...traitRes.results);
   
   if (combined.length > 0) {
-      // Intercept and remove noisy variant fragments so they don't clutter the search results
       return combined.filter(t => !t.name.includes("Dragon Ancestor (") && !t.name.includes("Draconic Ancestry ("));
   }
   return COMMON_TRAITS.filter(t => t.name.toLowerCase().includes(query.toLowerCase()));
@@ -1047,6 +1045,7 @@ async function runLoadoutStep() {
                 updateBW(loadoutState.traitsToAdd);
                 updateBW(myCharacterTraits);
              }
+             skipDefaultPush = true; 
          } else if (traitObj.name === "Breath Weapon") {
              let dragonName = "";
              const colors = ["Black", "Blue", "Brass", "Bronze", "Copper", "Gold", "Green", "Red", "Silver", "White"];
