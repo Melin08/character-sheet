@@ -310,7 +310,6 @@ function renderCharList() {
   }).join("");
 }
 
-// Ensure event listeners are attached correctly by checking if elements exist.
 if (document.getElementById("loadBtn")) {
   document.getElementById("loadBtn").addEventListener("click", () => {
     renderCharList();
@@ -561,7 +560,10 @@ let loadoutState = {
   profOptions: [],
   weaponsList: [],
   gearList: [],
-  selectedSkills: []
+  selectedSkills: [],
+  subraceOptions: [],
+  traitChoiceOptions: [],
+  traitsToAdd: []
 };
 
 function isWeaponOrArmor(name) {
@@ -793,13 +795,28 @@ function finalizeLoadout() {
     }
   });
 
+  if (loadoutState.traitsToAdd && loadoutState.traitsToAdd.length > 0) {
+    loadoutState.traitsToAdd.forEach(t => {
+       let tDesc = Array.isArray(t.desc) ? t.desc.join("\n\n") : (t.desc || "");
+       if (!myCharacterTraits.some(existing => existing.name === t.name)) {
+           myCharacterTraits.push({
+             name: t.name,
+             type: "Racial Trait",
+             desc: tDesc,
+             isExpanded: false
+           });
+       }
+    });
+    renderMyTraits();
+  }
+
   saveSheet();
   recalculateAll();
 
   document.getElementById("choiceModalTitle").textContent = "Loadout Complete! 🎉";
   document.getElementById("choiceModalBody").innerHTML = `
     <div class="wizard-intro" style="font-size: 1.25rem; color: #34d399; font-weight: 800; padding: 1.5rem 0;">
-      Awesome! Your equipment and skills are successfully applied to your sheet!
+      Awesome! Your selections are successfully applied to your sheet!
     </div>
     <button class="btn red confirm-loadout-btn" id="finishLoadoutBtn" style="font-size: 1.25rem; padding: 1.2rem;">Let's Go!</button>
   `;
@@ -812,6 +829,161 @@ function finalizeLoadout() {
 async function runLoadoutStep() {
   const choiceModal = document.getElementById("choiceModal");
 
+  // RACE WIZARD STEP 1: SUBRACES (e.g. High Elf vs Wood Elf)
+  if (loadoutState.subraceOptions && loadoutState.subraceOptions.length > 0) {
+    document.getElementById("choiceModalTitle").textContent = "Choose your Heritage!";
+    let html = `
+      <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
+        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🧬</span>
+        Select your subrace or variant:
+      </div>
+      <div class="equip-options-grid">
+    `;
+    
+    loadoutState.subraceOptions.forEach((sub, idx) => {
+      html += `
+        <div class="choice-option-wrapper">
+          <button type="button" class="choice-option-btn subrace-btn" data-index="${idx}" data-url="${sub.url}">
+            <strong>${escapeHtml(sub.name)}</strong>
+          </button>
+        </div>
+      `;
+    });
+    html += `</div>`;
+
+    const choiceModalBody = document.getElementById("choiceModalBody");
+    choiceModalBody.innerHTML = html;
+    choiceModal.classList.add("open");
+
+    const newBody = choiceModalBody.cloneNode(true);
+    choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
+    
+    document.getElementById("choiceModalBody").addEventListener("click", async (e) => {
+      const btn = e.target.closest(".subrace-btn");
+      if (!btn) return;
+      btn.style.opacity = "0.5";
+      btn.innerHTML = "<strong style='color:#34d399;'>Loading...</strong>";
+      
+      const subUrl = btn.dataset.url;
+      const subRes = await fetchAPI("https://www.dnd5eapi.co" + subUrl);
+      
+      if (subRes) {
+        const raceInput = document.getElementById("charRace");
+        if (raceInput && !raceInput.value.includes(subRes.name)) {
+            raceInput.value = subRes.name;
+            saveSheet();
+        }
+
+        if (subRes.starting_proficiencies) {
+           subRes.starting_proficiencies.forEach(p => {
+             if (p.index.startsWith("skill-")) {
+               loadoutState.selectedSkills.push("Skill: " + p.name.replace("Skill: ", ""));
+             }
+           });
+        }
+        if (subRes.starting_proficiency_options) {
+           loadoutState.profOptions.push(subRes.starting_proficiency_options);
+        }
+
+        if (subRes.racial_traits) {
+           for (let t of subRes.racial_traits) {
+               const tData = await fetchAPI("https://www.dnd5eapi.co" + t.url);
+               if (tData) {
+                   if (tData.trait_specific && (tData.trait_specific.subtrait_options || tData.trait_specific.spell_options)) {
+                       if (!loadoutState.traitChoiceOptions) loadoutState.traitChoiceOptions = [];
+                       loadoutState.traitChoiceOptions.push(tData);
+                   } else {
+                       loadoutState.traitsToAdd.push(tData);
+                   }
+               }
+           }
+        }
+      }
+      
+      loadoutState.subraceOptions = []; 
+      runLoadoutStep();
+    });
+    return;
+  }
+
+  // RACE WIZARD STEP 2: TRAIT CHOICES (e.g. Draconic Ancestry)
+  if (loadoutState.traitChoiceOptions && loadoutState.traitChoiceOptions.length > 0) {
+    const traitObj = loadoutState.traitChoiceOptions[0];
+    document.getElementById("choiceModalTitle").textContent = `Choose: ${traitObj.name}`;
+    
+    let choiceData = traitObj.trait_specific?.subtrait_options || traitObj.trait_specific?.spell_options || traitObj.trait_specific?.damage_type_options || traitObj.trait_specific?.choice || traitObj.trait_specific?.breath_weapon_options;
+    
+    let optionsArr = [];
+    if (choiceData && choiceData.from && choiceData.from.options) {
+         optionsArr = choiceData.from.options;
+    }
+
+    if (optionsArr.length === 0) {
+        loadoutState.traitsToAdd.push(traitObj);
+        loadoutState.traitChoiceOptions.shift();
+        runLoadoutStep();
+        return;
+    }
+
+    let html = `
+      <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
+        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🐉</span>
+        Select your ${escapeHtml(traitObj.name)} variant:
+      </div>
+      <div class="equip-options-grid">
+    `;
+    
+    optionsArr.forEach((opt, idx) => {
+      let name = opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || "Variant " + (idx+1);
+      let url = opt.item?.url || opt.trait?.url || null; 
+      html += `
+        <div class="choice-option-wrapper">
+          <button type="button" class="choice-option-btn trait-variant-btn" data-index="${idx}" data-name="${escapeHtml(name)}" data-url="${url || ''}">
+            <strong>${escapeHtml(name)}</strong>
+          </button>
+        </div>
+      `;
+    });
+    html += `</div>`;
+
+    const choiceModalBody = document.getElementById("choiceModalBody");
+    choiceModalBody.innerHTML = html;
+    choiceModal.classList.add("open");
+
+    const newBody = choiceModalBody.cloneNode(true);
+    choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
+    
+    document.getElementById("choiceModalBody").addEventListener("click", async (e) => {
+      const btn = e.target.closest(".trait-variant-btn");
+      if (!btn) return;
+      btn.style.opacity = "0.5";
+      btn.innerHTML = "<strong style='color:#34d399;'>Loading...</strong>";
+      
+      let selectedName = btn.dataset.name;
+      let selectedUrl = btn.dataset.url;
+      let traitDesc = Array.isArray(traitObj.desc) ? traitObj.desc.join("\n") : (traitObj.desc || "");
+      
+      if (selectedUrl) {
+         const subT = await fetchAPI("https://www.dnd5eapi.co" + selectedUrl);
+         if (subT && subT.desc) {
+             traitDesc += "\n\n" + (Array.isArray(subT.desc) ? subT.desc.join("\n") : subT.desc);
+         }
+      } else {
+         traitDesc += `\n\nSelected Variant: ${selectedName}`;
+      }
+
+      loadoutState.traitsToAdd.push({
+         name: `${traitObj.name} (${selectedName})`,
+         desc: traitDesc
+      });
+      
+      loadoutState.traitChoiceOptions.shift();
+      runLoadoutStep();
+    });
+    return;
+  }
+
+  // CLASS WIZARD STEP 1: EQUIPMENT
   if (loadoutState.equipOptions.length > 0) {
     const optGroup = loadoutState.equipOptions[0];
     let chooseAmount = optGroup.choose || 1;
@@ -880,7 +1052,7 @@ async function runLoadoutStep() {
 
       html += `
         <div class="choice-option-wrapper">
-          <button type="button" class="choice-option-btn" data-opt-index="${choiceIdx}">${label}</button>
+          <button type="button" class="choice-option-btn gear-choice-btn" data-opt-index="${choiceIdx}">${label}</button>
         </div>
       `;
     }
@@ -892,7 +1064,7 @@ async function runLoadoutStep() {
     const newBody = choiceModalBody.cloneNode(true);
     choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
     document.getElementById("choiceModalBody").addEventListener("click", async (e) => {
-      const btn = e.target.closest(".choice-option-btn");
+      const btn = e.target.closest(".gear-choice-btn");
       if (!btn) return;
 
       btn.style.opacity = "0.5";
@@ -942,7 +1114,7 @@ async function runLoadoutStep() {
     return;
   }
 
-  // Step 2: Skill Proficiencies
+  // WIZARD STEP: SKILL PROFICIENCIES
   if (loadoutState.profOptions.length > 0) {
     const profGroup = loadoutState.profOptions[0];
     const chooseAmount = profGroup.choose || 1;
@@ -1107,7 +1279,10 @@ classDropdown?.addEventListener("click", async (e) => {
       profOptions: classRes?.proficiency_choices || [],
       weaponsList: [],
       gearList: [],
-      selectedSkills: []
+      selectedSkills: [],
+      subraceOptions: [],
+      traitChoiceOptions: [],
+      traitsToAdd: []
     };
 
     if (finalEquip?.starting_equipment_options) {
@@ -1134,12 +1309,55 @@ classDropdown?.addEventListener("click", async (e) => {
   }
 });
 
-raceDropdown?.addEventListener("click", (e) => {
+raceDropdown?.addEventListener("click", async (e) => {
   const item = e.target.closest(".dropdown-item");
   if (!item) return;
   raceInput.value = item.dataset.name;
   raceDropdown.classList.remove("open");
   saveSheet();
+
+  const raceIdx = item.dataset.index;
+  if (raceIdx) {
+    document.getElementById("choiceModalTitle").textContent = `Setting up your ${item.dataset.name}...`;
+    document.getElementById("choiceModalBody").innerHTML = `<div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center;">We're grabbing your racial traits from the database! Hang tight...</div><p class="loading-text">Fetching loadout options...</p>`;
+    document.getElementById("choiceModal").classList.add("open");
+
+    const raceRes = await fetchAPI(`https://www.dnd5eapi.co/api/races/${raceIdx}`);
+
+    loadoutState = {
+      equipOptions: [],
+      profOptions: raceRes?.starting_proficiency_options ? [raceRes.starting_proficiency_options] : [],
+      weaponsList: [],
+      gearList: [],
+      selectedSkills: [],
+      subraceOptions: raceRes?.subraces && raceRes.subraces.length > 0 ? [...raceRes.subraces] : [],
+      traitChoiceOptions: [],
+      traitsToAdd: []
+    };
+
+    if (raceRes?.starting_proficiencies) {
+       raceRes.starting_proficiencies.forEach(p => {
+         if (p.index.startsWith("skill-")) {
+           loadoutState.selectedSkills.push("Skill: " + p.name.replace("Skill: ", ""));
+         }
+       });
+    }
+
+    if (raceRes?.traits) {
+       for (let t of raceRes.traits) {
+           const tData = await fetchAPI("https://www.dnd5eapi.co" + t.url);
+           if (tData) {
+               if (tData.trait_specific && (tData.trait_specific.subtrait_options || tData.trait_specific.spell_options || tData.trait_specific.damage_type_options || tData.trait_specific.choice)) {
+                   loadoutState.traitChoiceOptions.push(tData);
+               } else {
+                   loadoutState.traitsToAdd.push(tData);
+               }
+           }
+       }
+    }
+
+    runLoadoutStep();
+  }
 });
 
 document.addEventListener("click", (e) => {
