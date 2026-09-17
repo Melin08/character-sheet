@@ -68,6 +68,70 @@ const DRAGON_ANCESTRY_MAP = {
   "White": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" }
 };
 
+// Hardcoded Non-SRD Subraces
+const EXTENDED_SUBRACES = {
+  "elf": [
+    { name: "Wood Elf", url: "custom_wood_elf" },
+    { name: "Dark Elf (Drow)", url: "custom_drow" }
+  ],
+  "dwarf": [
+    { name: "Mountain Dwarf", url: "custom_mountain_dwarf" }
+  ],
+  "halfling": [
+    { name: "Stout Halfling", url: "custom_stout_halfling" }
+  ],
+  "gnome": [
+    { name: "Forest Gnome", url: "custom_forest_gnome" }
+  ]
+};
+
+const CUSTOM_SUBRACE_DATA = {
+  "custom_wood_elf": {
+    name: "Wood Elf",
+    speed: 35,
+    traits: [
+      { name: "Fleet of Foot", desc: "Your base walking speed increases to 35 feet." },
+      { name: "Mask of the Wild", desc: "You can attempt to hide even when you are only lightly obscured by foliage, heavy rain, falling snow, mist, and other natural phenomena." }
+    ],
+    profs: "Weapons: Longsword, Shortsword, Shortbow, Longbow"
+  },
+  "custom_drow": {
+    name: "Dark Elf (Drow)",
+    traits: [
+      { name: "Superior Darkvision", desc: "Your darkvision has a radius of 120 feet." },
+      { name: "Sunlight Sensitivity", desc: "You have disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight when you, the target of your attack, or whatever you are trying to perceive is in direct sunlight." },
+      { name: "Drow Magic", desc: "You know the dancing lights cantrip. When you reach 3rd level, you can cast the faerie fire spell once per day. When you reach 5th level, you can also cast the darkness spell once per day. Charisma is your spellcasting ability for these spells." }
+    ],
+    profs: "Weapons: Rapier, Shortsword, Hand Crossbow",
+    spells: [
+        { name: "Dancing Lights (Drow Magic)", type: "Cantrip", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "You create up to four torch-sized lights within range, making them appear as torches, lanterns, or glowing orbs that hover in the air for the duration." }
+    ]
+  },
+  "custom_mountain_dwarf": {
+    name: "Mountain Dwarf",
+    traits: [
+      { name: "Dwarven Armor Training", desc: "You have proficiency with light and medium armor." }
+    ],
+    profs: "Armor: Light Armor, Medium Armor"
+  },
+  "custom_stout_halfling": {
+    name: "Stout Halfling",
+    traits: [
+      { name: "Stout Resilience", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." }
+    ]
+  },
+  "custom_forest_gnome": {
+    name: "Forest Gnome",
+    traits: [
+      { name: "Natural Illusionist", desc: "You know the minor illusion cantrip. Intelligence is your spellcasting ability for it." },
+      { name: "Speak with Small Beasts", desc: "Through sounds and gestures, you can communicate simple ideas with Small or smaller beasts." }
+    ],
+    spells: [
+        { name: "Minor Illusion (Natural Illusionist)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "You create a sound or an image of an object within range that lasts for the duration." }
+    ]
+  }
+};
+
 function escapeHtml(str) {
   if (typeof str !== "string") return "";
   return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -896,8 +960,45 @@ async function runLoadoutStep() {
       }
 
       const subUrl = btn.dataset.url;
-      const subRes = await fetchAPI("https://www.dnd5eapi.co" + subUrl);
       
+      if (subUrl.startsWith("custom_")) {
+          const customData = CUSTOM_SUBRACE_DATA[subUrl];
+          const raceInput = document.getElementById("charRace");
+          if (raceInput) {
+              raceInput.value = customData.name;
+              saveSheet();
+          }
+          if (customData.speed) {
+              const speedInp = document.getElementById("charSpeed");
+              if (speedInp) speedInp.value = customData.speed;
+          }
+          if (customData.traits) {
+              customData.traits.forEach(t => {
+                  loadoutState.traitsToAdd.push({
+                      name: t.name,
+                      type: "Racial Trait",
+                      desc: t.desc
+                  });
+              });
+          }
+          if (customData.profs) {
+              const profBox = document.getElementById("otherProfs");
+              if (profBox) {
+                 const current = profBox.value.trim();
+                 profBox.value = current ? current + "\n\n" + customData.profs : customData.profs;
+                 autoExpandTextarea(profBox);
+              }
+          }
+          if (customData.spells) {
+              customData.spells.forEach(s => loadoutState.spellsToAdd.push(s));
+          }
+          
+          loadoutState.subraceOptions = []; 
+          runLoadoutStep();
+          return;
+      }
+
+      const subRes = await fetchAPI("https://www.dnd5eapi.co" + subUrl);
       if (subRes) {
         const raceInput = document.getElementById("charRace");
         if (raceInput && !raceInput.value.includes(subRes.name)) {
@@ -1435,6 +1536,12 @@ raceDropdown?.addEventListener("click", async (e) => {
             { name: `Base ${raceRes.name} (No Subrace)`, url: "base", isBase: true },
             ...raceRes.subraces
         ];
+    } else if (EXTENDED_SUBRACES[raceIdx]) {
+        subOpts = [{ name: `Base ${raceRes.name} (No Subrace)`, url: "base", isBase: true }];
+    }
+
+    if (EXTENDED_SUBRACES[raceIdx]) {
+        subOpts.push(...EXTENDED_SUBRACES[raceIdx]);
     }
 
     loadoutState = {
