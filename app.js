@@ -55,6 +55,19 @@ const SKILL_MAP = {
   "Skill: Sleight of Hand": "cb_slt_p", "Skill: Stealth": "cb_ste_p", "Skill: Survival": "cb_surv_p"
 };
 
+const DRAGON_ANCESTRY_MAP = {
+  "Black": { damage: "Acid", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Blue": { damage: "Lightning", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Brass": { damage: "Fire", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Bronze": { damage: "Lightning", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Copper": { damage: "Acid", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Gold": { damage: "Fire", breath: "15 ft. cone", save: "Dexterity" },
+  "Green": { damage: "Poison", breath: "15 ft. cone", save: "Constitution" },
+  "Red": { damage: "Fire", breath: "15 ft. cone", save: "Dexterity" },
+  "Silver": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" },
+  "White": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" }
+};
+
 function escapeHtml(str) {
   if (typeof str !== "string") return "";
   return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -357,7 +370,6 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
 document.getElementById("helpLinkBtn")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.add("open"));
 document.getElementById("closeHelpModal")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.remove("open"));
 
-// Useful Rest Buttons
 document.getElementById("longRestBtn")?.addEventListener("click", () => {
   if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
     const maxHp = document.getElementById("maxHp")?.value || 0;
@@ -563,7 +575,8 @@ let loadoutState = {
   selectedSkills: [],
   subraceOptions: [],
   traitChoiceOptions: [],
-  traitsToAdd: []
+  traitsToAdd: [],
+  isSingleAbility: false
 };
 
 function isWeaponOrArmor(name) {
@@ -798,13 +811,16 @@ function finalizeLoadout() {
   if (loadoutState.traitsToAdd && loadoutState.traitsToAdd.length > 0) {
     loadoutState.traitsToAdd.forEach(t => {
        let tDesc = Array.isArray(t.desc) ? t.desc.join("\n\n") : (t.desc || "");
-       if (!myCharacterTraits.some(existing => existing.name === t.name)) {
+       let existing = myCharacterTraits.find(ex => ex.name === t.name);
+       if (!existing) {
            myCharacterTraits.push({
              name: t.name,
-             type: "Racial Trait",
+             type: t.type || "Trait / Feature",
              desc: tDesc,
              isExpanded: false
            });
+       } else {
+           existing.desc = tDesc; 
        }
     });
     renderMyTraits();
@@ -813,12 +829,12 @@ function finalizeLoadout() {
   saveSheet();
   recalculateAll();
 
-  document.getElementById("choiceModalTitle").textContent = "Loadout Complete! 🎉";
+  document.getElementById("choiceModalTitle").textContent = loadoutState.isSingleAbility ? "Ability Added! 🎉" : "Loadout Complete! 🎉";
   document.getElementById("choiceModalBody").innerHTML = `
     <div class="wizard-intro" style="font-size: 1.25rem; color: #34d399; font-weight: 800; padding: 1.5rem 0;">
-      Awesome! Your selections are successfully applied to your sheet!
+      Awesome! Your ${loadoutState.isSingleAbility ? 'ability variant was' : 'selections are'} successfully applied to your sheet!
     </div>
-    <button class="btn red confirm-loadout-btn" id="finishLoadoutBtn" style="font-size: 1.25rem; padding: 1.2rem;">Let's Go!</button>
+    <button class="btn red confirm-loadout-btn" id="finishLoadoutBtn" style="font-size: 1.25rem; padding: 1.2rem;">${loadoutState.isSingleAbility ? 'Done' : 'Let\'s Go!'}</button>
   `;
 
   document.getElementById("finishLoadoutBtn")?.addEventListener("click", () => {
@@ -889,7 +905,8 @@ async function runLoadoutStep() {
            for (let t of subRes.racial_traits) {
                const tData = await fetchAPI("https://www.dnd5eapi.co" + t.url);
                if (tData) {
-                   if (tData.trait_specific && (tData.trait_specific.subtrait_options || tData.trait_specific.spell_options)) {
+                   let specific = tData.trait_specific || tData.feature_specific || tData.choice;
+                   if (specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from)) {
                        if (!loadoutState.traitChoiceOptions) loadoutState.traitChoiceOptions = [];
                        loadoutState.traitChoiceOptions.push(tData);
                    } else {
@@ -906,12 +923,12 @@ async function runLoadoutStep() {
     return;
   }
 
-  // RACE WIZARD STEP 2: TRAIT CHOICES (e.g. Draconic Ancestry)
+  // RACE WIZARD STEP 2: TRAIT CHOICES (e.g. Draconic Ancestry, Fighting Styles, etc.)
   if (loadoutState.traitChoiceOptions && loadoutState.traitChoiceOptions.length > 0) {
     const traitObj = loadoutState.traitChoiceOptions[0];
-    document.getElementById("choiceModalTitle").textContent = `Choose: ${traitObj.name}`;
+    document.getElementById("choiceModalTitle").textContent = `Choose Variant: ${traitObj.name}`;
     
-    let choiceData = traitObj.trait_specific?.subtrait_options || traitObj.trait_specific?.spell_options || traitObj.trait_specific?.damage_type_options || traitObj.trait_specific?.choice || traitObj.trait_specific?.breath_weapon_options;
+    let choiceData = traitObj.trait_specific?.subtrait_options || traitObj.trait_specific?.spell_options || traitObj.trait_specific?.damage_type_options || traitObj.trait_specific?.choice || traitObj.trait_specific?.breath_weapon_options || traitObj.feature_specific?.subfeature_options || traitObj.feature_specific?.expertise_options || traitObj.feature_specific?.choice || (traitObj.trait_specific?.from ? traitObj.trait_specific : null) || (traitObj.feature_specific?.from ? traitObj.feature_specific : null) || traitObj.choice;
     
     let optionsArr = [];
     if (choiceData && choiceData.from && choiceData.from.options) {
@@ -927,15 +944,15 @@ async function runLoadoutStep() {
 
     let html = `
       <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
-        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🐉</span>
+        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">✨</span>
         Select your ${escapeHtml(traitObj.name)} variant:
       </div>
       <div class="equip-options-grid">
     `;
     
     optionsArr.forEach((opt, idx) => {
-      let name = opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || "Variant " + (idx+1);
-      let url = opt.item?.url || opt.trait?.url || null; 
+      let name = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
+      let url = opt.item?.url || opt.trait?.url || opt.feature?.url || null; 
       html += `
         <div class="choice-option-wrapper">
           <button type="button" class="choice-option-btn trait-variant-btn" data-index="${idx}" data-name="${escapeHtml(name)}" data-url="${url || ''}">
@@ -974,9 +991,32 @@ async function runLoadoutStep() {
 
       loadoutState.traitsToAdd.push({
          name: `${traitObj.name} (${selectedName})`,
+         type: traitObj.url?.includes("/features/") ? "Class Feature" : "Racial Trait",
          desc: traitDesc
       });
       
+      // Specialized interceptor to modify Dragonborn's Breath Weapon
+      if (traitObj.name === "Draconic Ancestry") {
+          let dragonName = selectedName.replace(/dragon/i, "").trim().split(" ")[0];
+          let dragon = DRAGON_ANCESTRY_MAP[dragonName] || DRAGON_ANCESTRY_MAP[selectedName];
+          if (dragon) {
+             let updateBW = (targetArray) => {
+                 let bw = targetArray.find(t => t.name.startsWith("Breath Weapon"));
+                 if (bw) {
+                     bw.name = `Breath Weapon (${dragon.damage})`;
+                     bw.desc = `You can use your action to exhale destructive energy. It is a ${dragon.breath} dealing ${dragon.damage} damage. When you use your breath weapon, each creature in the area of the exhalation must make a ${dragon.save} saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level. After you use your breath weapon, you can't use it again until you complete a short or long rest.`;
+                 }
+                 let dr = targetArray.find(t => t.name.startsWith("Damage Resistance"));
+                 if (dr) {
+                     dr.name = `Damage Resistance (${dragon.damage})`;
+                     dr.desc = `You have resistance to the damage type associated with your draconic ancestry (${dragon.damage}).`;
+                 }
+             };
+             updateBW(loadoutState.traitsToAdd);
+             updateBW(myCharacterTraits);
+          }
+      }
+
       loadoutState.traitChoiceOptions.shift();
       runLoadoutStep();
     });
@@ -1282,7 +1322,8 @@ classDropdown?.addEventListener("click", async (e) => {
       selectedSkills: [],
       subraceOptions: [],
       traitChoiceOptions: [],
-      traitsToAdd: []
+      traitsToAdd: [],
+      isSingleAbility: false
     };
 
     if (finalEquip?.starting_equipment_options) {
@@ -1332,8 +1373,14 @@ raceDropdown?.addEventListener("click", async (e) => {
       selectedSkills: [],
       subraceOptions: raceRes?.subraces && raceRes.subraces.length > 0 ? [...raceRes.subraces] : [],
       traitChoiceOptions: [],
-      traitsToAdd: []
+      traitsToAdd: [],
+      isSingleAbility: false
     };
+
+    if (raceRes?.speed) {
+      const speedInp = document.getElementById("charSpeed");
+      if (speedInp) speedInp.value = raceRes.speed;
+    }
 
     if (raceRes?.starting_proficiencies) {
        raceRes.starting_proficiencies.forEach(p => {
@@ -1347,7 +1394,8 @@ raceDropdown?.addEventListener("click", async (e) => {
        for (let t of raceRes.traits) {
            const tData = await fetchAPI("https://www.dnd5eapi.co" + t.url);
            if (tData) {
-               if (tData.trait_specific && (tData.trait_specific.subtrait_options || tData.trait_specific.spell_options || tData.trait_specific.damage_type_options || tData.trait_specific.choice)) {
+               let specific = tData.trait_specific || tData.feature_specific || tData.choice;
+               if (specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from)) {
                    loadoutState.traitChoiceOptions.push(tData);
                } else {
                    loadoutState.traitsToAdd.push(tData);
@@ -1524,10 +1572,33 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
   const badge = row.querySelector(".spell-add-badge");
   if (badge) badge.textContent = "Adding...";
 
-  let finalDesc = "Description not available.";
+  let detail = null;
   if (row.dataset.url) {
-    const detail = await fetchAPI("https://www.dnd5eapi.co" + row.dataset.url);
-    if (detail) finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || "");
+    detail = await fetchAPI("https://www.dnd5eapi.co" + row.dataset.url);
+  }
+
+  let hasVariants = false;
+  let specific = detail?.trait_specific || detail?.feature_specific || detail?.choice;
+  if (specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from)) {
+      hasVariants = true;
+  }
+
+  if (hasVariants) {
+      loadoutState = {
+          equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [], subraceOptions: [],
+          traitChoiceOptions: [detail],
+          traitsToAdd: [],
+          isSingleAbility: true
+      };
+      document.getElementById("traitModal")?.classList.remove("open");
+      if (badge) badge.textContent = "+ Add";
+      runLoadoutStep();
+      return;
+  }
+
+  let finalDesc = "Description not available.";
+  if (detail) {
+    finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || "");
   }
 
   myCharacterTraits.push({
@@ -1867,13 +1938,6 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
   reader.readAsText(file);
 });
 
-// Fix modal clicks trapping buttons
-document.addEventListener("click", (e) => {
-  if (e.target.classList.contains("modal-backdrop") || e.target.classList.contains("modal-close-btn")) {
-    e.target.closest('.modal-backdrop')?.classList.remove("open");
-  }
-});
-
 document.addEventListener("input", (e) => {
   if (e.target.classList.contains("save-field")) {
     recalculateAll();
@@ -1886,6 +1950,5 @@ document.getElementById("loadBtn")?.addEventListener("click", () => {
   document.getElementById("loadModal")?.classList.add("open");
 });
 
-// Init
 loadSheet();
 renderMyTraits();
