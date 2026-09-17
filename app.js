@@ -370,6 +370,7 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
 document.getElementById("helpLinkBtn")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.add("open"));
 document.getElementById("closeHelpModal")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.remove("open"));
 
+// Useful Rest Buttons
 document.getElementById("longRestBtn")?.addEventListener("click", () => {
   if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
     const maxHp = document.getElementById("maxHp")?.value || 0;
@@ -866,7 +867,7 @@ async function runLoadoutStep() {
     loadoutState.subraceOptions.forEach((sub, idx) => {
       html += `
         <div class="choice-option-wrapper">
-          <button type="button" class="choice-option-btn subrace-btn" data-index="${idx}" data-url="${sub.url}">
+          <button type="button" class="choice-option-btn subrace-btn" data-index="${idx}" data-url="${sub.url || ''}" data-isbase="${sub.isBase ? 'true' : 'false'}">
             <strong>${escapeHtml(sub.name)}</strong>
           </button>
         </div>
@@ -887,6 +888,13 @@ async function runLoadoutStep() {
       btn.style.opacity = "0.5";
       btn.innerHTML = "<strong style='color:#34d399;'>Loading...</strong>";
       
+      const isBase = btn.dataset.isbase === "true";
+      if (isBase) {
+          loadoutState.subraceOptions = []; 
+          runLoadoutStep();
+          return;
+      }
+
       const subUrl = btn.dataset.url;
       const subRes = await fetchAPI("https://www.dnd5eapi.co" + subUrl);
       
@@ -1421,13 +1429,21 @@ raceDropdown?.addEventListener("click", async (e) => {
 
     const raceRes = await fetchAPI(`https://www.dnd5eapi.co/api/races/${raceIdx}`);
 
+    let subOpts = [];
+    if (raceRes?.subraces && raceRes.subraces.length > 0) {
+        subOpts = [
+            { name: `Base ${raceRes.name} (No Subrace)`, url: "base", isBase: true },
+            ...raceRes.subraces
+        ];
+    }
+
     loadoutState = {
       equipOptions: [],
       profOptions: raceRes?.starting_proficiency_options ? [raceRes.starting_proficiency_options] : [],
       weaponsList: [],
       gearList: [],
       selectedSkills: [],
-      subraceOptions: raceRes?.subraces && raceRes.subraces.length > 0 ? [...raceRes.subraces] : [],
+      subraceOptions: subOpts,
       traitChoiceOptions: [],
       traitsToAdd: [],
       spellsToAdd: [],
