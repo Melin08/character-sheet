@@ -613,7 +613,10 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
 document.getElementById("helpLinkBtn")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.add("open"));
 document.getElementById("closeHelpModal")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.remove("open"));
 
-// Rest Buttons
+document.getElementById("skipSetupBtn")?.addEventListener("click", () => {
+    document.getElementById("choiceModal")?.classList.remove("open");
+});
+
 document.getElementById("longRestBtn")?.addEventListener("click", () => {
   if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
     const maxHp = document.getElementById("maxHp")?.value || 0;
@@ -726,10 +729,6 @@ document.addEventListener("click", (e) => {
   }
 });
 
-/* =========================================================
-   DYNAMIC API CACHE, SEARCH ENGINE & STEP-BY-STEP LOADOUT
-   ========================================================= */
-
 const apiCache = {};
 
 async function fetchAPI(url) {
@@ -831,7 +830,8 @@ let loadoutState = {
   traitChoiceOptions: [],
   traitsToAdd: [],
   spellsToAdd: [],
-  isSingleAbility: false
+  isSingleAbility: false,
+  history: []
 };
 
 async function formatItemWithStats(name, url, count) {
@@ -1099,6 +1099,56 @@ function finalizeLoadout() {
   });
 }
 
+function showClassConfirmation() {
+    let weps = loadoutState.weaponsList.map(w => w.name).join(", ");
+    let gear = loadoutState.gearList.join(", ");
+    let skills = loadoutState.selectedSkills.map(s => s.replace("Skill: ", "")).join(", ");
+    let spells = loadoutState.spellsToAdd.map(s => s.name).join(", ");
+    let traits = loadoutState.traitsToAdd.map(t => t.name).join(", ");
+
+    let summaryHtml = `<div style="text-align: left; background: #0d1322; padding: 1.25rem; border-radius: 8px; border: 1.5px solid #1e293b; color: #cbd5e1; margin-bottom: 1.5rem; font-size: 0.95rem; line-height: 1.6;">`;
+    if (weps) summaryHtml += `<p><strong style="color:#f8fafc;">Weapons:</strong> ${weps}</p>`;
+    if (gear) summaryHtml += `<p><strong style="color:#f8fafc;">Gear:</strong> ${gear}</p>`;
+    if (skills) summaryHtml += `<p><strong style="color:#f8fafc;">Skills:</strong> ${skills}</p>`;
+    if (spells) summaryHtml += `<p><strong style="color:#f8fafc;">Spells:</strong> ${spells}</p>`;
+    if (traits) summaryHtml += `<p><strong style="color:#f8fafc;">Features:</strong> ${traits}</p>`;
+    if (!weps && !gear && !skills && !spells && !traits) {
+        summaryHtml += `<p>No additional selections made.</p>`;
+    }
+    summaryHtml += `</div>`;
+
+    let html = `
+      <div class="wizard-intro" style="font-size: 1.15rem; color: #f8fafc; text-align: center; margin-bottom: 1rem;">
+        Ready to confirm your selections?
+      </div>
+      ${summaryHtml}
+      <div style="display: flex; gap: 1rem;">
+         ${loadoutState.history && loadoutState.history.length > 0 ? `<button class="btn gray" id="backClassBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem; background: #475569; border-radius: 6px; color: #ffffff; cursor: pointer; border: none; font-weight: 600;">Back</button>` : ''}
+         <button class="btn red" id="confirmClassBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem;">Confirm Loadout</button>
+      </div>
+    `;
+
+    document.getElementById("choiceModalTitle").textContent = `Confirm Loadout`;
+    const choiceModalBody = document.getElementById("choiceModalBody");
+    choiceModalBody.innerHTML = html;
+
+    const newBody = choiceModalBody.cloneNode(true);
+    choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
+
+    newBody.addEventListener("click", (e) => {
+        if (e.target.id === "backClassBtn") {
+            if (loadoutState.history && loadoutState.history.length > 0) {
+                loadoutState = JSON.parse(loadoutState.history.pop());
+                runLoadoutStep();
+            }
+        } else if (e.target.id === "confirmClassBtn") {
+            e.target.innerHTML = "<strong style='color:#34d399;'>Applying...</strong>";
+            e.target.disabled = true;
+            finalizeLoadout();
+        }
+    });
+}
+
 function showRaceConfirmation(raceRes, subRes, onBack) {
     let combinedSpeed = subRes?.speed || raceRes?.speed || 30;
     
@@ -1192,7 +1242,8 @@ function showRaceConfirmation(raceRes, subRes, onBack) {
               traitChoiceOptions: [],
               traitsToAdd: [],
               spellsToAdd: [],
-              isSingleAbility: false
+              isSingleAbility: false,
+              history: []
             };
 
             if (raceRes?.starting_proficiency_options) loadoutState.profOptions.push(raceRes.starting_proficiency_options);
@@ -1258,8 +1309,16 @@ function showRaceConfirmation(raceRes, subRes, onBack) {
 }
 
 async function runLoadoutStep() {
+  const snap = JSON.stringify(loadoutState);
+  const advance = () => {
+     loadoutState.history = loadoutState.history || [];
+     loadoutState.history.push(snap);
+     runLoadoutStep();
+  };
+
   const choiceModal = document.getElementById("choiceModal");
 
+  // WIZARD STEP: TRAIT CHOICES
   if (loadoutState.traitChoiceOptions && loadoutState.traitChoiceOptions.length > 0) {
     const traitObj = loadoutState.traitChoiceOptions[0];
     const isSpell = traitObj.isSpell;
@@ -1277,7 +1336,7 @@ async function runLoadoutStep() {
     if (optionsArr.length === 0) {
         if (!isSpell) loadoutState.traitsToAdd.push(traitObj);
         loadoutState.traitChoiceOptions.shift();
-        runLoadoutStep();
+        advance();
         return;
     }
 
@@ -1402,12 +1461,12 @@ async function runLoadoutStep() {
       }
 
       loadoutState.traitChoiceOptions.shift();
-      runLoadoutStep();
+      advance();
     });
     return;
   }
 
-  // CLASS WIZARD STEP 1: EQUIPMENT
+  // CLASS WIZARD STEP: EQUIPMENT
   if (loadoutState.equipOptions.length > 0) {
     const optGroup = loadoutState.equipOptions[0];
     let chooseAmount = optGroup.choose || 1;
@@ -1436,7 +1495,7 @@ async function runLoadoutStep() {
 
     if (!choicesArray || choicesArray.length === 0) {
       loadoutState.equipOptions.shift();
-      runLoadoutStep();
+      advance();
       return;
     }
 
@@ -1456,7 +1515,7 @@ async function runLoadoutStep() {
         });
         loadoutState.equipOptions.unshift(...normalizedSteps);
       }
-      runLoadoutStep();
+      advance();
       return;
     }
 
@@ -1532,7 +1591,7 @@ async function runLoadoutStep() {
           });
           loadoutState.equipOptions.unshift(...normalizedSteps);
         }
-        runLoadoutStep();
+        advance();
       }
     });
     return;
@@ -1552,7 +1611,7 @@ async function runLoadoutStep() {
 
     if (skillChoices.length === 0) {
       loadoutState.profOptions.shift();
-      runLoadoutStep();
+      advance();
       return;
     }
 
@@ -1597,20 +1656,19 @@ async function runLoadoutStep() {
         if (currentSelections.length === 0 && !confirm("You haven't selected any skills! Are you sure you want to skip this?")) return;
         loadoutState.selectedSkills.push(...currentSelections);
         loadoutState.profOptions.shift();
-        runLoadoutStep();
+        advance();
       }
     });
     return;
   }
 
-  finalizeLoadout();
+  showClassConfirmation();
 }
 
 document.getElementById("closeChoiceModal")?.addEventListener("click", () => {
   document.getElementById("choiceModal")?.classList.remove("open");
 });
 
-/* --- Dropdowns --- */
 const classInput = document.getElementById("charClass");
 const classDropdown = document.getElementById("classDropdown");
 const raceInput = document.getElementById("charRace");
@@ -1678,7 +1736,7 @@ classDropdown?.addEventListener("click", async (e) => {
       const nonSkillProfs = [];
       classRes.proficiencies.forEach(p => {
           if (p.name && p.name.startsWith("Skill:")) {
-              loadoutState.selectedSkills.push(p.name);
+              // we grab skills via choice menus usually, but static ones go here
           } else if (!(p.index && p.index.startsWith("saving-throw-"))) {
               nonSkillProfs.push(p.name);
           }
@@ -1736,7 +1794,8 @@ classDropdown?.addEventListener("click", async (e) => {
       traitChoiceOptions: [],
       traitsToAdd: [],
       spellsToAdd: [],
-      isSingleAbility: false
+      isSingleAbility: false,
+      history: []
     };
 
     if (finalEquip?.starting_equipment_options) {
@@ -2044,7 +2103,8 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
           equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [], traitsToAdd: [],
           traitChoiceOptions: [{ ...detail, isSpell: true }],
           spellsToAdd: [],
-          isSingleAbility: true
+          isSingleAbility: true,
+          history: []
       };
       document.getElementById("traitModal")?.classList.remove("open");
       if (badge) badge.textContent = "+ Add";
@@ -2294,7 +2354,8 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
           equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [], traitsToAdd: [],
           traitChoiceOptions: [{ ...detail, isSpell: true }],
           spellsToAdd: [],
-          isSingleAbility: true
+          isSingleAbility: true,
+          history: []
       };
       document.getElementById("spellModal")?.classList.remove("open");
       if (badge) badge.textContent = "+ Add";
