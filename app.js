@@ -613,6 +613,7 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
 document.getElementById("helpLinkBtn")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.add("open"));
 document.getElementById("closeHelpModal")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.remove("open"));
 
+// Rest Buttons
 document.getElementById("longRestBtn")?.addEventListener("click", () => {
   if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
     const maxHp = document.getElementById("maxHp")?.value || 0;
@@ -724,6 +725,10 @@ document.addEventListener("click", (e) => {
     addDiceHistory(`${label} (${roll} ${sign})`, total);
   }
 });
+
+/* =========================================================
+   DYNAMIC API CACHE, SEARCH ENGINE & STEP-BY-STEP LOADOUT
+   ========================================================= */
 
 const apiCache = {};
 
@@ -1094,7 +1099,7 @@ function finalizeLoadout() {
   });
 }
 
-function showRaceConfirmation(raceRes, subRes) {
+function showRaceConfirmation(raceRes, subRes, onBack) {
     let combinedSpeed = subRes?.speed || raceRes?.speed || 30;
     
     let combinedASIs = [];
@@ -1139,6 +1144,7 @@ function showRaceConfirmation(raceRes, subRes) {
       </div>
       ${summaryHtml}
       <div style="display: flex; gap: 1rem;">
+         ${onBack ? `<button class="btn gray" id="backRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem; background: #475569; border-radius: 6px; color: #ffffff; cursor: pointer; border: none; font-weight: 600;">Back</button>` : ''}
          <button class="btn gray" id="cancelRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem; background: #3b4c68; border-radius: 6px; color: #ffffff; cursor: pointer; border: none; font-weight: 600;">Cancel</button>
          <button class="btn red" id="confirmRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem;">Confirm ${finalName}</button>
       </div>
@@ -1154,6 +1160,8 @@ function showRaceConfirmation(raceRes, subRes) {
     newBody.addEventListener("click", async (e) => {
         if (e.target.id === "cancelRaceBtn") {
             document.getElementById("choiceModal").classList.remove("open");
+        } else if (e.target.id === "backRaceBtn" && onBack) {
+            onBack();
         } else if (e.target.id === "confirmRaceBtn") {
             e.target.innerHTML = "<strong style='color:#34d399;'>Applying...</strong>";
             e.target.disabled = true;
@@ -1399,6 +1407,7 @@ async function runLoadoutStep() {
     return;
   }
 
+  // CLASS WIZARD STEP 1: EQUIPMENT
   if (loadoutState.equipOptions.length > 0) {
     const optGroup = loadoutState.equipOptions[0];
     let chooseAmount = optGroup.choose || 1;
@@ -1529,6 +1538,7 @@ async function runLoadoutStep() {
     return;
   }
 
+  // WIZARD STEP: SKILL PROFICIENCIES
   if (loadoutState.profOptions.length > 0) {
     const profGroup = loadoutState.profOptions[0];
     const chooseAmount = profGroup.choose || 1;
@@ -1600,6 +1610,7 @@ document.getElementById("closeChoiceModal")?.addEventListener("click", () => {
   document.getElementById("choiceModal")?.classList.remove("open");
 });
 
+/* --- Dropdowns --- */
 const classInput = document.getElementById("charClass");
 const classDropdown = document.getElementById("classDropdown");
 const raceInput = document.getElementById("charRace");
@@ -1788,7 +1799,8 @@ raceDropdown?.addEventListener("click", async (e) => {
         subOpts.push(...EXTENDED_SUBRACES[raceIdx]);
     }
 
-    if (subOpts.length > 0) {
+    const renderSubraceMenu = () => {
+        document.getElementById("choiceModalTitle").textContent = `Setting up ${raceName}...`;
         let html = `
           <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
             <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🧬</span>
@@ -1814,8 +1826,8 @@ raceDropdown?.addEventListener("click", async (e) => {
         const newBody = choiceModalBody.cloneNode(true);
         choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
 
-        newBody.addEventListener("click", async (e) => {
-            const btn = e.target.closest(".subrace-btn");
+        newBody.addEventListener("click", async (ev) => {
+            const btn = ev.target.closest(".subrace-btn");
             if (!btn) return;
             btn.style.opacity = "0.5";
             btn.innerHTML = "<strong style='color:#34d399;'>Loading...</strong>";
@@ -1830,10 +1842,14 @@ raceDropdown?.addEventListener("click", async (e) => {
                     subRes = await fetchAPI("https://www.dnd5eapi.co" + subUrl);
                 }
             }
-            showRaceConfirmation(raceRes, subRes);
+            showRaceConfirmation(raceRes, subRes, renderSubraceMenu);
         });
+    };
+
+    if (subOpts.length > 0) {
+        renderSubraceMenu();
     } else {
-        showRaceConfirmation(raceRes, null);
+        showRaceConfirmation(raceRes, null, null);
     }
   }
 });
@@ -2026,7 +2042,7 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
   if (hasVariants) {
       loadoutState = {
           equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [], traitsToAdd: [],
-          traitChoiceOptions: [detail],
+          traitChoiceOptions: [{ ...detail, isSpell: true }],
           spellsToAdd: [],
           isSingleAbility: true
       };
