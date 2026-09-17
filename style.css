@@ -25,28 +25,60 @@ body {
 .top-nav {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  align-items: center;
 }
 
 .nav-actions {
+  flex: 1;
   display: flex;
   gap: 0.5rem;
   align-items: center;
   flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.header-center-name {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.name-input {
+  width: 100%;
+  max-width: 400px;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  border: 1.5px dashed transparent;
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  outline: none;
+  background: transparent;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.name-input:hover {
+  border-color: #3b4c68;
+}
+
+.name-input:focus {
+  border-style: solid;
+  border-color: #dc2626;
+  background: #080d18;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
 }
 
 .wiki-box {
+  flex: 1;
   background: #080d18;
   border: 1.5px solid #3b4c68;
   border-radius: 8px;
   padding: 0.5rem 0.85rem; 
-  min-width: 220px;
   box-shadow: 0 4px 6px rgba(0,0,0,0.3);
   text-align: right;
-  margin-left: auto;
 }
 
 .wiki-title {
@@ -99,6 +131,23 @@ body {
   transform: translateY(-1px);
 }
 
+.btn.outline {
+  background-color: transparent;
+  border: 1.5px solid #3b4c68;
+  color: #94a3b8;
+  border-radius: 6px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn.outline:hover {
+  border-color: #34d399;
+  color: #f8fafc;
+}
+
 .file-label {
   cursor: pointer;
   position: relative;
@@ -119,28 +168,6 @@ body {
   font-weight: 600;
   color: #34d399;
   margin-left: 0.5rem;
-}
-
-.name-box {
-  margin-bottom: 1.5rem;
-}
-
-.name-input {
-  width: 100%;
-  font-size: 2.2rem;
-  font-weight: 700;
-  color: #f1f5f9;
-  border: 1.5px solid #3b4c68;
-  border-radius: 8px;
-  padding: 0.6rem 1rem;
-  outline: none;
-  background: #080d18;
-  transition: all 0.2s ease;
-}
-
-.name-input:focus {
-  border-color: #dc2626;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
 }
 
 .tab-controls {
@@ -340,13 +367,11 @@ body {
   color: #f8fafc;
 }
 
-/* Modal Windows & Loadout Styling */
 .modal-backdrop {
   display: none;
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.85);
-  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   z-index: 1000;
   align-items: center;
@@ -939,7 +964,7 @@ textarea.tight-block {
 
 .attack-headers {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.5fr 2.5fr 28px;
+  grid-template-columns: 2fr 1.5fr 1fr 2.5fr 28px;
   gap: 0.5rem;
   font-weight: 700;
   font-size: 0.82rem;
@@ -952,7 +977,7 @@ textarea.tight-block {
 
 .attack-entry {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.5fr 2.5fr 28px;
+  grid-template-columns: 2fr 1.5fr 1fr 2.5fr 28px;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   align-items: center;
@@ -1019,7 +1044,6 @@ textarea.tight-block {
   margin: 1.75rem 0;
 }
 
-/* Skills & Abilities (3 Columns) */
 .abilities-header {
   display: flex;
   align-items: center;
@@ -1810,16 +1834,23 @@ textarea.tight-block {
   .two-col-layout { grid-template-columns: 1fr; }
   .slots-grid { grid-template-columns: repeat(5, 1fr); }
   .traits-grid-container { grid-template-columns: repeat(3, 1fr); }
+  .top-nav { flex-direction: column; align-items: stretch; gap: 1rem; }
+  .nav-actions { justify-content: center; }
+  .header-center-name { order: -1; margin-bottom: 0.5rem; }
+  .wiki-box { text-align: center; margin: 0 auto; width: 100%; max-width: none; }
 }
 
 @media (max-width: 768px) {
   body { padding: 0.75rem 0.5rem; }
   .sheet-container { padding: 1.25rem 1rem; border-radius: 8px; }
   body input, body textarea, body select { font-size: 16px; }
-  body .name-input { font-size: 1.65rem; padding: 0.5rem 0.75rem; }
-  .top-nav { gap: 0.4rem; flex-direction: column; align-items: stretch; }
+  
+  .top-nav { gap: 1rem; flex-direction: column; align-items: stretch; }
   .nav-actions { justify-content: center; }
-  .wiki-box { max-width: 100%; text-align: center; margin-left: 0; width: 100%; }
+  .header-center-name { order: -1; margin-bottom: 0.5rem; }
+  .wiki-box { text-align: center; margin: 0 auto; width: 100%; max-width: none; }
+  .name-input { font-size: 1.8rem; padding: 0.5rem 0.75rem; border: 1.5px solid #3b4c68; }
+
   .top-nav .btn.red { flex: 1 1 calc(33% - 0.4rem); padding: 0.45rem 0.5rem; font-size: 0.82rem; }
   .tab-controls { flex-direction: column; border-bottom: none; gap: 0.4rem; }
   .main-tab { border-radius: 6px; border: 1.5px solid #3b4c68; text-align: center; padding: 0.55rem 0.75rem; }
