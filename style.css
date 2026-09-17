@@ -816,25 +816,90 @@ textarea.tight-block {
   transform: scale(1.25);
 }
 
+.skills-group {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.35rem;
+}
+
 .skill-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.45rem;
+  background: #080d18;
+  border: 1.5px solid #3b4c68;
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
   font-size: 0.9rem;
+  transition: all 0.15s ease;
+}
+
+.skill-row:hover {
+  border-color: #dc2626;
+  background-color: #151d2f;
+  transform: translateX(2px);
+}
+
+.skill-toggles {
+  display: flex;
+  gap: 0.3rem;
+  margin-right: 0.75rem;
+}
+
+.skill-toggles label {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.skill-toggles input[type="checkbox"] {
+  display: none;
+}
+
+.bubble {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #4b6285;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.prof-cb:checked + .bubble {
+  background-color: #dc2626;
+  border-color: #dc2626;
+  box-shadow: 0 0 6px rgba(220, 38, 38, 0.5);
+}
+
+.exp-cb:checked + .bubble {
+  background-color: #c084fc;
+  border-color: #c084fc;
+  box-shadow: 0 0 6px rgba(192, 132, 252, 0.5);
 }
 
 .skill-label {
   flex: 1;
   color: #cbd5e1;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.stat-tag {
+  font-size: 0.65rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.05em;
 }
 
 .skill-val {
-  width: 24px;
+  width: 28px;
   text-align: right;
-  margin-right: 0.35rem;
-  font-weight: 600;
+  margin-right: 0.65rem;
+  font-weight: 800;
   color: #f8fafc;
+  font-size: 1rem;
 }
 
 .dice-bar {
@@ -1854,9 +1919,6 @@ textarea.tight-block {
   .two-col-layout { grid-template-columns: 1fr; }
   .slots-grid { grid-template-columns: repeat(5, 1fr); }
   .traits-grid-container { grid-template-columns: repeat(3, 1fr); }
-  .top-nav { flex-direction: column; align-items: stretch; gap: 1rem; }
-  .nav-actions { justify-content: center; }
-  .wiki-box { text-align: center; margin: 0 auto; width: 100%; max-width: none; }
 }
 
 @media (max-width: 768px) {
