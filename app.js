@@ -55,6 +55,12 @@ const SKILL_MAP = {
   "Skill: Sleight of Hand": "cb_slt_p", "Skill: Stealth": "cb_ste_p", "Skill: Survival": "cb_surv_p"
 };
 
+const CLASS_SPELL_ABILITY = {
+  "wizard": "INT", "sorcerer": "CHA", "bard": "CHA", "warlock": "CHA", 
+  "paladin": "CHA", "cleric": "WIS", "druid": "WIS", "ranger": "WIS", 
+  "artificer": "INT", "monk": "WIS", "fighter": "INT", "rogue": "INT"
+};
+
 const DRAGON_ANCESTRY_MAP = {
   "Black": { damage: "Acid", breath: "5 by 30 ft. line", save: "Dexterity" },
   "Blue": { damage: "Lightning", breath: "5 by 30 ft. line", save: "Dexterity" },
@@ -89,6 +95,7 @@ const CUSTOM_SUBRACE_DATA = {
     name: "Wood Elf",
     speed: 35,
     traits: [
+      { name: "Ability Score Increase", desc: "Your Wisdom score increases by 1." },
       { name: "Fleet of Foot", desc: "Your base walking speed increases to 35 feet." },
       { name: "Mask of the Wild", desc: "You can attempt to hide even when you are only lightly obscured by foliage, heavy rain, falling snow, mist, and other natural phenomena." }
     ],
@@ -97,6 +104,7 @@ const CUSTOM_SUBRACE_DATA = {
   "custom_drow": {
     name: "Dark Elf (Drow)",
     traits: [
+      { name: "Ability Score Increase", desc: "Your Charisma score increases by 1." },
       { name: "Superior Darkvision", desc: "Your darkvision has a radius of 120 feet." },
       { name: "Sunlight Sensitivity", desc: "You have disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight when you, the target of your attack, or whatever you are trying to perceive is in direct sunlight." },
       { name: "Drow Magic", desc: "You know the dancing lights cantrip. When you reach 3rd level, you can cast the faerie fire spell once per day. When you reach 5th level, you can also cast the darkness spell once per day. Charisma is your spellcasting ability for these spells." }
@@ -109,6 +117,7 @@ const CUSTOM_SUBRACE_DATA = {
   "custom_mountain_dwarf": {
     name: "Mountain Dwarf",
     traits: [
+      { name: "Ability Score Increase", desc: "Your Strength score increases by 2." },
       { name: "Dwarven Armor Training", desc: "You have proficiency with light and medium armor." }
     ],
     profs: "Armor: Light Armor, Medium Armor"
@@ -116,12 +125,14 @@ const CUSTOM_SUBRACE_DATA = {
   "custom_stout_halfling": {
     name: "Stout Halfling",
     traits: [
+      { name: "Ability Score Increase", desc: "Your Constitution score increases by 1." },
       { name: "Stout Resilience", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." }
     ]
   },
   "custom_forest_gnome": {
     name: "Forest Gnome",
     traits: [
+      { name: "Ability Score Increase", desc: "Your Dexterity score increases by 1." },
       { name: "Natural Illusionist", desc: "You know the minor illusion cantrip. Intelligence is your spellcasting ability for it." },
       { name: "Speak with Small Beasts", desc: "Through sounds and gestures, you can communicate simple ideas with Small or smaller beasts." }
     ],
@@ -433,7 +444,7 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
 document.getElementById("helpLinkBtn")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.add("open"));
 document.getElementById("closeHelpModal")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.remove("open"));
 
-// Useful Rest Buttons
+// Rest Buttons
 document.getElementById("longRestBtn")?.addEventListener("click", () => {
   if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
     const maxHp = document.getElementById("maxHp")?.value || 0;
@@ -850,8 +861,15 @@ async function processConcreteItems(items) {
 
 function finalizeLoadout() {
   if (loadoutState.weaponsList.length > 0) {
-    let updatedWeps = loadoutState.weaponsList.map(w => ({ name: w.name, dmg: w.dmg, dmg_type: w.dmg_type, notes: w.notes }));
-    while (updatedWeps.length < 2) updatedWeps.push({ name: "", dmg: "", dmg_type: "", notes: "" });
+    let updatedWeps = [...myCharacterWeapons];
+    loadoutState.weaponsList.forEach(w => {
+        let emptyIdx = updatedWeps.findIndex(ex => !ex.name && !ex.dmg && !ex.dmg_type);
+        if (emptyIdx !== -1) {
+            updatedWeps[emptyIdx] = { name: w.name, dmg: w.dmg, dmg_type: w.dmg_type, notes: w.notes };
+        } else {
+            updatedWeps.push({ name: w.name, dmg: w.dmg, dmg_type: w.dmg_type, notes: w.notes });
+        }
+    });
     myCharacterWeapons = updatedWeps;
   }
   renderWeapons();
@@ -1006,12 +1024,37 @@ async function runLoadoutStep() {
         }
 
         if (subRes.starting_proficiencies) {
+           const nonSkillProfs = [];
            subRes.starting_proficiencies.forEach(p => {
-             if (p.index.startsWith("skill-")) {
-               loadoutState.selectedSkills.push("Skill: " + p.name.replace("Skill: ", ""));
+             if (p.name && p.name.startsWith("Skill:")) {
+               loadoutState.selectedSkills.push(p.name);
+             } else {
+               nonSkillProfs.push(p.name);
              }
            });
+           if (subRes.languages) {
+               nonSkillProfs.push(`Languages: ` + subRes.languages.map(l => l.name).join(", "));
+           }
+           if (nonSkillProfs.length > 0) {
+               const profBox = document.getElementById("otherProfs");
+               if (profBox) {
+                   const current = profBox.value.trim();
+                   const addText = nonSkillProfs.join(", ");
+                   profBox.value = current ? current + "\n\n" + addText : addText;
+                   autoExpandTextarea(profBox);
+               }
+           }
         }
+        
+        if (subRes.ability_bonuses && subRes.ability_bonuses.length > 0) {
+            let asi = subRes.ability_bonuses.map(ab => `${ab.ability_score.name} +${ab.bonus}`).join(", ");
+            loadoutState.traitsToAdd.push({
+                name: "Ability Score Increase (Subrace)",
+                type: "Racial Trait",
+                desc: `Your ability scores increase by the following: ${asi}`
+            });
+        }
+
         if (subRes.starting_proficiency_options) {
            loadoutState.profOptions.push(subRes.starting_proficiency_options);
         }
@@ -1454,11 +1497,15 @@ classDropdown?.addEventListener("click", async (e) => {
     ]);
 
     if (classRes?.proficiencies) {
-      const otherProfs = classRes.proficiencies
-        .filter(p => !p.index.startsWith("skill-") && !p.index.startsWith("saving-throw-"))
-        .map(p => p.name)
-        .join(", ");
-        
+      const nonSkillProfs = [];
+      classRes.proficiencies.forEach(p => {
+          if (p.name && p.name.startsWith("Skill:")) {
+              loadoutState.selectedSkills.push(p.name);
+          } else if (!(p.index && p.index.startsWith("saving-throw-"))) {
+              nonSkillProfs.push(p.name);
+          }
+      });
+      const otherProfs = nonSkillProfs.join(", ");
       if (otherProfs) {
         const profBox = document.getElementById("otherProfs");
         if (profBox) {
@@ -1468,11 +1515,36 @@ classDropdown?.addEventListener("click", async (e) => {
         }
       }
     }
+    
     if (classRes?.saving_throws) {
       classRes.saving_throws.forEach(st => {
         const cb = document.getElementById(`save_${st.index}`);
         if (cb) cb.checked = true;
       });
+    }
+
+    if (classRes?.hit_die) {
+        const hdMax = document.getElementById("hitDiceMax");
+        const hdCur = document.getElementById("hitDiceCur");
+        if (hdMax) hdMax.value = `1d${classRes.hit_die}`;
+        if (hdCur) hdCur.value = `1`;
+        
+        let existingIndex = myCharacterTraits.findIndex(t => t.name === "Hit Dice");
+        if (existingIndex === -1) {
+            myCharacterTraits.push({
+                name: "Hit Dice",
+                type: "Class Feature",
+                desc: `You have 1d${classRes.hit_die} Hit Die per level.`
+            });
+        } else {
+            myCharacterTraits[existingIndex].desc = `You have 1d${classRes.hit_die} Hit Die per level.`;
+        }
+    }
+
+    const sAbility = CLASS_SPELL_ABILITY[classIdx];
+    if (sAbility) {
+        const el = document.getElementById("spellAbility");
+        if (el && !el.value) el.value = sAbility;
     }
 
     const finalEquip = equipRes1?.starting_equipment_options ? equipRes1 : equipRes2;
@@ -1621,11 +1693,35 @@ raceDropdown?.addEventListener("click", async (e) => {
             }
 
             if (raceRes?.starting_proficiencies) {
+               const nonSkillProfs = [];
                raceRes.starting_proficiencies.forEach(p => {
-                 if (p.index.startsWith("skill-")) {
-                   loadoutState.selectedSkills.push("Skill: " + p.name.replace("Skill: ", ""));
+                 if (p.name && p.name.startsWith("Skill:")) {
+                   loadoutState.selectedSkills.push(p.name);
+                 } else {
+                   nonSkillProfs.push(p.name);
                  }
                });
+               if (raceRes.languages) {
+                   nonSkillProfs.push(`Languages: ` + raceRes.languages.map(l => l.name).join(", "));
+               }
+               if (nonSkillProfs.length > 0) {
+                   const profBox = document.getElementById("otherProfs");
+                   if (profBox) {
+                       const current = profBox.value.trim();
+                       const addText = nonSkillProfs.join(", ");
+                       profBox.value = current ? current + "\n\n" + addText : addText;
+                       autoExpandTextarea(profBox);
+                   }
+               }
+            }
+
+            if (raceRes.ability_bonuses && raceRes.ability_bonuses.length > 0) {
+                let asi = raceRes.ability_bonuses.map(ab => `${ab.ability_score.name} +${ab.bonus}`).join(", ");
+                loadoutState.traitsToAdd.push({
+                    name: "Ability Score Increase",
+                    type: "Racial Trait",
+                    desc: `Your ability scores increase by the following: ${asi}`
+                });
             }
 
             if (raceRes?.traits) {
@@ -2204,6 +2300,14 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
     }
   };
   reader.readAsText(file);
+});
+
+// Ensures checkboxes trigger save consistently
+document.addEventListener("change", (e) => {
+  if (e.target.type === "checkbox" && e.target.classList.contains("save-field")) {
+    recalculateAll();
+    saveSheet();
+  }
 });
 
 document.addEventListener("input", (e) => {
