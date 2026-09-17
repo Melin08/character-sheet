@@ -187,7 +187,7 @@ function getCurrentSheetData() {
 function saveSheet() {
   const roster = getRoster();
   const fields = getCurrentSheetData();
-  const name = fields.charName?.trim() || "Unnamed Character";
+  const name = fields.charName?.trim() || "";
   const charClass = fields.charClass?.trim() || "";
   const level = fields.charLevel || 1;
 
@@ -310,14 +310,19 @@ function renderCharList() {
   }).join("");
 }
 
-document.getElementById("loadBtn")?.addEventListener("click", () => {
-  renderCharList();
-  document.getElementById("loadModal")?.classList.add("open");
-});
+// Ensure event listeners are attached correctly by checking if elements exist.
+if (document.getElementById("loadBtn")) {
+  document.getElementById("loadBtn").addEventListener("click", () => {
+    renderCharList();
+    document.getElementById("loadModal")?.classList.add("open");
+  });
+}
 
-document.getElementById("closeLoadModal")?.addEventListener("click", () => {
-  document.getElementById("loadModal")?.classList.remove("open");
-});
+if (document.getElementById("closeLoadModal")) {
+  document.getElementById("closeLoadModal").addEventListener("click", () => {
+    document.getElementById("loadModal")?.classList.remove("open");
+  });
+}
 
 document.getElementById("charList")?.addEventListener("click", (e) => {
   const row = e.target.closest(".char-item-row");
@@ -352,6 +357,31 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
 
 document.getElementById("helpLinkBtn")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.add("open"));
 document.getElementById("closeHelpModal")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.remove("open"));
+
+// Useful Rest Buttons
+document.getElementById("longRestBtn")?.addEventListener("click", () => {
+  if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
+    const maxHp = document.getElementById("maxHp")?.value || 0;
+    if (document.getElementById("curHp")) document.getElementById("curHp").value = maxHp;
+    
+    const maxHd = document.getElementById("hitDiceMax")?.value || 0;
+    if (document.getElementById("hitDiceCur")) document.getElementById("hitDiceCur").value = maxHd;
+    
+    for (let i = 1; i <= 9; i++) {
+      let cur = document.getElementById(`slot${i}_cur`);
+      let max = document.getElementById(`slot${i}_max`);
+      if (cur && max) cur.value = max.value;
+    }
+    saveSheet();
+    showStatus("Rested!");
+  }
+});
+
+document.getElementById("shortRestBtn")?.addEventListener("click", () => {
+  if (confirm("Take a Short Rest? Use your hit dice to heal!")) {
+    showStatus("Rested!");
+  }
+});
 
 function switchMainTab(targetId) {
   document.querySelectorAll(".main-tab").forEach(b => b.classList.remove("active"));
@@ -543,7 +573,7 @@ function isWeaponOrArmor(name) {
          lower.includes("shield") || lower.includes("armor") || lower.includes("mail") || 
          lower.includes("javelin") || lower.includes("glaive") || lower.includes("halberd") || 
          lower.includes("pike") || lower.includes("flail") || lower.includes("club") || 
-         lower.includes("rapier") || lower.includes("dart");
+         lower.includes("rapier") || lower.includes("dart") || lower.includes("net") || lower.includes("sling");
 }
 
 async function formatItemWithStats(name, url, count) {
@@ -692,7 +722,7 @@ async function processConcreteItems(items) {
 
             if (data.armor_class) {
                baseAc = data.armor_class.base;
-               if (data.armor_category === "Shield") {
+               if (data.armor_category === "Shield" || data.name === "Shield") {
                   isShield = true;
                   newShield += 2;
                } else if (baseAc > newAcBase) {
@@ -782,7 +812,6 @@ function finalizeLoadout() {
 async function runLoadoutStep() {
   const choiceModal = document.getElementById("choiceModal");
 
-  // Step 1: Equipment Options
   if (loadoutState.equipOptions.length > 0) {
     const optGroup = loadoutState.equipOptions[0];
     let chooseAmount = optGroup.choose || 1;
