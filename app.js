@@ -527,11 +527,13 @@ async function fetchDetailedSpells(matches) {
     if (m.url && !m.fetchedDetails) {
       const det = await fetchAPI("https://www.dnd5eapi.co" + m.url);
       if (det) {
+        let hasVariants = !!(det.damage_type_options || det.choice);
         return { 
           ...m, 
           levelTag: det.level === 0 ? "Cantrip" : `Level ${det.level}`,
           schoolTag: det.school?.name,
           classesTag: det.classes?.map(c => c.name).join(", "),
+          hasVariants: hasVariants,
           fetchedDetails: true
         };
       }
@@ -555,10 +557,14 @@ async function fetchDetailedTraits(matches) {
 
         let pTag = parentNames.length > 0 ? parentNames.join(", ") : (m.url.includes("/races/") ? "Various Races" : "");
 
+        let specific = det.trait_specific || det.feature_specific || det.choice;
+        let hasVariants = !!(specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from));
+
         return { 
           ...m, 
           type: m.url.includes("/features/") ? "Class Feature" : "Racial Trait",
           parentTag: pTag,
+          hasVariants: hasVariants,
           fetchedDetails: true
         };
       }
@@ -576,6 +582,7 @@ let loadoutState = {
   subraceOptions: [],
   traitChoiceOptions: [],
   traitsToAdd: [],
+  spellsToAdd: [],
   isSingleAbility: false
 };
 
@@ -808,6 +815,13 @@ function finalizeLoadout() {
     }
   });
 
+  if (loadoutState.spellsToAdd && loadoutState.spellsToAdd.length > 0) {
+    loadoutState.spellsToAdd.forEach(s => {
+       myCharacterSpells.push(s);
+    });
+    renderMySpells();
+  }
+
   if (loadoutState.traitsToAdd && loadoutState.traitsToAdd.length > 0) {
     loadoutState.traitsToAdd.forEach(t => {
        let tDesc = Array.isArray(t.desc) ? t.desc.join("\n\n") : (t.desc || "");
@@ -829,10 +843,10 @@ function finalizeLoadout() {
   saveSheet();
   recalculateAll();
 
-  document.getElementById("choiceModalTitle").textContent = loadoutState.isSingleAbility ? "Ability Added! 🎉" : "Loadout Complete! 🎉";
+  document.getElementById("choiceModalTitle").textContent = loadoutState.isSingleAbility ? "Added! 🎉" : "Loadout Complete! 🎉";
   document.getElementById("choiceModalBody").innerHTML = `
     <div class="wizard-intro" style="font-size: 1.25rem; color: #34d399; font-weight: 800; padding: 1.5rem 0;">
-      Awesome! Your ${loadoutState.isSingleAbility ? 'ability variant was' : 'selections are'} successfully applied to your sheet!
+      Awesome! Your ${loadoutState.isSingleAbility ? 'selection was' : 'selections are'} successfully applied to your sheet!
     </div>
     <button class="btn red confirm-loadout-btn" id="finishLoadoutBtn" style="font-size: 1.25rem; padding: 1.2rem;">${loadoutState.isSingleAbility ? 'Done' : 'Let\'s Go!'}</button>
   `;
@@ -885,7 +899,7 @@ async function runLoadoutStep() {
       
       if (subRes) {
         const raceInput = document.getElementById("charRace");
-        if (raceInput && !raceInput.value.includes(subRes.name)) {
+        if (raceInput) {
             raceInput.value = subRes.name;
             saveSheet();
         }
@@ -923,20 +937,23 @@ async function runLoadoutStep() {
     return;
   }
 
-  // RACE WIZARD STEP 2: TRAIT CHOICES (e.g. Draconic Ancestry, Fighting Styles, etc.)
+  // WIZARD STEP 2: TRAIT & SPELL CHOICES (e.g. Draconic Ancestry, Fighting Styles, etc.)
   if (loadoutState.traitChoiceOptions && loadoutState.traitChoiceOptions.length > 0) {
     const traitObj = loadoutState.traitChoiceOptions[0];
+    const isSpell = traitObj.isSpell;
     document.getElementById("choiceModalTitle").textContent = `Choose Variant: ${traitObj.name}`;
     
-    let choiceData = traitObj.trait_specific?.subtrait_options || traitObj.trait_specific?.spell_options || traitObj.trait_specific?.damage_type_options || traitObj.trait_specific?.choice || traitObj.trait_specific?.breath_weapon_options || traitObj.feature_specific?.subfeature_options || traitObj.feature_specific?.expertise_options || traitObj.feature_specific?.choice || (traitObj.trait_specific?.from ? traitObj.trait_specific : null) || (traitObj.feature_specific?.from ? traitObj.feature_specific : null) || traitObj.choice;
+    let choiceData = traitObj.trait_specific?.subtrait_options || traitObj.trait_specific?.spell_options || traitObj.trait_specific?.damage_type_options || traitObj.trait_specific?.choice || traitObj.trait_specific?.breath_weapon_options || traitObj.feature_specific?.subfeature_options || traitObj.feature_specific?.expertise_options || traitObj.feature_specific?.choice || (traitObj.trait_specific?.from ? traitObj.trait_specific : null) || (traitObj.feature_specific?.from ? traitObj.feature_specific : null) || traitObj.choice || traitObj.damage_type_options;
     
     let optionsArr = [];
     if (choiceData && choiceData.from && choiceData.from.options) {
          optionsArr = choiceData.from.options;
+    } else if (Array.isArray(choiceData)) {
+         optionsArr = choiceData;
     }
 
     if (optionsArr.length === 0) {
-        loadoutState.traitsToAdd.push(traitObj);
+        if (!isSpell) loadoutState.traitsToAdd.push(traitObj);
         loadoutState.traitChoiceOptions.shift();
         runLoadoutStep();
         return;
@@ -989,32 +1006,54 @@ async function runLoadoutStep() {
          traitDesc += `\n\nSelected Variant: ${selectedName}`;
       }
 
-      loadoutState.traitsToAdd.push({
-         name: `${traitObj.name} (${selectedName})`,
-         type: traitObj.url?.includes("/features/") ? "Class Feature" : "Racial Trait",
-         desc: traitDesc
-      });
-      
-      // Specialized interceptor to modify Dragonborn's Breath Weapon
-      if (traitObj.name === "Draconic Ancestry") {
-          let dragonName = selectedName.replace(/dragon/i, "").trim().split(" ")[0];
-          let dragon = DRAGON_ANCESTRY_MAP[dragonName] || DRAGON_ANCESTRY_MAP[selectedName];
-          if (dragon) {
-             let updateBW = (targetArray) => {
-                 let bw = targetArray.find(t => t.name.startsWith("Breath Weapon"));
-                 if (bw) {
-                     bw.name = `Breath Weapon (${dragon.damage})`;
-                     bw.desc = `You can use your action to exhale destructive energy. It is a ${dragon.breath} dealing ${dragon.damage} damage. When you use your breath weapon, each creature in the area of the exhalation must make a ${dragon.save} saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level. After you use your breath weapon, you can't use it again until you complete a short or long rest.`;
-                 }
-                 let dr = targetArray.find(t => t.name.startsWith("Damage Resistance"));
-                 if (dr) {
-                     dr.name = `Damage Resistance (${dragon.damage})`;
-                     dr.desc = `You have resistance to the damage type associated with your draconic ancestry (${dragon.damage}).`;
-                 }
-             };
-             updateBW(loadoutState.traitsToAdd);
-             updateBW(myCharacterTraits);
-          }
+      if (isSpell) {
+         let finalCast = traitObj.casting_time || "1 Action";
+         let finalRange = traitObj.range || "30 ft";
+         let finalDur = traitObj.duration || "Instantaneous";
+         let finalType = traitObj.level === 0 ? "Cantrip" : `Level ${traitObj.level} ${traitObj.school?.name || ""}`.trim();
+         loadoutState.spellsToAdd.push({
+             name: `${traitObj.name} (${selectedName})`,
+             type: finalType,
+             casting_time: finalCast,
+             range: finalRange,
+             duration: finalDur,
+             desc: traitDesc
+         });
+      } else {
+         loadoutState.traitsToAdd.push({
+             name: `${traitObj.name} (${selectedName})`,
+             type: traitObj.url?.includes("/features/") ? "Class Feature" : "Racial Trait",
+             desc: traitDesc
+         });
+         
+         // Specialized interceptor to modify Dragonborn's Breath Weapon and update Race Box
+         if (traitObj.name === "Draconic Ancestry") {
+             let dragonName = selectedName.replace(/dragon/i, "").trim().split(" ")[0];
+             
+             let raceInp = document.getElementById("charRace");
+             if (raceInp) {
+                 raceInp.value = `${dragonName} Dragonborn`;
+                 saveSheet();
+             }
+
+             let dragon = DRAGON_ANCESTRY_MAP[dragonName] || DRAGON_ANCESTRY_MAP[selectedName];
+             if (dragon) {
+                let updateBW = (targetArray) => {
+                    let bw = targetArray.find(t => t.name && t.name.startsWith("Breath Weapon"));
+                    if (bw) {
+                        bw.name = `Breath Weapon (${dragon.damage})`;
+                        bw.desc = `You can use your action to exhale destructive energy. It is a ${dragon.breath} dealing ${dragon.damage} damage. When you use your breath weapon, each creature in the area of the exhalation must make a ${dragon.save} saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level. After you use your breath weapon, you can't use it again until you complete a short or long rest.`;
+                    }
+                    let dr = targetArray.find(t => t.name && t.name.startsWith("Damage Resistance"));
+                    if (dr) {
+                        dr.name = `Damage Resistance (${dragon.damage})`;
+                        dr.desc = `You have resistance to the damage type associated with your draconic ancestry (${dragon.damage}).`;
+                    }
+                };
+                updateBW(loadoutState.traitsToAdd);
+                updateBW(myCharacterTraits);
+             }
+         }
       }
 
       loadoutState.traitChoiceOptions.shift();
@@ -1323,6 +1362,7 @@ classDropdown?.addEventListener("click", async (e) => {
       subraceOptions: [],
       traitChoiceOptions: [],
       traitsToAdd: [],
+      spellsToAdd: [],
       isSingleAbility: false
     };
 
@@ -1374,6 +1414,7 @@ raceDropdown?.addEventListener("click", async (e) => {
       subraceOptions: raceRes?.subraces && raceRes.subraces.length > 0 ? [...raceRes.subraces] : [],
       traitChoiceOptions: [],
       traitsToAdd: [],
+      spellsToAdd: [],
       isSingleAbility: false
     };
 
@@ -1434,7 +1475,7 @@ function renderMyTraits() {
   if (!container) return;
 
   if (myCharacterTraits.length === 0) {
-    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.85rem; color: #64748b; font-style: italic;">No skills/abilities added yet. Click "+ Add Skill / Ability" above to add one.</p>`;
+    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.85rem; color: #64748b; font-style: italic;">No skills/abilities added yet. Click "+ Add Ability" above to add one.</p>`;
     return;
   }
 
@@ -1512,6 +1553,7 @@ function renderModalTraitsList(matches) {
   container.innerHTML = matches.map((trait) => {
     let tagsHtml = `<span class="tag-pill blue">${escapeHtml(trait.type || 'Feature')}</span>`;
     if (trait.parentTag) tagsHtml += `<span class="tag-pill purple">${escapeHtml(trait.parentTag)}</span>`;
+    if (trait.hasVariants) tagsHtml += `<span class="tag-pill orange">Variants</span>`;
 
     return `
     <div class="spell-option-item trait-option-item" data-url="${trait.url}" data-name="${escapeHtml(trait.name)}" data-type="${escapeHtml(trait.type || '')}">
@@ -1532,7 +1574,8 @@ document.getElementById("addTraitBtn")?.addEventListener("click", async () => {
   
   document.getElementById("traitApiList").innerHTML = `<p class="loading-text">Loading...</p>`;
   const results = await searchTraits("");
-  renderModalTraitsList(results);
+  const detailed = await fetchDetailedTraits(results);
+  renderModalTraitsList(detailed);
 });
 
 document.getElementById("closeTraitModal")?.addEventListener("click", () => {
@@ -1585,7 +1628,7 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
 
   if (hasVariants) {
       loadoutState = {
-          equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [], subraceOptions: [],
+          equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [], subraceOptions: [], spellsToAdd: [],
           traitChoiceOptions: [detail],
           traitsToAdd: [],
           isSingleAbility: true
@@ -1632,6 +1675,7 @@ function renderModalSpellsList(matches) {
     let tagsHtml = `<span class="tag-pill green">${escapeHtml(lvlTag)}</span>`;
     if (spell.schoolTag) tagsHtml += `<span class="tag-pill purple">${escapeHtml(spell.schoolTag)}</span>`;
     if (spell.classesTag) tagsHtml += `<span class="tag-pill blue" style="opacity:0.8;">${escapeHtml(spell.classesTag)}</span>`;
+    if (spell.hasVariants) tagsHtml += `<span class="tag-pill orange">Variants</span>`;
 
     return `
     <div class="spell-option-item spell-add-item" data-url="${spell.url}" data-name="${escapeHtml(spell.name)}">
@@ -1785,7 +1829,8 @@ document.getElementById("addSpellBtn")?.addEventListener("click", async () => {
   
   document.getElementById("spellApiList").innerHTML = `<p class="loading-text">Loading...</p>`;
   const results = await searchSpells("");
-  renderModalSpellsList(results);
+  const detailed = await fetchDetailedSpells(results);
+  renderModalSpellsList(detailed);
 });
 
 document.getElementById("closeSpellModal")?.addEventListener("click", () => {
@@ -1825,22 +1870,38 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   const badge = row.querySelector(".spell-add-badge");
   if (badge) badge.textContent = "Adding...";
 
+  let detail = null;
+  if (row.dataset.url) {
+    detail = await fetchAPI("https://www.dnd5eapi.co" + row.dataset.url);
+  }
+
+  let hasVariants = !!(detail?.damage_type_options || detail?.choice);
+  if (hasVariants) {
+      loadoutState = {
+          equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [], subraceOptions: [], traitsToAdd: [],
+          traitChoiceOptions: [{ ...detail, isSpell: true }],
+          spellsToAdd: [],
+          isSingleAbility: true
+      };
+      document.getElementById("spellModal")?.classList.remove("open");
+      if (badge) badge.textContent = "+ Add";
+      runLoadoutStep();
+      return;
+  }
+
   let finalDesc = "Description not available.";
   let finalType = "Spell";
   let finalCast = "1 Action";
   let finalRange = "30 ft";
   let finalDur = "Instantaneous";
 
-  if (row.dataset.url) {
-    const fetched = await fetchAPI("https://www.dnd5eapi.co" + row.dataset.url);
-    if (fetched) {
-      finalDesc = Array.isArray(fetched.desc) ? fetched.desc.join("\n\n") : (fetched.desc || "");
-      if (fetched.higher_level) finalDesc += "\n\nAt Higher Levels: " + (Array.isArray(fetched.higher_level) ? fetched.higher_level.join(" ") : fetched.higher_level);
-      finalType = fetched.level === 0 ? "Cantrip" : `Level ${fetched.level} ${fetched.school?.name || ""}`.trim();
-      finalCast = fetched.casting_time || finalCast;
-      finalRange = fetched.range || finalRange;
-      finalDur = fetched.duration || finalDur;
-    }
+  if (detail) {
+      finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || "");
+      if (detail.higher_level) finalDesc += "\n\nAt Higher Levels: " + (Array.isArray(detail.higher_level) ? detail.higher_level.join(" ") : detail.higher_level);
+      finalType = detail.level === 0 ? "Cantrip" : `Level ${detail.level} ${detail.school?.name || ""}`.trim();
+      finalCast = detail.casting_time || finalCast;
+      finalRange = detail.range || finalRange;
+      finalDur = detail.duration || finalDur;
   }
 
   myCharacterSpells.push({
