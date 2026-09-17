@@ -370,6 +370,7 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
 document.getElementById("helpLinkBtn")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.add("open"));
 document.getElementById("closeHelpModal")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.remove("open"));
 
+// Useful Rest Buttons
 document.getElementById("longRestBtn")?.addEventListener("click", () => {
   if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
     const maxHp = document.getElementById("maxHp")?.value || 0;
@@ -517,7 +518,11 @@ async function searchTraits(query) {
   let combined = [];
   if (featRes && featRes.results) combined.push(...featRes.results);
   if (traitRes && traitRes.results) combined.push(...traitRes.results);
-  if (combined.length > 0) return combined;
+  
+  if (combined.length > 0) {
+      // Intercept and remove noisy variant fragments so they don't clutter the search results
+      return combined.filter(t => !t.name.includes("Dragon Ancestor (") && !t.name.includes("Draconic Ancestry ("));
+  }
   return COMMON_TRAITS.filter(t => t.name.toLowerCase().includes(query.toLowerCase()));
 }
 
@@ -560,6 +565,8 @@ async function fetchDetailedTraits(matches) {
         let specific = det.trait_specific || det.feature_specific || det.choice;
         let hasVariants = !!(specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from));
 
+        if (det.name === "Breath Weapon") hasVariants = true;
+
         return { 
           ...m, 
           type: m.url.includes("/features/") ? "Class Feature" : "Racial Trait",
@@ -585,18 +592,6 @@ let loadoutState = {
   spellsToAdd: [],
   isSingleAbility: false
 };
-
-function isWeaponOrArmor(name) {
-  if (!name) return false;
-  const lower = name.toLowerCase();
-  return lower.includes("sword") || lower.includes("bow") || lower.includes("dagger") || 
-         lower.includes("axe") || lower.includes("mace") || lower.includes("crossbow") || 
-         lower.includes("staff") || lower.includes("hammer") || lower.includes("spear") || 
-         lower.includes("shield") || lower.includes("armor") || lower.includes("mail") || 
-         lower.includes("javelin") || lower.includes("glaive") || lower.includes("halberd") || 
-         lower.includes("pike") || lower.includes("flail") || lower.includes("club") || 
-         lower.includes("rapier") || lower.includes("dart") || lower.includes("net") || lower.includes("sling");
-}
 
 async function formatItemWithStats(name, url, count) {
   let qtyStr = count > 1 ? `<span style="color:#f87171">${count}x</span> ` : "";
@@ -899,7 +894,7 @@ async function runLoadoutStep() {
       
       if (subRes) {
         const raceInput = document.getElementById("charRace");
-        if (raceInput) {
+        if (raceInput && !raceInput.value.includes(subRes.name)) {
             raceInput.value = subRes.name;
             saveSheet();
         }
@@ -1020,23 +1015,22 @@ async function runLoadoutStep() {
              desc: traitDesc
          });
       } else {
-         loadoutState.traitsToAdd.push({
-             name: `${traitObj.name} (${selectedName})`,
-             type: traitObj.url?.includes("/features/") ? "Class Feature" : "Racial Trait",
-             desc: traitDesc
-         });
-         
-         // Specialized interceptor to modify Dragonborn's Breath Weapon and update Race Box
-         if (traitObj.name === "Draconic Ancestry") {
-             let dragonName = selectedName.replace(/dragon/i, "").trim().split(" ")[0];
+         let skipDefaultPush = false;
+
+         if (traitObj.name === "Draconic Ancestry" || traitObj.name === "Dragon Ancestor") {
+             let dragonName = "";
+             const colors = ["Black", "Blue", "Brass", "Bronze", "Copper", "Gold", "Green", "Red", "Silver", "White"];
+             for (let c of colors) {
+                 if (selectedName.includes(c)) dragonName = c;
+             }
              
              let raceInp = document.getElementById("charRace");
-             if (raceInp) {
+             if (raceInp && raceInp.value.toLowerCase().includes("dragonborn")) {
                  raceInp.value = `${dragonName} Dragonborn`;
                  saveSheet();
              }
 
-             let dragon = DRAGON_ANCESTRY_MAP[dragonName] || DRAGON_ANCESTRY_MAP[selectedName];
+             let dragon = DRAGON_ANCESTRY_MAP[dragonName];
              if (dragon) {
                 let updateBW = (targetArray) => {
                     let bw = targetArray.find(t => t.name && t.name.startsWith("Breath Weapon"));
@@ -1053,6 +1047,29 @@ async function runLoadoutStep() {
                 updateBW(loadoutState.traitsToAdd);
                 updateBW(myCharacterTraits);
              }
+         } else if (traitObj.name === "Breath Weapon") {
+             let dragonName = "";
+             const colors = ["Black", "Blue", "Brass", "Bronze", "Copper", "Gold", "Green", "Red", "Silver", "White"];
+             for (let c of colors) {
+                 if (selectedName.includes(c)) dragonName = c;
+             }
+             let dragon = DRAGON_ANCESTRY_MAP[dragonName];
+             if (dragon) {
+                 loadoutState.traitsToAdd.push({
+                     name: `Breath Weapon (${dragon.damage})`,
+                     type: "Racial Trait",
+                     desc: `You can use your action to exhale destructive energy. It is a ${dragon.breath} dealing ${dragon.damage} damage. When you use your breath weapon, each creature in the area of the exhalation must make a ${dragon.save} saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level. After you use your breath weapon, you can't use it again until you complete a short or long rest.`
+                 });
+                 skipDefaultPush = true;
+             }
+         }
+
+         if (!skipDefaultPush) {
+             loadoutState.traitsToAdd.push({
+                 name: `${traitObj.name} (${selectedName})`,
+                 type: traitObj.url?.includes("/features/") ? "Class Feature" : "Racial Trait",
+                 desc: traitDesc
+             });
          }
       }
 
@@ -1624,6 +1641,14 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
   let specific = detail?.trait_specific || detail?.feature_specific || detail?.choice;
   if (specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from)) {
       hasVariants = true;
+  }
+  
+  if (detail?.name === "Breath Weapon") {
+      hasVariants = true;
+      detail.choice = {
+          desc: "Draconic Ancestry Variant",
+          from: { options: Object.keys(DRAGON_ANCESTRY_MAP).map(c => ({ desc: c })) }
+      };
   }
 
   if (hasVariants) {
