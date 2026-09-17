@@ -12,22 +12,27 @@
     
     <header class="top-nav">
       <div class="nav-actions">
-        <button class="btn red" id="saveBtn" type="button">Save</button>
-        <button class="btn red" id="loadBtn" type="button">Load</button>
-        <button class="btn red" id="newBtn" type="button">New</button>
-        <button class="btn red" id="backupBtn" type="button">Backup</button>
-        <label class="btn red file-label">
-          Restore
-          <input type="file" id="restoreFile" accept=".json" />
-        </label>
-        <button class="btn red" id="deleteBtn" type="button">Delete</button>
-        <button class="btn outline" id="shortRestBtn" type="button">Short Rest</button>
-        <button class="btn outline" id="longRestBtn" type="button">Long Rest</button>
-        <span id="saveStatus" class="status-msg"></span>
-      </div>
+        <div class="btn-group">
+          <button class="btn red" id="saveBtn" type="button">Save</button>
+          <button class="btn red" id="loadBtn" type="button">Load</button>
+          <button class="btn red" id="newBtn" type="button">New</button>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn gray" id="backupBtn" type="button">Backup</button>
+          <label class="btn gray file-label">
+            Restore
+            <input type="file" id="restoreFile" accept=".json" />
+          </label>
+          <button class="btn gray" id="deleteBtn" type="button">Delete</button>
+        </div>
 
-      <div class="header-center-name">
-        <input type="text" id="charName" class="save-field name-input" placeholder="Character Name" />
+        <div class="btn-group">
+          <button class="btn outline blue" id="shortRestBtn" type="button">Short Rest</button>
+          <button class="btn outline purple" id="longRestBtn" type="button">Long Rest</button>
+        </div>
+        
+        <span id="saveStatus" class="status-msg"></span>
       </div>
 
       <div class="wiki-box">
@@ -39,6 +44,10 @@
         </div>
       </div>
     </header>
+
+    <div class="name-box">
+      <input type="text" id="charName" class="save-field name-input" placeholder="Character Name" />
+    </div>
 
     <div class="tab-controls">
       <button class="main-tab active" data-target="tab-stats" type="button">Statistics, Abilities, Equipment, etc.</button>
