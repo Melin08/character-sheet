@@ -9,6 +9,7 @@
 </head>
 <body id="top">
   <div class="sheet-container">
+    
     <header class="top-nav">
       <div class="nav-actions">
         <button class="btn red" id="saveBtn" type="button">Save</button>
@@ -20,7 +21,13 @@
           <input type="file" id="restoreFile" accept=".json" />
         </label>
         <button class="btn red" id="deleteBtn" type="button">Delete</button>
+        <button class="btn outline" id="shortRestBtn" type="button">Short Rest</button>
+        <button class="btn outline" id="longRestBtn" type="button">Long Rest</button>
         <span id="saveStatus" class="status-msg"></span>
+      </div>
+
+      <div class="header-center-name">
+        <input type="text" id="charName" class="save-field name-input" placeholder="Character Name" />
       </div>
 
       <div class="wiki-box">
@@ -32,10 +39,6 @@
         </div>
       </div>
     </header>
-
-    <div class="name-box">
-      <input type="text" id="charName" class="save-field name-input" placeholder="Character Name" />
-    </div>
 
     <div class="tab-controls">
       <button class="main-tab active" data-target="tab-stats" type="button">Statistics, Abilities, Equipment, etc.</button>
@@ -384,7 +387,6 @@
           <h2 class="section-title">Weapons &amp; Attacks</h2>
           <div class="attacks-table-wrapper">
             <div class="attacks-table">
-              <!-- Reordered Attack Headers Here -->
               <div class="attack-headers">
                 <span>Name</span>
                 <span>Damage</span>
