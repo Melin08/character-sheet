@@ -94,8 +94,8 @@ const CUSTOM_SUBRACE_DATA = {
   "custom_wood_elf": {
     name: "Wood Elf",
     speed: 35,
+    ability_bonuses: [{ ability_score: { index: "wis", name: "WIS" }, bonus: 1 }],
     traits: [
-      { name: "Ability Score Increase", desc: "Your Wisdom score increases by 1." },
       { name: "Fleet of Foot", desc: "Your base walking speed increases to 35 feet." },
       { name: "Mask of the Wild", desc: "You can attempt to hide even when you are only lightly obscured by foliage, heavy rain, falling snow, mist, and other natural phenomena." }
     ],
@@ -103,8 +103,8 @@ const CUSTOM_SUBRACE_DATA = {
   },
   "custom_drow": {
     name: "Dark Elf (Drow)",
+    ability_bonuses: [{ ability_score: { index: "cha", name: "CHA" }, bonus: 1 }],
     traits: [
-      { name: "Ability Score Increase", desc: "Your Charisma score increases by 1." },
       { name: "Superior Darkvision", desc: "Your darkvision has a radius of 120 feet." },
       { name: "Sunlight Sensitivity", desc: "You have disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight when you, the target of your attack, or whatever you are trying to perceive is in direct sunlight." },
       { name: "Drow Magic", desc: "You know the dancing lights cantrip. When you reach 3rd level, you can cast the faerie fire spell once per day. When you reach 5th level, you can also cast the darkness spell once per day. Charisma is your spellcasting ability for these spells." }
@@ -116,23 +116,23 @@ const CUSTOM_SUBRACE_DATA = {
   },
   "custom_mountain_dwarf": {
     name: "Mountain Dwarf",
+    ability_bonuses: [{ ability_score: { index: "str", name: "STR" }, bonus: 2 }],
     traits: [
-      { name: "Ability Score Increase", desc: "Your Strength score increases by 2." },
       { name: "Dwarven Armor Training", desc: "You have proficiency with light and medium armor." }
     ],
     profs: "Armor: Light Armor, Medium Armor"
   },
   "custom_stout_halfling": {
     name: "Stout Halfling",
+    ability_bonuses: [{ ability_score: { index: "con", name: "CON" }, bonus: 1 }],
     traits: [
-      { name: "Ability Score Increase", desc: "Your Constitution score increases by 1." },
       { name: "Stout Resilience", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." }
     ]
   },
   "custom_forest_gnome": {
     name: "Forest Gnome",
+    ability_bonuses: [{ ability_score: { index: "dex", name: "DEX" }, bonus: 1 }],
     traits: [
-      { name: "Ability Score Increase", desc: "Your Dexterity score increases by 1." },
       { name: "Natural Illusionist", desc: "You know the minor illusion cantrip. Intelligence is your spellcasting ability for it." },
       { name: "Speak with Small Beasts", desc: "Through sounds and gestures, you can communicate simple ideas with Small or smaller beasts." }
     ],
@@ -659,7 +659,6 @@ let loadoutState = {
   weaponsList: [],
   gearList: [],
   selectedSkills: [],
-  subraceOptions: [],
   traitChoiceOptions: [],
   traitsToAdd: [],
   spellsToAdd: [],
@@ -931,157 +930,159 @@ function finalizeLoadout() {
   });
 }
 
-async function runLoadoutStep() {
-  const choiceModal = document.getElementById("choiceModal");
-
-  // RACE WIZARD STEP 1: SUBRACES (e.g. High Elf vs Wood Elf)
-  if (loadoutState.subraceOptions && loadoutState.subraceOptions.length > 0) {
-    document.getElementById("choiceModalTitle").textContent = "Choose your Heritage!";
-    let html = `
-      <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
-        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🧬</span>
-        Select your subrace or variant:
-      </div>
-      <div class="equip-options-grid">
-    `;
+// Shows the final confirmation screen with combined stats
+function showRaceConfirmation(raceRes, subRes) {
+    let combinedSpeed = subRes?.speed || raceRes?.speed || 30;
     
-    loadoutState.subraceOptions.forEach((sub, idx) => {
-      html += `
-        <div class="choice-option-wrapper">
-          <button type="button" class="choice-option-btn subrace-btn" data-index="${idx}" data-url="${sub.url || ''}" data-isbase="${sub.isBase ? 'true' : 'false'}">
-            <strong>${escapeHtml(sub.name)}</strong>
-          </button>
-        </div>
-      `;
-    });
-    html += `</div>`;
+    let combinedASIs = [];
+    if (raceRes?.ability_bonuses) combinedASIs.push(...raceRes.ability_bonuses);
+    if (subRes?.ability_bonuses) combinedASIs.push(...subRes.ability_bonuses);
+    let asiText = combinedASIs.map(ab => `${ab.ability_score.name || ab.ability_score.index.toUpperCase()} +${ab.bonus}`).join(", ");
 
+    let combinedTraits = [];
+    if (raceRes?.traits) combinedTraits.push(...raceRes.traits.map(t => t.name));
+    if (subRes?.traits) combinedTraits.push(...subRes.traits.map(t => t.name));
+    let traitsText = combinedTraits.join(", ");
+
+    let combinedProfs = [];
+    if (raceRes?.starting_proficiencies) combinedProfs.push(...raceRes.starting_proficiencies.map(p => p.name.replace("Skill: ", "")));
+    if (subRes?.starting_proficiencies) combinedProfs.push(...subRes.starting_proficiencies.map(p => p.name.replace("Skill: ", "")));
+    
+    if (raceRes?.languages) combinedProfs.push("Languages: " + raceRes.languages.map(l => l.name).join(", "));
+    if (subRes?.languages) combinedProfs.push("Languages: " + subRes.languages.map(l => l.name).join(", "));
+    if (subRes?.profs) combinedProfs.push(subRes.profs);
+    let profsText = combinedProfs.join(", ");
+
+    let finalName = subRes ? subRes.name : raceRes.name;
+
+    let summaryHtml = `<div style="text-align: left; background: #0d1322; padding: 1.25rem; border-radius: 8px; border: 1.5px solid #1e293b; color: #cbd5e1; margin-bottom: 1.5rem; font-size: 0.95rem; line-height: 1.6;">`;
+    if (combinedSpeed) summaryHtml += `<p><strong style="color:#f8fafc;">Speed:</strong> ${combinedSpeed} ft.</p>`;
+    if (asiText) summaryHtml += `<p><strong style="color:#f8fafc;">Stat Increases:</strong> ${asiText}</p>`;
+    if (traitsText) summaryHtml += `<p><strong style="color:#f8fafc;">Traits:</strong> ${traitsText}</p>`;
+    if (profsText) summaryHtml += `<p><strong style="color:#f8fafc;">Proficiencies:</strong> ${profsText}</p>`;
+    summaryHtml += `</div>`;
+
+    let html = `
+      <div class="wizard-intro" style="font-size: 1.15rem; color: #f8fafc; text-align: center; margin-bottom: 1rem;">
+        Are you sure you want to play as a <strong>${finalName}</strong>?
+      </div>
+      ${summaryHtml}
+      <div style="display: flex; gap: 1rem;">
+         <button class="btn gray" id="cancelRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem; background: #3b4c68; border-radius: 6px; color: #ffffff; cursor: pointer; border: none; font-weight: 600;">Cancel</button>
+         <button class="btn red" id="confirmRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem;">Confirm ${finalName}</button>
+      </div>
+    `;
+
+    document.getElementById("choiceModalTitle").textContent = `Confirm Race: ${finalName}`;
     const choiceModalBody = document.getElementById("choiceModalBody");
     choiceModalBody.innerHTML = html;
-    choiceModal.classList.add("open");
 
     const newBody = choiceModalBody.cloneNode(true);
     choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-    
-    document.getElementById("choiceModalBody").addEventListener("click", async (e) => {
-      const btn = e.target.closest(".subrace-btn");
-      if (!btn) return;
-      btn.style.opacity = "0.5";
-      btn.innerHTML = "<strong style='color:#34d399;'>Loading...</strong>";
-      
-      const isBase = btn.dataset.isbase === "true";
-      if (isBase) {
-          loadoutState.subraceOptions = []; 
-          runLoadoutStep();
-          return;
-      }
 
-      const subUrl = btn.dataset.url;
-      
-      if (subUrl.startsWith("custom_")) {
-          const customData = CUSTOM_SUBRACE_DATA[subUrl];
-          const raceInput = document.getElementById("charRace");
-          if (raceInput) {
-              raceInput.value = customData.name;
-              saveSheet();
-          }
-          if (customData.speed) {
+    newBody.addEventListener("click", async (e) => {
+        if (e.target.id === "cancelRaceBtn") {
+            document.getElementById("choiceModal").classList.remove("open");
+        } else if (e.target.id === "confirmRaceBtn") {
+            e.target.innerHTML = "<strong style='color:#34d399;'>Applying...</strong>";
+            e.target.disabled = true;
+
+            const raceInput = document.getElementById("charRace");
+            if (raceInput) raceInput.value = finalName;
+
+            if (combinedSpeed) {
               const speedInp = document.getElementById("charSpeed");
-              if (speedInp) speedInp.value = customData.speed;
-          }
-          if (customData.traits) {
-              customData.traits.forEach(t => {
-                  loadoutState.traitsToAdd.push({
-                      name: t.name,
-                      type: "Racial Trait",
-                      desc: t.desc
-                  });
-              });
-          }
-          if (customData.profs) {
-              const profBox = document.getElementById("otherProfs");
-              if (profBox) {
-                 const current = profBox.value.trim();
-                 profBox.value = current ? current + "\n\n" + customData.profs : customData.profs;
-                 autoExpandTextarea(profBox);
-              }
-          }
-          if (customData.spells) {
-              customData.spells.forEach(s => loadoutState.spellsToAdd.push(s));
-          }
-          
-          loadoutState.subraceOptions = []; 
-          runLoadoutStep();
-          return;
-      }
+              if (speedInp) speedInp.value = combinedSpeed;
+            }
 
-      const subRes = await fetchAPI("https://www.dnd5eapi.co" + subUrl);
-      if (subRes) {
-        const raceInput = document.getElementById("charRace");
-        if (raceInput && !raceInput.value.includes(subRes.name)) {
-            raceInput.value = subRes.name;
-            saveSheet();
-        }
-
-        if (subRes.starting_proficiencies) {
-           const nonSkillProfs = [];
-           subRes.starting_proficiencies.forEach(p => {
-             if (p.name && p.name.startsWith("Skill:")) {
-               loadoutState.selectedSkills.push(p.name);
-             } else {
-               nonSkillProfs.push(p.name);
-             }
-           });
-           if (subRes.languages) {
-               nonSkillProfs.push(`Languages: ` + subRes.languages.map(l => l.name).join(", "));
-           }
-           if (nonSkillProfs.length > 0) {
-               const profBox = document.getElementById("otherProfs");
-               if (profBox) {
-                   const current = profBox.value.trim();
-                   const addText = nonSkillProfs.join(", ");
-                   profBox.value = current ? current + "\n\n" + addText : addText;
-                   autoExpandTextarea(profBox);
-               }
-           }
-        }
-        
-        if (subRes.ability_bonuses && subRes.ability_bonuses.length > 0) {
-            let asi = subRes.ability_bonuses.map(ab => `${ab.ability_score.name} +${ab.bonus}`).join(", ");
-            loadoutState.traitsToAdd.push({
-                name: "Ability Score Increase (Subrace)",
-                type: "Racial Trait",
-                desc: `Your ability scores increase by the following: ${asi}`
+            // True Base Stat Application
+            combinedASIs.forEach(b => {
+                const statKey = (b.ability_score.index || b.ability_score.name).toLowerCase().substring(0,3);
+                const input = document.getElementById(`attr_${statKey}`);
+                if (input) {
+                    let currentVal = parseInt(input.value, 10) || 10;
+                    input.value = currentVal + b.bonus;
+                }
             });
-        }
 
-        if (subRes.starting_proficiency_options) {
-           loadoutState.profOptions.push(subRes.starting_proficiency_options);
-        }
+            loadoutState = {
+              equipOptions: [],
+              profOptions: [],
+              weaponsList: [],
+              gearList: [],
+              selectedSkills: [],
+              traitChoiceOptions: [],
+              traitsToAdd: [],
+              spellsToAdd: [],
+              isSingleAbility: false
+            };
 
-        if (subRes.racial_traits) {
-           for (let t of subRes.racial_traits) {
-               const tData = await fetchAPI("https://www.dnd5eapi.co" + t.url);
-               if (tData) {
-                   let specific = tData.trait_specific || tData.feature_specific || tData.choice;
-                   if (specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from)) {
-                       if (!loadoutState.traitChoiceOptions) loadoutState.traitChoiceOptions = [];
-                       loadoutState.traitChoiceOptions.push(tData);
-                   } else {
-                       loadoutState.traitsToAdd.push(tData);
-                   }
-               }
-           }
+            if (raceRes?.starting_proficiency_options) loadoutState.profOptions.push(raceRes.starting_proficiency_options);
+            if (subRes?.starting_proficiency_options) loadoutState.profOptions.push(subRes.starting_proficiency_options);
+
+            let allStartingProfs = [...(raceRes?.starting_proficiencies || []), ...(subRes?.starting_proficiencies || [])];
+            const nonSkillProfs = [];
+            allStartingProfs.forEach(p => {
+                if (p.name && p.name.startsWith("Skill:")) {
+                    loadoutState.selectedSkills.push(p.name);
+                } else {
+                    nonSkillProfs.push(p.name);
+                }
+            });
+
+            if (raceRes?.languages) nonSkillProfs.push(`Languages: ` + raceRes.languages.map(l => l.name).join(", "));
+            if (subRes?.languages) nonSkillProfs.push(`Languages: ` + subRes.languages.map(l => l.name).join(", "));
+            if (subRes?.profs) nonSkillProfs.push(subRes.profs);
+
+            if (nonSkillProfs.length > 0) {
+                const profBox = document.getElementById("otherProfs");
+                if (profBox) {
+                    const current = profBox.value.trim();
+                    const addText = nonSkillProfs.join(", ");
+                    profBox.value = current ? current + "\n\n" + addText : addText;
+                    autoExpandTextarea(profBox);
+                }
+            }
+
+            if (subRes?.spells) {
+                subRes.spells.forEach(s => loadoutState.spellsToAdd.push(s));
+            }
+
+            let allTraits = [...(raceRes?.traits || [])];
+            if (subRes && subRes.traits) {
+                allTraits.push(...subRes.traits);
+            }
+
+            for (let t of allTraits) {
+                if (t.url) { 
+                    const tData = await fetchAPI("https://www.dnd5eapi.co" + t.url);
+                    if (tData) {
+                        let specific = tData.trait_specific || tData.feature_specific || tData.choice;
+                        if (specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from)) {
+                            loadoutState.traitChoiceOptions.push(tData);
+                        } else {
+                            loadoutState.traitsToAdd.push(tData);
+                        }
+                    }
+                } else {
+                    loadoutState.traitsToAdd.push({
+                        name: t.name,
+                        type: "Racial Trait",
+                        desc: t.desc
+                    });
+                }
+            }
+
+            saveSheet();
+            runLoadoutStep();
         }
-      }
-      
-      loadoutState.subraceOptions = []; 
-      runLoadoutStep();
     });
-    return;
-  }
+}
 
-  // WIZARD STEP 2: TRAIT & SPELL CHOICES (e.g. Draconic Ancestry, Fighting Styles, etc.)
+async function runLoadoutStep() {
+  const choiceModal = document.getElementById("choiceModal");
+
+  // WIZARD STEP: TRAIT CHOICES (Draconic Ancestry, etc.)
   if (loadoutState.traitChoiceOptions && loadoutState.traitChoiceOptions.length > 0) {
     const traitObj = loadoutState.traitChoiceOptions[0];
     const isSpell = traitObj.isSpell;
@@ -1229,7 +1230,7 @@ async function runLoadoutStep() {
     return;
   }
 
-  // CLASS WIZARD STEP 1: EQUIPMENT
+  // WIZARD STEP: EQUIPMENT
   if (loadoutState.equipOptions.length > 0) {
     const optGroup = loadoutState.equipOptions[0];
     let chooseAmount = optGroup.choose || 1;
@@ -1555,7 +1556,6 @@ classDropdown?.addEventListener("click", async (e) => {
       weaponsList: [],
       gearList: [],
       selectedSkills: [],
-      subraceOptions: [],
       traitChoiceOptions: [],
       traitsToAdd: [],
       spellsToAdd: [],
@@ -1595,7 +1595,7 @@ raceDropdown?.addEventListener("click", async (e) => {
   raceDropdown.classList.remove("open");
 
   if (raceIdx) {
-    document.getElementById("choiceModalTitle").textContent = `Confirm Race: ${raceName}`;
+    document.getElementById("choiceModalTitle").textContent = `Setting up ${raceName}...`;
     document.getElementById("choiceModalBody").innerHTML = `<p class="loading-text">Fetching details for ${raceName}...</p>`;
     const choiceModal = document.getElementById("choiceModal");
     choiceModal.classList.add("open");
@@ -1606,141 +1606,63 @@ raceDropdown?.addEventListener("click", async (e) => {
         return;
     }
 
-    let summaryHtml = `<div style="text-align: left; background: #0d1322; padding: 1.25rem; border-radius: 8px; border: 1.5px solid #1e293b; color: #cbd5e1; margin-bottom: 1.5rem; font-size: 0.95rem; line-height: 1.6;">`;
-    if (raceRes.speed) summaryHtml += `<p><strong style="color:#f8fafc;">Speed:</strong> ${raceRes.speed} ft.</p>`;
-    
-    if (raceRes.ability_bonuses && raceRes.ability_bonuses.length > 0) {
-        let asi = raceRes.ability_bonuses.map(ab => `${ab.ability_score.name} +${ab.bonus}`).join(", ");
-        summaryHtml += `<p><strong style="color:#f8fafc;">Ability Score Increase:</strong> ${asi}</p>`;
+    let subOpts = [];
+    if (raceRes?.subraces && raceRes.subraces.length > 0) {
+        subOpts = [
+            { name: `Base ${raceRes.name} (No Subrace)`, url: "base", isBase: true },
+            ...raceRes.subraces
+        ];
+    } else if (EXTENDED_SUBRACES[raceIdx]) {
+        subOpts = [{ name: `Base ${raceRes.name} (No Subrace)`, url: "base", isBase: true }, ...EXTENDED_SUBRACES[raceIdx]];
     }
 
-    if (raceRes.traits && raceRes.traits.length > 0) {
-        let traits = raceRes.traits.map(t => t.name).join(", ");
-        summaryHtml += `<p><strong style="color:#f8fafc;">Traits:</strong> ${traits}</p>`;
+    if (subOpts.length > 0) {
+        let html = `
+          <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
+            <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🧬</span>
+            Select your subrace or variant:
+          </div>
+          <div class="equip-options-grid">
+        `;
+        
+        subOpts.forEach((sub, idx) => {
+          html += `
+            <div class="choice-option-wrapper">
+              <button type="button" class="choice-option-btn subrace-btn" data-index="${idx}" data-url="${sub.url || ''}" data-isbase="${sub.isBase ? 'true' : 'false'}">
+                <strong>${escapeHtml(sub.name)}</strong>
+              </button>
+            </div>
+          `;
+        });
+        html += `</div>`;
+
+        const choiceModalBody = document.getElementById("choiceModalBody");
+        choiceModalBody.innerHTML = html;
+
+        const newBody = choiceModalBody.cloneNode(true);
+        choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
+
+        newBody.addEventListener("click", async (e) => {
+            const btn = e.target.closest(".subrace-btn");
+            if (!btn) return;
+            btn.style.opacity = "0.5";
+            btn.innerHTML = "<strong style='color:#34d399;'>Loading...</strong>";
+            
+            const isBase = btn.dataset.isbase === "true";
+            let subRes = null;
+            if (!isBase) {
+                const subUrl = btn.dataset.url;
+                if (subUrl.startsWith("custom_")) {
+                    subRes = CUSTOM_SUBRACE_DATA[subUrl];
+                } else {
+                    subRes = await fetchAPI("https://www.dnd5eapi.co" + subUrl);
+                }
+            }
+            showRaceConfirmation(raceRes, subRes);
+        });
+    } else {
+        showRaceConfirmation(raceRes, null);
     }
-
-    if (raceRes.starting_proficiencies && raceRes.starting_proficiencies.length > 0) {
-        let profs = raceRes.starting_proficiencies.map(p => p.name.replace("Skill: ", "")).join(", ");
-        summaryHtml += `<p><strong style="color:#f8fafc;">Proficiencies:</strong> ${profs}</p>`;
-    }
-
-    if ((raceRes.subraces && raceRes.subraces.length > 0) || EXTENDED_SUBRACES[raceIdx]) {
-        summaryHtml += `<p style="margin-top:0.8rem; color:#38bdf8; font-weight: 600;">✨ Plus additional benefits from a Subrace (chosen next).</p>`;
-    }
-
-    summaryHtml += `</div>`;
-
-    let html = `
-      <div class="wizard-intro" style="font-size: 1.15rem; color: #f8fafc; text-align: center; margin-bottom: 1rem;">
-        Are you sure you want to play as a <strong>${raceRes.name}</strong>?
-      </div>
-      ${summaryHtml}
-      <div style="display: flex; gap: 1rem;">
-         <button class="btn gray" id="cancelRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem; background: #3b4c68; border-radius: 6px; color: #ffffff; cursor: pointer; border: none; font-weight: 600;">Cancel</button>
-         <button class="btn red" id="confirmRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem;">Confirm ${raceRes.name}</button>
-      </div>
-    `;
-
-    const choiceModalBody = document.getElementById("choiceModalBody");
-    choiceModalBody.innerHTML = html;
-
-    const newBody = choiceModalBody.cloneNode(true);
-    choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-
-    newBody.addEventListener("click", async (e) => {
-        if (e.target.id === "cancelRaceBtn") {
-            document.getElementById("choiceModal").classList.remove("open");
-        } else if (e.target.id === "confirmRaceBtn") {
-            e.target.innerHTML = "<strong style='color:#34d399;'>Applying...</strong>";
-            e.target.disabled = true;
-
-            const raceInput = document.getElementById("charRace");
-            if (raceInput) {
-                raceInput.value = raceName;
-                saveSheet();
-            }
-
-            let subOpts = [];
-            if (raceRes?.subraces && raceRes.subraces.length > 0) {
-                subOpts = [
-                    { name: `Base ${raceRes.name} (No Subrace)`, url: "base", isBase: true },
-                    ...raceRes.subraces
-                ];
-            } else if (EXTENDED_SUBRACES[raceIdx]) {
-                subOpts = [{ name: `Base ${raceRes.name} (No Subrace)`, url: "base", isBase: true }];
-            }
-
-            if (EXTENDED_SUBRACES[raceIdx]) {
-                subOpts.push(...EXTENDED_SUBRACES[raceIdx]);
-            }
-
-            loadoutState = {
-              equipOptions: [],
-              profOptions: raceRes?.starting_proficiency_options ? [raceRes.starting_proficiency_options] : [],
-              weaponsList: [],
-              gearList: [],
-              selectedSkills: [],
-              subraceOptions: subOpts,
-              traitChoiceOptions: [],
-              traitsToAdd: [],
-              spellsToAdd: [],
-              isSingleAbility: false
-            };
-
-            if (raceRes?.speed) {
-              const speedInp = document.getElementById("charSpeed");
-              if (speedInp) speedInp.value = raceRes.speed;
-            }
-
-            if (raceRes?.starting_proficiencies) {
-               const nonSkillProfs = [];
-               raceRes.starting_proficiencies.forEach(p => {
-                 if (p.name && p.name.startsWith("Skill:")) {
-                   loadoutState.selectedSkills.push(p.name);
-                 } else {
-                   nonSkillProfs.push(p.name);
-                 }
-               });
-               if (raceRes.languages) {
-                   nonSkillProfs.push(`Languages: ` + raceRes.languages.map(l => l.name).join(", "));
-               }
-               if (nonSkillProfs.length > 0) {
-                   const profBox = document.getElementById("otherProfs");
-                   if (profBox) {
-                       const current = profBox.value.trim();
-                       const addText = nonSkillProfs.join(", ");
-                       profBox.value = current ? current + "\n\n" + addText : addText;
-                       autoExpandTextarea(profBox);
-                   }
-               }
-            }
-
-            if (raceRes.ability_bonuses && raceRes.ability_bonuses.length > 0) {
-                let asi = raceRes.ability_bonuses.map(ab => `${ab.ability_score.name} +${ab.bonus}`).join(", ");
-                loadoutState.traitsToAdd.push({
-                    name: "Ability Score Increase",
-                    type: "Racial Trait",
-                    desc: `Your ability scores increase by the following: ${asi}`
-                });
-            }
-
-            if (raceRes?.traits) {
-               for (let t of raceRes.traits) {
-                   const tData = await fetchAPI("https://www.dnd5eapi.co" + t.url);
-                   if (tData) {
-                       let specific = tData.trait_specific || tData.feature_specific || tData.choice;
-                       if (specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from)) {
-                           loadoutState.traitChoiceOptions.push(tData);
-                       } else {
-                           loadoutState.traitsToAdd.push(tData);
-                       }
-                   }
-               }
-            }
-
-            runLoadoutStep();
-        }
-    });
   }
 });
 
@@ -1931,9 +1853,10 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
 
   if (hasVariants) {
       loadoutState = {
-          equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [], subraceOptions: [], spellsToAdd: [],
+          equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [],
           traitChoiceOptions: [detail],
           traitsToAdd: [],
+          spellsToAdd: [],
           isSingleAbility: true
       };
       document.getElementById("traitModal")?.classList.remove("open");
@@ -2181,7 +2104,7 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   let hasVariants = !!(detail?.damage_type_options || detail?.choice);
   if (hasVariants) {
       loadoutState = {
-          equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [], subraceOptions: [], traitsToAdd: [],
+          equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [], traitsToAdd: [],
           traitChoiceOptions: [{ ...detail, isSpell: true }],
           spellsToAdd: [],
           isSingleAbility: true
