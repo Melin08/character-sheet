@@ -99,6 +99,69 @@ body {
 }
 
 .btn.red {
+  .btn-group {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.btn.gray {
+  background-color: #64748b;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn.gray:hover {
+  background-color: #475569;
+  transform: translateY(-1px);
+}
+
+.btn.outline {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  box-shadow: none;
+}
+
+.btn.outline:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  transform: translateY(0);
+}
+
+.btn.outline.blue {
+  color: #0284c7;
+  border-color: #bae6fd;
+}
+
+.btn.outline.blue:hover {
+  background: #f0f9ff;
+  border-color: #7dd3fc;
+}
+
+.btn.outline.purple {
+  color: #7e22ce;
+  border-color: #e9d5ff;
+}
+
+.btn.outline.purple:hover {
+  background: #faf5ff;
+  border-color: #d8b4fe;
+}
+
+.auth-modal-box {
+  max-width: 380px !important;
+}
   background-color: #dc2626;
   color: #ffffff;
   border: none;
