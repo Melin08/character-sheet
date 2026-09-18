@@ -111,52 +111,38 @@ body {
 }
 
 .btn.gray {
-  background-color: #64748b;
-  color: #ffffff;
+  background-color: #1e293b;
+  color: #f8fafc;
   border: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .btn.gray:hover {
-  background-color: #475569;
-  transform: translateY(-1px);
+  background-color: #334155;
 }
 
 .btn.outline {
-  background: transparent;
-  border: 1px solid #cbd5e1;
-  color: #475569;
-  box-shadow: none;
-}
-
-.btn.outline:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
-  transform: translateY(0);
+  background-color: transparent;
+  border: 1.5px solid;
 }
 
 .btn.outline.blue {
-  color: #0284c7;
-  border-color: #bae6fd;
+  border-color: #38bdf8;
+  color: #38bdf8;
 }
 
 .btn.outline.blue:hover {
-  background: #f0f9ff;
-  border-color: #7dd3fc;
+  background-color: #38bdf8;
+  color: #0b0f19;
 }
 
 .btn.outline.purple {
-  color: #7e22ce;
-  border-color: #e9d5ff;
+  border-color: #c084fc;
+  color: #c084fc;
 }
 
 .btn.outline.purple:hover {
-  background: #faf5ff;
-  border-color: #d8b4fe;
-}
-
-.auth-modal-box {
-  max-width: 380px !important;
+  background-color: #c084fc;
+  color: #0b0f19;
 }
 
 .file-label {
@@ -406,7 +392,6 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.85);
-  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   z-index: 1000;
   align-items: center;
@@ -428,6 +413,10 @@ body {
   flex-direction: column;
   overflow: hidden;
   border: 1.5px solid #3b4c68;
+}
+
+.auth-modal-box {
+  max-width: 380px !important;
 }
 
 .modal-header {
@@ -1131,6 +1120,7 @@ textarea.tight-block {
   justify-content: center;
   cursor: pointer;
   transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .btn-icon-plus:hover {
