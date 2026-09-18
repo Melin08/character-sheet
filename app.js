@@ -45,7 +45,6 @@ onAuthStateChanged(auth, async (user) => {
       <span style="font-size: 0.85rem; color: #475569; font-weight: 600;">${user.email}</span>
       <button class="btn outline blue" id="logoutBtn" type="button">Log Out</button>
     `;
-    
     document.getElementById("logoutBtn").addEventListener("click", async () => {
       await signOut(auth);
       localStorage.removeItem(ROSTER_STORAGE_KEY);
