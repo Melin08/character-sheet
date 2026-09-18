@@ -359,19 +359,6 @@ const CLASS_SPELL_ABILITY = {
   "artificer": "INT", "monk": "WIS", "fighter": "INT", "rogue": "INT"
 };
 
-const DRAGON_ANCESTRY_MAP = {
-  "Black": { damage: "Acid", breath: "5 by 30 ft. line", save: "Dexterity" },
-  "Blue": { damage: "Lightning", breath: "5 by 30 ft. line", save: "Dexterity" },
-  "Brass": { damage: "Fire", breath: "5 by 30 ft. line", save: "Dexterity" },
-  "Bronze": { damage: "Lightning", breath: "5 by 30 ft. line", save: "Dexterity" },
-  "Copper": { damage: "Acid", breath: "5 by 30 ft. line", save: "Dexterity" },
-  "Gold": { damage: "Fire", breath: "15 ft. cone", save: "Dexterity" },
-  "Green": { damage: "Poison", breath: "15 ft. cone", save: "Constitution" },
-  "Red": { damage: "Fire", breath: "15 ft. cone", save: "Dexterity" },
-  "Silver": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" },
-  "White": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" }
-};
-
 // ==========================================
 // 2. AUTHENTICATION (Firebase)
 // ==========================================
@@ -546,7 +533,7 @@ function recalculateAll() {
 
     const valElem = row.querySelector(".skill-val");
     if (valElem) {
-      valElem.textContent = total;
+      valElem.textContent = total >= 0 ? `+${total}` : total;
     }
   });
 }
@@ -926,8 +913,10 @@ document.addEventListener("click", (e) => {
       label = `${attr.toUpperCase()} Save`;
     } else if (e.target.dataset.type === "skill") {
       const id = e.target.dataset.id;
-      bonus = parseInt(document.getElementById(`val_${id}`)?.textContent, 10) || 0;
-      label = document.querySelector(`#row_${id} .skill-label`)?.textContent || "Skill";
+      const row = e.target.closest(".skill-row");
+      bonus = parseInt(row?.querySelector(".skill-val")?.textContent, 10) || 0;
+      let rawText = row?.querySelector(".skill-label")?.textContent || "Skill";
+      label = rawText.replace(/(DEX|WIS|INT|STR|CHA|CON)$/i, '').trim(); 
     }
     const total = roll + bonus;
     const out = document.getElementById("rollResult");
@@ -1114,7 +1103,7 @@ function finalizeSelectedLoadout() {
 
   activeClassLoadout.fixed.forEach(i => {
     const q = i.qty > 1 ? `${i.qty}x ` : "";
-    if (isWeaponOrArmor(i.name)) weaponsList.push({ name: `${q}${i.name}`, atk: "+5", dmg: "1d8", notes: "" });
+    if (isWeaponOrArmor(i.name)) weaponsList.push({ name: `${q}${i.name}`, dmg: "1d8", dmg_type: "Physical", notes: "" });
     else gearList.push(`${q}${i.name}`);
   });
 
@@ -1124,14 +1113,14 @@ function finalizeSelectedLoadout() {
     if (chosenOpt) {
       chosenOpt.items.forEach(i => {
         const q = i.qty > 1 ? `${i.qty}x ` : "";
-        if (isWeaponOrArmor(i.name)) weaponsList.push({ name: `${q}${i.name}`, atk: "+5", dmg: "1d8", notes: i.desc || "" });
+        if (isWeaponOrArmor(i.name)) weaponsList.push({ name: `${q}${i.name}`, dmg: "1d8", dmg_type: "Physical", notes: i.desc || "" });
         else gearList.push(`${q}${i.name}`);
       });
     }
   });
 
   while (weaponsList.length < 2) {
-    weaponsList.push({ name: "", atk: "", dmg: "", notes: "" });
+    weaponsList.push({ name: "", dmg: "", dmg_type: "", notes: "" });
   }
 
   myCharacterWeapons = weaponsList;
@@ -1145,13 +1134,20 @@ function finalizeSelectedLoadout() {
     autoExpandTextarea(invBox);
   }
 
-  let featText = `Hit Die: 1d${activeClassLoadout.hitDie} per level\nSaving Throws: ${activeClassLoadout.saves.join(", ")}`;
+  let featText = `Hit Die: 1d${activeClassLoadout.hitDie} per level`;
   const featBox = document.getElementById("featuresTraits");
   if (featBox) {
     const cur = featBox.value.trim();
     featBox.value = cur ? cur + "\n\n" + featText : featText;
     autoExpandTextarea(featBox);
   }
+
+  // Handle Saves
+  activeClassLoadout.saves.forEach(save => {
+      let short = save.substring(0,3).toLowerCase();
+      let cb = document.getElementById(`save_${short}`);
+      if(cb) cb.checked = true;
+  });
 
   const profBox = document.getElementById("otherProfs");
   if (profBox && activeClassLoadout.proficiencies.length > 0) {
