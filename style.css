@@ -797,31 +797,20 @@ textarea.tight-block {
   letter-spacing: 0.05em;
 }
 
-.attr-mod-display {
-  font-size: 2.2rem;
-  font-weight: 900;
-  color: #f8fafc;
-  line-height: 1;
-  margin-bottom: 0.5rem;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-}
-
 .attr-base-row {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.25rem;
 }
 
 .attr-score-input {
-  width: 50px;
-  background: #1e293b;
-  border: 1px solid #475569;
+  width: 70px;
+  background: transparent;
+  border: none;
   color: #f8fafc;
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 2.5rem;
+  font-weight: 900;
   text-align: center;
-  border-radius: 6px;
-  padding: 0.25rem;
   outline: none;
-  transition: border-color 0.15s ease;
+  line-height: 1;
   -moz-appearance: textfield;
   -webkit-appearance: textfield;
   appearance: textfield;
@@ -834,7 +823,18 @@ textarea.tight-block {
 }
 
 .attr-score-input:focus {
-  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.attr-mod-display {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #94a3b8;
+  background: #1e293b;
+  padding: 0.2rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid #3b4c68;
+  margin-bottom: 0.75rem;
 }
 
 .attr-save-row {
