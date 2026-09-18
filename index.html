@@ -165,60 +165,123 @@
       <div class="two-col-layout">
         <div class="left-pane">
           <h2 class="section-title">Attributes</h2>
+          
           <div class="attributes-group">
-            <div class="attr-row" data-attr="str">
-              <span class="attr-name">Str</span>
-              <input type="number" id="attr_str" class="attr-input save-field" value="10" />
-              <span class="attr-mod" id="mod_str">0</span>
-              <label class="save-check"><input type="checkbox" id="save_str" class="save-field check-save" /> Save</label>
-              <span class="save-val" id="save_val_str">0</span>
-              <span class="hex-die roll-btn" data-type="save" data-attr="str" title="Roll Strength Save"></span>
+            
+            <div class="attr-card" data-attr="str">
+              <div class="attr-card-header">
+                <span class="attr-title">STR</span>
+                <span class="hex-die roll-btn" data-type="save" data-attr="str" title="Roll Strength Save"></span>
+              </div>
+              <div class="attr-mod-display" id="mod_str">0</div>
+              <div class="attr-base-row">
+                <input type="number" id="attr_str" class="attr-score-input save-field" value="10" />
+              </div>
+              <div class="attr-save-row">
+                <label class="save-toggle" title="Proficient in Saving Throw">
+                  <input type="checkbox" id="save_str" class="save-field check-save" />
+                  <span class="save-bubble"></span>
+                  <span class="save-label">Save</span>
+                </label>
+                <span class="save-val" id="save_val_str">0</span>
+              </div>
             </div>
 
-            <div class="attr-row" data-attr="dex">
-              <span class="attr-name">Dex</span>
-              <input type="number" id="attr_dex" class="attr-input save-field" value="10" />
-              <span class="attr-mod" id="mod_dex">0</span>
-              <label class="save-check"><input type="checkbox" id="save_dex" class="save-field check-save" /> Save</label>
-              <span class="save-val" id="save_val_dex">0</span>
-              <span class="hex-die roll-btn" data-type="save" data-attr="dex" title="Roll Dexterity Save"></span>
+            <div class="attr-card" data-attr="dex">
+              <div class="attr-card-header">
+                <span class="attr-title">DEX</span>
+                <span class="hex-die roll-btn" data-type="save" data-attr="dex" title="Roll Dexterity Save"></span>
+              </div>
+              <div class="attr-mod-display" id="mod_dex">0</div>
+              <div class="attr-base-row">
+                <input type="number" id="attr_dex" class="attr-score-input save-field" value="10" />
+              </div>
+              <div class="attr-save-row">
+                <label class="save-toggle" title="Proficient in Saving Throw">
+                  <input type="checkbox" id="save_dex" class="save-field check-save" />
+                  <span class="save-bubble"></span>
+                  <span class="save-label">Save</span>
+                </label>
+                <span class="save-val" id="save_val_dex">0</span>
+              </div>
             </div>
 
-            <div class="attr-row" data-attr="con">
-              <span class="attr-name">Con</span>
-              <input type="number" id="attr_con" class="attr-input save-field" value="10" />
-              <span class="attr-mod" id="mod_con">0</span>
-              <label class="save-check"><input type="checkbox" id="save_con" class="save-field check-save" /> Save</label>
-              <span class="save-val" id="save_val_con">0</span>
-              <span class="hex-die roll-btn" data-type="save" data-attr="con" title="Roll Constitution Save"></span>
+            <div class="attr-card" data-attr="con">
+              <div class="attr-card-header">
+                <span class="attr-title">CON</span>
+                <span class="hex-die roll-btn" data-type="save" data-attr="con" title="Roll Constitution Save"></span>
+              </div>
+              <div class="attr-mod-display" id="mod_con">0</div>
+              <div class="attr-base-row">
+                <input type="number" id="attr_con" class="attr-score-input save-field" value="10" />
+              </div>
+              <div class="attr-save-row">
+                <label class="save-toggle" title="Proficient in Saving Throw">
+                  <input type="checkbox" id="save_con" class="save-field check-save" />
+                  <span class="save-bubble"></span>
+                  <span class="save-label">Save</span>
+                </label>
+                <span class="save-val" id="save_val_con">0</span>
+              </div>
             </div>
 
-            <div class="attr-row" data-attr="int">
-              <span class="attr-name">Int</span>
-              <input type="number" id="attr_int" class="attr-input save-field" value="10" />
-              <span class="attr-mod" id="mod_int">0</span>
-              <label class="save-check"><input type="checkbox" id="save_int" class="save-field check-save" /> Save</label>
-              <span class="save-val" id="save_val_int">0</span>
-              <span class="hex-die roll-btn" data-type="save" data-attr="int" title="Roll Intelligence Save"></span>
+            <div class="attr-card" data-attr="int">
+              <div class="attr-card-header">
+                <span class="attr-title">INT</span>
+                <span class="hex-die roll-btn" data-type="save" data-attr="int" title="Roll Intelligence Save"></span>
+              </div>
+              <div class="attr-mod-display" id="mod_int">0</div>
+              <div class="attr-base-row">
+                <input type="number" id="attr_int" class="attr-score-input save-field" value="10" />
+              </div>
+              <div class="attr-save-row">
+                <label class="save-toggle" title="Proficient in Saving Throw">
+                  <input type="checkbox" id="save_int" class="save-field check-save" />
+                  <span class="save-bubble"></span>
+                  <span class="save-label">Save</span>
+                </label>
+                <span class="save-val" id="save_val_int">0</span>
+              </div>
             </div>
 
-            <div class="attr-row" data-attr="wis">
-              <span class="attr-name">Wis</span>
-              <input type="number" id="attr_wis" class="attr-input save-field" value="10" />
-              <span class="attr-mod" id="mod_wis">0</span>
-              <label class="save-check"><input type="checkbox" id="save_wis" class="save-field check-save" /> Save</label>
-              <span class="save-val" id="save_val_wis">0</span>
-              <span class="hex-die roll-btn" data-type="save" data-attr="wis" title="Roll Wisdom Save"></span>
+            <div class="attr-card" data-attr="wis">
+              <div class="attr-card-header">
+                <span class="attr-title">WIS</span>
+                <span class="hex-die roll-btn" data-type="save" data-attr="wis" title="Roll Wisdom Save"></span>
+              </div>
+              <div class="attr-mod-display" id="mod_wis">0</div>
+              <div class="attr-base-row">
+                <input type="number" id="attr_wis" class="attr-score-input save-field" value="10" />
+              </div>
+              <div class="attr-save-row">
+                <label class="save-toggle" title="Proficient in Saving Throw">
+                  <input type="checkbox" id="save_wis" class="save-field check-save" />
+                  <span class="save-bubble"></span>
+                  <span class="save-label">Save</span>
+                </label>
+                <span class="save-val" id="save_val_wis">0</span>
+              </div>
             </div>
 
-            <div class="attr-row" data-attr="cha">
-              <span class="attr-name">Cha</span>
-              <input type="number" id="attr_cha" class="attr-input save-field" value="10" />
-              <span class="attr-mod" id="mod_cha">0</span>
-              <label class="save-check"><input type="checkbox" id="save_cha" class="save-field check-save" /> Save</label>
-              <span class="save-val" id="save_val_cha">0</span>
-              <span class="hex-die roll-btn" data-type="save" data-attr="cha" title="Roll Charisma Save"></span>
+            <div class="attr-card" data-attr="cha">
+              <div class="attr-card-header">
+                <span class="attr-title">CHA</span>
+                <span class="hex-die roll-btn" data-type="save" data-attr="cha" title="Roll Charisma Save"></span>
+              </div>
+              <div class="attr-mod-display" id="mod_cha">0</div>
+              <div class="attr-base-row">
+                <input type="number" id="attr_cha" class="attr-score-input save-field" value="10" />
+              </div>
+              <div class="attr-save-row">
+                <label class="save-toggle" title="Proficient in Saving Throw">
+                  <input type="checkbox" id="save_cha" class="save-field check-save" />
+                  <span class="save-bubble"></span>
+                  <span class="save-label">Save</span>
+                </label>
+                <span class="save-val" id="save_val_cha">0</span>
+              </div>
             </div>
+
           </div>
 
           <h2 class="section-title">Skills</h2>
@@ -664,6 +727,14 @@
         <input type="password" id="authPassword" class="save-field inline-input" placeholder="Password" autocomplete="current-password" />
         <p id="authError" style="color: #991b1b; font-size: 0.85rem; font-weight: 600; display: none; margin: 0;"></p>
         <button type="button" class="btn red" id="authSubmitBtn" style="width: 100%; padding: 0.8rem; font-size: 1.1rem; margin-top: 0.5rem;">Sign In</button>
+        
+        <div style="display: flex; align-items: center; text-align: center; color: #94a3b8; font-size: 0.85rem; margin: 0.5rem 0;">
+          <div style="flex: 1; height: 1px; background: #cbd5e1;"></div>
+          <span style="padding: 0 0.75rem;">OR</span>
+          <div style="flex: 1; height: 1px; background: #cbd5e1;"></div>
+        </div>
+        
+        <button type="button" class="btn outline blue" id="googleAuthBtn" style="width: 100%; padding: 0.8rem; font-size: 1.1rem; border-color: #3b82f6; color: #3b82f6;">Sign in with Google</button>
       </div>
     </div>
   </div>
