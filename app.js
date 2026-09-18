@@ -534,19 +534,19 @@ function recalculateAll() {
   });
 
   // Skills Calculation
-  document.querySelectorAll(".skill-card").forEach((card) => {
-    const stat = card.dataset.stat;
+  document.querySelectorAll(".skill-row").forEach((row) => {
+    const stat = row.dataset.stat;
     const statMod = mods[stat] ?? 0;
-    const isProf = card.querySelector(".prof-cb")?.checked;
-    const isExp = card.querySelector(".exp-cb")?.checked;
+    const isProf = row.querySelector(".prof-cb")?.checked;
+    const isExp = row.querySelector(".exp-cb")?.checked;
 
     let total = statMod;
     if (isProf) total += prof;
     if (isExp) total += prof;
 
-    const valElem = card.querySelector(".skill-val");
+    const valElem = row.querySelector(".skill-val");
     if (valElem) {
-      valElem.textContent = total >= 0 ? `+${total}` : total;
+      valElem.textContent = total;
     }
   });
 }
@@ -927,7 +927,7 @@ document.addEventListener("click", (e) => {
     } else if (e.target.dataset.type === "skill") {
       const id = e.target.dataset.id;
       bonus = parseInt(document.getElementById(`val_${id}`)?.textContent, 10) || 0;
-      label = document.querySelector(`#row_${id} .skill-name`)?.textContent || "Skill";
+      label = document.querySelector(`#row_${id} .skill-label`)?.textContent || "Skill";
     }
     const total = roll + bonus;
     const out = document.getElementById("rollResult");
@@ -1104,16 +1104,6 @@ function openClassEquipmentModal(classKey, displayName) {
       finalizeSelectedLoadout();
     }
   });
-}
-
-function isWeaponOrArmor(name) {
-  if (!name) return false;
-  const l = name.toLowerCase();
-  return l.includes("sword") || l.includes("bow") || l.includes("dagger") || l.includes("axe") || 
-         l.includes("mace") || l.includes("crossbow") || l.includes("staff") || l.includes("hammer") || 
-         l.includes("spear") || l.includes("shield") || l.includes("armor") || l.includes("mail") || 
-         l.includes("javelin") || l.includes("glaive") || l.includes("halberd") || l.includes("rapier") || 
-         l.includes("club") || l.includes("sickle") || l.includes("dart");
 }
 
 function finalizeSelectedLoadout() {
@@ -1507,7 +1497,6 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
   }
 
   if (hasVariants) {
-      loadoutState = { traitChoiceOptions: [{ ...detail, isSpell: false }], traitsToAdd: [], isSingleAbility: true, history: [] };
       document.getElementById("traitModal")?.classList.remove("open");
       if (badge) badge.textContent = "+ Add";
       
@@ -1515,8 +1504,7 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
       document.getElementById("choiceModalBody").innerHTML = html;
       document.getElementById("choiceModal").classList.add("open");
       
-      const tObj = loadoutState.traitChoiceOptions[0];
-      let cData = tObj.trait_specific?.subtrait_options || tObj.trait_specific?.spell_options || tObj.trait_specific?.damage_type_options || tObj.trait_specific?.choice || tObj.trait_specific?.breath_weapon_options || tObj.feature_specific?.subfeature_options || tObj.feature_specific?.expertise_options || tObj.feature_specific?.choice || (tObj.trait_specific?.from ? tObj.trait_specific : null) || (tObj.feature_specific?.from ? tObj.feature_specific : null) || tObj.choice || tObj.damage_type_options;
+      let cData = detail.trait_specific?.subtrait_options || detail.trait_specific?.spell_options || detail.trait_specific?.damage_type_options || detail.trait_specific?.choice || detail.trait_specific?.breath_weapon_options || detail.feature_specific?.subfeature_options || detail.feature_specific?.expertise_options || detail.feature_specific?.choice || (detail.trait_specific?.from ? detail.trait_specific : null) || (detail.feature_specific?.from ? detail.feature_specific : null) || detail.choice || detail.damage_type_options;
       let oArr = [];
       if (cData && cData.from && cData.from.options) oArr = cData.from.options;
       else if (Array.isArray(cData)) oArr = cData;
@@ -1536,7 +1524,7 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
          tBtn.style.opacity = "0.5"; tBtn.innerHTML = "<strong>Loading...</strong>";
          let sName = tBtn.dataset.name;
          let sUrl = tBtn.dataset.url;
-         let tDesc = Array.isArray(tObj.desc) ? tObj.desc.join("\n") : (tObj.desc || "");
+         let tDesc = Array.isArray(detail.desc) ? detail.desc.join("\n") : (detail.desc || "");
          
          if (sUrl) {
             const sub = await fetchAPI("https://www.dnd5eapi.co" + sUrl);
@@ -1545,7 +1533,7 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
             tDesc += `\n\nSelected Variant: ${sName}`;
          }
 
-         if (tObj.name === "Breath Weapon") {
+         if (detail.name === "Breath Weapon") {
              let dName = "";
              const cols = ["Black", "Blue", "Brass", "Bronze", "Copper", "Gold", "Green", "Red", "Silver", "White"];
              for (let c of cols) { if (sName.includes(c)) dName = c; }
@@ -1557,9 +1545,9 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
                      desc: `Exhale destructive energy. It is a ${drag.breath} dealing ${drag.damage} damage. Save: ${drag.save}.`,
                      isExpanded: false
                  });
-             } else myCharacterTraits.push({ name: `${tObj.name} (${sName})`, type: "Racial Trait", desc: tDesc, isExpanded: false });
+             } else myCharacterTraits.push({ name: `${detail.name} (${sName})`, type: "Racial Trait", desc: tDesc, isExpanded: false });
          } else {
-             myCharacterTraits.push({ name: `${tObj.name} (${sName})`, type: tObj.url?.includes("/features/") ? "Class Feature" : "Racial Trait", desc: tDesc, isExpanded: false });
+             myCharacterTraits.push({ name: `${detail.name} (${sName})`, type: detail.url?.includes("/features/") ? "Class Feature" : "Racial Trait", desc: tDesc, isExpanded: false });
          }
          saveSheet(); renderMyTraits(); document.getElementById("choiceModal").classList.remove("open");
       });
