@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -45,7 +45,13 @@ onAuthStateChanged(auth, async (user) => {
       <span style="font-size: 0.85rem; color: #475569; font-weight: 600;">${user.email}</span>
       <button class="btn outline blue" id="logoutBtn" type="button">Log Out</button>
     `;
-    document.getElementById("logoutBtn").addEventListener("click", () => signOut(auth));
+    
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      localStorage.removeItem(ROSTER_STORAGE_KEY);
+      localStorage.removeItem(ACTIVE_CHAR_ID_KEY);
+      window.location.reload();
+    });
     
     try {
       const docSnap = await getDoc(doc(db, "user_rosters", user.uid));
@@ -92,6 +98,19 @@ document.getElementById("authSubmitBtn")?.addEventListener("click", async () => 
        } else {
            await createUserWithEmailAndPassword(auth, email, pass);
        }
+       document.getElementById("authModal").classList.remove("open");
+   } catch (err) {
+       errEl.textContent = err.message.replace("Firebase: ", "");
+       errEl.style.display = "block";
+   }
+});
+
+document.getElementById("googleAuthBtn")?.addEventListener("click", async () => {
+   const provider = new GoogleAuthProvider();
+   const errEl = document.getElementById("authError");
+   errEl.style.display = "none";
+   try {
+       await signInWithPopup(auth, provider);
        document.getElementById("authModal").classList.remove("open");
    } catch (err) {
        errEl.textContent = err.message.replace("Firebase: ", "");
