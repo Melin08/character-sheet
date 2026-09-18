@@ -359,6 +359,19 @@ const CLASS_SPELL_ABILITY = {
   "artificer": "INT", "monk": "WIS", "fighter": "INT", "rogue": "INT"
 };
 
+const DRAGON_ANCESTRY_MAP = {
+  "Black": { damage: "Acid", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Blue": { damage: "Lightning", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Brass": { damage: "Fire", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Bronze": { damage: "Lightning", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Copper": { damage: "Acid", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Gold": { damage: "Fire", breath: "15 ft. cone", save: "Dexterity" },
+  "Green": { damage: "Poison", breath: "15 ft. cone", save: "Constitution" },
+  "Red": { damage: "Fire", breath: "15 ft. cone", save: "Dexterity" },
+  "Silver": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" },
+  "White": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" }
+};
+
 // ==========================================
 // 2. AUTHENTICATION (Firebase)
 // ==========================================
@@ -369,7 +382,7 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     authGroup.innerHTML = `
       <span style="font-size: 0.85rem; color: #94a3b8; font-weight: 600;">${user.email}</span>
-      <button class="btn outline blue" id="logoutBtn" type="button" style="border:1px solid #94a3b8; background:transparent;">Log Out</button>
+      <button class="btn outline blue" id="logoutBtn" type="button" style="border:1px solid #3b4c68; background:transparent;">Log Out</button>
     `;
     
     document.getElementById("logoutBtn").addEventListener("click", async () => {
@@ -393,7 +406,7 @@ onAuthStateChanged(auth, async (user) => {
   } else {
     currentUser = null;
     authGroup.innerHTML = `
-      <button class="btn outline blue" id="loginNavBtn" type="button" style="border:1px solid #94a3b8; background:transparent;">Log In</button>
+      <button class="btn outline blue" id="loginNavBtn" type="button" style="border:1px solid #3b4c68; background:transparent;">Log In</button>
       <button class="btn red" id="signupNavBtn" type="button">Sign Up</button>
     `;
     document.getElementById("loginNavBtn").addEventListener("click", () => openAuthModal("login"));
@@ -515,23 +528,26 @@ function recalculateAll() {
     const isSaveChecked = document.getElementById(`save_${stat}`)?.checked;
     const saveValElem = document.getElementById(`save_val_${stat}`);
     if (saveValElem) {
-      saveValElem.textContent = isSaveChecked ? mod + prof : mod;
+      let saveVal = isSaveChecked ? mod + prof : mod;
+      saveValElem.textContent = saveVal >= 0 ? `+${saveVal}` : saveVal;
     }
   });
 
   // Skills Calculation
-  document.querySelectorAll(".skill-row").forEach((row) => {
-    const stat = row.dataset.stat;
+  document.querySelectorAll(".skill-card").forEach((card) => {
+    const stat = card.dataset.stat;
     const statMod = mods[stat] ?? 0;
-    const isProf = row.querySelector(".prof-cb")?.checked;
-    const isExp = row.querySelector(".exp-cb")?.checked;
+    const isProf = card.querySelector(".prof-cb")?.checked;
+    const isExp = card.querySelector(".exp-cb")?.checked;
 
     let total = statMod;
     if (isProf) total += prof;
     if (isExp) total += prof;
 
-    const valElem = row.querySelector(".skill-val");
-    if (valElem) valElem.textContent = total;
+    const valElem = card.querySelector(".skill-val");
+    if (valElem) {
+      valElem.textContent = total >= 0 ? `+${total}` : total;
+    }
   });
 }
 
@@ -911,7 +927,7 @@ document.addEventListener("click", (e) => {
     } else if (e.target.dataset.type === "skill") {
       const id = e.target.dataset.id;
       bonus = parseInt(document.getElementById(`val_${id}`)?.textContent, 10) || 0;
-      label = document.querySelector(`#row_${id} .skill-label`)?.textContent || "Skill";
+      label = document.querySelector(`#row_${id} .skill-name`)?.textContent || "Skill";
     }
     const total = roll + bonus;
     const out = document.getElementById("rollResult");
@@ -1088,6 +1104,16 @@ function openClassEquipmentModal(classKey, displayName) {
       finalizeSelectedLoadout();
     }
   });
+}
+
+function isWeaponOrArmor(name) {
+  if (!name) return false;
+  const l = name.toLowerCase();
+  return l.includes("sword") || l.includes("bow") || l.includes("dagger") || l.includes("axe") || 
+         l.includes("mace") || l.includes("crossbow") || l.includes("staff") || l.includes("hammer") || 
+         l.includes("spear") || l.includes("shield") || l.includes("armor") || l.includes("mail") || 
+         l.includes("javelin") || l.includes("glaive") || l.includes("halberd") || l.includes("rapier") || 
+         l.includes("club") || l.includes("sickle") || l.includes("dart");
 }
 
 function finalizeSelectedLoadout() {
@@ -1454,8 +1480,6 @@ document.getElementById("addCustomTraitBtn")?.addEventListener("click", (e) => {
   }
 });
 
-let tempTraitHold = null;
-
 document.getElementById("traitApiList")?.addEventListener("click", async (e) => {
   const row = e.target.closest(".trait-option-item");
   if (!row) return;
@@ -1483,10 +1507,62 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
   }
 
   if (hasVariants) {
-      tempTraitHold = detail;
+      loadoutState = { traitChoiceOptions: [{ ...detail, isSpell: false }], traitsToAdd: [], isSingleAbility: true, history: [] };
       document.getElementById("traitModal")?.classList.remove("open");
       if (badge) badge.textContent = "+ Add";
-      runTraitVariantStep(detail);
+      
+      let html = `<div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">Pick Variant:</div><p>Loading...</p>`;
+      document.getElementById("choiceModalBody").innerHTML = html;
+      document.getElementById("choiceModal").classList.add("open");
+      
+      const tObj = loadoutState.traitChoiceOptions[0];
+      let cData = tObj.trait_specific?.subtrait_options || tObj.trait_specific?.spell_options || tObj.trait_specific?.damage_type_options || tObj.trait_specific?.choice || tObj.trait_specific?.breath_weapon_options || tObj.feature_specific?.subfeature_options || tObj.feature_specific?.expertise_options || tObj.feature_specific?.choice || (tObj.trait_specific?.from ? tObj.trait_specific : null) || (tObj.feature_specific?.from ? tObj.feature_specific : null) || tObj.choice || tObj.damage_type_options;
+      let oArr = [];
+      if (cData && cData.from && cData.from.options) oArr = cData.from.options;
+      else if (Array.isArray(cData)) oArr = cData;
+
+      let rHtml = `<div class="equip-options-grid">`;
+      oArr.forEach((opt, idx) => {
+        let n = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
+        let u = opt.item?.url || opt.trait?.url || opt.feature?.url || null; 
+        rHtml += `<div class="choice-option-wrapper"><button type="button" class="choice-option-btn temp-trait-btn" data-name="${escapeHtml(n)}" data-url="${u || ''}"><strong>${escapeHtml(n)}</strong></button></div>`;
+      });
+      rHtml += `</div>`;
+      document.getElementById("choiceModalBody").innerHTML = rHtml;
+
+      document.getElementById("choiceModalBody").addEventListener("click", async (ev) => {
+         const tBtn = ev.target.closest(".temp-trait-btn");
+         if (!tBtn) return;
+         tBtn.style.opacity = "0.5"; tBtn.innerHTML = "<strong>Loading...</strong>";
+         let sName = tBtn.dataset.name;
+         let sUrl = tBtn.dataset.url;
+         let tDesc = Array.isArray(tObj.desc) ? tObj.desc.join("\n") : (tObj.desc || "");
+         
+         if (sUrl) {
+            const sub = await fetchAPI("https://www.dnd5eapi.co" + sUrl);
+            if (sub && sub.desc) tDesc += "\n\n" + (Array.isArray(sub.desc) ? sub.desc.join("\n") : sub.desc);
+         } else {
+            tDesc += `\n\nSelected Variant: ${sName}`;
+         }
+
+         if (tObj.name === "Breath Weapon") {
+             let dName = "";
+             const cols = ["Black", "Blue", "Brass", "Bronze", "Copper", "Gold", "Green", "Red", "Silver", "White"];
+             for (let c of cols) { if (sName.includes(c)) dName = c; }
+             let drag = DRAGON_ANCESTRY_MAP[dName];
+             if (drag) {
+                 myCharacterTraits.push({
+                     name: `Breath Weapon (${drag.damage})`,
+                     type: "Racial Trait",
+                     desc: `Exhale destructive energy. It is a ${drag.breath} dealing ${drag.damage} damage. Save: ${drag.save}.`,
+                     isExpanded: false
+                 });
+             } else myCharacterTraits.push({ name: `${tObj.name} (${sName})`, type: "Racial Trait", desc: tDesc, isExpanded: false });
+         } else {
+             myCharacterTraits.push({ name: `${tObj.name} (${sName})`, type: tObj.url?.includes("/features/") ? "Class Feature" : "Racial Trait", desc: tDesc, isExpanded: false });
+         }
+         saveSheet(); renderMyTraits(); document.getElementById("choiceModal").classList.remove("open");
+      });
       return;
   }
 
@@ -1507,103 +1583,6 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
   document.getElementById("traitModal")?.classList.remove("open");
   if (badge) badge.textContent = "+ Add";
 });
-
-function runTraitVariantStep(traitObj) {
-  const choiceModal = document.getElementById("choiceModal");
-  choiceModalTitle.textContent = `Choose Variant: ${traitObj.name}`;
-  
-  let choiceData = traitObj.trait_specific?.subtrait_options || traitObj.trait_specific?.spell_options || traitObj.trait_specific?.damage_type_options || traitObj.trait_specific?.choice || traitObj.trait_specific?.breath_weapon_options || traitObj.feature_specific?.subfeature_options || traitObj.feature_specific?.expertise_options || traitObj.feature_specific?.choice || (traitObj.trait_specific?.from ? traitObj.trait_specific : null) || (traitObj.feature_specific?.from ? traitObj.feature_specific : null) || traitObj.choice || traitObj.damage_type_options;
-  
-  let optionsArr = [];
-  if (choiceData && choiceData.from && choiceData.from.options) {
-       optionsArr = choiceData.from.options;
-  } else if (Array.isArray(choiceData)) {
-       optionsArr = choiceData;
-  }
-
-  if (optionsArr.length === 0) {
-      myCharacterTraits.push({ name: traitObj.name, type: "Feature", desc: traitObj.desc, isExpanded: false });
-      saveSheet(); renderMyTraits();
-      return;
-  }
-
-  let html = `
-    <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
-      <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">✨</span>
-      Select your ${escapeHtml(traitObj.name)} variant:
-    </div>
-    <div class="equip-options-grid">
-  `;
-  
-  optionsArr.forEach((opt, idx) => {
-    let name = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
-    let url = opt.item?.url || opt.trait?.url || opt.feature?.url || null; 
-    html += `
-      <div class="choice-option-wrapper">
-        <button type="button" class="choice-option-btn trait-variant-btn" data-index="${idx}" data-name="${escapeHtml(name)}" data-url="${url || ''}">
-          <strong>${escapeHtml(name)}</strong>
-        </button>
-      </div>
-    `;
-  });
-  html += `</div>`;
-
-  choiceModalBody.innerHTML = html;
-  choiceModal.classList.add("open");
-
-  const newBody = choiceModalBody.cloneNode(true);
-  choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-  
-  document.getElementById("choiceModalBody").addEventListener("click", async (e) => {
-    const btn = e.target.closest(".trait-variant-btn");
-    if (!btn) return;
-    btn.style.opacity = "0.5";
-    btn.innerHTML = "<strong style='color:#34d399;'>Adding...</strong>";
-    
-    let selectedName = btn.dataset.name;
-    let selectedUrl = btn.dataset.url;
-    let traitDesc = Array.isArray(traitObj.desc) ? traitObj.desc.join("\n") : (traitObj.desc || "");
-    
-    if (selectedUrl) {
-       const subT = await fetchAPI("https://www.dnd5eapi.co" + selectedUrl);
-       if (subT && subT.desc) {
-           traitDesc += "\n\n" + (Array.isArray(subT.desc) ? subT.desc.join("\n") : subT.desc);
-       }
-    } else {
-       traitDesc += `\n\nSelected Variant: ${selectedName}`;
-    }
-
-    if (traitObj.name === "Breath Weapon") {
-       let dragonName = "";
-       const colors = ["Black", "Blue", "Brass", "Bronze", "Copper", "Gold", "Green", "Red", "Silver", "White"];
-       for (let c of colors) {
-           if (selectedName.includes(c)) dragonName = c;
-       }
-       let dragon = DRAGON_ANCESTRY_MAP[dragonName];
-       if (dragon) {
-           myCharacterTraits.push({
-               name: `Breath Weapon (${dragon.damage})`,
-               type: "Racial Trait",
-               desc: `You can use your action to exhale destructive energy. It is a ${dragon.breath} dealing ${dragon.damage} damage. When you use your breath weapon, each creature in the area of the exhalation must make a ${dragon.save} saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level. After you use your breath weapon, you can't use it again until you complete a short or long rest.`,
-               isExpanded: false
-           });
-       } else {
-           myCharacterTraits.push({ name: `${traitObj.name} (${selectedName})`, type: "Racial Trait", desc: traitDesc, isExpanded: false });
-       }
-    } else {
-       myCharacterTraits.push({
-           name: `${traitObj.name} (${selectedName})`,
-           type: traitObj.url?.includes("/features/") ? "Class Feature" : "Racial Trait",
-           desc: traitDesc,
-           isExpanded: false
-       });
-    }
-
-    saveSheet();
-    renderMyTraits();
-    choiceModal.classList.remove("open");
-  });
-}
 
 function renderModalSpellsList(matches) {
   const container = document.getElementById("spellApiList");
@@ -1811,8 +1790,6 @@ document.getElementById("addCustomSpellBtn")?.addEventListener("click", (e) => {
   }
 });
 
-let tempSpellHold = null;
-
 document.getElementById("spellApiList")?.addEventListener("click", async (e) => {
   const row = e.target.closest(".spell-add-item");
   if (!row) return;
@@ -1827,10 +1804,46 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
 
   let hasVariants = !!(detail?.damage_type_options || detail?.choice);
   if (hasVariants) {
-      tempSpellHold = detail;
       document.getElementById("spellModal")?.classList.remove("open");
       if (badge) badge.textContent = "+ Add";
-      runSpellVariantStep(detail);
+
+      let html = `<div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">Pick Variant:</div><p>Loading...</p>`;
+      document.getElementById("choiceModalBody").innerHTML = html;
+      document.getElementById("choiceModal").classList.add("open");
+      
+      let cData = detail.damage_type_options || detail.choice;
+      let oArr = [];
+      if (cData && cData.from && cData.from.options) oArr = cData.from.options;
+      else if (Array.isArray(cData)) oArr = cData;
+
+      let rHtml = `<div class="equip-options-grid">`;
+      oArr.forEach((opt, idx) => {
+        let n = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
+        rHtml += `<div class="choice-option-wrapper"><button type="button" class="choice-option-btn temp-spell-btn" data-name="${escapeHtml(n)}"><strong>${escapeHtml(n)}</strong></button></div>`;
+      });
+      rHtml += `</div>`;
+      document.getElementById("choiceModalBody").innerHTML = rHtml;
+
+      document.getElementById("choiceModalBody").addEventListener("click", async (ev) => {
+         const tBtn = ev.target.closest(".temp-spell-btn");
+         if (!tBtn) return;
+         let sName = tBtn.dataset.name;
+         
+         let spellDesc = Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || "");
+         spellDesc += `\n\nSelected Variant: ${sName}`;
+         if (detail.higher_level) spellDesc += "\n\nAt Higher Levels: " + (Array.isArray(detail.higher_level) ? detail.higher_level.join(" ") : detail.higher_level);
+
+         myCharacterSpells.push({
+             name: `${detail.name} (${sName})`,
+             type: detail.level === 0 ? "Cantrip" : `Level ${detail.level} ${detail.school?.name || ""}`.trim(),
+             casting_time: detail.casting_time || "1 Action",
+             range: detail.range || "30 ft",
+             duration: detail.duration || "Instantaneous",
+             desc: spellDesc
+         });
+
+         saveSheet(); renderMySpells(); document.getElementById("choiceModal").classList.remove("open");
+      });
       return;
   }
 
@@ -1864,87 +1877,6 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   if (badge) badge.textContent = "+ Add";
 });
 
-function runSpellVariantStep(spellObj) {
-  const choiceModal = document.getElementById("choiceModal");
-  choiceModalTitle.textContent = `Choose Variant: ${spellObj.name}`;
-  
-  let choiceData = spellObj.damage_type_options || spellObj.choice;
-  let optionsArr = [];
-  if (choiceData && choiceData.from && choiceData.from.options) {
-       optionsArr = choiceData.from.options;
-  } else if (Array.isArray(choiceData)) {
-       optionsArr = choiceData;
-  }
-
-  if (optionsArr.length === 0) {
-      let finalType = spellObj.level === 0 ? "Cantrip" : `Level ${spellObj.level} ${spellObj.school?.name || ""}`.trim();
-      myCharacterSpells.push({
-          name: spellObj.name,
-          type: finalType,
-          casting_time: spellObj.casting_time || "1 Action",
-          range: spellObj.range || "30 ft",
-          duration: spellObj.duration || "Instantaneous",
-          desc: Array.isArray(spellObj.desc) ? spellObj.desc.join("\n\n") : (spellObj.desc || "")
-      });
-      saveSheet(); renderMySpells();
-      return;
-  }
-
-  let html = `
-    <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
-      <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">✨</span>
-      Select your ${escapeHtml(spellObj.name)} variant:
-    </div>
-    <div class="equip-options-grid">
-  `;
-  
-  optionsArr.forEach((opt, idx) => {
-    let name = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
-    let url = opt.item?.url || opt.trait?.url || opt.feature?.url || null; 
-    html += `
-      <div class="choice-option-wrapper">
-        <button type="button" class="choice-option-btn spell-variant-btn" data-name="${escapeHtml(name)}" data-url="${url || ''}">
-          <strong>${escapeHtml(name)}</strong>
-        </button>
-      </div>
-    `;
-  });
-  html += `</div>`;
-
-  choiceModalBody.innerHTML = html;
-  choiceModal.classList.add("open");
-
-  const newBody = choiceModalBody.cloneNode(true);
-  choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-  
-  document.getElementById("choiceModalBody").addEventListener("click", async (e) => {
-    const btn = e.target.closest(".spell-variant-btn");
-    if (!btn) return;
-    btn.style.opacity = "0.5";
-    btn.innerHTML = "<strong style='color:#34d399;'>Adding...</strong>";
-    
-    let selectedName = btn.dataset.name;
-    let spellDesc = Array.isArray(spellObj.desc) ? spellObj.desc.join("\n\n") : (spellObj.desc || "");
-    spellDesc += `\n\nSelected Variant: ${selectedName}`;
-    if (spellObj.higher_level) spellDesc += "\n\nAt Higher Levels: " + (Array.isArray(spellObj.higher_level) ? spellObj.higher_level.join(" ") : spellObj.higher_level);
-
-    let finalType = spellObj.level === 0 ? "Cantrip" : `Level ${spellObj.level} ${spellObj.school?.name || ""}`.trim();
-
-    myCharacterSpells.push({
-        name: `${spellObj.name} (${selectedName})`,
-        type: finalType,
-        casting_time: spellObj.casting_time || "1 Action",
-        range: spellObj.range || "30 ft",
-        duration: spellObj.duration || "Instantaneous",
-        desc: spellDesc
-    });
-
-    saveSheet();
-    renderMySpells();
-    choiceModal.classList.remove("open");
-  });
-}
-
 document.getElementById("spellsList")?.addEventListener("input", (e) => {
   if (e.target.classList.contains("custom-spell-field")) {
     const card = e.target.closest(".spell-card");
@@ -1968,3 +1900,4 @@ document.getElementById("spellsList")?.addEventListener("click", (e) => {
 
 // Initialization
 loadSheet();
+renderMyTraits();
