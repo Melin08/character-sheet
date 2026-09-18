@@ -1,4 +1,21 @@
-"use strict";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAIKe_hrxyQvn4uebwU5OZrP2qf-FwK0Rg",
+  authDomain: "character-sheet-bd250.firebaseapp.com",
+  projectId: "character-sheet-bd250",
+  storageBucket: "character-sheet-bd250.firebasestorage.app",
+  messagingSenderId: "881155587941",
+  appId: "1:881155587941:web:45087fba9dc7154fddeb8c"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
 
 const ROSTER_STORAGE_KEY = "badman_char_roster_v1";
 const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
@@ -19,6 +36,287 @@ let currentDropTarget = null;
 
 let allClassesCache = [];
 let allRacesCache = [];
+
+// ==========================================
+// 1. HARDCODED DATABASES FOR SETUP WIZARDS
+// ==========================================
+
+const SRD_CLASS_EQUIPMENT = {
+  barbarian: {
+    name: "Barbarian", hitDie: 12, saves: ["Strength", "Constitution"],
+    proficiencies: ["Light armor", "Medium armor", "Shields", "Simple weapons", "Martial weapons"],
+    fixed: [{ name: "Explorer's Pack", qty: 1 }, { name: "Javelin", qty: 4 }],
+    choices: [
+      { desc: "Choose your primary weapon", choose: 1, options: [
+        { label: "A Greataxe", items: [{ name: "Greataxe", qty: 1, desc: "1d12 slashing, heavy, two-handed" }] },
+        { label: "Any Martial Melee Weapon", items: [{ name: "Longsword", qty: 1, desc: "1d8 slashing, versatile (1d10)" }] }
+      ]},
+      { desc: "Choose your secondary weapons", choose: 1, options: [
+        { label: "Two Handaxes", items: [{ name: "Handaxe", qty: 2, desc: "1d6 slashing, light, thrown (20/60)" }] },
+        { label: "Any Simple Weapon", items: [{ name: "Shortbow & 20 Arrows", qty: 1, desc: "1d6 piercing, two-handed, range 80/320" }] }
+      ]}
+    ]
+  },
+  bard: {
+    name: "Bard", hitDie: 8, saves: ["Dexterity", "Charisma"],
+    proficiencies: ["Light armor", "Simple weapons", "Hand crossbows", "Longswords", "Rapiers", "Shortswords", "Three musical instruments"],
+    fixed: [{ name: "Leather Armor", qty: 1 }, { name: "Dagger", qty: 1 }],
+    choices: [
+      { desc: "Choose your primary weapon", choose: 1, options: [
+        { label: "A Rapier", items: [{ name: "Rapier", qty: 1, desc: "1d8 piercing, finesse" }] },
+        { label: "A Longsword", items: [{ name: "Longsword", qty: 1, desc: "1d8 slashing, versatile (1d10)" }] },
+        { label: "Any Simple Weapon", items: [{ name: "Dagger", qty: 1, desc: "1d4 piercing, finesse, light, thrown" }] }
+      ]},
+      { desc: "Choose your pack", choose: 1, options: [
+        { label: "Diplomat's Pack", items: [{ name: "Diplomat's Pack", qty: 1, desc: "Chest, fine clothes, ink, pen, lamp, oil, rations" }] },
+        { label: "Entertainer's Pack", items: [{ name: "Entertainer's Pack", qty: 1, desc: "Backpack, bedroll, costumes, candles, rations, waterskin" }] }
+      ]},
+      { desc: "Choose your musical instrument", choose: 1, options: [
+        { label: "A Lute", items: [{ name: "Lute", qty: 1, desc: "Musical instrument" }] },
+        { label: "Any Musical Instrument", items: [{ name: "Flute", qty: 1, desc: "Musical instrument" }] }
+      ]}
+    ]
+  },
+  cleric: {
+    name: "Cleric", hitDie: 8, saves: ["Wisdom", "Charisma"],
+    proficiencies: ["Light armor", "Medium armor", "Shields", "Simple weapons"],
+    fixed: [{ name: "Shield", qty: 1 }, { name: "Holy Symbol", qty: 1 }],
+    choices: [
+      { desc: "Choose your primary weapon", choose: 1, options: [
+        { label: "A Mace", items: [{ name: "Mace", qty: 1, desc: "1d6 bludgeoning" }] },
+        { label: "A Warhammer (if proficient)", items: [{ name: "Warhammer", qty: 1, desc: "1d8 bludgeoning, versatile (1d10)" }] }
+      ]},
+      { desc: "Choose your armor", choose: 1, options: [
+        { label: "Scale Mail", items: [{ name: "Scale Mail", qty: 1, desc: "AC 14 + Dex mod (max 2), Disadv on Stealth" }] },
+        { label: "Leather Armor", items: [{ name: "Leather Armor", qty: 1, desc: "AC 11 + Dex mod" }] },
+        { label: "Chain Mail (if proficient)", items: [{ name: "Chain Mail", qty: 1, desc: "AC 16, Str 13 req, Disadv on Stealth" }] }
+      ]},
+      { desc: "Choose your ranged weapon", choose: 1, options: [
+        { label: "Light Crossbow & 20 Bolts", items: [{ name: "Light Crossbow", qty: 1, desc: "1d8 piercing, range 80/320, loading" }, { name: "Crossbow Bolts", qty: 20, desc: "Ammunition" }] },
+        { label: "Any Simple Weapon", items: [{ name: "Javelin", qty: 2, desc: "1d6 piercing, thrown (30/120)" }] }
+      ]},
+      { desc: "Choose your pack", choose: 1, options: [
+        { label: "Priest's Pack", items: [{ name: "Priest's Pack", qty: 1, desc: "Backpack, blanket, candles, alms box, censer, vestments" }] },
+        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
+      ]}
+    ]
+  },
+  druid: {
+    name: "Druid", hitDie: 8, saves: ["Intelligence", "Wisdom"],
+    proficiencies: ["Light armor", "Medium armor", "Shields", "Clubs", "Daggers", "Darts", "Javelins", "Maces", "Quarterstaffs", "Scimitars", "Sickles", "Slings", "Spears", "Herbalism kit"],
+    fixed: [{ name: "Leather Armor", qty: 1 }, { name: "Explorer's Pack", qty: 1 }, { name: "Druidic Focus", qty: 1 }],
+    choices: [
+      { desc: "Choose your shield or weapon", choose: 1, options: [
+        { label: "A Wooden Shield", items: [{ name: "Wooden Shield", qty: 1, desc: "+2 Armor Class" }] },
+        { label: "Any Simple Weapon", items: [{ name: "Quarterstaff", qty: 1, desc: "1d6 bludgeoning, versatile (1d8)" }] }
+      ]},
+      { desc: "Choose your primary melee weapon", choose: 1, options: [
+        { label: "A Scimitar", items: [{ name: "Scimitar", qty: 1, desc: "1d6 slashing, finesse, light" }] },
+        { label: "Any Simple Melee Weapon", items: [{ name: "Spear", qty: 1, desc: "1d6 piercing, thrown (20/60), versatile (1d8)" }] }
+      ]}
+    ]
+  },
+  fighter: {
+    name: "Fighter", hitDie: 10, saves: ["Strength", "Constitution"],
+    proficiencies: ["All armor", "Shields", "Simple weapons", "Martial weapons"],
+    fixed: [],
+    choices: [
+      { desc: "Choose your armor", choose: 1, options: [
+        { label: "Chain Mail", items: [{ name: "Chain Mail", qty: 1, desc: "AC 16, Str 13 req, Disadv on Stealth" }] },
+        { label: "Leather Armor & Longbow (20 Arrows)", items: [{ name: "Leather Armor", qty: 1, desc: "AC 11 + Dex mod" }, { name: "Longbow", qty: 1, desc: "1d8 piercing, heavy, two-handed, 150/600" }, { name: "Arrows", qty: 20, desc: "Ammunition" }] }
+      ]},
+      { desc: "Choose your weapon setup", choose: 1, options: [
+        { label: "A Martial Weapon & Shield", items: [{ name: "Longsword", qty: 1, desc: "1d8 slashing, versatile (1d10)" }, { name: "Shield", qty: 1, desc: "+2 Armor Class" }] },
+        { label: "Two Martial Weapons", items: [{ name: "Greatsword", qty: 1, desc: "2d6 slashing, heavy, two-handed" }, { name: "Shortsword", qty: 1, desc: "1d6 piercing, finesse, light" }] }
+      ]},
+      { desc: "Choose secondary ranged", choose: 1, options: [
+        { label: "Light Crossbow & 20 Bolts", items: [{ name: "Light Crossbow", qty: 1, desc: "1d8 piercing, range 80/320, loading" }, { name: "Crossbow Bolts", qty: 20, desc: "Ammunition" }] },
+        { label: "Two Handaxes", items: [{ name: "Handaxe", qty: 2, desc: "1d6 slashing, light, thrown (20/60)" }] }
+      ]},
+      { desc: "Choose your pack", choose: 1, options: [
+        { label: "Dungeoneer's Pack", items: [{ name: "Dungeoneer's Pack", qty: 1, desc: "Backpack, crowbar, hammer, pitons, torches, rations" }] },
+        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
+      ]}
+    ]
+  },
+  monk: {
+    name: "Monk", hitDie: 8, saves: ["Strength", "Dexterity"],
+    proficiencies: ["Simple weapons", "Shortswords"],
+    fixed: [{ name: "Dart", qty: 10 }],
+    choices: [
+      { desc: "Choose your primary weapon", choose: 1, options: [
+        { label: "A Shortsword", items: [{ name: "Shortsword", qty: 1, desc: "1d6 piercing, finesse, light" }] },
+        { label: "Any Simple Weapon", items: [{ name: "Quarterstaff", qty: 1, desc: "1d6 bludgeoning, versatile (1d8)" }] }
+      ]},
+      { desc: "Choose your pack", choose: 1, options: [
+        { label: "Dungeoneer's Pack", items: [{ name: "Dungeoneer's Pack", qty: 1, desc: "Backpack, crowbar, hammer, pitons, torches, rations" }] },
+        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
+      ]}
+    ]
+  },
+  paladin: {
+    name: "Paladin", hitDie: 10, saves: ["Wisdom", "Charisma"],
+    proficiencies: ["All armor", "Shields", "Simple weapons", "Martial weapons"],
+    fixed: [{ name: "Chain Mail", qty: 1 }, { name: "Holy Symbol", qty: 1 }],
+    choices: [
+      { desc: "Choose your weapons", choose: 1, options: [
+        { label: "A Martial Weapon & Shield", items: [{ name: "Longsword", qty: 1, desc: "1d8 slashing, versatile (1d10)" }, { name: "Shield", qty: 1, desc: "+2 Armor Class" }] },
+        { label: "Two Martial Weapons", items: [{ name: "Greatsword", qty: 1, desc: "2d6 slashing, heavy, two-handed" }, { name: "Warhammer", qty: 1, desc: "1d8 bludgeoning, versatile (1d10)" }] }
+      ]},
+      { desc: "Choose secondary weapons", choose: 1, options: [
+        { label: "Five Javelins", items: [{ name: "Javelin", qty: 5, desc: "1d6 piercing, thrown (30/120)" }] },
+        { label: "Any Simple Melee Weapon", items: [{ name: "Mace", qty: 1, desc: "1d6 bludgeoning" }] }
+      ]},
+      { desc: "Choose your pack", choose: 1, options: [
+        { label: "Priest's Pack", items: [{ name: "Priest's Pack", qty: 1, desc: "Backpack, blanket, candles, tinderbox, alms box, rations" }] },
+        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
+      ]}
+    ]
+  },
+  ranger: {
+    name: "Ranger", hitDie: 10, saves: ["Strength", "Dexterity"],
+    proficiencies: ["Light armor", "Medium armor", "Shields", "Simple weapons", "Martial weapons"],
+    fixed: [{ name: "Longbow", qty: 1 }, { name: "Quiver & 20 Arrows", qty: 1 }],
+    choices: [
+      { desc: "Choose your armor", choose: 1, options: [
+        { label: "Scale Mail", items: [{ name: "Scale Mail", qty: 1, desc: "AC 14 + Dex mod (max 2), Disadv on Stealth" }] },
+        { label: "Leather Armor", items: [{ name: "Leather Armor", qty: 1, desc: "AC 11 + Dex mod" }] }
+      ]},
+      { desc: "Choose your melee setup", choose: 1, options: [
+        { label: "Two Shortswords", items: [{ name: "Shortsword", qty: 2, desc: "1d6 piercing, finesse, light" }] },
+        { label: "Two Simple Melee Weapons", items: [{ name: "Handaxe", qty: 2, desc: "1d6 slashing, light, thrown (20/60)" }] }
+      ]},
+      { desc: "Choose your pack", choose: 1, options: [
+        { label: "Dungeoneer's Pack", items: [{ name: "Dungeoneer's Pack", qty: 1, desc: "Backpack, crowbar, hammer, pitons, torches, rations" }] },
+        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
+      ]}
+    ]
+  },
+  rogue: {
+    name: "Rogue", hitDie: 8, saves: ["Dexterity", "Intelligence"],
+    proficiencies: ["Light armor", "Simple weapons", "Hand crossbows", "Longswords", "Rapiers", "Shortswords", "Thieves' tools"],
+    fixed: [{ name: "Leather Armor", qty: 1 }, { name: "Dagger", qty: 2 }, { name: "Thieves' Tools", qty: 1 }],
+    choices: [
+      { desc: "Choose your primary weapon", choose: 1, options: [
+        { label: "A Rapier", items: [{ name: "Rapier", qty: 1, desc: "1d8 piercing, finesse" }] },
+        { label: "A Shortsword", items: [{ name: "Shortsword", qty: 1, desc: "1d6 piercing, finesse, light" }] }
+      ]},
+      { desc: "Choose secondary ranged", choose: 1, options: [
+        { label: "Shortbow & 20 Arrows", items: [{ name: "Shortbow", qty: 1, desc: "1d6 piercing, two-handed, range 80/320" }, { name: "Arrows", qty: 20, desc: "Ammunition" }] },
+        { label: "A Shortsword", items: [{ name: "Shortsword", qty: 1, desc: "1d6 piercing, finesse, light" }] }
+      ]},
+      { desc: "Choose your pack", choose: 1, options: [
+        { label: "Burglar's Pack", items: [{ name: "Burglar's Pack", qty: 1, desc: "Backpack, ball bearings, string, bell, candles, crowbar" }] },
+        { label: "Dungeoneer's Pack", items: [{ name: "Dungeoneer's Pack", qty: 1, desc: "Backpack, crowbar, hammer, pitons, torches, rations" }] },
+        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
+      ]}
+    ]
+  },
+  sorcerer: {
+    name: "Sorcerer", hitDie: 6, saves: ["Constitution", "Charisma"],
+    proficiencies: ["Daggers", "Darts", "Slings", "Quarterstaffs", "Light crossbows"],
+    fixed: [{ name: "Dagger", qty: 2 }],
+    choices: [
+      { desc: "Choose secondary weapon", choose: 1, options: [
+        { label: "Light Crossbow & 20 Bolts", items: [{ name: "Light Crossbow", qty: 1, desc: "1d8 piercing, range 80/320, loading" }, { name: "Crossbow Bolts", qty: 20, desc: "Ammunition" }] },
+        { label: "Any Simple Weapon", items: [{ name: "Quarterstaff", qty: 1, desc: "1d6 bludgeoning, versatile (1d8)" }] }
+      ]},
+      { desc: "Choose your spell focus", choose: 1, options: [
+        { label: "Component Pouch", items: [{ name: "Component Pouch", qty: 1, desc: "Basic spellcasting focus" }] },
+        { label: "Arcane Focus", items: [{ name: "Arcane Focus (Wand)", qty: 1, desc: "Arcane spellcasting focus" }] }
+      ]},
+      { desc: "Choose your pack", choose: 1, options: [
+        { label: "Dungeoneer's Pack", items: [{ name: "Dungeoneer's Pack", qty: 1, desc: "Backpack, crowbar, hammer, pitons, torches, rations" }] },
+        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
+      ]}
+    ]
+  },
+  warlock: {
+    name: "Warlock", hitDie: 8, saves: ["Wisdom", "Charisma"],
+    proficiencies: ["Light armor", "Simple weapons"],
+    fixed: [{ name: "Leather Armor", qty: 1 }, { name: "Dagger", qty: 2 }],
+    choices: [
+      { desc: "Choose your primary weapon", choose: 1, options: [
+        { label: "Light Crossbow & 20 Bolts", items: [{ name: "Light Crossbow", qty: 1, desc: "1d8 piercing, range 80/320, loading" }, { name: "Crossbow Bolts", qty: 20, desc: "Ammunition" }] },
+        { label: "Any Simple Weapon", items: [{ name: "Quarterstaff", qty: 1, desc: "1d6 bludgeoning, versatile (1d8)" }] }
+      ]},
+      { desc: "Choose your spell focus", choose: 1, options: [
+        { label: "Component Pouch", items: [{ name: "Component Pouch", qty: 1, desc: "Basic spellcasting focus" }] },
+        { label: "Arcane Focus", items: [{ name: "Arcane Focus (Orb)", qty: 1, desc: "Arcane spellcasting focus" }] }
+      ]},
+      { desc: "Choose your pack", choose: 1, options: [
+        { label: "Scholar's Pack", items: [{ name: "Scholar's Pack", qty: 1, desc: "Backpack, book of lore, ink, pen, parchment, sand" }] },
+        { label: "Dungeoneer's Pack", items: [{ name: "Dungeoneer's Pack", qty: 1, desc: "Backpack, crowbar, hammer, pitons, torches, rations" }] }
+      ]}
+    ]
+  },
+  wizard: {
+    name: "Wizard", hitDie: 6, saves: ["Intelligence", "Wisdom"],
+    proficiencies: ["Daggers", "Darts", "Slings", "Quarterstaffs", "Light crossbows"],
+    fixed: [{ name: "Spellbook", qty: 1 }],
+    choices: [
+      { desc: "Choose your weapon", choose: 1, options: [
+        { label: "A Quarterstaff", items: [{ name: "Quarterstaff", qty: 1, desc: "1d6 bludgeoning, versatile (1d8)" }] },
+        { label: "A Dagger", items: [{ name: "Dagger", qty: 1, desc: "1d4 piercing, finesse, light, thrown" }] }
+      ]},
+      { desc: "Choose your spell focus", choose: 1, options: [
+        { label: "Component Pouch", items: [{ name: "Component Pouch", qty: 1, desc: "Basic spellcasting focus" }] },
+        { label: "Arcane Focus", items: [{ name: "Arcane Focus (Wand)", qty: 1, desc: "Arcane spellcasting focus" }] }
+      ]},
+      { desc: "Choose your pack", choose: 1, options: [
+        { label: "Scholar's Pack", items: [{ name: "Scholar's Pack", qty: 1, desc: "Backpack, book of lore, ink, pen, parchment, sand" }] },
+        { label: "Explorer's Pack", items: [{ name: "Explorer's Pack", qty: 1, desc: "Bedroll, mess kit, tinderbox, torches, rations, waterskin" }] }
+      ]}
+    ]
+  }
+};
+
+const SRD_RACE_DATA = {
+  dwarf: { speed: 25, traits: [
+    { name: "Darkvision", type: "Racial Trait", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+    { name: "Dwarven Resilience", type: "Racial Trait", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." },
+    { name: "Stonecunning", type: "Racial Trait", desc: "Whenever you make an Intelligence (History) check related to the origin of stonework, you add double your proficiency bonus." }
+  ]},
+  elf: { speed: 30, traits: [
+    { name: "Darkvision", type: "Racial Trait", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+    { name: "Keen Senses", type: "Racial Trait", desc: "You have proficiency in the Perception skill." },
+    { name: "Fey Ancestry", type: "Racial Trait", desc: "You have advantage on saving throws against being charmed, and magic can't put you to sleep." },
+    { name: "Trance", type: "Racial Trait", desc: "Elves don't need to sleep. Instead, they meditate deeply for 4 hours a day." }
+  ]},
+  halfling: { speed: 25, traits: [
+    { name: "Lucky", type: "Racial Trait", desc: "When you roll a 1 on the d20 for an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll." },
+    { name: "Brave", type: "Racial Trait", desc: "You have advantage on saving throws against being frightened." },
+    { name: "Halfling Nimbleness", type: "Racial Trait", desc: "You can move through the space of any creature that is of a size larger than yours." }
+  ]},
+  human: { speed: 30, traits: [
+    { name: "Versatile", type: "Racial Trait", desc: "Humans gain +1 to all ability scores and an extra language." }
+  ]},
+  dragonborn: { speed: 30, traits: [
+    { name: "Draconic Ancestry", type: "Racial Trait", desc: "You have draconic ancestry. Your breath weapon and damage resistance are determined by dragon type.", hasVariants: true, url: "/api/traits/draconic-ancestry" },
+    { name: "Breath Weapon", type: "Racial Trait", desc: "You can use your action to exhale destructive energy determined by your draconic ancestry." },
+    { name: "Damage Resistance", type: "Racial Trait", desc: "You have resistance to the damage type associated with your draconic ancestry." }
+  ]},
+  gnome: { speed: 25, traits: [
+    { name: "Darkvision", type: "Racial Trait", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+    { name: "Gnome Cunning", type: "Racial Trait", desc: "You have advantage on all Intelligence, Wisdom, and Charisma saving throws against magic." }
+  ]},
+  "half-elf": { speed: 30, traits: [
+    { name: "Darkvision", type: "Racial Trait", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+    { name: "Fey Ancestry", type: "Racial Trait", desc: "You have advantage on saving throws against being charmed, and magic can't put you to sleep." },
+    { name: "Skill Versatility", type: "Racial Trait", desc: "You gain proficiency in two skills of your choice." }
+  ]},
+  "half-orc": { speed: 30, traits: [
+    { name: "Darkvision", type: "Racial Trait", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+    { name: "Menacing", type: "Racial Trait", desc: "You gain proficiency in the Intimidation skill." },
+    { name: "Relentless Endurance", type: "Racial Trait", desc: "When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead once per long rest." },
+    { name: "Savage Attacks", type: "Racial Trait", desc: "When you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage." }
+  ]},
+  tiefling: { speed: 30, traits: [
+    { name: "Darkvision", type: "Racial Trait", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+    { name: "Hellish Resistance", type: "Racial Trait", desc: "You have resistance to fire damage." },
+    { name: "Infernal Legacy", type: "Racial Trait", desc: "You know the Thaumaturgy cantrip. Charisma is your spellcasting ability for these spells." }
+  ]}
+};
 
 const COMMON_SPELLS = [
   { name: "Fire Bolt", url: "/api/spells/fire-bolt", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard" },
@@ -61,255 +359,98 @@ const CLASS_SPELL_ABILITY = {
   "artificer": "INT", "monk": "WIS", "fighter": "INT", "rogue": "INT"
 };
 
-const DRAGON_ANCESTRY_MAP = {
-  "Black": { damage: "Acid", breath: "5 by 30 ft. line", save: "Dexterity" },
-  "Blue": { damage: "Lightning", breath: "5 by 30 ft. line", save: "Dexterity" },
-  "Brass": { damage: "Fire", breath: "5 by 30 ft. line", save: "Dexterity" },
-  "Bronze": { damage: "Lightning", breath: "5 by 30 ft. line", save: "Dexterity" },
-  "Copper": { damage: "Acid", breath: "5 by 30 ft. line", save: "Dexterity" },
-  "Gold": { damage: "Fire", breath: "15 ft. cone", save: "Dexterity" },
-  "Green": { damage: "Poison", breath: "15 ft. cone", save: "Constitution" },
-  "Red": { damage: "Fire", breath: "15 ft. cone", save: "Dexterity" },
-  "Silver": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" },
-  "White": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" }
-};
+// ==========================================
+// 2. AUTHENTICATION (Firebase)
+// ==========================================
 
-const EXTENDED_SUBRACES = {
-  "elf": [
-    { name: "Wood Elf", url: "custom_wood_elf" },
-    { name: "Dark Elf (Drow)", url: "custom_drow" }
-  ],
-  "dwarf": [
-    { name: "Mountain Dwarf", url: "custom_mountain_dwarf" }
-  ],
-  "halfling": [
-    { name: "Stout Halfling", url: "custom_stout_halfling" }
-  ],
-  "gnome": [
-    { name: "Forest Gnome", url: "custom_forest_gnome" }
-  ],
-  "tiefling": [
-    { name: "Bloodline of Asmodeus (Default)", url: "custom_tiefling_asmodeus" },
-    { name: "Bloodline of Baalzebul", url: "custom_tiefling_baalzebul" },
-    { name: "Bloodline of Dispater", url: "custom_tiefling_dispater" },
-    { name: "Bloodline of Fierna", url: "custom_tiefling_fierna" },
-    { name: "Bloodline of Glasya", url: "custom_tiefling_glasya" },
-    { name: "Bloodline of Levistus", url: "custom_tiefling_levistus" },
-    { name: "Bloodline of Mammon", url: "custom_tiefling_mammon" },
-    { name: "Bloodline of Mephistopheles", url: "custom_tiefling_mephistopheles" },
-    { name: "Bloodline of Zariel", url: "custom_tiefling_zariel" },
-    { name: "Variant: Winged Tiefling", url: "custom_tiefling_winged" }
-  ]
-};
-
-const CUSTOM_SUBRACE_DATA = {
-  "custom_wood_elf": {
-    name: "Wood Elf",
-    speed: 35,
-    ability_bonuses: [{ ability_score: { index: "wis", name: "WIS" }, bonus: 1 }],
-    traits: [
-      { name: "Fleet of Foot", desc: "Your base walking speed increases to 35 feet." },
-      { name: "Mask of the Wild", desc: "You can attempt to hide even when you are only lightly obscured by foliage, heavy rain, falling snow, mist, and other natural phenomena." }
-    ],
-    profs: "Weapons: Longsword, Shortsword, Shortbow, Longbow"
-  },
-  "custom_drow": {
-    name: "Dark Elf (Drow)",
-    ability_bonuses: [{ ability_score: { index: "cha", name: "CHA" }, bonus: 1 }],
-    traits: [
-      { name: "Superior Darkvision", desc: "Your darkvision has a radius of 120 feet." },
-      { name: "Sunlight Sensitivity", desc: "You have disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight when you, the target of your attack, or whatever you are trying to perceive is in direct sunlight." },
-      { name: "Drow Magic", desc: "You know the dancing lights cantrip. When you reach 3rd level, you can cast the faerie fire spell once per day. When you reach 5th level, you can also cast the darkness spell once per day. Charisma is your spellcasting ability for these spells." }
-    ],
-    profs: "Weapons: Rapier, Shortsword, Hand Crossbow",
-    spells: [
-      { name: "Dancing Lights (Drow Magic)", type: "Cantrip", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "You create up to four torch-sized lights within range, making them appear as torches, lanterns, or glowing orbs that hover in the air for the duration." }
-    ]
-  },
-  "custom_mountain_dwarf": {
-    name: "Mountain Dwarf",
-    ability_bonuses: [{ ability_score: { index: "str", name: "STR" }, bonus: 2 }],
-    traits: [
-      { name: "Dwarven Armor Training", desc: "You have proficiency with light and medium armor." }
-    ],
-    profs: "Armor: Light Armor, Medium Armor"
-  },
-  "custom_stout_halfling": {
-    name: "Stout Halfling",
-    ability_bonuses: [{ ability_score: { index: "con", name: "CON" }, bonus: 1 }],
-    traits: [
-      { name: "Stout Resilience", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." }
-    ]
-  },
-  "custom_forest_gnome": {
-    name: "Forest Gnome",
-    ability_bonuses: [{ ability_score: { index: "dex", name: "DEX" }, bonus: 1 }],
-    traits: [
-      { name: "Natural Illusionist", desc: "You know the minor illusion cantrip. Intelligence is your spellcasting ability for it." },
-      { name: "Speak with Small Beasts", desc: "Through sounds and gestures, you can communicate simple ideas with Small or smaller beasts." }
-    ],
-    spells: [
-      { name: "Minor Illusion (Natural Illusionist)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "You create a sound or an image of an object within range that lasts for the duration." }
-    ]
-  },
-  "custom_tiefling_asmodeus": {
-    name: "Tiefling (Bloodline of Asmodeus)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "int", name: "INT" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Infernal Legacy", desc: "You know the thaumaturgy cantrip. Once you reach 3rd level, you can cast hellish rebuke as a 2nd-level spell once per long rest. Once you reach 5th level, you can cast darkness once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Thaumaturgy (Infernal Legacy)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "Up to 1 minute", desc: "You manifest a minor wonder, a sign of supernatural power, within range." }
-    ]
-  },
-  "custom_tiefling_baalzebul": {
-    name: "Tiefling (Bloodline of Baalzebul)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "int", name: "INT" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Maladomini", desc: "You know the thaumaturgy cantrip. Once you reach 3rd level, you can cast ray of sickness as a 2nd-level spell once per long rest. Once you reach 5th level, you can cast crown of madness once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Thaumaturgy (Legacy of Maladomini)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "Up to 1 minute", desc: "You manifest a minor wonder, a sign of supernatural power, within range." }
-    ]
-  },
-  "custom_tiefling_dispater": {
-    name: "Tiefling (Bloodline of Dispater)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "dex", name: "DEX" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Dis", desc: "You know the thaumaturgy cantrip. Once you reach 3rd level, you can cast disguise self once per long rest. Once you reach 5th level, you can cast detect thoughts once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Thaumaturgy (Legacy of Dis)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "Up to 1 minute", desc: "You manifest a minor wonder, a sign of supernatural power, within range." }
-    ]
-  },
-  "custom_tiefling_fierna": {
-    name: "Tiefling (Bloodline of Fierna)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "wis", name: "WIS" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Phlegethos", desc: "You know the friends cantrip. Once you reach 3rd level, you can cast charm person as a 2nd-level spell once per long rest. Once you reach 5th level, you can cast suggestion once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Friends (Legacy of Phlegethos)", type: "Cantrip", casting_time: "1 Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "For the duration, you have advantage on all Charisma checks directed at one creature of your choice that isn't hostile toward you." }
-    ]
-  },
-  "custom_tiefling_glasya": {
-    name: "Tiefling (Bloodline of Glasya)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "dex", name: "DEX" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Malbolge", desc: "You know the minor illusion cantrip. Once you reach 3rd level, you can cast disguise self once per long rest. Once you reach 5th level, you can cast invisibility once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Minor Illusion (Legacy of Malbolge)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "You create a sound or an image of an object within range that lasts for the duration." }
-    ]
-  },
-  "custom_tiefling_levistus": {
-    name: "Tiefling (Bloodline of Levistus)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "con", name: "CON" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Stygia", desc: "You know the ray of frost cantrip. Once you reach 3rd level, you can cast armor of agathys as a 2nd-level spell once per long rest. Once you reach 5th level, you can cast darkness once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Ray of Frost (Legacy of Stygia)", type: "Cantrip", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "A frigid beam of blue-white light streaks toward a creature within range. Make a ranged spell attack. On a hit, it takes 1d8 cold damage and its speed is reduced by 10 feet until the start of your next turn." }
-    ]
-  },
-  "custom_tiefling_mammon": {
-    name: "Tiefling (Bloodline of Mammon)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "int", name: "INT" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Minauros", desc: "You know the mage hand cantrip. Once you reach 3rd level, you can cast Tenser's floating disk once per short or long rest. Once you reach 5th level, you can cast arcane lock once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Mage Hand (Legacy of Minauros)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears at a point you choose within range. You can use the hand to manipulate an object, open an unlocked door or container, or pour out contents." }
-    ]
-  },
-  "custom_tiefling_mephistopheles": {
-    name: "Tiefling (Bloodline of Mephistopheles)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "int", name: "INT" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Cania", desc: "You know the mage hand cantrip. Once you reach 3rd level, you can cast burning hands as a 2nd-level spell once per long rest. Once you reach 5th level, you can cast flame blade once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Mage Hand (Legacy of Cania)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears at a point you choose within range. You can use the hand to manipulate an object, open an unlocked door or container, or pour out contents." }
-    ]
-  },
-  "custom_tiefling_zariel": {
-    name: "Tiefling (Bloodline of Zariel)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "str", name: "STR" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Avernus", desc: "You know the thaumaturgy cantrip. Once you reach 3rd level, you can cast searing smite as a 2nd-level spell once per long rest. Once you reach 5th level, you can cast branding smite once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Thaumaturgy (Legacy of Avernus)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "Up to 1 minute", desc: "You manifest a minor wonder, a sign of supernatural power, within range." }
-    ]
-  },
-  "custom_tiefling_winged": {
-    name: "Variant: Winged Tiefling",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "int", name: "INT" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Winged", desc: "You have bat-like wings sprouting from your shoulder blades. You have a flying speed of 30 feet while you aren't wearing heavy armor. This trait replaces the Infernal Legacy trait." }
-    ]
+onAuthStateChanged(auth, async (user) => {
+  const authGroup = document.getElementById("authNavGroup");
+  if (user) {
+    currentUser = user;
+    authGroup.innerHTML = `
+      <span style="font-size: 0.85rem; color: #94a3b8; font-weight: 600;">${user.email}</span>
+      <button class="btn outline blue" id="logoutBtn" type="button" style="border:1px solid #94a3b8; background:transparent;">Log Out</button>
+    `;
+    
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      localStorage.removeItem(ROSTER_STORAGE_KEY);
+      localStorage.removeItem(ACTIVE_CHAR_ID_KEY);
+      window.location.reload(); 
+    });
+    
+    try {
+      const docSnap = await getDoc(doc(db, "user_rosters", user.uid));
+      if (docSnap.exists()) {
+         const cloudData = docSnap.data().data;
+         localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(cloudData));
+      } else {
+         saveRoster(getRoster());
+      }
+      loadSheet();
+    } catch (e) { console.error("Cloud pull failed", e); }
+    
+  } else {
+    currentUser = null;
+    authGroup.innerHTML = `
+      <button class="btn outline blue" id="loginNavBtn" type="button" style="border:1px solid #94a3b8; background:transparent;">Log In</button>
+      <button class="btn red" id="signupNavBtn" type="button">Sign Up</button>
+    `;
+    document.getElementById("loginNavBtn").addEventListener("click", () => openAuthModal("login"));
+    document.getElementById("signupNavBtn").addEventListener("click", () => openAuthModal("signup"));
+    loadSheet();
   }
-};
+});
+
+let authMode = "login";
+function openAuthModal(mode) {
+   authMode = mode;
+   document.getElementById("authModalTitle").textContent = mode === "login" ? "Sign In" : "Create Account";
+   document.getElementById("authSubmitBtn").textContent = mode === "login" ? "Log In" : "Sign Up";
+   document.getElementById("authError").style.display = "none";
+   document.getElementById("authPassword").value = "";
+   document.getElementById("authModal").classList.add("open");
+}
+
+document.getElementById("authSubmitBtn")?.addEventListener("click", async () => {
+   const email = document.getElementById("authEmail").value;
+   const pass = document.getElementById("authPassword").value;
+   const errEl = document.getElementById("authError");
+   errEl.style.display = "none";
+
+   try {
+       if (authMode === "login") {
+           await signInWithEmailAndPassword(auth, email, pass);
+       } else {
+           await createUserWithEmailAndPassword(auth, email, pass);
+       }
+       document.getElementById("authModal").classList.remove("open");
+   } catch (err) {
+       errEl.textContent = err.message.replace("Firebase: ", "");
+       errEl.style.display = "block";
+   }
+});
+
+document.getElementById("googleAuthBtn")?.addEventListener("click", async () => {
+   const provider = new GoogleAuthProvider();
+   const errEl = document.getElementById("authError");
+   errEl.style.display = "none";
+   try {
+       await signInWithPopup(auth, provider);
+       document.getElementById("authModal").classList.remove("open");
+   } catch (err) {
+       errEl.textContent = err.message.replace("Firebase: ", "");
+       errEl.style.display = "block";
+   }
+});
+
+document.getElementById("closeAuthModal")?.addEventListener("click", () => {
+    document.getElementById("authModal").classList.remove("open");
+});
+
+// ==========================================
+// 3. UTILITIES & CALCULATIONS
+// ==========================================
 
 function escapeHtml(str) {
   if (typeof str !== "string") return "";
@@ -323,8 +464,19 @@ function showStatus(text) {
   setTimeout(() => { statusElem.textContent = ""; }, 2500);
 }
 
-function getModifier(score) { return Math.floor((score - 10) / 2); }
-function getProfBonus(level) { return Math.ceil(1 + level / 4); }
+function getModifier(score) {
+  return Math.floor((score - 10) / 2);
+}
+
+function getProfBonus(level) {
+  return Math.ceil(1 + level / 4);
+}
+
+function autoExpandTextarea(el) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+}
 
 function autoResizeStatInput(input) {
   if (!input) return;
@@ -341,8 +493,11 @@ function recalculateAll() {
   const levelInput = document.getElementById("charLevel");
   const level = parseInt(levelInput?.value, 10) || 1;
   const prof = getProfBonus(level);
+  
   const profBonusDisplay = document.getElementById("profBonusDisplay");
-  if (profBonusDisplay) profBonusDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
+  if (profBonusDisplay) {
+    profBonusDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
+  }
 
   const stats = ["str", "dex", "con", "int", "wis", "cha"];
   const mods = {};
@@ -353,13 +508,18 @@ function recalculateAll() {
     mods[stat] = mod;
 
     const modElem = document.getElementById(`mod_${stat}`);
-    if (modElem) modElem.textContent = mod;
+    if (modElem) {
+      modElem.textContent = mod >= 0 ? `+${mod}` : mod;
+    }
 
     const isSaveChecked = document.getElementById(`save_${stat}`)?.checked;
     const saveValElem = document.getElementById(`save_val_${stat}`);
-    if (saveValElem) saveValElem.textContent = isSaveChecked ? mod + prof : mod;
+    if (saveValElem) {
+      saveValElem.textContent = isSaveChecked ? mod + prof : mod;
+    }
   });
 
+  // Skills Calculation
   document.querySelectorAll(".skill-row").forEach((row) => {
     const stat = row.dataset.stat;
     const statMod = mods[stat] ?? 0;
@@ -375,60 +535,24 @@ function recalculateAll() {
   });
 }
 
-function renderWeapons() {
-  const container = document.getElementById("weaponsContainer");
-  if (!container) return;
-
-  while (myCharacterWeapons.length < 2) {
-    myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" });
-  }
-
-  container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
-      <div class="attack-entry" data-index="${idx}">
-        <input type="text" class="inline-input wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
-        <input type="text" class="inline-input wpn-field" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
-        <input type="text" class="inline-input wpn-field" data-prop="dmg_type" value="${escapeHtml(wpn.dmg_type || "")}" placeholder="Piercing" />
-        <input type="text" class="inline-input wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes, Range, etc..." />
-        <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
-      </div>
-    `).join("");
-}
-
-document.getElementById("addWeaponBtn")?.addEventListener("click", () => {
-  myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" });
-  saveSheet();
-  renderWeapons();
-});
-
-document.getElementById("weaponsContainer")?.addEventListener("input", (e) => {
-  if (e.target.classList.contains("wpn-field")) {
-    const entry = e.target.closest(".attack-entry");
-    const index = parseInt(entry.dataset.index, 10);
-    const prop = e.target.dataset.prop;
-    myCharacterWeapons[index][prop] = e.target.value;
-    saveSheet();
-  }
-});
-
-document.getElementById("weaponsContainer")?.addEventListener("click", (e) => {
-  if (e.target.classList.contains("weapon-delete-btn")) {
-    const index = parseInt(e.target.dataset.index, 10);
-    myCharacterWeapons.splice(index, 1);
-    while (myCharacterWeapons.length < 2) {
-      myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" });
-    }
-    saveSheet();
-    renderWeapons();
-  }
-});
+// ==========================================
+// 4. DATA SAVING / LOADING
+// ==========================================
 
 function getRoster() {
   try { return JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY)) || {}; } 
   catch (e) { return {}; }
 }
 
-function saveRoster(roster) {
+async function saveRoster(roster) {
   localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(roster));
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "user_rosters", currentUser.uid), { data: roster });
+    } catch (e) {
+      console.error("Cloud save failed", e);
+    }
+  }
 }
 
 function getCurrentSheetData() {
@@ -443,7 +567,7 @@ function getCurrentSheetData() {
 function saveSheet() {
   const roster = getRoster();
   const fields = getCurrentSheetData();
-  const name = fields.charName?.trim() || "";
+  const name = fields.charName?.trim() || "Unnamed Character";
   const charClass = fields.charClass?.trim() || "";
   const level = fields.charLevel || 1;
 
@@ -516,7 +640,7 @@ function resetSheet() {
     if (field.type === "checkbox") field.checked = false;
     else if (field.id === "charLevel") field.value = 1;
     else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") field.value = 10;
-    else if (field.classList.contains("attr-input")) field.value = 10;
+    else if (field.classList.contains("attr-score-input")) field.value = 10;
     else if (field.id === "charSpeed") field.value = 30;
     else if (field.classList.contains("dual-input") || field.classList.contains("coin-input") || field.classList.contains("slot-input")) field.value = 0;
     else field.value = "";
@@ -566,18 +690,29 @@ function renderCharList() {
   }).join("");
 }
 
-if (document.getElementById("loadBtn")) {
-  document.getElementById("loadBtn").addEventListener("click", () => {
-    renderCharList();
-    document.getElementById("loadModal")?.classList.add("open");
-  });
-}
+// Global UI Listeners
+document.addEventListener("change", (e) => {
+  if (e.target.type === "checkbox" && e.target.classList.contains("save-field")) {
+    recalculateAll();
+    saveSheet();
+  }
+});
 
-if (document.getElementById("closeLoadModal")) {
-  document.getElementById("closeLoadModal").addEventListener("click", () => {
-    document.getElementById("loadModal")?.classList.remove("open");
-  });
-}
+document.addEventListener("input", (e) => {
+  if (e.target.classList.contains("save-field")) {
+    recalculateAll();
+    saveSheet();
+  }
+  if (e.target.classList.contains("spell-stat-input")) {
+    autoResizeStatInput(e.target);
+  }
+});
+
+document.getElementById("loadBtn")?.addEventListener("click", () => {
+  renderCharList();
+  document.getElementById("loadModal")?.classList.add("open");
+});
+document.getElementById("closeLoadModal")?.addEventListener("click", () => document.getElementById("loadModal")?.classList.remove("open"));
 
 document.getElementById("charList")?.addEventListener("click", (e) => {
   const row = e.target.closest(".char-item-row");
@@ -610,37 +745,68 @@ document.getElementById("charList")?.addEventListener("click", (e) => {
   showStatus("Character Loaded!");
 });
 
+document.getElementById("saveBtn")?.addEventListener("click", saveSheet);
+document.getElementById("newBtn")?.addEventListener("click", () => { if (confirm("Create a new blank character sheet?")) resetSheet(); });
+document.getElementById("deleteBtn")?.addEventListener("click", () => {
+  const roster = getRoster();
+  if (confirm("Permanently delete current character?")) {
+    delete roster[activeCharId];
+    saveRoster(roster);
+    const keys = Object.keys(roster);
+    if (keys.length > 0) {
+      activeCharId = keys[0];
+      localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+      loadSheet();
+    } else {
+      resetSheet();
+    }
+  }
+});
+
+document.getElementById("backupBtn")?.addEventListener("click", () => {
+  const roster = getRoster();
+  const currentChar = roster[activeCharId] || { 
+    id: activeCharId, 
+    name: "Character", 
+    fields: getCurrentSheetData(), 
+    spells: myCharacterSpells, 
+    traits: myCharacterTraits,
+    weapons: myCharacterWeapons 
+  };
+  const blob = new Blob([JSON.stringify({ character: currentChar, allRoster: roster }, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `character-backup.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showStatus("Backup downloaded!");
+});
+
+document.getElementById("restoreFile")?.addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const parsed = JSON.parse(evt.target.result);
+      const roster = getRoster();
+      if (parsed.allRoster) Object.assign(roster, parsed.allRoster);
+      else if (parsed.character) roster[parsed.character.id || "char_1"] = parsed.character;
+      saveRoster(roster);
+      loadSheet();
+      showStatus("Restored successfully!");
+    } catch (err) {
+      alert("Invalid backup file.");
+    }
+  };
+  reader.readAsText(file);
+});
+
 document.getElementById("helpLinkBtn")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.add("open"));
 document.getElementById("closeHelpModal")?.addEventListener("click", () => document.getElementById("helpModal")?.classList.remove("open"));
 
-document.getElementById("skipSetupBtn")?.addEventListener("click", () => {
-    document.getElementById("choiceModal")?.classList.remove("open");
-});
-
-document.getElementById("longRestBtn")?.addEventListener("click", () => {
-  if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
-    const maxHp = document.getElementById("maxHp")?.value || 0;
-    if (document.getElementById("curHp")) document.getElementById("curHp").value = maxHp;
-    
-    const maxHd = document.getElementById("hitDiceMax")?.value || 0;
-    if (document.getElementById("hitDiceCur")) document.getElementById("hitDiceCur").value = maxHd;
-    
-    for (let i = 1; i <= 9; i++) {
-      let cur = document.getElementById(`slot${i}_cur`);
-      let max = document.getElementById(`slot${i}_max`);
-      if (cur && max) cur.value = max.value;
-    }
-    saveSheet();
-    showStatus("Rested!");
-  }
-});
-
-document.getElementById("shortRestBtn")?.addEventListener("click", () => {
-  if (confirm("Take a Short Rest? Use your hit dice to heal!")) {
-    showStatus("Rested!");
-  }
-});
-
+// Tabbing Logic
 function switchMainTab(targetId) {
   document.querySelectorAll(".main-tab").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".tab-page").forEach(p => p.classList.remove("active"));
@@ -675,6 +841,32 @@ document.querySelectorAll(".footer-nav-btn").forEach(btn => {
     if(el) el.scrollIntoView({ behavior: "smooth" });
   });
 });
+
+// Resting
+document.getElementById("longRestBtn")?.addEventListener("click", () => {
+  if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
+    const maxHp = document.getElementById("maxHp")?.value || 0;
+    if (document.getElementById("curHp")) document.getElementById("curHp").value = maxHp;
+    
+    const maxHd = document.getElementById("hitDiceMax")?.value || 0;
+    if (document.getElementById("hitDiceCur")) document.getElementById("hitDiceCur").value = maxHd;
+    
+    for (let i = 1; i <= 9; i++) {
+      let cur = document.getElementById(`slot${i}_cur`);
+      let max = document.getElementById(`slot${i}_max`);
+      if (cur && max) cur.value = max.value;
+    }
+    saveSheet();
+    showStatus("Rested!");
+  }
+});
+document.getElementById("shortRestBtn")?.addEventListener("click", () => {
+  if (confirm("Take a Short Rest? Use your hit dice to heal!")) showStatus("Rested!");
+});
+
+// ==========================================
+// 5. DICE ROLLER
+// ==========================================
 
 function addDiceHistory(desc, total) {
   const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -729,6 +921,309 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// ==========================================
+// 6. WEAPONS TABLE
+// ==========================================
+document.getElementById("addWeaponBtn")?.addEventListener("click", () => {
+  myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" });
+  saveSheet();
+  renderWeapons();
+});
+
+document.getElementById("weaponsContainer")?.addEventListener("input", (e) => {
+  if (e.target.classList.contains("wpn-field")) {
+    const entry = e.target.closest(".attack-entry");
+    const index = parseInt(entry.dataset.index, 10);
+    const prop = e.target.dataset.prop;
+    myCharacterWeapons[index][prop] = e.target.value;
+    saveSheet();
+  }
+});
+
+document.getElementById("weaponsContainer")?.addEventListener("click", (e) => {
+  if (e.target.classList.contains("weapon-delete-btn")) {
+    const index = parseInt(e.target.dataset.index, 10);
+    myCharacterWeapons.splice(index, 1);
+    while (myCharacterWeapons.length < 2) {
+      myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" });
+    }
+    saveSheet();
+    renderWeapons();
+  }
+});
+
+// ==========================================
+// 7. SETUP WIZARDS (Hardcoded)
+// ==========================================
+let activeClassLoadout = null;
+
+const classInput = document.getElementById("charClass");
+const classDropdown = document.getElementById("classDropdown");
+const raceInput = document.getElementById("charRace");
+const raceDropdown = document.getElementById("raceDropdown");
+const choiceModal = document.getElementById("choiceModal");
+const choiceModalBody = document.getElementById("choiceModalBody");
+const choiceModalTitle = document.getElementById("choiceModalTitle");
+
+document.getElementById("skipSetupBtn")?.addEventListener("click", () => {
+    document.getElementById("choiceModal")?.classList.remove("open");
+});
+document.getElementById("closeChoiceModal")?.addEventListener("click", () => {
+  document.getElementById("choiceModal")?.classList.remove("open");
+});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".dropdown-pill-wrapper")) {
+    document.querySelectorAll(".dropdown-menu").forEach(m => m.classList.remove("open"));
+  }
+});
+
+function renderDropdown(dropdownEl, items, filter = "", customId, customText) {
+  if (!dropdownEl) return;
+  const q = filter.toLowerCase().trim();
+  const filtered = items.filter(i => i.name.toLowerCase().includes(q));
+  let html = filtered.map(i => `<div class="dropdown-item" data-index="${i.index}" data-name="${escapeHtml(i.name)}">${escapeHtml(i.name)}</div>`).join("");
+  html += `<div class="dropdown-item" style="color:#dc2626; text-align:center; border-top:1px solid #3b4c68;" id="${customId}">${customText}</div>`;
+  dropdownEl.innerHTML = html;
+}
+
+classInput?.addEventListener("click", () => {
+  if (!classDropdown.classList.contains("open")) {
+    if (allClassesCache.length === 0) allClassesCache = Object.keys(SRD_CLASS_EQUIPMENT).map(k => ({ index: k, name: SRD_CLASS_EQUIPMENT[k].name }));
+    renderDropdown(classDropdown, allClassesCache, classInput.value, "addCustomClassOption", "+ Add Custom Class");
+    classDropdown.classList.add("open");
+  }
+});
+
+classInput?.addEventListener("input", () => {
+  if (allClassesCache.length === 0) allClassesCache = Object.keys(SRD_CLASS_EQUIPMENT).map(k => ({ index: k, name: SRD_CLASS_EQUIPMENT[k].name }));
+  renderDropdown(classDropdown, allClassesCache, classInput.value, "addCustomClassOption", "+ Add Custom Class");
+  classDropdown.classList.add("open");
+});
+
+raceInput?.addEventListener("click", () => {
+  if (!raceDropdown.classList.contains("open")) {
+    if (allRacesCache.length === 0) allRacesCache = Object.keys(SRD_RACE_DATA).map(k => ({ index: k, name: k.charAt(0).toUpperCase() + k.slice(1) }));
+    renderDropdown(raceDropdown, allRacesCache, raceInput.value, "addCustomRaceOption", "+ Add Custom Race");
+    raceDropdown.classList.add("open");
+  }
+});
+
+raceInput?.addEventListener("input", () => {
+  if (allRacesCache.length === 0) allRacesCache = Object.keys(SRD_RACE_DATA).map(k => ({ index: k, name: k.charAt(0).toUpperCase() + k.slice(1) }));
+  renderDropdown(raceDropdown, allRacesCache, raceInput.value, "addCustomRaceOption", "+ Add Custom Race");
+  raceDropdown.classList.add("open");
+});
+
+function openClassEquipmentModal(classKey, displayName) {
+  const data = SRD_CLASS_EQUIPMENT[classKey];
+  if (!data) return;
+
+  activeClassLoadout = JSON.parse(JSON.stringify(data));
+  activeClassLoadout.index = classKey;
+  activeClassLoadout.selectedChoices = [];
+
+  choiceModalTitle.textContent = `${displayName} Starting Loadout`;
+
+  let html = `<div class="wizard-intro" style="text-transform: uppercase; font-weight: 700; border-bottom: 1.5px solid #3b4c68; margin-bottom: 0.5rem; padding-bottom: 0.5rem;">Granted Equipment</div>`;
+  if (activeClassLoadout.fixed.length > 0) {
+    html += `<ul style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem; list-style: none; margin-bottom: 1.5rem;">`;
+    activeClassLoadout.fixed.forEach(i => {
+      html += `<li style="background: #080d18; border: 1px solid #1e293b; padding: 0.5rem 0.85rem; border-left: 3px solid #dc2626; border-radius: 6px;">${i.qty > 1 ? i.qty + 'x ' : ''}${escapeHtml(i.name)}</li>`;
+    });
+    html += `</ul>`;
+  } else {
+    html += `<p style="color:#64748b; font-size:0.9rem; margin-bottom: 1.5rem;">None</p>`;
+  }
+
+  activeClassLoadout.choices.forEach((choiceGroup, gIdx) => {
+    html += `
+      <div style="background: #0d1322; border: 1.5px solid #1e293b; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;" id="choice-group-${gIdx}">
+        <div style="color: #34d399; font-weight: 700; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.04em;">${escapeHtml(choiceGroup.desc)}</div>
+        <div class="equip-options-grid">
+    `;
+
+    choiceGroup.options.forEach((opt, oIdx) => {
+      const tooltipLines = opt.items.map(i => `${i.qty > 1 ? i.qty + 'x ' : ''}${i.name}${i.desc ? ' (' + i.desc + ')' : ''}`).join('<br>');
+      html += `
+        <div class="choice-option-wrapper">
+          <button type="button" class="choice-option-btn" data-group="${gIdx}" data-option="${oIdx}">
+            <strong>${escapeHtml(opt.label)}</strong>
+            <span class="subtext">${tooltipLines}</span>
+          </button>
+        </div>
+      `;
+    });
+
+    html += `</div></div>`;
+  });
+
+  html += `<button type="button" id="confirmLoadoutBtn" class="btn red confirm-loadout-btn">Confirm Loadout</button>`;
+
+  choiceModalBody.innerHTML = html;
+  choiceModal.classList.add("open");
+
+  const newBody = choiceModalBody.cloneNode(true);
+  choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
+  const activeModalBody = document.getElementById("choiceModalBody");
+
+  activeModalBody.addEventListener("click", (e) => {
+    const btn = e.target.closest(".choice-option-btn");
+    if (btn) {
+      const gIdx = parseInt(btn.dataset.group, 10);
+      const oIdx = parseInt(btn.dataset.option, 10);
+      const groupEl = document.getElementById(`choice-group-${gIdx}`);
+
+      groupEl.querySelectorAll(".choice-option-btn").forEach(b => {
+        b.style.borderColor = "#3b4c68";
+        b.style.background = "linear-gradient(145deg, #151d2f, #0d1322)";
+      });
+
+      btn.style.borderColor = "#dc2626";
+      btn.style.background = "linear-gradient(145deg, #3f0f0f, #151d2f)";
+
+      activeClassLoadout.selectedChoices[gIdx] = oIdx;
+    }
+
+    if (e.target.id === "confirmLoadoutBtn") {
+      finalizeSelectedLoadout();
+    }
+  });
+}
+
+function finalizeSelectedLoadout() {
+  if (!activeClassLoadout) return;
+
+  let weaponsList = [];
+  let gearList = [];
+
+  activeClassLoadout.fixed.forEach(i => {
+    const q = i.qty > 1 ? `${i.qty}x ` : "";
+    if (isWeaponOrArmor(i.name)) weaponsList.push({ name: `${q}${i.name}`, atk: "+5", dmg: "1d8", notes: "" });
+    else gearList.push(`${q}${i.name}`);
+  });
+
+  activeClassLoadout.choices.forEach((group, gIdx) => {
+    const chosenOIdx = activeClassLoadout.selectedChoices[gIdx] ?? 0;
+    const chosenOpt = group.options[chosenOIdx];
+    if (chosenOpt) {
+      chosenOpt.items.forEach(i => {
+        const q = i.qty > 1 ? `${i.qty}x ` : "";
+        if (isWeaponOrArmor(i.name)) weaponsList.push({ name: `${q}${i.name}`, atk: "+5", dmg: "1d8", notes: i.desc || "" });
+        else gearList.push(`${q}${i.name}`);
+      });
+    }
+  });
+
+  while (weaponsList.length < 2) {
+    weaponsList.push({ name: "", atk: "", dmg: "", notes: "" });
+  }
+
+  myCharacterWeapons = weaponsList;
+  renderWeapons();
+
+  const invBox = document.getElementById("inventory");
+  if (invBox && gearList.length > 0) {
+    const curInv = invBox.value.trim();
+    const gearStr = gearList.join("\n");
+    invBox.value = curInv ? curInv + "\n\n" + gearStr : gearStr;
+    autoExpandTextarea(invBox);
+  }
+
+  let featText = `Hit Die: 1d${activeClassLoadout.hitDie} per level\nSaving Throws: ${activeClassLoadout.saves.join(", ")}`;
+  const featBox = document.getElementById("featuresTraits");
+  if (featBox) {
+    const cur = featBox.value.trim();
+    featBox.value = cur ? cur + "\n\n" + featText : featText;
+    autoExpandTextarea(featBox);
+  }
+
+  const profBox = document.getElementById("otherProfs");
+  if (profBox && activeClassLoadout.proficiencies.length > 0) {
+    const cur = profBox.value.trim();
+    const profStr = activeClassLoadout.proficiencies.join(", ");
+    profBox.value = cur ? cur + "\n\n" + profStr : profStr;
+    autoExpandTextarea(profBox);
+  }
+
+  const sAbility = CLASS_SPELL_ABILITY[activeClassLoadout.index];
+  if (sAbility) {
+      const el = document.getElementById("spellAbility");
+      if (el && !el.value) el.value = sAbility;
+  }
+
+  const hdMax = document.getElementById("hitDiceMax");
+  const hdCur = document.getElementById("hitDiceCur");
+  if (hdMax) hdMax.value = `1d${activeClassLoadout.hitDie}`;
+  if (hdCur) hdCur.value = `1`;
+
+  saveSheet();
+  recalculateAll();
+  choiceModal.classList.remove("open");
+  showStatus("Class Loadout applied!");
+}
+
+classDropdown?.addEventListener("click", (e) => {
+  const item = e.target.closest(".dropdown-item");
+  if (!item) return;
+
+  if (item.id === "addCustomClassOption") {
+    classInput.value = "";
+    classInput.focus();
+    classDropdown.classList.remove("open");
+    return;
+  }
+
+  const className = item.dataset.name;
+  const classIdx = item.dataset.index.toLowerCase();
+  classInput.value = className;
+  classDropdown.classList.remove("open");
+  saveSheet();
+
+  openClassEquipmentModal(classIdx, className);
+});
+
+raceDropdown?.addEventListener("click", (e) => {
+  const item = e.target.closest(".dropdown-item");
+  if (!item) return;
+
+  if (item.id === "addCustomRaceOption") {
+    raceInput.value = "";
+    raceInput.focus();
+    raceDropdown.classList.remove("open");
+    return;
+  }
+
+  const raceName = item.dataset.name;
+  const raceIdx = item.dataset.index.toLowerCase();
+  raceInput.value = raceName;
+  raceDropdown.classList.remove("open");
+  saveSheet();
+
+  const raceInfo = SRD_RACE_DATA[raceIdx];
+  if (raceInfo) {
+    if (raceInfo.speed) document.getElementById("charSpeed").value = raceInfo.speed;
+    
+    if (raceInfo.traits && raceInfo.traits.length > 0) {
+      let featText = `Racial Traits:\n`;
+      raceInfo.traits.forEach(t => {
+         featText += `- ${t.name}: ${t.desc}\n`;
+      });
+      const featBox = document.getElementById("featuresTraits");
+      if (featBox) {
+        const cur = featBox.value.trim();
+        featBox.value = cur ? cur + "\n\n" + featText.trim() : featText.trim();
+        autoExpandTextarea(featBox);
+      }
+    }
+    saveSheet();
+    showStatus("Racial abilities loaded!");
+  }
+});
+
+
+// ==========================================
+// 8. SPELL & TRAIT BROWSERS (API)
+// ==========================================
 const apiCache = {};
 
 async function fetchAPI(url) {
@@ -819,1119 +1314,6 @@ async function fetchDetailedTraits(matches) {
     }
     return m;
   }));
-}
-
-let loadoutState = {
-  equipOptions: [],
-  profOptions: [],
-  weaponsList: [],
-  gearList: [],
-  selectedSkills: [],
-  traitChoiceOptions: [],
-  traitsToAdd: [],
-  spellsToAdd: [],
-  isSingleAbility: false,
-  history: []
-};
-
-async function formatItemWithStats(name, url, count) {
-  let qtyStr = count > 1 ? `<span style="color:#f87171">${count}x</span> ` : "";
-  let statStr = "";
-  if (url) {
-    const data = await fetchAPI("https://www.dnd5eapi.co" + url);
-    if (data) {
-      let extras = [];
-      if (data.equipment_category?.name === "Weapon") {
-        let dmgStr = "";
-        if (data.damage && data.damage.damage_dice) {
-          let dmgType = data.damage.damage_type?.name ? data.damage.damage_type.name.toLowerCase() : "";
-          dmgStr = `🎲 ${data.damage.damage_dice} ${dmgType}`.trim();
-          extras.push(dmgStr);
-        }
-        if (data.range) {
-           if (data.range.long) extras.push(`🎯 Range ${data.range.normal}/${data.range.long} ft.`);
-           else if (data.range.normal > 5) extras.push(`🎯 Range ${data.range.normal} ft.`);
-        }
-      }
-      if (data.armor_class) {
-        extras.push(`🛡️ AC ${data.armor_class.base}${data.armor_class.dex_bonus ? ' + Dex' : ''}`);
-      }
-      if (data.contents && data.contents.length > 0) {
-        const contentsText = data.contents.map(c => `${c.quantity}x ${c.item.name}`).join(', ');
-        extras.push(`🎒 Contains: ${contentsText}`);
-      }
-      if (data.desc && data.desc.length > 0) {
-         let dText = data.desc.join(" ").substring(0, 120);
-         if (data.desc.join(" ").length > 120) dText += "...";
-         extras.push(`📝 ${dText}`);
-      }
-      if (extras.length > 0) {
-        statStr = `<span class="subtext" style="color:#94a3b8; font-weight:normal; margin-top:0.4rem; display:block;">${extras.join("<br>")}</span>`;
-      }
-    }
-  }
-  return `<strong style="font-size:1.1rem; color:#f8fafc;">${qtyStr}${escapeHtml(name)}</strong>${statStr ? '<br>' + statStr : ''}`;
-}
-
-async function getAsyncChoiceDetails(choice) {
-  let details = [];
-  if (!choice) return details;
-
-  if (choice.option_type === "counted_reference" && choice.of) {
-    details.push(await formatItemWithStats(choice.of.name, choice.of.url, choice.count));
-  } else if (choice.option_type === "choice" && choice.choice) {
-    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Choose Any ${choice.choice.desc || choice.choice.from?.equipment_category?.name || "Option"}</strong><br><span class="subtext" style="color:#34d399;">Click to see options!</span>`);
-  } else if (choice.option_type === "multiple" && choice.items) {
-    for (let i of choice.items) {
-      if (i.option_type === "counted_reference" && i.of) details.push(await formatItemWithStats(i.of.name, i.of.url, i.count));
-      else if (i.option_type === "choice" && i.choice) details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Choose Any ${i.choice.desc || i.choice.from?.equipment_category?.name || "Option"}</strong><br><span class="subtext" style="color:#34d399;">Click to see options!</span>`);
-      else if (i.of) details.push(await formatItemWithStats(i.of.name, i.of.url, i.count));
-      else if (i.item) details.push(await formatItemWithStats(i.item.name, i.item.url, i.count));
-    }
-  } else if (choice.option_type === "equipment_category" && choice.equipment_category) {
-    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Choose ${choice.count > 1 ? choice.count + " " : ""}${choice.equipment_category.name}</strong><br><span class="subtext" style="color:#34d399;">Click to open category!</span>`);
-  } else if (choice.equipment) {
-    details.push(await formatItemWithStats(choice.equipment.name, choice.equipment.url, choice.quantity));
-  } else if (choice.equipment_category) {
-    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">🎁 Choose from ${choice.equipment_category.name}</strong><br><span class="subtext" style="color:#34d399;">Click to open category!</span>`);
-  } else if (choice.item) {
-    details.push(await formatItemWithStats(choice.item.name, choice.item.url, choice.count));
-  } else {
-    details.push(`<strong style="font-size:1.1rem; color:#f8fafc;">${choice.desc || "Item Option"}</strong>`);
-  }
-  
-  if (details.length === 0) details.push("<strong>Equipment Option</strong>");
-  return details;
-}
-
-async function extractConcreteItemsAndDrillDowns(choice) {
-   let concreteItems = [];
-   let drillDownSteps = [];
-
-   async function parse(c) {
-      let catUrl = null;
-      let qty = c.count || 1;
-      if (c.option_type === "choice" && c.choice?.from?.equipment_category) {
-         catUrl = c.choice.from.equipment_category.url;
-         qty = c.choice.choose || 1;
-      } else if (c.equipment_category) {
-         catUrl = c.equipment_category.url;
-      } else if (c.option_type === "equipment_category" && c.equipment_category) {
-         catUrl = c.equipment_category.url;
-      }
-
-      if (catUrl) {
-         const catData = await fetchAPI("https://www.dnd5eapi.co" + catUrl);
-         if (catData && catData.equipment) {
-            drillDownSteps.push({
-               desc: `Select ${qty} from ${catData.name}`,
-               choose: qty,
-               options: catData.equipment.map(eq => ({ option_type: "item", item: eq, count: 1 }))
-            });
-         }
-      } else if (c.option_type === "multiple" && c.items) {
-         for (let i of c.items) await parse(i);
-      } else if (c.option_type === "counted_reference" && c.of) {
-         concreteItems.push({ name: c.of.name, url: c.of.url, qty: c.count || 1 });
-      } else if (c.equipment) {
-         concreteItems.push({ name: c.equipment.name, url: c.equipment.url, qty: c.quantity || 1 });
-      } else if (c.item) {
-         concreteItems.push({ name: c.item.name, url: c.item.url, qty: c.count || 1 });
-      } else if (c.desc) {
-         concreteItems.push({ name: c.desc, qty: 1 });
-      }
-   }
-   
-   await parse(choice);
-   return { concreteItems, drillDownSteps };
-}
-
-async function processConcreteItems(items) {
-   let newAcBase = 0;
-   let newShield = 0;
-
-   for (let item of items) {
-      let dmg = "";
-      let dmgType = "";
-      let category = "Gear";
-      let baseAc = null;
-      let isShield = false;
-      let contentsStr = "";
-      let descStr = "";
-      let rangeStr = "";
-
-      if (item.url) {
-         const data = await fetchAPI("https://www.dnd5eapi.co" + item.url);
-         if (data) {
-            category = data.equipment_category?.name || category;
-
-            if (data.damage && data.damage.damage_dice) {
-               dmg = data.damage.damage_dice;
-               dmgType = data.damage.damage_type?.name || "";
-            }
-            
-            if (category === "Weapon" && data.range) {
-               if (data.range.long) {
-                  rangeStr = `Range ${data.range.normal}/${data.range.long} ft.`;
-               } else if (data.range.normal > 5) {
-                  rangeStr = `Range ${data.range.normal} ft.`;
-               }
-            }
-
-            if (data.armor_class) {
-               baseAc = data.armor_class.base;
-               if (data.armor_category === "Shield" || data.name === "Shield") {
-                  isShield = true;
-                  newShield += 2;
-               } else if (baseAc > newAcBase) {
-                  newAcBase = baseAc;
-               }
-            }
-            if (data.contents && data.contents.length > 0) {
-               contentsStr = data.contents.map(c => `${c.quantity}x ${c.item.name}`).join(", ");
-            }
-            if (data.desc && data.desc.length > 0) {
-               descStr = data.desc.join(" ");
-            }
-         }
-      }
-
-      let fullName = item.name;
-      if (contentsStr) fullName += ` (Contains: ${contentsStr})`;
-      
-      let notes = descStr;
-      if (rangeStr) {
-         notes = notes ? `${rangeStr}, ${notes}` : rangeStr;
-      }
-
-      const qtyPrefix = item.qty > 1 ? `${item.qty}x ` : "";
-
-      if (category === "Weapon") {
-         loadoutState.weaponsList.push({ 
-            name: `${qtyPrefix}${fullName}`, 
-            dmg: dmg, 
-            dmg_type: dmgType, 
-            notes: notes 
-         });
-      } else {
-         loadoutState.gearList.push(`${qtyPrefix}${fullName}`);
-      }
-   }
-
-   if (newAcBase > 0 || newShield > 0) {
-       const acField = document.getElementById("ac");
-       if (acField) {
-           let base = newAcBase > 0 ? newAcBase : parseInt(acField.value) || 10;
-           acField.value = base + newShield;
-       }
-   }
-}
-
-function finalizeLoadout() {
-  if (loadoutState.weaponsList.length > 0) {
-    let updatedWeps = [...myCharacterWeapons];
-    loadoutState.weaponsList.forEach(w => {
-        let emptyIdx = updatedWeps.findIndex(ex => !ex.name && !ex.dmg && !ex.dmg_type);
-        if (emptyIdx !== -1) {
-            updatedWeps[emptyIdx] = { name: w.name, dmg: w.dmg, dmg_type: w.dmg_type, notes: w.notes };
-        } else {
-            updatedWeps.push({ name: w.name, dmg: w.dmg, dmg_type: w.dmg_type, notes: w.notes });
-        }
-    });
-    myCharacterWeapons = updatedWeps;
-  }
-  renderWeapons();
-
-  const invBox = document.getElementById("inventory");
-  if (invBox && loadoutState.gearList.length > 0) {
-    const currentInv = invBox.value.trim();
-    const newInv = loadoutState.gearList.join("\n");
-    invBox.value = currentInv ? currentInv + "\n\n" + newInv : newInv;
-    autoExpandTextarea(invBox);
-  }
-
-  loadoutState.selectedSkills.forEach(skillName => {
-    const cbId = SKILL_MAP[skillName];
-    if (cbId) {
-      const cb = document.getElementById(cbId);
-      if (cb) cb.checked = true;
-    }
-  });
-
-  if (loadoutState.spellsToAdd && loadoutState.spellsToAdd.length > 0) {
-    loadoutState.spellsToAdd.forEach(s => {
-       myCharacterSpells.push(s);
-    });
-    renderMySpells();
-  }
-
-  if (loadoutState.traitsToAdd && loadoutState.traitsToAdd.length > 0) {
-    loadoutState.traitsToAdd.forEach(t => {
-       let tDesc = Array.isArray(t.desc) ? t.desc.join("\n\n") : (t.desc || "");
-       let existing = myCharacterTraits.find(ex => ex.name === t.name);
-       if (!existing) {
-           myCharacterTraits.push({
-             name: t.name,
-             type: t.type || "Trait / Feature",
-             desc: tDesc,
-             isExpanded: false
-           });
-       } else {
-           existing.desc = tDesc; 
-       }
-    });
-    renderMyTraits();
-  }
-
-  saveSheet();
-  recalculateAll();
-
-  document.getElementById("choiceModalTitle").textContent = loadoutState.isSingleAbility ? "Added! 🎉" : "Loadout Complete! 🎉";
-  document.getElementById("choiceModalBody").innerHTML = `
-    <div class="wizard-intro" style="font-size: 1.25rem; color: #34d399; font-weight: 800; padding: 1.5rem 0;">
-      Awesome! Your ${loadoutState.isSingleAbility ? 'selection was' : 'selections are'} successfully applied to your sheet!
-    </div>
-    <button class="btn red confirm-loadout-btn" id="finishLoadoutBtn" style="font-size: 1.25rem; padding: 1.2rem;">${loadoutState.isSingleAbility ? 'Done' : 'Let\'s Go!'}</button>
-  `;
-
-  document.getElementById("finishLoadoutBtn")?.addEventListener("click", () => {
-    document.getElementById("choiceModal").classList.remove("open");
-  });
-}
-
-function showClassConfirmation() {
-    let weps = loadoutState.weaponsList.map(w => w.name).join(", ");
-    let gear = loadoutState.gearList.join(", ");
-    let skills = loadoutState.selectedSkills.map(s => s.replace("Skill: ", "")).join(", ");
-    let spells = loadoutState.spellsToAdd.map(s => s.name).join(", ");
-    let traits = loadoutState.traitsToAdd.map(t => t.name).join(", ");
-
-    let summaryHtml = `<div style="text-align: left; background: #0d1322; padding: 1.25rem; border-radius: 8px; border: 1.5px solid #1e293b; color: #cbd5e1; margin-bottom: 1.5rem; font-size: 0.95rem; line-height: 1.6;">`;
-    if (weps) summaryHtml += `<p><strong style="color:#f8fafc;">Weapons:</strong> ${weps}</p>`;
-    if (gear) summaryHtml += `<p><strong style="color:#f8fafc;">Gear:</strong> ${gear}</p>`;
-    if (skills) summaryHtml += `<p><strong style="color:#f8fafc;">Skills:</strong> ${skills}</p>`;
-    if (spells) summaryHtml += `<p><strong style="color:#f8fafc;">Spells:</strong> ${spells}</p>`;
-    if (traits) summaryHtml += `<p><strong style="color:#f8fafc;">Features:</strong> ${traits}</p>`;
-    if (!weps && !gear && !skills && !spells && !traits) {
-        summaryHtml += `<p>No additional selections made.</p>`;
-    }
-    summaryHtml += `</div>`;
-
-    let html = `
-      <div class="wizard-intro" style="font-size: 1.15rem; color: #f8fafc; text-align: center; margin-bottom: 1rem;">
-        Ready to confirm your selections?
-      </div>
-      ${summaryHtml}
-      <div style="display: flex; gap: 1rem;">
-         ${loadoutState.history && loadoutState.history.length > 0 ? `<button class="btn gray" id="backClassBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem; background: #475569; border-radius: 6px; color: #ffffff; cursor: pointer; border: none; font-weight: 600;">Back</button>` : ''}
-         <button class="btn red" id="confirmClassBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem;">Confirm Loadout</button>
-      </div>
-    `;
-
-    document.getElementById("choiceModalTitle").textContent = `Confirm Loadout`;
-    const choiceModalBody = document.getElementById("choiceModalBody");
-    choiceModalBody.innerHTML = html;
-
-    const newBody = choiceModalBody.cloneNode(true);
-    choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-
-    newBody.addEventListener("click", (e) => {
-        if (e.target.id === "backClassBtn") {
-            if (loadoutState.history && loadoutState.history.length > 0) {
-                loadoutState = JSON.parse(loadoutState.history.pop());
-                runLoadoutStep();
-            }
-        } else if (e.target.id === "confirmClassBtn") {
-            e.target.innerHTML = "<strong style='color:#34d399;'>Applying...</strong>";
-            e.target.disabled = true;
-            finalizeLoadout();
-        }
-    });
-}
-
-function showRaceConfirmation(raceRes, subRes, onBack) {
-    let combinedSpeed = subRes?.speed || raceRes?.speed || 30;
-    
-    let combinedASIs = [];
-    if (subRes?.replacesBaseASI) {
-        combinedASIs = [...(subRes.ability_bonuses || [])];
-    } else {
-        if (raceRes?.ability_bonuses) combinedASIs.push(...raceRes.ability_bonuses);
-        if (subRes?.ability_bonuses) combinedASIs.push(...subRes.ability_bonuses);
-    }
-    let asiText = combinedASIs.map(ab => `${ab.ability_score.name || ab.ability_score.index.toUpperCase()} +${ab.bonus}`).join(", ");
-
-    let combinedTraits = [];
-    let baseTraitsList = raceRes?.traits || [];
-    if (subRes?.replacesTrait) {
-        baseTraitsList = baseTraitsList.filter(t => t.name !== subRes.replacesTrait);
-    }
-    combinedTraits.push(...baseTraitsList.map(t => t.name));
-    if (subRes?.traits) combinedTraits.push(...subRes.traits.map(t => t.name));
-    let traitsText = combinedTraits.join(", ");
-
-    let combinedProfs = [];
-    if (raceRes?.starting_proficiencies) combinedProfs.push(...raceRes.starting_proficiencies.map(p => p.name.replace("Skill: ", "")));
-    if (subRes?.starting_proficiencies) combinedProfs.push(...subRes.starting_proficiencies.map(p => p.name.replace("Skill: ", "")));
-    
-    if (raceRes?.languages) combinedProfs.push("Languages: " + raceRes.languages.map(l => l.name).join(", "));
-    if (subRes?.languages) combinedProfs.push("Languages: " + subRes.languages.map(l => l.name).join(", "));
-    if (subRes?.profs) combinedProfs.push(subRes.profs);
-    let profsText = combinedProfs.join(", ");
-
-    let finalName = subRes ? subRes.name : raceRes.name;
-
-    let summaryHtml = `<div style="text-align: left; background: #0d1322; padding: 1.25rem; border-radius: 8px; border: 1.5px solid #1e293b; color: #cbd5e1; margin-bottom: 1.5rem; font-size: 0.95rem; line-height: 1.6;">`;
-    if (combinedSpeed) summaryHtml += `<p><strong style="color:#f8fafc;">Speed:</strong> ${combinedSpeed} ft.</p>`;
-    if (asiText) summaryHtml += `<p><strong style="color:#f8fafc;">Stat Increases:</strong> ${asiText}</p>`;
-    if (traitsText) summaryHtml += `<p><strong style="color:#f8fafc;">Traits:</strong> ${traitsText}</p>`;
-    if (profsText) summaryHtml += `<p><strong style="color:#f8fafc;">Proficiencies:</strong> ${profsText}</p>`;
-    summaryHtml += `</div>`;
-
-    let html = `
-      <div class="wizard-intro" style="font-size: 1.15rem; color: #f8fafc; text-align: center; margin-bottom: 1rem;">
-        Are you sure you want to play as a <strong>${finalName}</strong>?
-      </div>
-      ${summaryHtml}
-      <div style="display: flex; gap: 1rem;">
-         ${onBack ? `<button class="btn gray" id="backRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem; background: #475569; border-radius: 6px; color: #ffffff; cursor: pointer; border: none; font-weight: 600;">Back</button>` : ''}
-         <button class="btn gray" id="cancelRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem; background: #3b4c68; border-radius: 6px; color: #ffffff; cursor: pointer; border: none; font-weight: 600;">Cancel</button>
-         <button class="btn red" id="confirmRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem;">Confirm ${finalName}</button>
-      </div>
-    `;
-
-    document.getElementById("choiceModalTitle").textContent = `Confirm Race: ${finalName}`;
-    const choiceModalBody = document.getElementById("choiceModalBody");
-    choiceModalBody.innerHTML = html;
-
-    const newBody = choiceModalBody.cloneNode(true);
-    choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-
-    newBody.addEventListener("click", async (e) => {
-        if (e.target.id === "cancelRaceBtn") {
-            document.getElementById("choiceModal").classList.remove("open");
-        } else if (e.target.id === "backRaceBtn" && onBack) {
-            onBack();
-        } else if (e.target.id === "confirmRaceBtn") {
-            e.target.innerHTML = "<strong style='color:#34d399;'>Applying...</strong>";
-            e.target.disabled = true;
-
-            const raceInput = document.getElementById("charRace");
-            if (raceInput) raceInput.value = finalName;
-
-            if (combinedSpeed) {
-              const speedInp = document.getElementById("charSpeed");
-              if (speedInp) speedInp.value = combinedSpeed;
-            }
-
-            combinedASIs.forEach(b => {
-                const statKey = (b.ability_score.index || b.ability_score.name).toLowerCase().substring(0,3);
-                const input = document.getElementById(`attr_${statKey}`);
-                if (input) {
-                    let currentVal = parseInt(input.value, 10) || 10;
-                    input.value = currentVal + b.bonus;
-                }
-            });
-
-            loadoutState = {
-              equipOptions: [],
-              profOptions: [],
-              weaponsList: [],
-              gearList: [],
-              selectedSkills: [],
-              traitChoiceOptions: [],
-              traitsToAdd: [],
-              spellsToAdd: [],
-              isSingleAbility: false,
-              history: []
-            };
-
-            if (raceRes?.starting_proficiency_options) loadoutState.profOptions.push(raceRes.starting_proficiency_options);
-            if (subRes?.starting_proficiency_options) loadoutState.profOptions.push(subRes.starting_proficiency_options);
-
-            let allStartingProfs = [...(raceRes?.starting_proficiencies || []), ...(subRes?.starting_proficiencies || [])];
-            const nonSkillProfs = [];
-            allStartingProfs.forEach(p => {
-                if (p.name && p.name.startsWith("Skill:")) {
-                    loadoutState.selectedSkills.push(p.name);
-                } else {
-                    nonSkillProfs.push(p.name);
-                }
-            });
-
-            if (raceRes?.languages) nonSkillProfs.push(`Languages: ` + raceRes.languages.map(l => l.name).join(", "));
-            if (subRes?.languages) nonSkillProfs.push(`Languages: ` + subRes.languages.map(l => l.name).join(", "));
-            if (subRes?.profs) nonSkillProfs.push(subRes.profs);
-
-            if (nonSkillProfs.length > 0) {
-                const profBox = document.getElementById("otherProfs");
-                if (profBox) {
-                    const current = profBox.value.trim();
-                    const addText = nonSkillProfs.join(", ");
-                    profBox.value = current ? current + "\n\n" + addText : addText;
-                    autoExpandTextarea(profBox);
-                }
-            }
-
-            if (subRes?.spells) {
-                subRes.spells.forEach(s => loadoutState.spellsToAdd.push(s));
-            }
-
-            let allTraits = [...baseTraitsList];
-            if (subRes && subRes.traits) {
-                allTraits.push(...subRes.traits);
-            }
-
-            for (let t of allTraits) {
-                if (t.url) { 
-                    const tData = await fetchAPI("https://www.dnd5eapi.co" + t.url);
-                    if (tData) {
-                        let specific = tData.trait_specific || tData.feature_specific || tData.choice;
-                        if (specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from)) {
-                            loadoutState.traitChoiceOptions.push(tData);
-                        } else {
-                            loadoutState.traitsToAdd.push(tData);
-                        }
-                    }
-                } else {
-                    loadoutState.traitsToAdd.push({
-                        name: t.name,
-                        type: "Racial Trait",
-                        desc: t.desc
-                    });
-                }
-            }
-
-            saveSheet();
-            runLoadoutStep();
-        }
-    });
-}
-
-async function runLoadoutStep() {
-  const snap = JSON.stringify(loadoutState);
-  const advance = () => {
-     loadoutState.history = loadoutState.history || [];
-     loadoutState.history.push(snap);
-     runLoadoutStep();
-  };
-
-  const choiceModal = document.getElementById("choiceModal");
-
-  // WIZARD STEP: TRAIT CHOICES
-  if (loadoutState.traitChoiceOptions && loadoutState.traitChoiceOptions.length > 0) {
-    const traitObj = loadoutState.traitChoiceOptions[0];
-    const isSpell = traitObj.isSpell;
-    document.getElementById("choiceModalTitle").textContent = `Choose Variant: ${traitObj.name}`;
-    
-    let choiceData = traitObj.trait_specific?.subtrait_options || traitObj.trait_specific?.spell_options || traitObj.trait_specific?.damage_type_options || traitObj.trait_specific?.choice || traitObj.trait_specific?.breath_weapon_options || traitObj.feature_specific?.subfeature_options || traitObj.feature_specific?.expertise_options || traitObj.feature_specific?.choice || (traitObj.trait_specific?.from ? traitObj.trait_specific : null) || (traitObj.feature_specific?.from ? traitObj.feature_specific : null) || traitObj.choice || traitObj.damage_type_options;
-    
-    let optionsArr = [];
-    if (choiceData && choiceData.from && choiceData.from.options) {
-         optionsArr = choiceData.from.options;
-    } else if (Array.isArray(choiceData)) {
-         optionsArr = choiceData;
-    }
-
-    if (optionsArr.length === 0) {
-        if (!isSpell) loadoutState.traitsToAdd.push(traitObj);
-        loadoutState.traitChoiceOptions.shift();
-        advance();
-        return;
-    }
-
-    let html = `
-      <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
-        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">✨</span>
-        Select your ${escapeHtml(traitObj.name)} variant:
-      </div>
-      <div class="equip-options-grid">
-    `;
-    
-    optionsArr.forEach((opt, idx) => {
-      let name = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
-      let url = opt.item?.url || opt.trait?.url || opt.feature?.url || null; 
-      html += `
-        <div class="choice-option-wrapper">
-          <button type="button" class="choice-option-btn trait-variant-btn" data-index="${idx}" data-name="${escapeHtml(name)}" data-url="${url || ''}">
-            <strong>${escapeHtml(name)}</strong>
-          </button>
-        </div>
-      `;
-    });
-    html += `</div>`;
-
-    const choiceModalBody = document.getElementById("choiceModalBody");
-    choiceModalBody.innerHTML = html;
-    choiceModal.classList.add("open");
-
-    const newBody = choiceModalBody.cloneNode(true);
-    choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-    
-    document.getElementById("choiceModalBody").addEventListener("click", async (e) => {
-      const btn = e.target.closest(".trait-variant-btn");
-      if (!btn) return;
-      btn.style.opacity = "0.5";
-      btn.innerHTML = "<strong style='color:#34d399;'>Loading...</strong>";
-      
-      let selectedName = btn.dataset.name;
-      let selectedUrl = btn.dataset.url;
-      let traitDesc = Array.isArray(traitObj.desc) ? traitObj.desc.join("\n") : (traitObj.desc || "");
-      
-      if (selectedUrl) {
-         const subT = await fetchAPI("https://www.dnd5eapi.co" + selectedUrl);
-         if (subT && subT.desc) {
-             traitDesc += "\n\n" + (Array.isArray(subT.desc) ? subT.desc.join("\n") : subT.desc);
-         }
-      } else {
-         traitDesc += `\n\nSelected Variant: ${selectedName}`;
-      }
-
-      if (isSpell) {
-         let finalCast = traitObj.casting_time || "1 Action";
-         let finalRange = traitObj.range || "30 ft";
-         let finalDur = traitObj.duration || "Instantaneous";
-         let finalType = traitObj.level === 0 ? "Cantrip" : `Level ${traitObj.level} ${traitObj.school?.name || ""}`.trim();
-         loadoutState.spellsToAdd.push({
-             name: `${traitObj.name} (${selectedName})`,
-             type: finalType,
-             casting_time: finalCast,
-             range: finalRange,
-             duration: finalDur,
-             desc: traitDesc
-         });
-      } else {
-         let skipDefaultPush = false;
-
-         if (traitObj.name === "Draconic Ancestry" || traitObj.name === "Dragon Ancestor") {
-             let dragonName = "";
-             const colors = ["Black", "Blue", "Brass", "Bronze", "Copper", "Gold", "Green", "Red", "Silver", "White"];
-             for (let c of colors) {
-                 if (selectedName.includes(c)) dragonName = c;
-             }
-             
-             let raceInp = document.getElementById("charRace");
-             if (raceInp && raceInp.value.toLowerCase().includes("dragonborn")) {
-                 raceInp.value = `${dragonName} Dragonborn`;
-                 saveSheet();
-             }
-
-             let dragon = DRAGON_ANCESTRY_MAP[dragonName];
-             if (dragon) {
-                let updateBW = (targetArray) => {
-                    let bw = targetArray.find(t => t.name && t.name.startsWith("Breath Weapon"));
-                    if (bw) {
-                        bw.name = `Breath Weapon (${dragon.damage})`;
-                        bw.desc = `You can use your action to exhale destructive energy. It is a ${dragon.breath} dealing ${dragon.damage} damage. When you use your breath weapon, each creature in the area of the exhalation must make a ${dragon.save} saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level. After you use your breath weapon, you can't use it again until you complete a short or long rest.`;
-                    }
-                    let dr = targetArray.find(t => t.name && t.name.startsWith("Damage Resistance"));
-                    if (dr) {
-                        dr.name = `Damage Resistance (${dragon.damage})`;
-                        dr.desc = `You have resistance to the damage type associated with your draconic ancestry (${dragon.damage}).`;
-                    }
-                };
-                updateBW(loadoutState.traitsToAdd);
-                updateBW(myCharacterTraits);
-             }
-             skipDefaultPush = true; 
-         } else if (traitObj.name === "Breath Weapon") {
-             let dragonName = "";
-             const colors = ["Black", "Blue", "Brass", "Bronze", "Copper", "Gold", "Green", "Red", "Silver", "White"];
-             for (let c of colors) {
-                 if (selectedName.includes(c)) dragonName = c;
-             }
-             let dragon = DRAGON_ANCESTRY_MAP[dragonName];
-             if (dragon) {
-                 loadoutState.traitsToAdd.push({
-                     name: `Breath Weapon (${dragon.damage})`,
-                     type: "Racial Trait",
-                     desc: `You can use your action to exhale destructive energy. It is a ${dragon.breath} dealing ${dragon.damage} damage. When you use your breath weapon, each creature in the area of the exhalation must make a ${dragon.save} saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level. After you use your breath weapon, you can't use it again until you complete a short or long rest.`
-                 });
-                 skipDefaultPush = true;
-             }
-         }
-
-         if (!skipDefaultPush) {
-             loadoutState.traitsToAdd.push({
-                 name: `${traitObj.name} (${selectedName})`,
-                 type: traitObj.url?.includes("/features/") ? "Class Feature" : "Racial Trait",
-                 desc: traitDesc
-             });
-         }
-      }
-
-      loadoutState.traitChoiceOptions.shift();
-      advance();
-    });
-    return;
-  }
-
-  // CLASS WIZARD STEP: EQUIPMENT
-  if (loadoutState.equipOptions.length > 0) {
-    const optGroup = loadoutState.equipOptions[0];
-    let chooseAmount = optGroup.choose || 1;
-    document.getElementById("choiceModalTitle").textContent = "Gear Up!";
-
-    const choiceModalBody = document.getElementById("choiceModalBody");
-    choiceModalBody.innerHTML = `
-      <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
-        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🎒</span>
-        It's dangerous to go alone! Let's get you geared up.<br>
-      </div>
-      <p class="loading-text">Fetching weapon & armor stats...</p>
-    `;
-
-    let choicesArray = [];
-    if (optGroup.from) {
-        if (Array.isArray(optGroup.from)) choicesArray = optGroup.from;
-        else if (optGroup.from.options) choicesArray = optGroup.from.options;
-        else if (optGroup.from.equipment_category) {
-            choicesArray = [{ option_type: "equipment_category", equipment_category: optGroup.from.equipment_category, count: chooseAmount }];
-            chooseAmount = 1;
-        }
-    }
-    if (!choicesArray.length && optGroup.options) choicesArray = optGroup.options;
-    if (!choicesArray.length && Array.isArray(optGroup)) choicesArray = optGroup;
-
-    if (!choicesArray || choicesArray.length === 0) {
-      loadoutState.equipOptions.shift();
-      advance();
-      return;
-    }
-
-    if (choicesArray.length === 1) {
-      const { concreteItems, drillDownSteps } = await extractConcreteItemsAndDrillDowns(choicesArray[0]);
-      await processConcreteItems(concreteItems);
-      loadoutState.equipOptions.shift();
-      if (drillDownSteps.length > 0) {
-        let normalizedSteps = [];
-        drillDownSteps.forEach(s => {
-           let c = s.choose || 1;
-           for(let i=0; i<c; i++) {
-              let stepCopy = JSON.parse(JSON.stringify(s));
-              stepCopy.choose = 1;
-              normalizedSteps.push(stepCopy);
-           }
-        });
-        loadoutState.equipOptions.unshift(...normalizedSteps);
-      }
-      advance();
-      return;
-    }
-
-    let html = `
-      <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
-        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🎒</span>
-        It's dangerous to go alone! Let's get you geared up.<br>
-        You get to pick <strong style="color: #38bdf8; font-size: 1.3rem;" id="wizChooseCount">${chooseAmount}</strong> item(s) from this list:
-      </div>
-      <div class="equip-options-grid">
-    `;
-    for (let choiceIdx = 0; choiceIdx < choicesArray.length; choiceIdx++) {
-      const choice = choicesArray[choiceIdx];
-      const detailsArr = await getAsyncChoiceDetails(choice);
-      let label = detailsArr.join('<br><span style="color:#64748b; font-size:0.8rem; font-weight:800; display:block; margin:0.6rem 0;">AND</span>');
-      if (!label || label === "Item Option" || label === "Item(s)") label = "<strong>Equipment Option</strong>";
-
-      html += `
-        <div class="choice-option-wrapper">
-          <button type="button" class="choice-option-btn gear-choice-btn" data-opt-index="${choiceIdx}">${label}</button>
-        </div>
-      `;
-    }
-    html += `</div>`;
-
-    choiceModalBody.innerHTML = html;
-    choiceModal.classList.add("open");
-
-    const newBody = choiceModalBody.cloneNode(true);
-    choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-    document.getElementById("choiceModalBody").addEventListener("click", async (e) => {
-      const btn = e.target.closest(".gear-choice-btn");
-      if (!btn) return;
-
-      btn.style.opacity = "0.5";
-      btn.innerHTML = "<strong style='color:#34d399;'>Loading Choice...</strong>";
-      btn.disabled = true;
-
-      const chosenIdx = parseInt(btn.dataset.optIndex, 10);
-      const chosenChoice = choicesArray[chosenIdx];
-
-      const { concreteItems, drillDownSteps } = await extractConcreteItemsAndDrillDowns(chosenChoice);
-      await processConcreteItems(concreteItems);
-
-      chooseAmount--;
-      if (chooseAmount > 0) {
-        btn.closest(".choice-option-wrapper").style.display = "none"; 
-        const countSpan = document.getElementById("wizChooseCount");
-        if (countSpan) countSpan.textContent = chooseAmount;
-        if (drillDownSteps.length > 0) {
-          let normalizedSteps = [];
-          drillDownSteps.forEach(s => {
-             let c = s.choose || 1;
-             for(let i=0; i<c; i++) {
-                let stepCopy = JSON.parse(JSON.stringify(s));
-                stepCopy.choose = 1;
-                normalizedSteps.push(stepCopy);
-             }
-          });
-          loadoutState.equipOptions.splice(1, 0, ...normalizedSteps);
-        }
-      } else {
-        loadoutState.equipOptions.shift();
-        if (drillDownSteps.length > 0) {
-          let normalizedSteps = [];
-          drillDownSteps.forEach(s => {
-             let c = s.choose || 1;
-             for(let i=0; i<c; i++) {
-                let stepCopy = JSON.parse(JSON.stringify(s));
-                stepCopy.choose = 1;
-                normalizedSteps.push(stepCopy);
-             }
-          });
-          loadoutState.equipOptions.unshift(...normalizedSteps);
-        }
-        advance();
-      }
-    });
-    return;
-  }
-
-  // WIZARD STEP: SKILL PROFICIENCIES
-  if (loadoutState.profOptions.length > 0) {
-    const profGroup = loadoutState.profOptions[0];
-    const chooseAmount = profGroup.choose || 1;
-    document.getElementById("choiceModalTitle").textContent = "Time to learn some skills!";
-
-    let optionsArray = [];
-    if (profGroup.from && profGroup.from.options) optionsArray = profGroup.from.options;
-    else if (Array.isArray(profGroup.from)) optionsArray = profGroup.from;
-
-    const skillChoices = optionsArray.map(opt => opt.item?.name || opt.name).filter(name => name?.startsWith("Skill:"));
-
-    if (skillChoices.length === 0) {
-      loadoutState.profOptions.shift();
-      advance();
-      return;
-    }
-
-    let html = `
-      <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
-        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🧠</span>
-        What are you good at?
-        <br>Pick <strong style="color: #38bdf8; font-size: 1.3rem;">${chooseAmount}</strong> skill(s) to master:
-      </div>
-      <div class="loadout-skill-grid">
-    `;
-    skillChoices.forEach((skill) => {
-      const cleanName = skill.replace("Skill: ", "");
-      html += `<button type="button" class="skill-toggle-btn" data-skill="${escapeHtml(skill)}">${escapeHtml(cleanName)}</button>`;
-    });
-    html += `</div>`;
-    html += `<button type="button" class="btn red confirm-loadout-btn" id="confirmSkillsBtn" style="font-size: 1.15rem; padding: 1.1rem; margin-top: 1.5rem;">Confirm Skills</button>`;
-
-    const choiceModalBody = document.getElementById("choiceModalBody");
-    choiceModalBody.innerHTML = html;
-    choiceModal.classList.add("open");
-
-    const newBody = choiceModalBody.cloneNode(true);
-    choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-    const activeBody = document.getElementById("choiceModalBody");
-
-    let currentSelections = [];
-    activeBody.addEventListener("click", (e) => {
-      if (e.target.classList.contains("skill-toggle-btn")) {
-        const btn = e.target;
-        const skill = btn.dataset.skill;
-        if (btn.classList.contains("active")) {
-          btn.classList.remove("active");
-          currentSelections = currentSelections.filter(s => s !== skill);
-        } else {
-          if (currentSelections.length < chooseAmount) {
-            btn.classList.add("active");
-            currentSelections.push(skill);
-          }
-        }
-      } else if (e.target.id === "confirmSkillsBtn") {
-        if (currentSelections.length === 0 && !confirm("You haven't selected any skills! Are you sure you want to skip this?")) return;
-        loadoutState.selectedSkills.push(...currentSelections);
-        loadoutState.profOptions.shift();
-        advance();
-      }
-    });
-    return;
-  }
-
-  showClassConfirmation();
-}
-
-document.getElementById("closeChoiceModal")?.addEventListener("click", () => {
-  document.getElementById("choiceModal")?.classList.remove("open");
-});
-
-const classInput = document.getElementById("charClass");
-const classDropdown = document.getElementById("classDropdown");
-const raceInput = document.getElementById("charRace");
-const raceDropdown = document.getElementById("raceDropdown");
-
-function renderDropdown(dropdownEl, items, filter = "") {
-  if (!dropdownEl) return;
-  const q = filter.toLowerCase().trim();
-  const filtered = items.filter(i => i.name.toLowerCase().includes(q));
-  dropdownEl.innerHTML = filtered.map(i => `<div class="dropdown-item" data-index="${i.index}" data-name="${escapeHtml(i.name)}">${escapeHtml(i.name)}</div>`).join("");
-}
-
-classInput?.addEventListener("focus", async () => {
-  if (!classDropdown.classList.contains("open")) {
-    if (allClassesCache.length === 0) {
-      const data = await fetchAPI("https://www.dnd5eapi.co/api/classes");
-      if (data) allClassesCache = data.results;
-    }
-    renderDropdown(classDropdown, allClassesCache, classInput.value);
-    classDropdown.classList.add("open");
-  }
-});
-
-classInput?.addEventListener("input", () => {
-  renderDropdown(classDropdown, allClassesCache, classInput.value);
-  classDropdown.classList.add("open");
-});
-
-raceInput?.addEventListener("focus", async () => {
-  if (!raceDropdown.classList.contains("open")) {
-    if (allRacesCache.length === 0) {
-      const data = await fetchAPI("https://www.dnd5eapi.co/api/races");
-      if (data) allRacesCache = data.results;
-    }
-    renderDropdown(raceDropdown, allRacesCache, raceInput.value);
-    raceDropdown.classList.add("open");
-  }
-});
-
-raceInput?.addEventListener("input", () => {
-  renderDropdown(raceDropdown, allRacesCache, raceInput.value);
-  raceDropdown.classList.add("open");
-});
-
-classDropdown?.addEventListener("click", async (e) => {
-  const item = e.target.closest(".dropdown-item");
-  if (!item) return;
-  classInput.value = item.dataset.name;
-  classDropdown.classList.remove("open");
-  saveSheet();
-
-  const classIdx = item.dataset.index;
-  if (classIdx) {
-    document.getElementById("choiceModalTitle").textContent = `Setting up your ${item.dataset.name}...`;
-    document.getElementById("choiceModalBody").innerHTML = `<div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center;">We're grabbing your class choices from the database! Hang tight...</div><p class="loading-text">Fetching loadout options...</p>`;
-    document.getElementById("choiceModal").classList.add("open");
-
-    const [equipRes1, equipRes2, classRes] = await Promise.all([
-      fetchAPI(`https://www.dnd5eapi.co/api/classes/${classIdx}/starting-equipment`),
-      fetchAPI(`https://www.dnd5eapi.co/api/starting-equipment/${classIdx}`),
-      fetchAPI(`https://www.dnd5eapi.co/api/classes/${classIdx}`)
-    ]);
-
-    if (classRes?.proficiencies) {
-      const nonSkillProfs = [];
-      classRes.proficiencies.forEach(p => {
-          if (p.name && p.name.startsWith("Skill:")) {
-              // we grab skills via choice menus usually, but static ones go here
-          } else if (!(p.index && p.index.startsWith("saving-throw-"))) {
-              nonSkillProfs.push(p.name);
-          }
-      });
-      const otherProfs = nonSkillProfs.join(", ");
-      if (otherProfs) {
-        const profBox = document.getElementById("otherProfs");
-        if (profBox) {
-          const current = profBox.value.trim();
-          profBox.value = current ? current + "\n\n" + otherProfs : otherProfs;
-          autoExpandTextarea(profBox);
-        }
-      }
-    }
-    
-    if (classRes?.saving_throws) {
-      classRes.saving_throws.forEach(st => {
-        const cb = document.getElementById(`save_${st.index}`);
-        if (cb) cb.checked = true;
-      });
-    }
-
-    if (classRes?.hit_die) {
-        const hdMax = document.getElementById("hitDiceMax");
-        const hdCur = document.getElementById("hitDiceCur");
-        if (hdMax) hdMax.value = `1d${classRes.hit_die}`;
-        if (hdCur) hdCur.value = `1`;
-        
-        let existingIndex = myCharacterTraits.findIndex(t => t.name === "Hit Dice");
-        if (existingIndex === -1) {
-            myCharacterTraits.push({
-                name: "Hit Dice",
-                type: "Class Feature",
-                desc: `You have 1d${classRes.hit_die} Hit Die per level.`
-            });
-        } else {
-            myCharacterTraits[existingIndex].desc = `You have 1d${classRes.hit_die} Hit Die per level.`;
-        }
-    }
-
-    const sAbility = CLASS_SPELL_ABILITY[classIdx];
-    if (sAbility) {
-        const el = document.getElementById("spellAbility");
-        if (el && !el.value) el.value = sAbility;
-    }
-
-    const finalEquip = equipRes1?.starting_equipment_options ? equipRes1 : equipRes2;
-
-    loadoutState = {
-      equipOptions: [],
-      profOptions: classRes?.proficiency_choices || [],
-      weaponsList: [],
-      gearList: [],
-      selectedSkills: [],
-      traitChoiceOptions: [],
-      traitsToAdd: [],
-      spellsToAdd: [],
-      isSingleAbility: false,
-      history: []
-    };
-
-    if (finalEquip?.starting_equipment_options) {
-      finalEquip.starting_equipment_options.forEach(opt => {
-        let c = opt.choose || 1;
-        for(let i=0; i<c; i++) {
-           let step = JSON.parse(JSON.stringify(opt));
-           step.choose = 1;
-           if (c > 1) step.desc = (opt.desc || "Choose an option") + ` (Choice ${i+1} of ${c})`;
-           loadoutState.equipOptions.push(step);
-        }
-      });
-    }
-    
-    if (finalEquip?.starting_equipment) {
-      const concreteItems = [];
-      finalEquip.starting_equipment.forEach(stItem => {
-         concreteItems.push({ name: stItem.equipment.name, url: stItem.equipment.url, qty: stItem.quantity });
-      });
-      await processConcreteItems(concreteItems);
-    }
-
-    runLoadoutStep();
-  }
-});
-
-raceDropdown?.addEventListener("click", async (e) => {
-  const item = e.target.closest(".dropdown-item");
-  if (!item) return;
-  
-  const raceIdx = item.dataset.index;
-  const raceName = item.dataset.name;
-  raceDropdown.classList.remove("open");
-
-  if (raceIdx) {
-    document.getElementById("choiceModalTitle").textContent = `Setting up ${raceName}...`;
-    document.getElementById("choiceModalBody").innerHTML = `<p class="loading-text">Fetching details for ${raceName}...</p>`;
-    const choiceModal = document.getElementById("choiceModal");
-    choiceModal.classList.add("open");
-
-    const raceRes = await fetchAPI(`https://www.dnd5eapi.co/api/races/${raceIdx}`);
-    if (!raceRes) {
-        document.getElementById("choiceModalBody").innerHTML = `<p class="loading-text">Failed to fetch race details.</p>`;
-        return;
-    }
-
-    let subOpts = [];
-    if (raceRes?.subraces && raceRes.subraces.length > 0) {
-        subOpts = [
-            { name: `Base ${raceRes.name} (No Subrace)`, url: "base", isBase: true },
-            ...raceRes.subraces
-        ];
-    } else if (EXTENDED_SUBRACES[raceIdx]) {
-        if (raceIdx !== "tiefling") {
-            subOpts = [{ name: `Base ${raceRes.name} (No Subrace)`, url: "base", isBase: true }];
-        }
-    }
-
-    if (EXTENDED_SUBRACES[raceIdx]) {
-        subOpts.push(...EXTENDED_SUBRACES[raceIdx]);
-    }
-
-    const renderSubraceMenu = () => {
-        document.getElementById("choiceModalTitle").textContent = `Setting up ${raceName}...`;
-        let html = `
-          <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
-            <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🧬</span>
-            Select your subrace or bloodline:
-          </div>
-          <div class="equip-options-grid">
-        `;
-        
-        subOpts.forEach((sub, idx) => {
-          html += `
-            <div class="choice-option-wrapper">
-              <button type="button" class="choice-option-btn subrace-btn" data-index="${idx}" data-url="${sub.url || ''}" data-isbase="${sub.isBase ? 'true' : 'false'}">
-                <strong>${escapeHtml(sub.name)}</strong>
-              </button>
-            </div>
-          `;
-        });
-        html += `</div>`;
-
-        const choiceModalBody = document.getElementById("choiceModalBody");
-        choiceModalBody.innerHTML = html;
-
-        const newBody = choiceModalBody.cloneNode(true);
-        choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
-
-        newBody.addEventListener("click", async (ev) => {
-            const btn = ev.target.closest(".subrace-btn");
-            if (!btn) return;
-            btn.style.opacity = "0.5";
-            btn.innerHTML = "<strong style='color:#34d399;'>Loading...</strong>";
-            
-            const isBase = btn.dataset.isbase === "true";
-            let subRes = null;
-            if (!isBase) {
-                const subUrl = btn.dataset.url;
-                if (subUrl.startsWith("custom_")) {
-                    subRes = CUSTOM_SUBRACE_DATA[subUrl];
-                } else {
-                    subRes = await fetchAPI("https://www.dnd5eapi.co" + subUrl);
-                }
-            }
-            showRaceConfirmation(raceRes, subRes, renderSubraceMenu);
-        });
-    };
-
-    if (subOpts.length > 0) {
-        renderSubraceMenu();
-    } else {
-        showRaceConfirmation(raceRes, null, null);
-    }
-  }
-});
-
-document.addEventListener("click", (e) => {
-  if (!e.target.closest(".dropdown-pill-wrapper")) {
-    document.querySelectorAll(".dropdown-menu").forEach(m => m.classList.remove("open"));
-  }
-  if (e.target.classList.contains("modal-backdrop") || e.target.classList.contains("modal-close-btn")) {
-    e.target.closest('.modal-backdrop')?.classList.remove("open");
-  }
-});
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
-  }
-});
-
-function autoExpandTextarea(el) {
-  if (!el) return;
-  el.style.height = "auto";
-  el.style.height = el.scrollHeight + "px";
 }
 
 function renderMyTraits() {
@@ -2072,6 +1454,8 @@ document.getElementById("addCustomTraitBtn")?.addEventListener("click", (e) => {
   }
 });
 
+let tempTraitHold = null;
+
 document.getElementById("traitApiList")?.addEventListener("click", async (e) => {
   const row = e.target.closest(".trait-option-item");
   if (!row) return;
@@ -2094,21 +1478,15 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
       hasVariants = true;
       detail.choice = {
           desc: "Draconic Ancestry Variant",
-          from: { options: Object.keys(DRAGON_ANCESTRY_MAP).map(c => ({ desc: c })) }
+          from: { options: Object.keys(DRAGON_ANCESTRY_MAP).map(c => ({ item: { name: c } })) }
       };
   }
 
   if (hasVariants) {
-      loadoutState = {
-          equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [], traitsToAdd: [],
-          traitChoiceOptions: [{ ...detail, isSpell: true }],
-          spellsToAdd: [],
-          isSingleAbility: true,
-          history: []
-      };
+      tempTraitHold = detail;
       document.getElementById("traitModal")?.classList.remove("open");
       if (badge) badge.textContent = "+ Add";
-      runLoadoutStep();
+      runTraitVariantStep(detail);
       return;
   }
 
@@ -2129,6 +1507,103 @@ document.getElementById("traitApiList")?.addEventListener("click", async (e) => 
   document.getElementById("traitModal")?.classList.remove("open");
   if (badge) badge.textContent = "+ Add";
 });
+
+function runTraitVariantStep(traitObj) {
+  const choiceModal = document.getElementById("choiceModal");
+  choiceModalTitle.textContent = `Choose Variant: ${traitObj.name}`;
+  
+  let choiceData = traitObj.trait_specific?.subtrait_options || traitObj.trait_specific?.spell_options || traitObj.trait_specific?.damage_type_options || traitObj.trait_specific?.choice || traitObj.trait_specific?.breath_weapon_options || traitObj.feature_specific?.subfeature_options || traitObj.feature_specific?.expertise_options || traitObj.feature_specific?.choice || (traitObj.trait_specific?.from ? traitObj.trait_specific : null) || (traitObj.feature_specific?.from ? traitObj.feature_specific : null) || traitObj.choice || traitObj.damage_type_options;
+  
+  let optionsArr = [];
+  if (choiceData && choiceData.from && choiceData.from.options) {
+       optionsArr = choiceData.from.options;
+  } else if (Array.isArray(choiceData)) {
+       optionsArr = choiceData;
+  }
+
+  if (optionsArr.length === 0) {
+      myCharacterTraits.push({ name: traitObj.name, type: "Feature", desc: traitObj.desc, isExpanded: false });
+      saveSheet(); renderMyTraits();
+      return;
+  }
+
+  let html = `
+    <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
+      <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">✨</span>
+      Select your ${escapeHtml(traitObj.name)} variant:
+    </div>
+    <div class="equip-options-grid">
+  `;
+  
+  optionsArr.forEach((opt, idx) => {
+    let name = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
+    let url = opt.item?.url || opt.trait?.url || opt.feature?.url || null; 
+    html += `
+      <div class="choice-option-wrapper">
+        <button type="button" class="choice-option-btn trait-variant-btn" data-index="${idx}" data-name="${escapeHtml(name)}" data-url="${url || ''}">
+          <strong>${escapeHtml(name)}</strong>
+        </button>
+      </div>
+    `;
+  });
+  html += `</div>`;
+
+  choiceModalBody.innerHTML = html;
+  choiceModal.classList.add("open");
+
+  const newBody = choiceModalBody.cloneNode(true);
+  choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
+  
+  document.getElementById("choiceModalBody").addEventListener("click", async (e) => {
+    const btn = e.target.closest(".trait-variant-btn");
+    if (!btn) return;
+    btn.style.opacity = "0.5";
+    btn.innerHTML = "<strong style='color:#34d399;'>Adding...</strong>";
+    
+    let selectedName = btn.dataset.name;
+    let selectedUrl = btn.dataset.url;
+    let traitDesc = Array.isArray(traitObj.desc) ? traitObj.desc.join("\n") : (traitObj.desc || "");
+    
+    if (selectedUrl) {
+       const subT = await fetchAPI("https://www.dnd5eapi.co" + selectedUrl);
+       if (subT && subT.desc) {
+           traitDesc += "\n\n" + (Array.isArray(subT.desc) ? subT.desc.join("\n") : subT.desc);
+       }
+    } else {
+       traitDesc += `\n\nSelected Variant: ${selectedName}`;
+    }
+
+    if (traitObj.name === "Breath Weapon") {
+       let dragonName = "";
+       const colors = ["Black", "Blue", "Brass", "Bronze", "Copper", "Gold", "Green", "Red", "Silver", "White"];
+       for (let c of colors) {
+           if (selectedName.includes(c)) dragonName = c;
+       }
+       let dragon = DRAGON_ANCESTRY_MAP[dragonName];
+       if (dragon) {
+           myCharacterTraits.push({
+               name: `Breath Weapon (${dragon.damage})`,
+               type: "Racial Trait",
+               desc: `You can use your action to exhale destructive energy. It is a ${dragon.breath} dealing ${dragon.damage} damage. When you use your breath weapon, each creature in the area of the exhalation must make a ${dragon.save} saving throw. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level. After you use your breath weapon, you can't use it again until you complete a short or long rest.`,
+               isExpanded: false
+           });
+       } else {
+           myCharacterTraits.push({ name: `${traitObj.name} (${selectedName})`, type: "Racial Trait", desc: traitDesc, isExpanded: false });
+       }
+    } else {
+       myCharacterTraits.push({
+           name: `${traitObj.name} (${selectedName})`,
+           type: traitObj.url?.includes("/features/") ? "Class Feature" : "Racial Trait",
+           desc: traitDesc,
+           isExpanded: false
+       });
+    }
+
+    saveSheet();
+    renderMyTraits();
+    choiceModal.classList.remove("open");
+  });
+}
 
 function renderModalSpellsList(matches) {
   const container = document.getElementById("spellApiList");
@@ -2336,6 +1811,8 @@ document.getElementById("addCustomSpellBtn")?.addEventListener("click", (e) => {
   }
 });
 
+let tempSpellHold = null;
+
 document.getElementById("spellApiList")?.addEventListener("click", async (e) => {
   const row = e.target.closest(".spell-add-item");
   if (!row) return;
@@ -2350,16 +1827,10 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
 
   let hasVariants = !!(detail?.damage_type_options || detail?.choice);
   if (hasVariants) {
-      loadoutState = {
-          equipOptions: [], profOptions: [], weaponsList: [], gearList: [], selectedSkills: [], traitsToAdd: [],
-          traitChoiceOptions: [{ ...detail, isSpell: true }],
-          spellsToAdd: [],
-          isSingleAbility: true,
-          history: []
-      };
+      tempSpellHold = detail;
       document.getElementById("spellModal")?.classList.remove("open");
       if (badge) badge.textContent = "+ Add";
-      runLoadoutStep();
+      runSpellVariantStep(detail);
       return;
   }
 
@@ -2393,6 +1864,87 @@ document.getElementById("spellApiList")?.addEventListener("click", async (e) => 
   if (badge) badge.textContent = "+ Add";
 });
 
+function runSpellVariantStep(spellObj) {
+  const choiceModal = document.getElementById("choiceModal");
+  choiceModalTitle.textContent = `Choose Variant: ${spellObj.name}`;
+  
+  let choiceData = spellObj.damage_type_options || spellObj.choice;
+  let optionsArr = [];
+  if (choiceData && choiceData.from && choiceData.from.options) {
+       optionsArr = choiceData.from.options;
+  } else if (Array.isArray(choiceData)) {
+       optionsArr = choiceData;
+  }
+
+  if (optionsArr.length === 0) {
+      let finalType = spellObj.level === 0 ? "Cantrip" : `Level ${spellObj.level} ${spellObj.school?.name || ""}`.trim();
+      myCharacterSpells.push({
+          name: spellObj.name,
+          type: finalType,
+          casting_time: spellObj.casting_time || "1 Action",
+          range: spellObj.range || "30 ft",
+          duration: spellObj.duration || "Instantaneous",
+          desc: Array.isArray(spellObj.desc) ? spellObj.desc.join("\n\n") : (spellObj.desc || "")
+      });
+      saveSheet(); renderMySpells();
+      return;
+  }
+
+  let html = `
+    <div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">
+      <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">✨</span>
+      Select your ${escapeHtml(spellObj.name)} variant:
+    </div>
+    <div class="equip-options-grid">
+  `;
+  
+  optionsArr.forEach((opt, idx) => {
+    let name = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
+    let url = opt.item?.url || opt.trait?.url || opt.feature?.url || null; 
+    html += `
+      <div class="choice-option-wrapper">
+        <button type="button" class="choice-option-btn spell-variant-btn" data-name="${escapeHtml(name)}" data-url="${url || ''}">
+          <strong>${escapeHtml(name)}</strong>
+        </button>
+      </div>
+    `;
+  });
+  html += `</div>`;
+
+  choiceModalBody.innerHTML = html;
+  choiceModal.classList.add("open");
+
+  const newBody = choiceModalBody.cloneNode(true);
+  choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
+  
+  document.getElementById("choiceModalBody").addEventListener("click", async (e) => {
+    const btn = e.target.closest(".spell-variant-btn");
+    if (!btn) return;
+    btn.style.opacity = "0.5";
+    btn.innerHTML = "<strong style='color:#34d399;'>Adding...</strong>";
+    
+    let selectedName = btn.dataset.name;
+    let spellDesc = Array.isArray(spellObj.desc) ? spellObj.desc.join("\n\n") : (spellObj.desc || "");
+    spellDesc += `\n\nSelected Variant: ${selectedName}`;
+    if (spellObj.higher_level) spellDesc += "\n\nAt Higher Levels: " + (Array.isArray(spellObj.higher_level) ? spellObj.higher_level.join(" ") : spellObj.higher_level);
+
+    let finalType = spellObj.level === 0 ? "Cantrip" : `Level ${spellObj.level} ${spellObj.school?.name || ""}`.trim();
+
+    myCharacterSpells.push({
+        name: `${spellObj.name} (${selectedName})`,
+        type: finalType,
+        casting_time: spellObj.casting_time || "1 Action",
+        range: spellObj.range || "30 ft",
+        duration: spellObj.duration || "Instantaneous",
+        desc: spellDesc
+    });
+
+    saveSheet();
+    renderMySpells();
+    choiceModal.classList.remove("open");
+  });
+}
+
 document.getElementById("spellsList")?.addEventListener("input", (e) => {
   if (e.target.classList.contains("custom-spell-field")) {
     const card = e.target.closest(".spell-card");
@@ -2414,83 +1966,5 @@ document.getElementById("spellsList")?.addEventListener("click", (e) => {
   }
 });
 
-document.getElementById("saveBtn")?.addEventListener("click", saveSheet);
-document.getElementById("newBtn")?.addEventListener("click", () => { if (confirm("Create a new blank character sheet?")) resetSheet(); });
-
-document.getElementById("deleteBtn")?.addEventListener("click", () => {
-  const roster = getRoster();
-  if (confirm("Permanently delete current character?")) {
-    delete roster[activeCharId];
-    saveRoster(roster);
-    const keys = Object.keys(roster);
-    if (keys.length > 0) {
-      activeCharId = keys[0];
-      localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-      loadSheet();
-    } else {
-      resetSheet();
-    }
-  }
-});
-
-document.getElementById("backupBtn")?.addEventListener("click", () => {
-  const roster = getRoster();
-  const currentChar = roster[activeCharId] || { 
-    id: activeCharId, 
-    name: "Character", 
-    fields: getCurrentSheetData(), 
-    spells: myCharacterSpells, 
-    traits: myCharacterTraits,
-    weapons: myCharacterWeapons 
-  };
-  const blob = new Blob([JSON.stringify({ character: currentChar, allRoster: roster }, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `character-backup.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showStatus("Backup downloaded!");
-});
-
-document.getElementById("restoreFile")?.addEventListener("change", (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (evt) => {
-    try {
-      const parsed = JSON.parse(evt.target.result);
-      const roster = getRoster();
-      if (parsed.allRoster) Object.assign(roster, parsed.allRoster);
-      else if (parsed.character) roster[parsed.character.id || "char_1"] = parsed.character;
-      saveRoster(roster);
-      loadSheet();
-      showStatus("Restored successfully!");
-    } catch (err) {
-      alert("Invalid backup file.");
-    }
-  };
-  reader.readAsText(file);
-});
-
-document.addEventListener("change", (e) => {
-  if (e.target.type === "checkbox" && e.target.classList.contains("save-field")) {
-    recalculateAll();
-    saveSheet();
-  }
-});
-
-document.addEventListener("input", (e) => {
-  if (e.target.classList.contains("save-field")) {
-    recalculateAll();
-    saveSheet();
-  }
-});
-
-document.getElementById("loadBtn")?.addEventListener("click", () => {
-  renderCharList();
-  document.getElementById("loadModal")?.classList.add("open");
-});
-
+// Initialization
 loadSheet();
-renderMyTraits();
