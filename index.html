@@ -662,8 +662,16 @@
       <div class="auth-modal-content" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
         <input type="email" id="authEmail" class="save-field inline-input" placeholder="Email address" autocomplete="email" />
         <input type="password" id="authPassword" class="save-field inline-input" placeholder="Password" autocomplete="current-password" />
-        <p id="authError" style="color: #991b1b; font-size: 0.85rem; font-weight: 600; display: none; margin: 0;"></p>
+        <p id="authError" style="color: #f87171; font-size: 0.85rem; font-weight: 600; display: none; margin: 0;"></p>
         <button type="button" class="btn red" id="authSubmitBtn" style="width: 100%; padding: 0.8rem; font-size: 1.1rem; margin-top: 0.5rem;">Sign In</button>
+        
+        <div style="display: flex; align-items: center; text-align: center; color: #64748b; font-size: 0.85rem; margin: 0.5rem 0;">
+          <div style="flex: 1; height: 1px; background: #243049;"></div>
+          <span style="padding: 0 0.75rem;">OR</span>
+          <div style="flex: 1; height: 1px; background: #243049;"></div>
+        </div>
+        
+        <button type="button" class="btn outline blue" id="googleAuthBtn" style="width: 100%; padding: 0.8rem; font-size: 1.1rem;">Sign in with Google</button>
       </div>
     </div>
   </div>
