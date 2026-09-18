@@ -392,8 +392,8 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   z-index: 1000;
   align-items: center;
   justify-content: center;
@@ -755,7 +755,7 @@ textarea.tight-block {
   margin-bottom: 0.55rem;
 }
 
-/* Attributes Grid */
+/* NEW Attributes Grid System */
 .attributes-group {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -902,107 +902,26 @@ textarea.tight-block {
   transform: scale(1.25);
 }
 
-/* NEW Skills Grid Layout */
-.skills-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 0.75rem;
-}
-
-.skill-card {
-  background: #080d18;
-  border: 1.5px solid #3b4c68;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.55rem 0.75rem;
-  transition: all 0.2s ease;
-}
-
-.skill-card:hover {
-  border-color: #dc2626;
-  background-color: #151d2f;
-  transform: translateY(-2px);
-}
-
-.skill-toggles {
-  display: flex;
-  gap: 0.3rem;
-}
-
-.skill-toggles label {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.skill-toggles input[type="checkbox"] {
-  display: none;
-}
-
-.bubble {
-  width: 14px;
-  height: 14px;
-  border: 2px solid #4b6285;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-}
-
-.prof-cb:checked + .bubble {
-  background-color: #dc2626;
-  border-color: #dc2626;
-  box-shadow: 0 0 6px rgba(220, 38, 38, 0.5);
-}
-
-.exp-cb:checked + .bubble {
-  background-color: #c084fc;
-  border-color: #c084fc;
-  box-shadow: 0 0 6px rgba(192, 132, 252, 0.5);
-}
-
-.skill-info {
-  flex: 1;
+/* Classic Skills List Restored */
+.skill-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-left: 0.75rem;
-}
-
-.skill-name {
-  color: #f8fafc;
-  font-weight: 600;
+  margin-bottom: 0.45rem;
   font-size: 0.9rem;
 }
 
-.skill-stat {
-  font-size: 0.65rem;
-  font-weight: 800;
-  padding: 0.15rem 0.35rem;
-  border-radius: 4px;
-}
-
-/* Custom Skill Badges by Stat */
-.stat-str { background: rgba(220,38,38,0.15); color: #f87171; border: 1px solid rgba(220,38,38,0.3); }
-.stat-dex { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
-.stat-con { background: rgba(251,146,60,0.15); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
-.stat-int { background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); }
-.stat-wis { background: rgba(192,132,252,0.15); color: #c084fc; border: 1px solid rgba(192,132,252,0.3); }
-.stat-cha { background: rgba(232,121,249,0.15); color: #e879f9; border: 1px solid rgba(232,121,249,0.3); }
-
-.skill-number-box {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
+.skill-label {
+  flex: 1;
+  color: #cbd5e1;
 }
 
 .skill-val {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: #f8fafc;
-  min-width: 34px;
+  width: 24px;
   text-align: right;
+  margin-right: 0.35rem;
+  font-weight: 600;
+  color: #f8fafc;
 }
 
 .dice-bar {
@@ -2048,7 +1967,6 @@ textarea.tight-block {
   .attacks-table { min-width: 520px; }
   
   .attributes-group { grid-template-columns: 1fr; }
-  .skills-grid { grid-template-columns: 1fr; }
 
   .traits-grid-container { grid-template-columns: 1fr; }
   .trait-card.expanded { grid-column: span 1; }
