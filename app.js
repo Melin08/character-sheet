@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -42,10 +42,16 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
     authGroup.innerHTML = `
-      <span style="font-size: 0.85rem; color: #475569; font-weight: 600;">${user.email}</span>
+      <span style="font-size: 0.85rem; color: #94a3b8; font-weight: 600;">${user.email}</span>
       <button class="btn outline blue" id="logoutBtn" type="button">Log Out</button>
     `;
-    document.getElementById("logoutBtn").addEventListener("click", () => signOut(auth));
+    
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      localStorage.removeItem(ROSTER_STORAGE_KEY);
+      localStorage.removeItem(ACTIVE_CHAR_ID_KEY);
+      window.location.reload();
+    });
     
     try {
       const docSnap = await getDoc(doc(db, "user_rosters", user.uid));
@@ -56,7 +62,7 @@ onAuthStateChanged(auth, async (user) => {
          saveRoster(getRoster());
       }
       loadSheet();
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Cloud pull failed", e); }
     
   } else {
     currentUser = null;
@@ -92,6 +98,19 @@ document.getElementById("authSubmitBtn")?.addEventListener("click", async () => 
        } else {
            await createUserWithEmailAndPassword(auth, email, pass);
        }
+       document.getElementById("authModal").classList.remove("open");
+   } catch (err) {
+       errEl.textContent = err.message.replace("Firebase: ", "");
+       errEl.style.display = "block";
+   }
+});
+
+document.getElementById("googleAuthBtn")?.addEventListener("click", async () => {
+   const provider = new GoogleAuthProvider();
+   const errEl = document.getElementById("authError");
+   errEl.style.display = "none";
+   try {
+       await signInWithPopup(auth, provider);
        document.getElementById("authModal").classList.remove("open");
    } catch (err) {
        errEl.textContent = err.message.replace("Firebase: ", "");
@@ -153,243 +172,6 @@ const DRAGON_ANCESTRY_MAP = {
   "Red": { damage: "Fire", breath: "15 ft. cone", save: "Dexterity" },
   "Silver": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" },
   "White": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" }
-};
-
-const EXTENDED_SUBRACES = {
-  "elf": [
-    { name: "Wood Elf", url: "custom_wood_elf" },
-    { name: "Dark Elf (Drow)", url: "custom_drow" }
-  ],
-  "dwarf": [
-    { name: "Mountain Dwarf", url: "custom_mountain_dwarf" }
-  ],
-  "halfling": [
-    { name: "Stout Halfling", url: "custom_stout_halfling" }
-  ],
-  "gnome": [
-    { name: "Forest Gnome", url: "custom_forest_gnome" }
-  ],
-  "tiefling": [
-    { name: "Bloodline of Asmodeus (Default)", url: "custom_tiefling_asmodeus" },
-    { name: "Bloodline of Baalzebul", url: "custom_tiefling_baalzebul" },
-    { name: "Bloodline of Dispater", url: "custom_tiefling_dispater" },
-    { name: "Bloodline of Fierna", url: "custom_tiefling_fierna" },
-    { name: "Bloodline of Glasya", url: "custom_tiefling_glasya" },
-    { name: "Bloodline of Levistus", url: "custom_tiefling_levistus" },
-    { name: "Bloodline of Mammon", url: "custom_tiefling_mammon" },
-    { name: "Bloodline of Mephistopheles", url: "custom_tiefling_mephistopheles" },
-    { name: "Bloodline of Zariel", url: "custom_tiefling_zariel" },
-    { name: "Variant: Winged Tiefling", url: "custom_tiefling_winged" }
-  ]
-};
-
-const CUSTOM_SUBRACE_DATA = {
-  "custom_wood_elf": {
-    name: "Wood Elf",
-    speed: 35,
-    ability_bonuses: [{ ability_score: { index: "wis", name: "WIS" }, bonus: 1 }],
-    traits: [
-      { name: "Fleet of Foot", desc: "Your base walking speed increases to 35 feet." },
-      { name: "Mask of the Wild", desc: "You can attempt to hide even when you are only lightly obscured by foliage, heavy rain, falling snow, mist, and other natural phenomena." }
-    ],
-    profs: "Weapons: Longsword, Shortsword, Shortbow, Longbow"
-  },
-  "custom_drow": {
-    name: "Dark Elf (Drow)",
-    ability_bonuses: [{ ability_score: { index: "cha", name: "CHA" }, bonus: 1 }],
-    traits: [
-      { name: "Superior Darkvision", desc: "Your darkvision has a radius of 120 feet." },
-      { name: "Sunlight Sensitivity", desc: "You have disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight when you, the target of your attack, or whatever you are trying to perceive is in direct sunlight." },
-      { name: "Drow Magic", desc: "You know the dancing lights cantrip. When you reach 3rd level, you can cast the faerie fire spell once per day. When you reach 5th level, you can also cast the darkness spell once per day. Charisma is your spellcasting ability for these spells." }
-    ],
-    profs: "Weapons: Rapier, Shortsword, Hand Crossbow",
-    spells: [
-      { name: "Dancing Lights (Drow Magic)", type: "Cantrip", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "You create up to four torch-sized lights within range, making them appear as torches, lanterns, or glowing orbs that hover in the air for the duration." }
-    ]
-  },
-  "custom_mountain_dwarf": {
-    name: "Mountain Dwarf",
-    ability_bonuses: [{ ability_score: { index: "str", name: "STR" }, bonus: 2 }],
-    traits: [
-      { name: "Dwarven Armor Training", desc: "You have proficiency with light and medium armor." }
-    ],
-    profs: "Armor: Light Armor, Medium Armor"
-  },
-  "custom_stout_halfling": {
-    name: "Stout Halfling",
-    ability_bonuses: [{ ability_score: { index: "con", name: "CON" }, bonus: 1 }],
-    traits: [
-      { name: "Stout Resilience", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." }
-    ]
-  },
-  "custom_forest_gnome": {
-    name: "Forest Gnome",
-    ability_bonuses: [{ ability_score: { index: "dex", name: "DEX" }, bonus: 1 }],
-    traits: [
-      { name: "Natural Illusionist", desc: "You know the minor illusion cantrip. Intelligence is your spellcasting ability for it." },
-      { name: "Speak with Small Beasts", desc: "Through sounds and gestures, you can communicate simple ideas with Small or smaller beasts." }
-    ],
-    spells: [
-      { name: "Minor Illusion (Natural Illusionist)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "You create a sound or an image of an object within range that lasts for the duration." }
-    ]
-  },
-  "custom_tiefling_asmodeus": {
-    name: "Tiefling (Bloodline of Asmodeus)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "int", name: "INT" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Infernal Legacy", desc: "You know the thaumaturgy cantrip. Once you reach 3rd level, you can cast hellish rebuke as a 2nd-level spell once per long rest. Once you reach 5th level, you can cast darkness once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Thaumaturgy (Infernal Legacy)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "Up to 1 minute", desc: "You manifest a minor wonder, a sign of supernatural power, within range." }
-    ]
-  },
-  "custom_tiefling_baalzebul": {
-    name: "Tiefling (Bloodline of Baalzebul)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "int", name: "INT" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Maladomini", desc: "You know the thaumaturgy cantrip. Once you reach 3rd level, you can cast ray of sickness as a 2nd-level spell once per long rest. Once you reach 5th level, you can cast crown of madness once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Thaumaturgy (Legacy of Maladomini)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "Up to 1 minute", desc: "You manifest a minor wonder, a sign of supernatural power, within range." }
-    ]
-  },
-  "custom_tiefling_dispater": {
-    name: "Tiefling (Bloodline of Dispater)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "dex", name: "DEX" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Dis", desc: "You know the thaumaturgy cantrip. Once you reach 3rd level, you can cast disguise self once per long rest. Once you reach 5th level, you can cast detect thoughts once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Thaumaturgy (Legacy of Dis)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "Up to 1 minute", desc: "You manifest a minor wonder, a sign of supernatural power, within range." }
-    ]
-  },
-  "custom_tiefling_fierna": {
-    name: "Tiefling (Bloodline of Fierna)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "wis", name: "WIS" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Phlegethos", desc: "You know the friends cantrip. Once you reach 3rd level, you can cast charm person as a 2nd-level spell once per long rest. Once you reach 5th level, you can cast suggestion once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Friends (Legacy of Phlegethos)", type: "Cantrip", casting_time: "1 Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "For the duration, you have advantage on all Charisma checks directed at one creature of your choice that isn't hostile toward you." }
-    ]
-  },
-  "custom_tiefling_glasya": {
-    name: "Tiefling (Bloodline of Glasya)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "dex", name: "DEX" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Malbolge", desc: "You know the minor illusion cantrip. Once you reach 3rd level, you can cast disguise self once per long rest. Once you reach 5th level, you can cast invisibility once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Minor Illusion (Legacy of Malbolge)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "You create a sound or an image of an object within range that lasts for the duration." }
-    ]
-  },
-  "custom_tiefling_levistus": {
-    name: "Tiefling (Bloodline of Levistus)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "con", name: "CON" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Stygia", desc: "You know the ray of frost cantrip. Once you reach 3rd level, you can cast armor of agathys as a 2nd-level spell once per long rest. Once you reach 5th level, you can cast darkness once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Ray of Frost (Legacy of Stygia)", type: "Cantrip", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "A frigid beam of blue-white light streaks toward a creature within range. Make a ranged spell attack. On a hit, it takes 1d8 cold damage and its speed is reduced by 10 feet until the start of your next turn." }
-    ]
-  },
-  "custom_tiefling_mammon": {
-    name: "Tiefling (Bloodline of Mammon)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "int", name: "INT" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Minauros", desc: "You know the mage hand cantrip. Once you reach 3rd level, you can cast Tenser's floating disk once per short or long rest. Once you reach 5th level, you can cast arcane lock once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Mage Hand (Legacy of Minauros)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears at a point you choose within range. You can use the hand to manipulate an object, open an unlocked door or container, or pour out contents." }
-    ]
-  },
-  "custom_tiefling_mephistopheles": {
-    name: "Tiefling (Bloodline of Mephistopheles)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "int", name: "INT" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Cania", desc: "You know the mage hand cantrip. Once you reach 3rd level, you can cast burning hands as a 2nd-level spell once per long rest. Once you reach 5th level, you can cast flame blade once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Mage Hand (Legacy of Cania)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears at a point you choose within range. You can use the hand to manipulate an object, open an unlocked door or container, or pour out contents." }
-    ]
-  },
-  "custom_tiefling_zariel": {
-    name: "Tiefling (Bloodline of Zariel)",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "str", name: "STR" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Legacy of Avernus", desc: "You know the thaumaturgy cantrip. Once you reach 3rd level, you can cast searing smite as a 2nd-level spell once per long rest. Once you reach 5th level, you can cast branding smite once per long rest. Charisma is your spellcasting ability for these spells." }
-    ],
-    spells: [
-      { name: "Thaumaturgy (Legacy of Avernus)", type: "Cantrip", casting_time: "1 Action", range: "30 ft", duration: "Up to 1 minute", desc: "You manifest a minor wonder, a sign of supernatural power, within range." }
-    ]
-  },
-  "custom_tiefling_winged": {
-    name: "Variant: Winged Tiefling",
-    speed: 30,
-    replacesBaseASI: true,
-    replacesTrait: "Infernal Legacy",
-    ability_bonuses: [
-      { ability_score: { index: "cha", name: "CHA" }, bonus: 2 },
-      { ability_score: { index: "int", name: "INT" }, bonus: 1 }
-    ],
-    traits: [
-      { name: "Winged", desc: "You have bat-like wings sprouting from your shoulder blades. You have a flying speed of 30 feet while you aren't wearing heavy armor. This trait replaces the Infernal Legacy trait." }
-    ]
-  }
 };
 
 function escapeHtml(str) {
@@ -604,7 +386,7 @@ function resetSheet() {
     if (field.type === "checkbox") field.checked = false;
     else if (field.id === "charLevel") field.value = 1;
     else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") field.value = 10;
-    else if (field.classList.contains("attr-input")) field.value = 10;
+    else if (field.classList.contains("attr-input") || field.classList.contains("attr-score-input")) field.value = 10;
     else if (field.id === "charSpeed") field.value = 30;
     else if (field.classList.contains("dual-input") || field.classList.contains("coin-input") || field.classList.contains("slot-input")) field.value = 0;
     else field.value = "";
@@ -1283,6 +1065,7 @@ function showRaceConfirmation(raceRes, subRes, onBack) {
       ${summaryHtml}
       <div style="display: flex; gap: 1rem;">
          ${onBack ? `<button class="btn gray" id="backRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem; background: #475569; border-radius: 6px; color: #ffffff; cursor: pointer; border: none; font-weight: 600;">Back</button>` : ''}
+         <button class="btn gray" id="cancelRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem; background: #3b4c68; border-radius: 6px; color: #ffffff; cursor: pointer; border: none; font-weight: 600;">Cancel</button>
          <button class="btn red" id="confirmRaceBtn" style="flex: 1; padding: 1rem; font-size: 1.1rem;">Confirm ${finalName}</button>
       </div>
     `;
@@ -1295,7 +1078,9 @@ function showRaceConfirmation(raceRes, subRes, onBack) {
     choiceModalBody.parentNode.replaceChild(newBody, choiceModalBody);
 
     newBody.addEventListener("click", async (e) => {
-        if (e.target.id === "backRaceBtn" && onBack) {
+        if (e.target.id === "cancelRaceBtn") {
+            document.getElementById("choiceModal").classList.remove("open");
+        } else if (e.target.id === "backRaceBtn" && onBack) {
             onBack();
         } else if (e.target.id === "confirmRaceBtn") {
             e.target.innerHTML = "<strong style='color:#34d399;'>Applying...</strong>";
@@ -1403,6 +1188,7 @@ async function runLoadoutStep() {
 
   const choiceModal = document.getElementById("choiceModal");
 
+  // WIZARD STEP: TRAIT CHOICES
   if (loadoutState.traitChoiceOptions && loadoutState.traitChoiceOptions.length > 0) {
     const traitObj = loadoutState.traitChoiceOptions[0];
     const isSpell = traitObj.isSpell;
@@ -1562,6 +1348,7 @@ async function runLoadoutStep() {
     return;
   }
 
+  // CLASS WIZARD STEP: EQUIPMENT
   if (loadoutState.equipOptions.length > 0) {
     const optGroup = loadoutState.equipOptions[0];
     let chooseAmount = optGroup.choose || 1;
@@ -1708,6 +1495,7 @@ async function runLoadoutStep() {
     return;
   }
 
+  // WIZARD STEP: SKILL PROFICIENCIES
   if (loadoutState.profOptions.length > 0) {
     const profGroup = loadoutState.profOptions[0];
     const chooseAmount = profGroup.choose || 1;
@@ -1715,7 +1503,7 @@ async function runLoadoutStep() {
 
     let optionsArray = [];
     if (profGroup.from && profGroup.from.options) optionsArray = profGroup.from.options;
-    else if (Array.isArray(profGroup.from)) optionsArray = profGroup.from;
+    else if (Array.isArray(profGroup.from)) optionsArray = profGroup.from.options;
 
     const skillChoices = optionsArray.map(opt => opt.item?.name || opt.name).filter(name => name?.startsWith("Skill:"));
 
@@ -2269,3 +2057,11 @@ document.addEventListener("input", (e) => {
     saveSheet();
   }
 });
+
+document.getElementById("loadBtn")?.addEventListener("click", () => {
+  renderCharList();
+  document.getElementById("loadModal")?.classList.add("open");
+});
+
+loadSheet();
+renderMyTraits();
