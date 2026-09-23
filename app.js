@@ -1,21 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyAIKe_hrxyQvn4uebwU5OZrP2qf-FwK0Rg",
-  authDomain: "character-sheet-bd250.firebaseapp.com",
-  projectId: "character-sheet-bd250",
-  storageBucket: "character-sheet-bd250.firebasestorage.app",
-  messagingSenderId: "881155587941",
-  appId: "1:881155587941:web:45087fba9dc7154fddeb8c"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-let currentUser = null;
+"use strict";
 
 const ROSTER_STORAGE_KEY = "badman_char_roster_v1";
 const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
@@ -118,44 +101,6 @@ const DRAGON_ANCESTRY_MAP = {
 };
 
 // ==========================================
-// 2. AUTHENTICATION (Firebase)
-// ==========================================
-
-onAuthStateChanged(auth, async (user) => {
-  const authGroup = document.getElementById("authNavGroup");
-  if (user) {
-    currentUser = user;
-    authGroup.innerHTML = `
-      <span style="font-size: 0.85rem; color: #94a3b8; font-weight: 700; padding: 0 0.5rem;">${user.email}</span>
-      <button class="btn outline blue" id="logoutBtn" type="button">Log Out</button>
-    `;
-    try {
-      const docSnap = await getDoc(doc(db, "user_rosters", user.uid));
-      if (docSnap.exists()) localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(docSnap.data().data));
-      else saveRoster(getRoster());
-      loadSheet();
-    } catch (e) { console.error("Cloud pull failed", e); }
-  } else {
-    currentUser = null;
-    authGroup.innerHTML = `
-      <button class="btn outline blue" id="loginNavBtn" type="button">Log In</button>
-      <button class="btn red" id="signupNavBtn" type="button">Sign Up</button>
-    `;
-    loadSheet();
-  }
-});
-
-let authMode = "login";
-function openAuthModal(mode) {
-   authMode = mode;
-   document.getElementById("authModalTitle").textContent = mode === "login" ? "Sign In" : "Create Account";
-   document.getElementById("authSubmitBtn").textContent = mode === "login" ? "Log In" : "Sign Up";
-   document.getElementById("authError").style.display = "none";
-   document.getElementById("authPassword").value = "";
-   document.getElementById("authModal").classList.add("open");
-}
-
-// ==========================================
 // 3. UTILITIES & CALCULATIONS
 // ==========================================
 
@@ -165,10 +110,13 @@ function escapeHtml(str) {
 }
 
 function showStatus(text) {
-  const statusElem = document.getElementById("saveStatus");
-  if (!statusElem) return;
-  statusElem.textContent = text;
-  setTimeout(() => { statusElem.textContent = ""; }, 2500);
+  const toast = document.getElementById("saveToast");
+  if (!toast) return;
+  toast.textContent = text;
+  toast.classList.add("show");
+  
+  if (window.toastTimeout) clearTimeout(window.toastTimeout);
+  window.toastTimeout = setTimeout(() => { toast.classList.remove("show"); }, 2500);
 }
 
 function getModifier(score) { return Math.floor((score - 10) / 2); }
@@ -189,6 +137,36 @@ function autoResizeStatInput(input) {
 
 function syncAllStatInputs() {
   document.querySelectorAll(".spell-stat-input").forEach(autoResizeStatInput);
+}
+
+function addDiceHistory(desc, total) {
+  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  diceRollHistory.unshift({ desc, total, time });
+  if (diceRollHistory.length > 25) {
+    diceRollHistory.pop();
+  }
+  renderDiceHistory();
+}
+
+function renderDiceHistory() {
+  const container = document.getElementById("diceHistoryList");
+  if (!container) return;
+
+  if (diceRollHistory.length === 0) {
+    container.innerHTML = `<span class="dice-history-empty">No rolls logged yet.</span>`;
+    return;
+  }
+
+  container.innerHTML = diceRollHistory
+    .map(
+      (item) => `
+      <div class="dice-history-item">
+        <span class="dice-history-desc">${escapeHtml(item.desc)} <small style="color:#64748b;">(${item.time})</small></span>
+        <span class="dice-history-val">${escapeHtml(String(item.total))}</span>
+      </div>
+    `
+    )
+    .join("");
 }
 
 function recalculateAll() {
@@ -229,7 +207,7 @@ function recalculateAll() {
     if (isExp) total += prof;
 
     const valElem = row.querySelector(".skill-val");
-    if (valElem) valElem.textContent = total;
+    if (valElem) valElem.textContent = total >= 0 ? `+${total}` : total;
   });
 }
 
@@ -329,10 +307,6 @@ function getRoster() {
 
 async function saveRoster(roster) {
   localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(roster));
-  if (currentUser) {
-    try { await setDoc(doc(db, "user_rosters", currentUser.uid), { data: roster }); } 
-    catch (e) { console.error("Cloud save failed", e); }
-  }
 }
 
 function getCurrentSheetData() {
@@ -346,7 +320,7 @@ function getCurrentSheetData() {
   return fields;
 }
 
-function saveSheet() {
+function saveSheet(quiet = false) {
   const roster = getRoster();
   const fields = getCurrentSheetData();
   const name = fields.charName?.trim() || "Unnamed Character";
@@ -366,7 +340,10 @@ function saveSheet() {
 
   saveRoster(roster);
   localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-  showStatus("Saved!");
+  
+  if (!quiet) {
+    showStatus("Saved!");
+  }
 }
 
 function applyCharacterData(charData) {
@@ -416,7 +393,7 @@ function resetSheet() {
   myCharacterSpells = []; myCharacterTraits = []; myCharacterWeapons = [{ name: "", dmg: "", dmg_type: "", notes: "" }, { name: "", dmg: "", dmg_type: "", notes: "" }];
   diceRollHistory = [];
   
-  renderDiceHistory(); recalculateAll(); renderWeapons(); renderMySpells(); renderMyTraits(); syncAllStatInputs(); saveSheet(); showStatus("New Character Created!");
+  renderDiceHistory(); recalculateAll(); renderWeapons(); renderMySpells(); renderMyTraits(); syncAllStatInputs(); saveSheet(true); showStatus("New Character Created!");
 }
 
 function renderCharList() {
@@ -446,11 +423,11 @@ function renderCharList() {
 // ==========================================
 
 document.addEventListener("change", (e) => {
-  if (e.target.type === "checkbox" && e.target.classList.contains("save-field")) {
-    recalculateAll(); saveSheet();
+  if (e.target.classList.contains("save-field") || e.target.type === "checkbox") {
+    recalculateAll(); 
+    saveSheet(false); // Loud save on blur/change
   }
 
-  // Handle Class & Race changes natively from Datalists
   if (e.target.id === "charClass") {
       let classKey = e.target.value.trim();
       let dataKey = Object.keys(CLASS_DATA).find(k => k.toLowerCase() === classKey.toLowerCase());
@@ -477,7 +454,7 @@ document.addEventListener("change", (e) => {
           }
           let cLower = classKey.toLowerCase();
           if (CLASS_SPELL_ABILITY[cLower]) { let sa = document.getElementById("spellAbility"); if (sa && !sa.value) sa.value = CLASS_SPELL_ABILITY[cLower]; }
-          saveSheet(); renderMyTraits(); recalculateAll(); showStatus("Class loaded!");
+          saveSheet(true); renderMyTraits(); recalculateAll();
       }
   }
 
@@ -499,14 +476,15 @@ document.addEventListener("change", (e) => {
                   if (!myCharacterTraits.find(ex => ex.name === t.name)) myCharacterTraits.push({ name: t.name, type: "Racial Trait", desc: t.desc, isExpanded: false });
               });
           }
-          saveSheet(); renderMyTraits(); recalculateAll(); showStatus("Race loaded!");
+          saveSheet(true); renderMyTraits(); recalculateAll();
       }
   }
 });
 
 document.addEventListener("input", (e) => {
   if (e.target.classList.contains("save-field")) {
-    recalculateAll(); saveSheet();
+    recalculateAll(); 
+    saveSheet(true); // Quiet save on active typing
   }
   if (e.target.classList.contains("spell-stat-input")) autoResizeStatInput(e.target);
   
@@ -515,7 +493,7 @@ document.addEventListener("input", (e) => {
     if(card) {
       const idx = parseInt(card.dataset.index, 10);
       if (myCharacterSpells[idx]) {
-        myCharacterSpells[idx][e.target.dataset.prop] = e.target.value; saveSheet();
+        myCharacterSpells[idx][e.target.dataset.prop] = e.target.value; saveSheet(true);
       }
       if (e.target.tagName.toLowerCase() === "textarea") autoExpandTextarea(e.target);
     }
@@ -526,7 +504,7 @@ document.addEventListener("input", (e) => {
     if(card) {
       const idx = parseInt(card.dataset.index, 10);
       if (myCharacterTraits[idx]) {
-        myCharacterTraits[idx][e.target.dataset.prop] = e.target.value; saveSheet();
+        myCharacterTraits[idx][e.target.dataset.prop] = e.target.value; saveSheet(true);
       }
       if (e.target.tagName.toLowerCase() === "textarea") autoExpandTextarea(e.target);
     }
@@ -537,7 +515,7 @@ document.addEventListener("input", (e) => {
     if(entry) {
         const idx = parseInt(entry.dataset.index, 10);
         if (myCharacterWeapons[idx]) {
-            myCharacterWeapons[idx][e.target.dataset.prop] = e.target.value; saveSheet();
+            myCharacterWeapons[idx][e.target.dataset.prop] = e.target.value; saveSheet(true);
         }
     }
   }
@@ -545,27 +523,12 @@ document.addEventListener("input", (e) => {
 
 document.addEventListener("click", async (e) => {
   
-  if (e.target.id === "loginNavBtn") openAuthModal("login");
-  if (e.target.id === "signupNavBtn") openAuthModal("signup");
-  if (e.target.id === "closeAuthModal") document.getElementById("authModal").classList.remove("open");
-  if (e.target.id === "authSubmitBtn") {
-       const email = document.getElementById("authEmail").value;
-       const pass = document.getElementById("authPassword").value;
-       const errEl = document.getElementById("authError");
-       errEl.style.display = "none";
-       try {
-           if (authMode === "login") await signInWithEmailAndPassword(auth, email, pass);
-           else await createUserWithEmailAndPassword(auth, email, pass);
-           document.getElementById("authModal").classList.remove("open");
-       } catch (err) { errEl.textContent = err.message.replace("Firebase: ", ""); errEl.style.display = "block"; }
-  }
-  if (e.target.id === "googleAuthBtn") {
-       const provider = new GoogleAuthProvider(); const errEl = document.getElementById("authError"); errEl.style.display = "none";
-       try { await signInWithPopup(auth, provider); document.getElementById("authModal").classList.remove("open"); } 
-       catch (err) { errEl.textContent = err.message.replace("Firebase: ", ""); errEl.style.display = "block"; }
+  // Fake auth functions since modules were removed for local file execution safety
+  if (e.target.id === "loginNavBtn" || e.target.id === "signupNavBtn") {
+    alert("Cloud accounts require running the app on a web server instead of a local file. Local saves will continue to work perfectly!");
   }
 
-  if (e.target.id === "saveBtn") saveSheet();
+  if (e.target.id === "saveBtn") saveSheet(false);
   if (e.target.id === "newBtn") { if (confirm("Create a new blank character sheet?")) resetSheet(); }
   if (e.target.id === "loadBtn") { renderCharList(); document.getElementById("loadModal")?.classList.add("open"); }
   if (e.target.id === "closeLoadModal") document.getElementById("loadModal")?.classList.remove("open");
@@ -628,55 +591,59 @@ document.addEventListener("click", async (e) => {
 
   // WPN ADD/DEL
   if (e.target.closest("#addWeaponBtn")) {
-    myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" }); saveSheet(); renderWeapons();
+    myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" }); saveSheet(true); renderWeapons();
   }
   if (e.target.closest(".weapon-delete-btn")) {
     const idx = parseInt(e.target.closest(".weapon-delete-btn").dataset.index, 10);
     myCharacterWeapons.splice(idx, 1);
     while (myCharacterWeapons.length < 2) myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" });
-    saveSheet(); renderWeapons();
+    saveSheet(true); renderWeapons();
   }
 
   // TRAITS
   if (e.target.closest(".trait-card-delete")) {
     const idx = parseInt(e.target.closest(".trait-card-delete").dataset.index, 10);
-    myCharacterTraits.splice(idx, 1); saveSheet(); renderMyTraits();
+    myCharacterTraits.splice(idx, 1); saveSheet(true); renderMyTraits();
   }
   if (e.target.closest(".trait-expand-btn")) {
     const card = e.target.closest(".trait-card"); const idx = parseInt(card.dataset.index, 10);
     card.classList.toggle("expanded"); const isExp = card.classList.contains("expanded");
     e.target.closest(".trait-expand-btn").textContent = isExp ? "Collapse" : "Expand";
-    if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp; saveSheet();
+    if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp; saveSheet(true);
   }
   if (e.target.classList.contains("custom-trait-field")) {
     const card = e.target.closest(".trait-card");
     if (card && !card.classList.contains("expanded")) {
       card.classList.add("expanded"); const btn = card.querySelector(".trait-expand-btn"); if (btn) btn.textContent = "Collapse";
       const idx = parseInt(card.dataset.index, 10);
-      if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = true; saveSheet();
+      if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = true; saveSheet(true);
     }
   }
 
   // SPELLS
   if (e.target.closest(".spell-card-delete")) {
     const idx = parseInt(e.target.closest(".spell-card-delete").dataset.index, 10);
-    myCharacterSpells.splice(idx, 1); saveSheet(); renderMySpells();
+    myCharacterSpells.splice(idx, 1); saveSheet(true); renderMySpells();
   }
 
   if (e.target.closest("#closeChoiceModal")) document.getElementById("choiceModal")?.classList.remove("open");
   if (e.target.closest("#closeSpellModal")) document.getElementById("spellModal")?.classList.remove("open");
   if (e.target.closest("#closeTraitModal")) document.getElementById("traitModal")?.classList.remove("open");
   
+  // Resting
   if (e.target.id === "longRestBtn") {
       if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
-        const maxHp = document.getElementById("maxHp")?.value || 0; if (document.getElementById("curHp")) document.getElementById("curHp").value = maxHp;
-        const maxHd = document.getElementById("hitDiceMax")?.value || 0; if (document.getElementById("hitDiceCur")) document.getElementById("hitDiceCur").value = maxHd;
+        const maxHp = document.getElementById("maxHp"); if (document.getElementById("curHp")) document.getElementById("curHp").value = maxHp.value;
+        const maxHd = document.getElementById("hitDiceMax"); if (document.getElementById("hitDiceCur")) document.getElementById("hitDiceCur").value = maxHd.value;
         for (let i = 1; i <= 9; i++) { let cur = document.getElementById(`slot${i}_cur`); let max = document.getElementById(`slot${i}_max`); if (cur && max) cur.value = max.value; }
-        saveSheet(); showStatus("Rested!");
+        saveSheet(false); showStatus("Long Rest Taken!");
       }
   }
-  if (e.target.id === "shortRestBtn") { if (confirm("Take a Short Rest? Use your hit dice to heal!")) showStatus("Rested!"); }
+  if (e.target.id === "shortRestBtn") { 
+    if (confirm("Take a Short Rest? Use your hit dice to heal!")) showStatus("Short Rest Taken!"); 
+  }
 
+  // Dice Rolls
   if (e.target.classList.contains("dice-btn")) {
      const sides = parseInt(e.target.dataset.sides, 10);
      const roll = Math.floor(Math.random() * sides) + 1;
@@ -729,119 +696,10 @@ document.addEventListener("click", async (e) => {
     }).join("");
   }
   if (e.target.closest("#addCustomSpellBtn")) {
-    myCharacterSpells.push({ name: "", type: "", casting_time: "", range: "", duration: "", desc: "" }); saveSheet(); renderMySpells(); document.getElementById("spellModal")?.classList.remove("open");
+    myCharacterSpells.push({ name: "", type: "", casting_time: "", range: "", duration: "", desc: "" }); saveSheet(false); renderMySpells(); document.getElementById("spellModal")?.classList.remove("open");
   }
   if (e.target.closest("#addCustomTraitBtn")) {
-    myCharacterTraits.push({ name: "", type: "", desc: "", isExpanded: true }); saveSheet(); renderMyTraits(); document.getElementById("traitModal")?.classList.remove("open");
-  }
-
-  if (e.target.closest(".temp-spell-btn")) {
-     const tBtn = e.target.closest(".temp-spell-btn");
-     let sName = tBtn.dataset.name;
-     let spellDesc = Array.isArray(tempSpellHold.desc) ? tempSpellHold.desc.join("\n\n") : (tempSpellHold.desc || "");
-     spellDesc += `\n\nSelected Variant: ${sName}`;
-     if (tempSpellHold.higher_level) spellDesc += "\n\nAt Higher Levels: " + (Array.isArray(tempSpellHold.higher_level) ? tempSpellHold.higher_level.join(" ") : tempSpellHold.higher_level);
-     myCharacterSpells.push({
-         name: `${tempSpellHold.name} (${sName})`, type: tempSpellHold.level === 0 ? "Cantrip" : `Level ${tempSpellHold.level} ${tempSpellHold.school?.name || ""}`.trim(),
-         casting_time: tempSpellHold.casting_time || "1 Action", range: tempSpellHold.range || "30 ft", duration: tempSpellHold.duration || "Instantaneous", desc: spellDesc
-     });
-     saveSheet(); renderMySpells(); document.getElementById("choiceModal").classList.remove("open");
-  }
-
-  if (e.target.closest(".temp-trait-btn")) {
-     const tBtn = e.target.closest(".temp-trait-btn");
-     let sName = tBtn.dataset.name;
-     let sUrl = tBtn.dataset.url;
-     let tDesc = Array.isArray(tempTraitHold.desc) ? tempTraitHold.desc.join("\n\n") : (tempTraitHold.desc || "");
-     
-     if (sUrl) { 
-         const sub = await fetchAPI("https://www.dnd5eapi.co" + sUrl); 
-         if (sub && sub.desc) tDesc += "\n\n" + (Array.isArray(sub.desc) ? sub.desc.join("\n\n") : sub.desc); 
-     } else {
-         tDesc += `\n\nSelected Variant: ${sName}`;
-     }
-     
-     if (tempTraitHold.name === "Breath Weapon" || tempTraitHold.name === "Draconic Ancestry") {
-         let dName = ""; const cols = ["Black", "Blue", "Brass", "Bronze", "Copper", "Gold", "Green", "Red", "Silver", "White"];
-         for (let c of cols) { if (sName.includes(c)) dName = c; }
-         let drag = DRAGON_ANCESTRY_MAP[dName];
-         if (drag) myCharacterTraits.push({ name: `Breath Weapon (${drag.damage})`, type: "Racial Trait", desc: `Exhale destructive energy. It is a ${drag.breath} dealing ${drag.damage} damage. Save: ${drag.save}.`, isExpanded: false });
-         else myCharacterTraits.push({ name: `${tempTraitHold.name} (${sName})`, type: "Racial Trait", desc: tDesc, isExpanded: false });
-     } else {
-         myCharacterTraits.push({ name: `${tempTraitHold.name} (${sName})`, type: tempTraitHold.url?.includes("/features/") ? "Class Feature" : "Racial Trait", desc: tDesc, isExpanded: false });
-     }
-     saveSheet(); renderMyTraits(); document.getElementById("choiceModal").classList.remove("open");
-  }
-
-  const spellAddRow = e.target.closest(".spell-add-item");
-  if (spellAddRow) {
-    try {
-        const badge = spellAddRow.querySelector(".spell-add-badge"); if (badge) badge.textContent = "Adding...";
-        let detail = null; if (spellAddRow.dataset.url) detail = await fetchAPI("https://www.dnd5eapi.co" + spellAddRow.dataset.url);
-        if (detail && (detail.damage_type_options || detail.choice)) {
-            tempSpellHold = detail; document.getElementById("spellModal")?.classList.remove("open");
-            if (badge) badge.textContent = "+ Add";
-            let cData = detail.damage_type_options || detail.choice; let oArr = [];
-            if (cData && cData.from && cData.from.options) oArr = cData.from.options; else if (Array.isArray(cData)) oArr = cData;
-            let rHtml = `<div class="equip-options-grid">`;
-            oArr.forEach((opt, idx) => {
-              let n = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
-              rHtml += `<div class="choice-option-wrapper"><button type="button" class="choice-option-btn temp-spell-btn" data-name="${escapeHtml(n)}"><strong>${escapeHtml(n)}</strong></button></div>`;
-            });
-            rHtml += `</div>`;
-            document.getElementById("choiceModalTitle").textContent = `Choose Variant: ${detail.name}`;
-            document.getElementById("choiceModalBody").innerHTML = `<div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">Pick Variant:</div>${rHtml}`;
-            document.getElementById("choiceModal").classList.add("open"); return;
-        }
-        let finalDesc = "Description not available."; let finalType = "Spell"; let finalCast = "1 Action"; let finalRange = "30 ft"; let finalDur = "Instantaneous";
-        if (detail) {
-            finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || "");
-            if (detail.higher_level) finalDesc += "\n\nAt Higher Levels: " + (Array.isArray(detail.higher_level) ? detail.higher_level.join(" ") : detail.higher_level);
-            finalType = detail.level === 0 ? "Cantrip" : `Level ${detail.level} ${detail.school?.name || ""}`.trim();
-            finalCast = detail.casting_time || finalCast; finalRange = detail.range || finalRange; finalDur = detail.duration || finalDur;
-        }
-        myCharacterSpells.push({ name: spellAddRow.dataset.name, type: finalType, casting_time: finalCast, range: finalRange, duration: finalDur, desc: finalDesc });
-        saveSheet(); renderMySpells(); document.getElementById("spellModal")?.classList.remove("open"); if (badge) badge.textContent = "+ Add";
-    } catch(err) {
-        console.error(err);
-        const badge = spellAddRow.querySelector(".spell-add-badge");
-        if (badge) badge.textContent = "Error";
-        setTimeout(() => { if (badge) badge.textContent = "+ Add"; }, 2000);
-    }
-  }
-
-  const traitAddRow = e.target.closest(".trait-option-item");
-  if (traitAddRow) {
-    try {
-        const badge = traitAddRow.querySelector(".spell-add-badge"); if (badge) badge.textContent = "Adding...";
-        let detail = null; if (traitAddRow.dataset.url) detail = await fetchAPI("https://www.dnd5eapi.co" + traitAddRow.dataset.url);
-        let hasVariants = false; let specific = detail?.trait_specific || detail?.feature_specific || detail?.choice;
-        if (specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from)) hasVariants = true;
-        if (detail?.name === "Breath Weapon" || detail?.name === "Draconic Ancestry") { hasVariants = true; detail.choice = { desc: "Draconic Ancestry Variant", from: { options: Object.keys(DRAGON_ANCESTRY_MAP).map(c => ({ item: { name: c } })) } }; }
-        if (hasVariants) {
-            tempTraitHold = detail; document.getElementById("traitModal")?.classList.remove("open"); if (badge) badge.textContent = "+ Add";
-            let cData = detail.trait_specific?.subtrait_options || detail.trait_specific?.spell_options || detail.trait_specific?.damage_type_options || detail.trait_specific?.choice || detail.trait_specific?.breath_weapon_options || detail.feature_specific?.subfeature_options || detail.feature_specific?.expertise_options || detail.feature_specific?.choice || (detail.trait_specific?.from ? detail.trait_specific : null) || (detail.feature_specific?.from ? detail.feature_specific : null) || detail.choice || detail.damage_type_options;
-            let oArr = []; if (cData && cData.from && cData.from.options) oArr = cData.from.options; else if (Array.isArray(cData)) oArr = cData;
-            let rHtml = `<div class="equip-options-grid">`;
-            oArr.forEach((opt, idx) => {
-              let n = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
-              let u = opt.item?.url || opt.trait?.url || opt.feature?.url || null; 
-              rHtml += `<div class="choice-option-wrapper"><button type="button" class="choice-option-btn temp-trait-btn" data-name="${escapeHtml(n)}" data-url="${u || ''}"><strong>${escapeHtml(n)}</strong></button></div>`;
-            });
-            rHtml += `</div>`;
-            document.getElementById("choiceModalTitle").textContent = `Choose Variant: ${detail.name}`;
-            document.getElementById("choiceModalBody").innerHTML = `<div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">Pick Variant:</div>${rHtml}`;
-            document.getElementById("choiceModal").classList.add("open"); return;
-        }
-        let finalDesc = "Description not available."; if (detail) finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || "");
-        myCharacterTraits.push({ name: traitAddRow.dataset.name, type: traitAddRow.dataset.type || "Feature", desc: finalDesc, isExpanded: false });
-        saveSheet(); renderMyTraits(); document.getElementById("traitModal")?.classList.remove("open"); if (badge) badge.textContent = "+ Add";
-    } catch(err) {
-        console.error(err);
-        const badge = traitAddRow.querySelector(".spell-add-badge");
-        if (badge) badge.textContent = "Error";
-        setTimeout(() => { if (badge) badge.textContent = "+ Add"; }, 2000);
-    }
+    myCharacterTraits.push({ name: "", type: "", desc: "", isExpanded: true }); saveSheet(false); renderMyTraits(); document.getElementById("traitModal")?.classList.remove("open");
   }
 
 });
@@ -924,7 +782,6 @@ document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   }, 400);
 });
 
-// Drag and Drop (Spells)
 function attachSpellDragEvents() {
   const cards = document.querySelectorAll(".spell-card");
   cards.forEach((card) => {
@@ -941,7 +798,7 @@ function attachSpellDragEvents() {
       e.preventDefault(); card.classList.remove("drag-over"); if (draggedSpellIndex === null) return;
       const targetIndex = parseInt(card.dataset.index, 10); if (draggedSpellIndex === targetIndex) return;
       const movedSpell = myCharacterSpells.splice(draggedSpellIndex, 1)[0];
-      myCharacterSpells.splice(targetIndex, 0, movedSpell); saveSheet(); renderMySpells();
+      myCharacterSpells.splice(targetIndex, 0, movedSpell); saveSheet(true); renderMySpells();
     });
 
     const handle = card.querySelector(".spell-drag-handle");
@@ -959,7 +816,7 @@ function attachSpellDragEvents() {
           const targetIndex = parseInt(currentDropTarget.dataset.index, 10);
           if (touchDraggedIndex !== targetIndex) {
             const moved = myCharacterSpells.splice(touchDraggedIndex, 1)[0];
-            myCharacterSpells.splice(targetIndex, 0, moved); saveSheet(); renderMySpells();
+            myCharacterSpells.splice(targetIndex, 0, moved); saveSheet(true); renderMySpells();
           }
         }
         touchDraggedIndex = null; currentDropTarget = null;
@@ -970,22 +827,6 @@ function attachSpellDragEvents() {
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
-});
-
-document.getElementById("restoreFile")?.addEventListener("change", (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (evt) => {
-    try {
-      const parsed = JSON.parse(evt.target.result);
-      const roster = getRoster();
-      if (parsed.allRoster) Object.assign(roster, parsed.allRoster);
-      else if (parsed.character) roster[parsed.character.id || "char_1"] = parsed.character;
-      saveRoster(roster); loadSheet(); showStatus("Restored successfully!");
-    } catch (err) { alert("Invalid backup file."); }
-  };
-  reader.readAsText(file);
 });
 
 // Initialization
