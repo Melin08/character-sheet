@@ -10,45 +10,38 @@
 <body id="top">
   <div class="sheet-container">
     
+    <!-- REVERTED & TIGHTENED TOP NAVIGATION -->
     <header class="top-nav">
-      <div class="nav-actions-container">
-        <div class="nav-actions">
-          <div class="btn-group">
-            <button class="btn red" id="saveBtn" type="button">Save</button>
-            <button class="btn red" id="loadBtn" type="button">Load</button>
-            <button class="btn red" id="newBtn" type="button">New</button>
-          </div>
-          
-          <div class="btn-group">
-            <button class="btn gray" id="backupBtn" type="button">Backup</button>
-            <label class="btn gray file-label">
-              Restore
-              <input type="file" id="restoreFile" accept=".json" />
-            </label>
-            <button class="btn gray" id="deleteBtn" type="button">Delete</button>
-          </div>
+      <div class="top-nav-buttons">
+        <button class="btn red" id="saveBtn" type="button">Save</button>
+        <button class="btn red" id="loadBtn" type="button">Load</button>
+        <button class="btn red" id="newBtn" type="button">New</button>
+        
+        <button class="btn gray" id="backupBtn" type="button">Backup</button>
+        <label class="btn gray file-label">
+          Restore
+          <input type="file" id="restoreFile" accept=".json" />
+        </label>
+        <button class="btn gray" id="deleteBtn" type="button">Delete</button>
 
-          <div class="btn-group">
-            <button class="btn outline blue" id="shortRestBtn" type="button">Short Rest</button>
-            <button class="btn outline purple" id="longRestBtn" type="button">Long Rest</button>
-          </div>
+        <button class="btn outline blue" id="shortRestBtn" type="button">Short Rest</button>
+        <button class="btn outline purple" id="longRestBtn" type="button">Long Rest</button>
+
+        <div id="authNavGroup" class="auth-nav-group">
+          <button class="btn outline blue" id="loginNavBtn" type="button">Log In</button>
+          <button class="btn red" id="signupNavBtn" type="button">Sign Up</button>
         </div>
+        
+        <span id="saveStatus" class="status-msg"></span>
+      </div>
 
-        <div class="nav-right-actions">
-          <div class="btn-group" id="authNavGroup">
-            <button class="btn outline blue" id="loginNavBtn" type="button">Log In</button>
-            <button class="btn red" id="signupNavBtn" type="button">Sign Up</button>
-          </div>
-          <div class="wiki-box">
-            <div class="wiki-title">Quick Wiki Links</div>
-            <div class="wiki-links">
-              <a href="https://dnd5e.wikidot.com/" target="_blank">D&D 5e Wikidot</a>
-              <a href="https://app.roll20.net/compendium/dnd5e/BookIndex" target="_blank">Roll20 Compendium</a>
-            </div>
-          </div>
+      <div class="wiki-box">
+        <div class="wiki-title">Quick Wiki Links</div>
+        <div class="wiki-links">
+          <a href="https://dnd5e.wikidot.com/" target="_blank">D&D 5e Wikidot</a>
+          <a href="https://app.roll20.net/compendium/dnd5e/BookIndex" target="_blank">Roll20 Compendium</a>
         </div>
       </div>
-      <span id="saveStatus" class="status-msg"></span>
     </header>
 
     <div class="name-box">
@@ -794,16 +787,6 @@
     </div>
   </div>
 
-  <div id="choiceModal" class="modal-backdrop" role="dialog" aria-modal="true">
-    <div class="modal-box" style="max-width: 500px;">
-      <div class="modal-header">
-        <h3 id="choiceModalTitle">Choose Variant</h3>
-        <button id="closeChoiceModal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
-      </div>
-      <div class="modal-body" id="choiceModalBody" style="padding: 1.5rem;"></div>
-    </div>
-  </div>
-
   <div id="spellModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-header">
@@ -829,6 +812,16 @@
         <button type="button" class="btn red custom-spell-btn" id="addCustomTraitBtn">+ Add Custom Ability</button>
       </div>
       <div id="traitApiList" class="modal-list"></div>
+    </div>
+  </div>
+
+  <div id="choiceModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-box" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 id="choiceModalTitle">Choose Variant</h3>
+        <button id="closeChoiceModal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body" id="choiceModalBody" style="padding: 1.5rem;"></div>
     </div>
   </div>
 
