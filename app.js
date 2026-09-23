@@ -191,6 +191,36 @@ function syncAllStatInputs() {
   document.querySelectorAll(".spell-stat-input").forEach(autoResizeStatInput);
 }
 
+function addDiceHistory(desc, total) {
+  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  diceRollHistory.unshift({ desc, total, time });
+  if (diceRollHistory.length > 25) {
+    diceRollHistory.pop();
+  }
+  renderDiceHistory();
+}
+
+function renderDiceHistory() {
+  const container = document.getElementById("diceHistoryList");
+  if (!container) return;
+
+  if (diceRollHistory.length === 0) {
+    container.innerHTML = `<span class="dice-history-empty">No rolls logged yet.</span>`;
+    return;
+  }
+
+  container.innerHTML = diceRollHistory
+    .map(
+      (item) => `
+      <div class="dice-history-item">
+        <span class="dice-history-desc">${escapeHtml(item.desc)} <small style="color:#64748b;">(${item.time})</small></span>
+        <span class="dice-history-val">${escapeHtml(String(item.total))}</span>
+      </div>
+    `
+    )
+    .join("");
+}
+
 function recalculateAll() {
   const levelInput = document.getElementById("charLevel");
   const level = parseInt(levelInput?.value, 10) || 1;
@@ -229,7 +259,7 @@ function recalculateAll() {
     if (isExp) total += prof;
 
     const valElem = row.querySelector(".skill-val");
-    if (valElem) valElem.textContent = total >= 0 ? `+${total}` : total;
+    if (valElem) valElem.textContent = total;
   });
 }
 
@@ -544,7 +574,7 @@ document.addEventListener("input", (e) => {
 });
 
 document.addEventListener("click", async (e) => {
-  // Auth Triggers
+  
   if (e.target.id === "loginNavBtn") openAuthModal("login");
   if (e.target.id === "signupNavBtn") openAuthModal("signup");
   if (e.target.id === "closeAuthModal") document.getElementById("authModal").classList.remove("open");
@@ -565,7 +595,6 @@ document.addEventListener("click", async (e) => {
        catch (err) { errEl.textContent = err.message.replace("Firebase: ", ""); errEl.style.display = "block"; }
   }
 
-  // Save / Load / New / Delete Triggers
   if (e.target.id === "saveBtn") saveSheet();
   if (e.target.id === "newBtn") { if (confirm("Create a new blank character sheet?")) resetSheet(); }
   if (e.target.id === "loadBtn") { renderCharList(); document.getElementById("loadModal")?.classList.add("open"); }
@@ -580,7 +609,6 @@ document.addEventListener("click", async (e) => {
     }
   }
   
-  // Backup / Modals
   if (e.target.id === "backupBtn") {
     const roster = getRoster();
     const currentChar = roster[activeCharId] || { id: activeCharId, name: "Character", fields: getCurrentSheetData(), spells: myCharacterSpells, traits: myCharacterTraits, weapons: myCharacterWeapons };
@@ -591,7 +619,6 @@ document.addEventListener("click", async (e) => {
   if (e.target.id === "closeHelpModal") document.getElementById("helpModal")?.classList.remove("open");
   if (e.target.classList.contains("modal-backdrop")) e.target.classList.remove("open");
 
-  // Roster Management
   if (e.target.classList.contains("char-delete-btn")) {
     const row = e.target.closest(".char-item-row"); const roster = getRoster();
     if (confirm(`Delete character "${roster[row.dataset.id]?.name || "Unnamed"}"?`)) {
@@ -608,7 +635,6 @@ document.addEventListener("click", async (e) => {
     document.getElementById("loadModal")?.classList.remove("open"); showStatus("Character Loaded!");
   }
 
-  // Tabbing
   if (e.target.classList.contains("main-tab")) {
     document.querySelectorAll(".main-tab").forEach(b => b.classList.remove("active"));
     document.querySelectorAll(".tab-page").forEach(p => p.classList.remove("active"));
@@ -630,7 +656,6 @@ document.addEventListener("click", async (e) => {
     document.querySelector(elId)?.scrollIntoView({ behavior: "smooth" });
   }
 
-  // Weapons List Add/Delete
   if (e.target.closest("#addWeaponBtn")) {
     myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" }); saveSheet(); renderWeapons();
   }
@@ -641,7 +666,6 @@ document.addEventListener("click", async (e) => {
     saveSheet(); renderWeapons();
   }
 
-  // Traits Add/Delete/Expand
   if (e.target.closest(".trait-card-delete")) {
     const idx = parseInt(e.target.closest(".trait-card-delete").dataset.index, 10);
     myCharacterTraits.splice(idx, 1); saveSheet(); renderMyTraits();
@@ -650,31 +674,26 @@ document.addEventListener("click", async (e) => {
     const card = e.target.closest(".trait-card"); const idx = parseInt(card.dataset.index, 10);
     card.classList.toggle("expanded"); const isExp = card.classList.contains("expanded");
     e.target.closest(".trait-expand-btn").textContent = isExp ? "Collapse" : "Expand";
-    if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp;
-    saveSheet();
+    if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp; saveSheet();
   }
   if (e.target.classList.contains("custom-trait-field")) {
     const card = e.target.closest(".trait-card");
     if (card && !card.classList.contains("expanded")) {
       card.classList.add("expanded"); const btn = card.querySelector(".trait-expand-btn"); if (btn) btn.textContent = "Collapse";
       const idx = parseInt(card.dataset.index, 10);
-      if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = true;
-      saveSheet();
+      if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = true; saveSheet();
     }
   }
 
-  // Spells Delete
   if (e.target.closest(".spell-card-delete")) {
     const idx = parseInt(e.target.closest(".spell-card-delete").dataset.index, 10);
     myCharacterSpells.splice(idx, 1); saveSheet(); renderMySpells();
   }
 
-  // Close Modals
   if (e.target.closest("#closeChoiceModal")) document.getElementById("choiceModal")?.classList.remove("open");
   if (e.target.closest("#closeSpellModal")) document.getElementById("spellModal")?.classList.remove("open");
   if (e.target.closest("#closeTraitModal")) document.getElementById("traitModal")?.classList.remove("open");
   
-  // Resting
   if (e.target.id === "longRestBtn") {
       if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
         const maxHp = document.getElementById("maxHp")?.value || 0; if (document.getElementById("curHp")) document.getElementById("curHp").value = maxHp;
@@ -685,7 +704,6 @@ document.addEventListener("click", async (e) => {
   }
   if (e.target.id === "shortRestBtn") { if (confirm("Take a Short Rest? Use your hit dice to heal!")) showStatus("Rested!"); }
 
-  // Dice Rolls
   if (e.target.classList.contains("dice-btn")) {
      const sides = parseInt(e.target.dataset.sides, 10);
      const roll = Math.floor(Math.random() * sides) + 1;
@@ -715,7 +733,6 @@ document.addEventListener("click", async (e) => {
     addDiceHistory(`${label} (${roll} ${sign})`, total);
   }
 
-  // Spell & Trait Browser Buttons
   if (e.target.closest("#addSpellBtn")) {
     document.getElementById("spellModal")?.classList.add("open");
     document.getElementById("spellSearchInput").value = "";
@@ -745,7 +762,6 @@ document.addEventListener("click", async (e) => {
     myCharacterTraits.push({ name: "", type: "", desc: "", isExpanded: true }); saveSheet(); renderMyTraits(); document.getElementById("traitModal")?.classList.remove("open");
   }
 
-  // Variant Choice Click Handlers
   if (e.target.closest(".temp-spell-btn")) {
      const tBtn = e.target.closest(".temp-spell-btn");
      let sName = tBtn.dataset.name;
@@ -784,7 +800,6 @@ document.addEventListener("click", async (e) => {
      saveSheet(); renderMyTraits(); document.getElementById("choiceModal").classList.remove("open");
   }
 
-  // API List Selection logic for Spells
   const spellAddRow = e.target.closest(".spell-add-item");
   if (spellAddRow) {
     try {
@@ -822,7 +837,6 @@ document.addEventListener("click", async (e) => {
     }
   }
 
-  // API List Selection logic for Traits
   const traitAddRow = e.target.closest(".trait-option-item");
   if (traitAddRow) {
     try {
@@ -859,7 +873,6 @@ document.addEventListener("click", async (e) => {
 
 });
 
-// Global API Search Handlers with Forced Timeout
 const apiCache = {};
 
 async function fetchAPI(url) {
@@ -937,7 +950,6 @@ document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   }, 400);
 });
 
-// Drag and Drop (Spells)
 function attachSpellDragEvents() {
   const cards = document.querySelectorAll(".spell-card");
   cards.forEach((card) => {
