@@ -6,7 +6,6 @@
   <title>D&D 5e Character Sheet</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
   
-  <!-- Firebase Compat SDK (Works reliably offline and locally) -->
   <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
@@ -15,15 +14,13 @@
 </head>
 <body id="top">
 
-  <!-- Floating Save Notification Banner -->
   <div id="saveToast" class="toast-banner">Saved!</div>
 
   <div class="sheet-container">
     
-    <!-- Top Utility Bar: Compendiums on Left, Login on Right -->
     <div class="top-utility-bar">
       <div class="wiki-box">
-        <span class="wiki-title">WIKIS:</span>
+        <span class="wiki-title">Compendiums:</span>
         <a href="https://5e.tools/" target="_blank" rel="noopener noreferrer">5e.tools</a>
         <span class="wiki-sep">|</span>
         <a href="https://dnd5e.wikidot.com/" target="_blank" rel="noopener noreferrer">Wikidot</a>
@@ -37,7 +34,6 @@
       </div>
     </div>
 
-    <!-- Centered Action Toolbar -->
     <header class="top-nav">
       <div class="btn-group">
         <button class="btn red" id="saveBtn" type="button">Save</button>
@@ -63,9 +59,7 @@
       <button class="main-tab" data-target="tab-journal" type="button">Notes, Personality, NPCs, etc.</button>
     </div>
 
-    <!-- MAIN TAB 1: Statistics & Combat -->
     <div id="tab-stats" class="tab-page active">
-      <!-- Top Row 1 -->
       <div class="meta-row-grid">
         <div class="field-pill">
           <span class="pill-label">Class</span>
@@ -89,7 +83,6 @@
         </div>
       </div>
 
-      <!-- Top Row 2 -->
       <div class="meta-row-grid">
         <div class="field-pill">
           <span class="pill-label">Experience</span>
@@ -117,7 +110,6 @@
         </div>
       </div>
 
-      <!-- Vitals Row (Combat Hub with Short/Long Rest) -->
       <div class="vitals-row">
         <div class="vital-unit">
           <span class="vital-title">Armor Class</span>
@@ -172,7 +164,6 @@
         </div>
       </div>
 
-      <!-- Attributes and Combat Section -->
       <div class="two-col-layout">
         <div class="left-pane">
           <h2 class="section-title">Attributes</h2>
@@ -482,7 +473,6 @@
         </div>
       </div>
 
-      <!-- Spells Section -->
       <section class="spells-full-section">
         <hr class="red-divider" />
         <h2 class="section-title">Spells</h2>
@@ -542,7 +532,6 @@
       </section>
     </div>
 
-    <!-- MAIN TAB 2: Notes, Personality, NPCs -->
     <div id="tab-journal" class="tab-page">
       <div class="subtab-controls">
         <button class="sub-tab active" data-sub="sub-notes" type="button">General Notes</button>
@@ -606,7 +595,6 @@
     </footer>
   </div>
 
-  <!-- Authentication Modal -->
   <div id="authModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box auth-modal-box">
       <div class="modal-header">
@@ -628,7 +616,6 @@
     </div>
   </div>
 
-  <!-- Help Modal -->
   <div id="helpModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box help-modal-box">
       <div class="modal-header">
@@ -641,7 +628,6 @@
     </div>
   </div>
 
-  <!-- Saved Characters Modal -->
   <div id="loadModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box char-modal-box">
       <div class="modal-header">
@@ -652,7 +638,6 @@
     </div>
   </div>
 
-  <!-- Spell Picker Compendium Modal -->
   <div id="spellModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-header">
@@ -667,7 +652,6 @@
     </div>
   </div>
 
-  <!-- Trait / Ability Picker Compendium Modal -->
   <div id="traitModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-header">
