@@ -32,293 +32,89 @@ let touchDraggedIndex = null;
 let currentDropTarget = null;
 
 // ==========================================
-// 1. HARDCODED DATABASES FOR FAST CLASS & RACE LOADING
+// 1. HARDCODED DATABASES FOR AUTO-FILL
 // ==========================================
 
 const CLASS_DATA = {
-    "Barbarian": {
-        hd: "12",
-        saves: ["str", "con"],
-        profs: "Light armor, medium armor, shields, simple weapons, martial weapons",
-        traits: [
-            { name: "Rage", desc: "In battle, you fight with primal ferocity. On your turn, you can enter a rage as a bonus action." },
-            { name: "Unarmored Defense (Barbarian)", desc: "While you are not wearing any armor, your Armor Class equals 10 + your Dexterity modifier + your Constitution modifier. You can use a shield and still gain this benefit." }
-        ]
-    },
-    "Bard": {
-        hd: "8",
-        saves: ["dex", "cha"],
-        profs: "Light armor, simple weapons, hand crossbows, longswords, rapiers, shortswords. Three musical instruments of your choice.",
-        traits: [
-            { name: "Spellcasting (Bard)", desc: "You have learned to untangle and reshape the fabric of reality in harmony with your wishes and music." },
-            { name: "Bardic Inspiration", desc: "You can inspire others through stirring words or music. To do so, you use a bonus action on your turn to choose one creature other than yourself within 60 feet of you who can hear you. That creature gains one Bardic Inspiration die, a d6." }
-        ]
-    },
-    "Cleric": {
-        hd: "8",
-        saves: ["wis", "cha"],
-        profs: "Light armor, medium armor, shields, simple weapons.",
-        traits: [
-            { name: "Spellcasting (Cleric)", desc: "As a conduit for divine power, you can cast cleric spells." },
-            { name: "Divine Domain", desc: "Choose one domain related to your deity. Your choice grants you domain spells and other features when you choose it at 1st level." }
-        ]
-    },
-    "Druid": {
-        hd: "8",
-        saves: ["int", "wis"],
-        profs: "Light armor, medium armor, shields (druids will not wear armor or use shields made of metal). Clubs, daggers, darts, javelins, maces, quarterstaffs, scimitars, sickles, slings, spears. Herbalism kit.",
-        traits: [
-            { name: "Druidic", desc: "You know Druidic, the secret language of druids. You can speak the language and use it to leave hidden messages." },
-            { name: "Spellcasting (Druid)", desc: "Drawing on the divine essence of nature itself, you can cast spells to shape that essence to your will." }
-        ]
-    },
-    "Fighter": {
-        hd: "10",
-        saves: ["str", "con"],
-        profs: "All armor, shields, simple weapons, martial weapons.",
-        traits: [
-            { name: "Fighting Style", desc: "Choose a particular style of fighting as your specialty (Archery, Defense, Dueling, Great Weapon Fighting, Protection, Two-Weapon Fighting)." },
-            { name: "Second Wind", desc: "You have a limited well of stamina that you can draw on to protect yourself from harm. On your turn, you can use a bonus action to regain hit points equal to 1d10 + your fighter level." }
-        ]
-    },
-    "Monk": {
-        hd: "8",
-        saves: ["str", "dex"],
-        profs: "Simple weapons, shortswords. One type of artisan's tools or one musical instrument.",
-        traits: [
-            { name: "Unarmored Defense (Monk)", desc: "Beginning at 1st level, while you are wearing no armor and not wielding a shield, your AC equals 10 + your Dexterity modifier + your Wisdom modifier." },
-            { name: "Martial Arts", desc: "Your practice of martial arts gives you mastery of combat styles that use unarmed strikes and monk weapons." }
-        ]
-    },
-    "Paladin": {
-        hd: "10",
-        saves: ["wis", "cha"],
-        profs: "All armor, shields, simple weapons, martial weapons.",
-        traits: [
-            { name: "Divine Sense", desc: "The presence of strong evil registers on your senses like a noxious odor, and powerful good rings like heavenly music in your ears. As an action, you can open your awareness to detect such forces." },
-            { name: "Lay on Hands", desc: "Your blessed touch can heal wounds. You have a pool of healing power that replenishes when you take a long rest. With that pool, you can restore a total number of hit points equal to your paladin level x 5." }
-        ]
-    },
-    "Ranger": {
-        hd: "10",
-        saves: ["str", "dex"],
-        profs: "Light armor, medium armor, shields, simple weapons, martial weapons.",
-        traits: [
-            { name: "Favored Enemy", desc: "Choose a type of favored enemy: aberrations, beasts, celestials, constructs, dragons, elementals, fey, fiends, giants, monstrosities, oozes, plants, or undead. You have advantage on Wisdom (Survival) checks to track your favored enemies, as well as on Intelligence checks to recall information about them." },
-            { name: "Natural Explorer", desc: "You are particularly familiar with one type of natural environment and are adept at traveling and surviving in such regions." }
-        ]
-    },
-    "Rogue": {
-        hd: "8",
-        saves: ["dex", "int"],
-        profs: "Light armor, simple weapons, hand crossbows, longswords, rapiers, shortswords. Thieves' tools.",
-        traits: [
-            { name: "Expertise", desc: "Choose two of your skill proficiencies, or one of your skill proficiencies and your proficiency with thieves' tools. Your proficiency bonus is doubled for any ability check you make that uses either of the chosen proficiencies." },
-            { name: "Sneak Attack", desc: "Beginning at 1st level, you know how to strike subtly and exploit a foe's distraction. Once per turn, you can deal an extra 1d6 damage to one creature you hit with an attack if you have advantage on the attack roll. The attack must use a finesse or a ranged weapon." },
-            { name: "Thieves' Cant", desc: "During your rogue training you learned thieves' cant, a secret mix of dialect, jargon, and code allows you to hide messages in seemingly normal conversation." }
-        ]
-    },
-    "Sorcerer": {
-        hd: "6",
-        saves: ["con", "cha"],
-        profs: "Daggers, darts, slings, quarterstaffs, light crossbows.",
-        traits: [
-            { name: "Spellcasting (Sorcerer)", desc: "An event in your past, or in the life of a parent or ancestor, left an indelible mark on you, infusing you with arcane magic." },
-            { name: "Sorcerous Origin", desc: "Choose a sorcerous origin, which describes the source of your innate magical power (e.g. Draconic Bloodline or Wild Magic)." }
-        ]
-    },
-    "Warlock": {
-        hd: "8",
-        saves: ["wis", "cha"],
-        profs: "Light armor, simple weapons.",
-        traits: [
-            { name: "Otherworldly Patron", desc: "At 1st level, you have struck a bargain with an otherworldly being of your choice (e.g. The Archfey, The Fiend, or The Great Old One)." },
-            { name: "Pact Magic", desc: "Your arcane research and the magic bestowed on you by your patron have given you facility with spells." }
-        ]
-    },
-    "Wizard": {
-        hd: "6",
-        saves: ["int", "wis"],
-        profs: "Daggers, darts, slings, quarterstaffs, light crossbows.",
-        traits: [
-            { name: "Spellcasting (Wizard)", desc: "As a student of arcane magic, you have a spellbook containing spells that show the first glimmerings of your true power." },
-            { name: "Arcane Recovery", desc: "You have learned to regain some of your magical energy by studying your spellbook. Once per day when you finish a short rest, you can choose expended spell slots to recover." }
-        ]
-    },
-    "Artificer": {
-        hd: "8",
-        saves: ["con", "int"],
-        profs: "Light armor, medium armor, shields, simple weapons. Thieves' tools, tinker's tools, one type of artisan's tools of your choice.",
-        traits: [
-            { name: "Magical Tinkering", desc: "You've learned how to invest a spark of magic into mundane objects." },
-            { name: "Spellcasting (Artificer)", desc: "You have studied the workings of magic and how to channel it through objects." }
-        ]
-    }
+    "Barbarian": { hd: "12", saves: ["str", "con"], profs: "Light armor, medium armor, shields, simple weapons, martial weapons", traits: [{ name: "Rage", desc: "In battle, you fight with primal ferocity. On your turn, you can enter a rage as a bonus action." }, { name: "Unarmored Defense (Barbarian)", desc: "While you are not wearing any armor, your Armor Class equals 10 + your Dexterity modifier + your Constitution modifier. You can use a shield and still gain this benefit." }] },
+    "Bard": { hd: "8", saves: ["dex", "cha"], profs: "Light armor, simple weapons, hand crossbows, longswords, rapiers, shortswords. Three musical instruments of your choice.", traits: [{ name: "Spellcasting (Bard)", desc: "You have learned to untangle and reshape the fabric of reality in harmony with your wishes and music." }, { name: "Bardic Inspiration", desc: "You can inspire others through stirring words or music. To do so, you use a bonus action on your turn to choose one creature other than yourself within 60 feet of you who can hear you. That creature gains one Bardic Inspiration die, a d6." }] },
+    "Cleric": { hd: "8", saves: ["wis", "cha"], profs: "Light armor, medium armor, shields, simple weapons.", traits: [{ name: "Spellcasting (Cleric)", desc: "As a conduit for divine power, you can cast cleric spells." }, { name: "Divine Domain", desc: "Choose one domain related to your deity. Your choice grants you domain spells and other features when you choose it at 1st level." }] },
+    "Druid": { hd: "8", saves: ["int", "wis"], profs: "Light armor, medium armor, shields (druids will not wear armor or use shields made of metal). Clubs, daggers, darts, javelins, maces, quarterstaffs, scimitars, sickles, slings, spears. Herbalism kit.", traits: [{ name: "Druidic", desc: "You know Druidic, the secret language of druids. You can speak the language and use it to leave hidden messages." }, { name: "Spellcasting (Druid)", desc: "Drawing on the divine essence of nature itself, you can cast spells to shape that essence to your will." }] },
+    "Fighter": { hd: "10", saves: ["str", "con"], profs: "All armor, shields, simple weapons, martial weapons.", traits: [{ name: "Fighting Style", desc: "Choose a particular style of fighting as your specialty (Archery, Defense, Dueling, Great Weapon Fighting, Protection, Two-Weapon Fighting)." }, { name: "Second Wind", desc: "You have a limited well of stamina that you can draw on to protect yourself from harm. On your turn, you can use a bonus action to regain hit points equal to 1d10 + your fighter level." }] },
+    "Monk": { hd: "8", saves: ["str", "dex"], profs: "Simple weapons, shortswords. One type of artisan's tools or one musical instrument.", traits: [{ name: "Unarmored Defense (Monk)", desc: "Beginning at 1st level, while you are wearing no armor and not wielding a shield, your AC equals 10 + your Dexterity modifier + your Wisdom modifier." }, { name: "Martial Arts", desc: "Your practice of martial arts gives you mastery of combat styles that use unarmed strikes and monk weapons." }] },
+    "Paladin": { hd: "10", saves: ["wis", "cha"], profs: "All armor, shields, simple weapons, martial weapons.", traits: [{ name: "Divine Sense", desc: "The presence of strong evil registers on your senses like a noxious odor, and powerful good rings like heavenly music in your ears. As an action, you can open your awareness to detect such forces." }, { name: "Lay on Hands", desc: "Your blessed touch can heal wounds. You have a pool of healing power that replenishes when you take a long rest. With that pool, you can restore a total number of hit points equal to your paladin level x 5." }] },
+    "Ranger": { hd: "10", saves: ["str", "dex"], profs: "Light armor, medium armor, shields, simple weapons, martial weapons.", traits: [{ name: "Favored Enemy", desc: "Choose a type of favored enemy: aberrations, beasts, celestials, constructs, dragons, elementals, fey, fiends, giants, monstrosities, oozes, plants, or undead. You have advantage on Wisdom (Survival) checks to track your favored enemies, as well as on Intelligence checks to recall information about them." }, { name: "Natural Explorer", desc: "You are particularly familiar with one type of natural environment and are adept at traveling and surviving in such regions." }] },
+    "Rogue": { hd: "8", saves: ["dex", "int"], profs: "Light armor, simple weapons, hand crossbows, longswords, rapiers, shortswords. Thieves' tools.", traits: [{ name: "Expertise", desc: "Choose two of your skill proficiencies, or one of your skill proficiencies and your proficiency with thieves' tools. Your proficiency bonus is doubled for any ability check you make that uses either of the chosen proficiencies." }, { name: "Sneak Attack", desc: "Beginning at 1st level, you know how to strike subtly and exploit a foe's distraction. Once per turn, you can deal an extra 1d6 damage to one creature you hit with an attack if you have advantage on the attack roll. The attack must use a finesse or a ranged weapon." }, { name: "Thieves' Cant", desc: "During your rogue training you learned thieves' cant, a secret mix of dialect, jargon, and code allows you to hide messages in seemingly normal conversation." }] },
+    "Sorcerer": { hd: "6", saves: ["con", "cha"], profs: "Daggers, darts, slings, quarterstaffs, light crossbows.", traits: [{ name: "Spellcasting (Sorcerer)", desc: "An event in your past, or in the life of a parent or ancestor, left an indelible mark on you, infusing you with arcane magic." }, { name: "Sorcerous Origin", desc: "Choose a sorcerous origin, which describes the source of your innate magical power (e.g. Draconic Bloodline or Wild Magic)." }] },
+    "Warlock": { hd: "8", saves: ["wis", "cha"], profs: "Light armor, simple weapons.", traits: [{ name: "Otherworldly Patron", desc: "At 1st level, you have struck a bargain with an otherworldly being of your choice (e.g. The Archfey, The Fiend, or The Great Old One)." }, { name: "Pact Magic", desc: "Your arcane research and the magic bestowed on you by your patron have given you facility with spells." }] },
+    "Wizard": { hd: "6", saves: ["int", "wis"], profs: "Daggers, darts, slings, quarterstaffs, light crossbows.", traits: [{ name: "Spellcasting (Wizard)", desc: "As a student of arcane magic, you have a spellbook containing spells that show the first glimmerings of your true power." }, { name: "Arcane Recovery", desc: "You have learned to regain some of your magical energy by studying your spellbook. Once per day when you finish a short rest, you can choose expended spell slots to recover." }] },
+    "Artificer": { hd: "8", saves: ["con", "int"], profs: "Light armor, medium armor, shields, simple weapons. Thieves' tools, tinker's tools, one type of artisan's tools of your choice.", traits: [{ name: "Magical Tinkering", desc: "You've learned how to invest a spark of magic into mundane objects." }, { name: "Spellcasting (Artificer)", desc: "You have studied the workings of magic and how to channel it through objects." }] }
 };
 
 const RACE_DATA = {
-    "Dragonborn": {
-        speed: 30, profs: "Draconic",
-        traits: [
-            { name: "Draconic Ancestry", desc: "Choose one type of dragon. Your breath weapon and damage resistance are determined by the dragon type." },
-            { name: "Breath Weapon", desc: "You can use your action to exhale destructive energy. Your draconic ancestry determines the size, shape, and damage type of the exhalation. DC = 8 + CON + Prof Bonus. 2d6 damage on failed save (half on success)." },
-            { name: "Damage Resistance", desc: "You have resistance to the damage type associated with your draconic ancestry." }
-        ]
-    },
-    "Dwarf": {
-        speed: 25, profs: "Dwarvish. Battleaxe, handaxe, light hammer, warhammer. Artisan's tools (smith, brewer, or mason).",
-        traits: [
-            { name: "Darkvision", desc: "You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light." },
-            { name: "Dwarven Resilience", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." },
-            { name: "Stonecunning", desc: "Whenever you make an Intelligence (History) check related to the origin of stonework, you are considered proficient in the History skill and add double your proficiency bonus to the check." }
-        ]
-    },
-    "Hill Dwarf": {
-        speed: 25, profs: "Dwarvish. Battleaxe, handaxe, light hammer, warhammer. Artisan's tools (smith, brewer, or mason).",
-        traits: [
-            { name: "Darkvision", desc: "You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light." },
-            { name: "Dwarven Resilience", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." },
-            { name: "Stonecunning", desc: "Whenever you make an Intelligence (History) check related to the origin of stonework, you add double your proficiency bonus to the check." },
-            { name: "Dwarven Toughness", desc: "Your hit point maximum increases by 1, and it increases by 1 every time you gain a level." }
-        ]
-    },
-    "Mountain Dwarf": {
-        speed: 25, profs: "Dwarvish. Battleaxe, handaxe, light hammer, warhammer. Light and medium armor. Artisan's tools (smith, brewer, or mason).",
-        traits: [
-            { name: "Darkvision", desc: "You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light." },
-            { name: "Dwarven Resilience", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." },
-            { name: "Stonecunning", desc: "Whenever you make an Intelligence (History) check related to the origin of stonework, you add double your proficiency bonus to the check." },
-            { name: "Dwarven Armor Training", desc: "You have proficiency with light and medium armor." }
-        ]
-    },
-    "Elf": {
-        speed: 30, profs: "Elvish. Skill: Perception.",
-        skills: ["perc"],
-        traits: [
-            { name: "Darkvision", desc: "You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light." },
-            { name: "Fey Ancestry", desc: "You have advantage on saving throws against being charmed, and magic can't put you to sleep." },
-            { name: "Trance", desc: "Elves don't need to sleep. Instead, they meditate deeply, remaining semiconscious, for 4 hours a day." }
-        ]
-    },
-    "High Elf": {
-        speed: 30, profs: "Elvish, one extra language. Longsword, shortsword, shortbow, longbow. Skill: Perception.",
-        skills: ["perc"],
-        traits: [
-            { name: "Darkvision", desc: "60 feet." },
-            { name: "Fey Ancestry", desc: "Advantage against charm, immune to magical sleep." },
-            { name: "Trance", desc: "Meditate for 4 hours instead of sleep." },
-            { name: "Cantrip", desc: "You know one cantrip of your choice from the wizard spell list. Intelligence is your spellcasting ability for it." }
-        ]
-    },
-    "Wood Elf": {
-        speed: 35, profs: "Elvish. Longsword, shortsword, shortbow, longbow. Skill: Perception.",
-        skills: ["perc"],
-        traits: [
-            { name: "Darkvision", desc: "60 feet." },
-            { name: "Fey Ancestry", desc: "Advantage against charm, immune to magical sleep." },
-            { name: "Trance", desc: "Meditate for 4 hours instead of sleep." },
-            { name: "Fleet of Foot", desc: "Your base walking speed increases to 35 feet." },
-            { name: "Mask of the Wild", desc: "You can attempt to hide even when you are only lightly obscured by foliage, heavy rain, falling snow, mist, and other natural phenomena." }
-        ]
-    },
-    "Dark Elf (Drow)": {
-        speed: 30, profs: "Elvish. Rapiers, shortswords, and hand crossbows. Skill: Perception.",
-        skills: ["perc"],
-        traits: [
-            { name: "Superior Darkvision", desc: "120 feet." },
-            { name: "Fey Ancestry", desc: "Advantage against charm, immune to magical sleep." },
-            { name: "Trance", desc: "Meditate for 4 hours instead of sleep." },
-            { name: "Sunlight Sensitivity", desc: "You have disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight when you, the target of your attack, or whatever you are trying to perceive is in direct sunlight." },
-            { name: "Drow Magic", desc: "You know the dancing lights cantrip. When you reach 3rd level, you can cast the faerie fire spell once per day. When you reach 5th level, you can also cast the darkness spell once per day. Charisma is your spellcasting ability for these spells." }
-        ]
-    },
-    "Halfling": {
-        speed: 25, profs: "Halfling.",
-        traits: [
-            { name: "Lucky", desc: "When you roll a 1 on the d20 for an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll." },
-            { name: "Brave", desc: "You have advantage on saving throws against being frightened." },
-            { name: "Halfling Nimbleness", desc: "You can move through the space of any creature that is of a size larger than yours." }
-        ]
-    },
-    "Lightfoot Halfling": {
-        speed: 25, profs: "Halfling.",
-        traits: [
-            { name: "Lucky", desc: "Reroll 1s." },
-            { name: "Brave", desc: "Advantage against frightened." },
-            { name: "Halfling Nimbleness", desc: "Move through larger creatures." },
-            { name: "Naturally Stealthy", desc: "You can attempt to hide even when you are obscured only by a creature that is at least one size larger than you." }
-        ]
-    },
-    "Stout Halfling": {
-        speed: 25, profs: "Halfling.",
-        traits: [
-            { name: "Lucky", desc: "Reroll 1s." },
-            { name: "Brave", desc: "Advantage against frightened." },
-            { name: "Halfling Nimbleness", desc: "Move through larger creatures." },
-            { name: "Stout Resilience", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." }
-        ]
-    },
-    "Human": {
-        speed: 30, profs: "Common, one extra language.",
-        traits: [
-            { name: "Extra Language", desc: "You can speak, read, and write one extra language of your choice." }
-        ]
-    },
-    "Half-Elf": {
-        speed: 30, profs: "Common, Elvish, one extra language. Two skills of your choice.",
-        traits: [
-            { name: "Darkvision", desc: "60 feet." },
-            { name: "Fey Ancestry", desc: "You have advantage on saving throws against being charmed, and magic can't put you to sleep." }
-        ]
-    },
-    "Half-Orc": {
-        speed: 30, profs: "Common, Orc. Skill: Intimidation.",
-        skills: ["intm"],
-        traits: [
-            { name: "Darkvision", desc: "60 feet." },
-            { name: "Relentless Endurance", desc: "When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead. You can't use this feature again until you finish a long rest." },
-            { name: "Savage Attacks", desc: "When you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage of the critical hit." }
-        ]
-    },
-    "Tiefling": {
-        speed: 30, profs: "Common, Infernal.",
-        traits: [
-            { name: "Darkvision", desc: "60 feet." },
-            { name: "Hellish Resistance", desc: "You have resistance to fire damage." },
-            { name: "Infernal Legacy", desc: "You know the thaumaturgy cantrip. When you reach 3rd level, you can cast the hellish rebuke spell as a 2nd-level spell once with this trait and regain the ability to do so when you finish a long rest. When you reach 5th level, you can cast the darkness spell once with this trait and regain the ability to do so when you finish a long rest. Charisma is your spellcasting ability for these spells." }
-        ]
-    },
-    "Gnome": {
-        speed: 25, profs: "Common, Gnomish.",
-        traits: [
-            { name: "Darkvision", desc: "60 feet." },
-            { name: "Gnome Cunning", desc: "You have advantage on all Intelligence, Wisdom, and Charisma saving throws against magic." }
-        ]
-    },
-    "Forest Gnome": {
-        speed: 25, profs: "Common, Gnomish.",
-        traits: [
-            { name: "Darkvision", desc: "60 feet." },
-            { name: "Gnome Cunning", desc: "Advantage on INT, WIS, CHA saves vs magic." },
-            { name: "Natural Illusionist", desc: "You know the minor illusion cantrip. Intelligence is your spellcasting ability for it." },
-            { name: "Speak with Small Beasts", desc: "Through sounds and gestures, you can communicate simple ideas with Small or smaller beasts." }
-        ]
-    },
-    "Rock Gnome": {
-        speed: 25, profs: "Common, Gnomish. Tinker's tools.",
-        traits: [
-            { name: "Darkvision", desc: "60 feet." },
-            { name: "Gnome Cunning", desc: "Advantage on INT, WIS, CHA saves vs magic." },
-            { name: "Artificer's Lore", desc: "Whenever you make an Intelligence (History) check related to magic items, alchemical objects, or technological devices, you can add twice your proficiency bonus, instead of any proficiency bonus you normally apply." },
-            { name: "Tinker", desc: "You have proficiency with artisan's tools (tinker's tools). Using those tools, you can spend 1 hour and 10 gp worth of materials to construct a Tiny clockwork device (AC 5, 1 hp)." }
-        ]
-    }
+    "Dragonborn": { speed: 30, profs: "Draconic", traits: [{ name: "Draconic Ancestry", desc: "Choose one type of dragon. Your breath weapon and damage resistance are determined by the dragon type." }, { name: "Breath Weapon", desc: "You can use your action to exhale destructive energy. Your draconic ancestry determines the size, shape, and damage type of the exhalation." }, { name: "Damage Resistance", desc: "You have resistance to the damage type associated with your draconic ancestry." }] },
+    "Dwarf": { speed: 25, profs: "Dwarvish. Battleaxe, handaxe, light hammer, warhammer.", traits: [{ name: "Darkvision", desc: "60 ft." }, { name: "Dwarven Resilience", desc: "Advantage on saves vs poison, resistance to poison damage." }, { name: "Stonecunning", desc: "Double prof bonus on History checks related to origin of stonework." }] },
+    "Hill Dwarf": { speed: 25, profs: "Dwarvish. Battleaxe, handaxe, light hammer, warhammer.", traits: [{ name: "Darkvision", desc: "60 ft." }, { name: "Dwarven Resilience", desc: "Advantage on saves vs poison, resistance to poison damage." }, { name: "Stonecunning", desc: "Double prof bonus on History checks related to stonework." }, { name: "Dwarven Toughness", desc: "Your hit point maximum increases by 1, and it increases by 1 every time you gain a level." }] },
+    "Mountain Dwarf": { speed: 25, profs: "Dwarvish. Battleaxe, handaxe, light hammer, warhammer. Light and medium armor.", traits: [{ name: "Darkvision", desc: "60 ft." }, { name: "Dwarven Resilience", desc: "Advantage on saves vs poison, resistance to poison damage." }, { name: "Stonecunning", desc: "Double prof bonus on History checks related to stonework." }, { name: "Dwarven Armor Training", desc: "You have proficiency with light and medium armor." }] },
+    "Elf": { speed: 30, profs: "Elvish. Skill: Perception.", skills: ["perc"], traits: [{ name: "Darkvision", desc: "60 ft." }, { name: "Fey Ancestry", desc: "Advantage on saves vs charm, magic can't put you to sleep." }, { name: "Trance", desc: "Meditate for 4 hours instead of sleep." }] },
+    "High Elf": { speed: 30, profs: "Elvish, one extra language. Longsword, shortsword, shortbow, longbow. Skill: Perception.", skills: ["perc"], traits: [{ name: "Darkvision", desc: "60 ft." }, { name: "Fey Ancestry", desc: "Advantage on saves vs charm, magic can't put you to sleep." }, { name: "Trance", desc: "Meditate for 4 hours instead of sleep." }, { name: "Cantrip", desc: "You know one cantrip of your choice from the wizard spell list. Intelligence is your spellcasting ability for it." }] },
+    "Wood Elf": { speed: 35, profs: "Elvish. Longsword, shortsword, shortbow, longbow. Skill: Perception.", skills: ["perc"], traits: [{ name: "Darkvision", desc: "60 ft." }, { name: "Fey Ancestry", desc: "Advantage on saves vs charm, magic can't put you to sleep." }, { name: "Trance", desc: "Meditate for 4 hours instead of sleep." }, { name: "Mask of the Wild", desc: "You can attempt to hide even when you are only lightly obscured by foliage, heavy rain, falling snow, mist, and other natural phenomena." }] },
+    "Dark Elf (Drow)": { speed: 30, profs: "Elvish. Rapiers, shortswords, and hand crossbows. Skill: Perception.", skills: ["perc"], traits: [{ name: "Superior Darkvision", desc: "120 ft." }, { name: "Sunlight Sensitivity", desc: "You have disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight when you, the target of your attack, or whatever you are trying to perceive is in direct sunlight." }, { name: "Drow Magic", desc: "You know the dancing lights cantrip. When you reach 3rd level, you can cast the faerie fire spell once per day. When you reach 5th level, you can also cast the darkness spell once per day. Charisma is your spellcasting ability for these spells." }] },
+    "Halfling": { speed: 25, profs: "Halfling.", traits: [{ name: "Lucky", desc: "When you roll a 1 on the d20 for an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll." }, { name: "Brave", desc: "You have advantage on saving throws against being frightened." }, { name: "Halfling Nimbleness", desc: "You can move through the space of any creature that is of a size larger than yours." }] },
+    "Lightfoot Halfling": { speed: 25, profs: "Halfling.", traits: [{ name: "Lucky", desc: "Reroll 1s." }, { name: "Brave", desc: "Advantage against frightened." }, { name: "Halfling Nimbleness", desc: "Move through larger creatures." }, { name: "Naturally Stealthy", desc: "You can attempt to hide even when you are obscured only by a creature that is at least one size larger than you." }] },
+    "Stout Halfling": { speed: 25, profs: "Halfling.", traits: [{ name: "Lucky", desc: "Reroll 1s." }, { name: "Brave", desc: "Advantage against frightened." }, { name: "Halfling Nimbleness", desc: "Move through larger creatures." }, { name: "Stout Resilience", desc: "You have advantage on saving throws against poison, and you have resistance against poison damage." }] },
+    "Human": { speed: 30, profs: "Common, one extra language.", traits: [{ name: "Versatile", desc: "Humans gain +1 to all ability scores and an extra language." }] },
+    "Half-Elf": { speed: 30, profs: "Common, Elvish, one extra language.", traits: [{ name: "Darkvision", desc: "60 ft." }, { name: "Fey Ancestry", desc: "Advantage on saves vs charm, immune to magical sleep." }, { name: "Skill Versatility", desc: "You gain proficiency in two skills of your choice." }] },
+    "Half-Orc": { speed: 30, profs: "Common, Orc. Skill: Intimidation.", skills: ["intm"], traits: [{ name: "Darkvision", desc: "60 ft." }, { name: "Relentless Endurance", desc: "When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead once per long rest." }, { name: "Savage Attacks", desc: "When you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage of the critical hit." }] },
+    "Tiefling": { speed: 30, profs: "Common, Infernal.", traits: [{ name: "Darkvision", desc: "60 ft." }, { name: "Hellish Resistance", desc: "You have resistance to fire damage." }, { name: "Infernal Legacy", desc: "You know the thaumaturgy cantrip. When you reach 3rd level, you can cast the hellish rebuke spell as a 2nd-level spell once with this trait and regain the ability to do so when you finish a long rest. When you reach 5th level, you can cast the darkness spell once with this trait and regain the ability to do so when you finish a long rest. Charisma is your spellcasting ability for these spells." }] },
+    "Gnome": { speed: 25, profs: "Common, Gnomish.", traits: [{ name: "Darkvision", desc: "60 ft." }, { name: "Gnome Cunning", desc: "Advantage on INT, WIS, CHA saves vs magic." }] },
+    "Forest Gnome": { speed: 25, profs: "Common, Gnomish.", traits: [{ name: "Darkvision", desc: "60 ft." }, { name: "Gnome Cunning", desc: "Advantage on INT, WIS, CHA saves vs magic." }, { name: "Natural Illusionist", desc: "You know the minor illusion cantrip. Intelligence is your spellcasting ability for it." }, { name: "Speak with Small Beasts", desc: "Through sounds and gestures, you can communicate simple ideas with Small or smaller beasts." }] },
+    "Rock Gnome": { speed: 25, profs: "Common, Gnomish. Tinker's tools.", traits: [{ name: "Darkvision", desc: "60 ft." }, { name: "Gnome Cunning", desc: "Advantage on INT, WIS, CHA saves vs magic." }, { name: "Artificer's Lore", desc: "Whenever you make an Intelligence (History) check related to magic items, alchemical objects, or technological devices, you can add twice your proficiency bonus, instead of any proficiency bonus you normally apply." }, { name: "Tinker", desc: "You have proficiency with artisan's tools (tinker's tools). Using those tools, you can spend 1 hour and 10 gp worth of materials to construct a Tiny clockwork device (AC 5, 1 hp)." }] }
 };
 
 const CLASS_SPELL_ABILITY = {
   "wizard": "INT", "sorcerer": "CHA", "bard": "CHA", "warlock": "CHA", 
   "paladin": "CHA", "cleric": "WIS", "druid": "WIS", "ranger": "WIS", 
-  "artificer": "INT", "fighter": "INT", "rogue": "INT"
+  "artificer": "INT", "monk": "WIS", "fighter": "INT", "rogue": "INT"
+};
+
+const COMMON_SPELLS = [
+  { name: "Fire Bolt", url: "/api/spells/fire-bolt", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard" },
+  { name: "Mage Hand", url: "/api/spells/mage-hand", levelTag: "Cantrip", schoolTag: "Conjuration", classesTag: "Bard, Sorcerer, Warlock, Wizard" },
+  { name: "Prestidigitation", url: "/api/spells/prestidigitation", levelTag: "Cantrip", schoolTag: "Transmutation", classesTag: "Bard, Sorcerer, Warlock, Wizard" },
+  { name: "Shield", url: "/api/spells/shield", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Sorcerer, Wizard" },
+  { name: "Magic Missile", url: "/api/spells/magic-missile", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard" },
+  { name: "Cure Wounds", url: "/api/spells/cure-wounds", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid, Paladin, Ranger" },
+  { name: "Healing Word", url: "/api/spells/healing-word", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid" },
+  { name: "Misty Step", url: "/api/spells/misty-step", levelTag: "Level 2", schoolTag: "Conjuration", classesTag: "Sorcerer, Warlock, Wizard" },
+  { name: "Fireball", url: "/api/spells/fireball", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard" },
+  { name: "Counterspell", url: "/api/spells/counterspell", levelTag: "Level 3", schoolTag: "Abjuration", classesTag: "Sorcerer, Warlock, Wizard" }
+];
+
+const COMMON_TRAITS = [
+  { name: "Action Surge", url: "/api/features/action-surge-1-use", type: "Class Feature", parentTag: "Fighter" },
+  { name: "Sneak Attack", url: "/api/features/sneak-attack", type: "Class Feature", parentTag: "Rogue" },
+  { name: "Rage", url: "/api/features/rage", type: "Class Feature", parentTag: "Barbarian" },
+  { name: "Bardic Inspiration", url: "/api/features/bardic-inspiration-d6", type: "Class Feature", parentTag: "Bard" },
+  { name: "Divine Smite", url: "/api/features/divine-smite", type: "Class Feature", parentTag: "Paladin" },
+  { name: "Wild Shape", url: "/api/features/wild-shape", type: "Class Feature", parentTag: "Druid" },
+  { name: "Cunning Action", url: "/api/features/cunning-action", type: "Class Feature", parentTag: "Rogue" },
+  { name: "Darkvision", url: "/api/traits/darkvision", type: "Racial Trait", parentTag: "Elf, Dwarf, etc." },
+  { name: "Fey Ancestry", url: "/api/traits/fey-ancestry", type: "Racial Trait", parentTag: "Elf" },
+  { name: "Lucky", url: "/api/traits/lucky", type: "Racial Trait", parentTag: "Halfling" }
+];
+
+const DRAGON_ANCESTRY_MAP = {
+  "Black": { damage: "Acid", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Blue": { damage: "Lightning", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Brass": { damage: "Fire", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Bronze": { damage: "Lightning", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Copper": { damage: "Acid", breath: "5 by 30 ft. line", save: "Dexterity" },
+  "Gold": { damage: "Fire", breath: "15 ft. cone", save: "Dexterity" },
+  "Green": { damage: "Poison", breath: "15 ft. cone", save: "Constitution" },
+  "Red": { damage: "Fire", breath: "15 ft. cone", save: "Dexterity" },
+  "Silver": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" },
+  "White": { damage: "Cold", breath: "15 ft. cone", save: "Constitution" }
 };
 
 // ==========================================
@@ -542,8 +338,10 @@ async function saveRoster(roster) {
 function getCurrentSheetData() {
   const fields = {};
   document.querySelectorAll(".save-field").forEach((field) => {
-    if (field.type === "checkbox") fields[field.id] = field.checked;
-    else fields[field.id] = field.value;
+    if (field.id) {
+        if (field.type === "checkbox") fields[field.id] = field.checked;
+        else fields[field.id] = field.value;
+    }
   });
   return fields;
 }
@@ -651,83 +449,6 @@ document.addEventListener("change", (e) => {
   if (e.target.type === "checkbox" && e.target.classList.contains("save-field")) {
     recalculateAll(); saveSheet();
   }
-
-  // Handle Class & Race changes natively from Datalists
-  if (e.target.id === "charClass") {
-      let classKey = e.target.value.trim();
-      let data = CLASS_DATA[classKey];
-      if (data) {
-          if (data.hd) {
-              const hdMax = document.getElementById("hitDiceMax");
-              const hdCur = document.getElementById("hitDiceCur");
-              if (hdMax) hdMax.value = `1d${data.hd}`;
-              if (hdCur) hdCur.value = `1`;
-              
-              let existing = myCharacterTraits.find(t => t.name === "Hit Dice");
-              if (!existing) myCharacterTraits.push({ name: "Hit Dice", type: "Class Feature", desc: `You have 1d${data.hd} Hit Die per level.` });
-          }
-          if (data.saves) {
-              data.saves.forEach(s => {
-                  let cb = document.getElementById(`save_${s}`);
-                  if (cb) cb.checked = true;
-              });
-          }
-          if (data.profs) {
-              let profBox = document.getElementById("otherProfs");
-              if (profBox) {
-                  let cur = profBox.value.trim();
-                  profBox.value = cur ? cur + "\n\n" + data.profs : data.profs;
-                  autoExpandTextarea(profBox);
-              }
-          }
-          if (data.traits) {
-              data.traits.forEach(t => {
-                  if (!myCharacterTraits.find(ex => ex.name === t.name)) {
-                      myCharacterTraits.push({ name: t.name, type: "Class Feature", desc: t.desc, isExpanded: false });
-                  }
-              });
-          }
-          let cLower = classKey.toLowerCase();
-          if (CLASS_SPELL_ABILITY[cLower]) {
-              let sa = document.getElementById("spellAbility");
-              if (sa && !sa.value) sa.value = CLASS_SPELL_ABILITY[cLower];
-          }
-          saveSheet(); renderMyTraits(); recalculateAll(); showStatus("Class features loaded!");
-      }
-  }
-
-  if (e.target.id === "charRace") {
-      let raceKey = e.target.value.trim();
-      let data = RACE_DATA[raceKey];
-      if (data) {
-          if (data.speed) {
-              let spd = document.getElementById("charSpeed");
-              if (spd) spd.value = data.speed;
-          }
-          if (data.profs) {
-              let profBox = document.getElementById("otherProfs");
-              if (profBox) {
-                  let cur = profBox.value.trim();
-                  profBox.value = cur ? cur + "\n\n" + data.profs : data.profs;
-                  autoExpandTextarea(profBox);
-              }
-          }
-          if (data.skills) {
-              data.skills.forEach(s => {
-                  let cb = document.getElementById(`cb_${s}_p`);
-                  if (cb) cb.checked = true;
-              });
-          }
-          if (data.traits) {
-              data.traits.forEach(t => {
-                  if (!myCharacterTraits.find(ex => ex.name === t.name)) {
-                      myCharacterTraits.push({ name: t.name, type: "Racial Trait", desc: t.desc, isExpanded: false });
-                  }
-              });
-          }
-          saveSheet(); renderMyTraits(); recalculateAll(); showStatus("Racial features loaded!");
-      }
-  }
 });
 
 document.addEventListener("input", (e) => {
@@ -736,6 +457,7 @@ document.addEventListener("input", (e) => {
   }
   if (e.target.classList.contains("spell-stat-input")) autoResizeStatInput(e.target);
   
+  // Custom Spell Sync
   if (e.target.classList.contains("custom-spell-field")) {
     const card = e.target.closest(".spell-card");
     if(card) {
@@ -747,6 +469,7 @@ document.addEventListener("input", (e) => {
     }
   }
 
+  // Custom Trait Sync
   if (e.target.classList.contains("custom-trait-field")) {
     const card = e.target.closest(".trait-card");
     if(card) {
@@ -758,6 +481,7 @@ document.addEventListener("input", (e) => {
     }
   }
 
+  // Weapons Sync
   if (e.target.classList.contains("wpn-field")) {
     const entry = e.target.closest(".attack-entry");
     if(entry) {
@@ -766,6 +490,59 @@ document.addEventListener("input", (e) => {
             myCharacterWeapons[idx][e.target.dataset.prop] = e.target.value; saveSheet();
         }
     }
+  }
+
+  // Auto-Fill Class and Race on Input via Datalist match
+  if (e.target.id === "charClass") {
+      let classKey = e.target.value.trim();
+      let dataKey = Object.keys(CLASS_DATA).find(k => k.toLowerCase() === classKey.toLowerCase());
+      if (dataKey) {
+          let data = CLASS_DATA[dataKey];
+          if (data.hd) {
+              let hdMax = document.getElementById("hitDiceMax"); let hdCur = document.getElementById("hitDiceCur");
+              if (hdMax) hdMax.value = `1d${data.hd}`; if (hdCur) hdCur.value = `1`;
+              if (!myCharacterTraits.find(t => t.name === "Hit Dice")) myCharacterTraits.push({ name: "Hit Dice", type: "Class Feature", desc: `You have 1d${data.hd} Hit Die per level.` });
+          }
+          if (data.saves) {
+              data.saves.forEach(s => { let cb = document.getElementById(`save_${s}`); if (cb) cb.checked = true; });
+          }
+          if (data.profs) {
+              let profBox = document.getElementById("otherProfs");
+              if (profBox && !profBox.value.includes(data.profs)) {
+                  let cur = profBox.value.trim(); profBox.value = cur ? cur + "\n\n" + data.profs : data.profs; autoExpandTextarea(profBox);
+              }
+          }
+          if (data.traits) {
+              data.traits.forEach(t => {
+                  if (!myCharacterTraits.find(ex => ex.name === t.name)) myCharacterTraits.push({ name: t.name, type: "Class Feature", desc: t.desc, isExpanded: false });
+              });
+          }
+          let cLower = classKey.toLowerCase();
+          if (CLASS_SPELL_ABILITY[cLower]) { let sa = document.getElementById("spellAbility"); if (sa && !sa.value) sa.value = CLASS_SPELL_ABILITY[cLower]; }
+          saveSheet(); renderMyTraits(); recalculateAll(); showStatus("Class loaded!");
+      }
+  }
+
+  if (e.target.id === "charRace") {
+      let raceKey = e.target.value.trim();
+      let dataKey = Object.keys(RACE_DATA).find(k => k.toLowerCase() === raceKey.toLowerCase());
+      if (dataKey) {
+          let data = RACE_DATA[dataKey];
+          if (data.speed) { let spd = document.getElementById("charSpeed"); if (spd) spd.value = data.speed; }
+          if (data.profs) {
+              let profBox = document.getElementById("otherProfs");
+              if (profBox && !profBox.value.includes(data.profs)) {
+                  let cur = profBox.value.trim(); profBox.value = cur ? cur + "\n\n" + data.profs : data.profs; autoExpandTextarea(profBox);
+              }
+          }
+          if (data.skills) { data.skills.forEach(s => { let cb = document.getElementById(`cb_${s}_p`); if (cb) cb.checked = true; }); }
+          if (data.traits) {
+              data.traits.forEach(t => {
+                  if (!myCharacterTraits.find(ex => ex.name === t.name)) myCharacterTraits.push({ name: t.name, type: "Racial Trait", desc: t.desc, isExpanded: false });
+              });
+          }
+          saveSheet(); renderMyTraits(); recalculateAll(); showStatus("Race loaded!");
+      }
   }
 });
 
@@ -1013,65 +790,97 @@ document.addEventListener("click", async (e) => {
   // API List Selection logic for Spells
   const spellAddRow = e.target.closest(".spell-add-item");
   if (spellAddRow) {
-    const badge = spellAddRow.querySelector(".spell-add-badge"); if (badge) badge.textContent = "Adding...";
-    let detail = null; if (spellAddRow.dataset.url) detail = await fetchAPI("https://www.dnd5eapi.co" + spellAddRow.dataset.url);
-    if (detail && (detail.damage_type_options || detail.choice)) {
-        tempSpellHold = detail; document.getElementById("spellModal")?.classList.remove("open");
-        if (badge) badge.textContent = "+ Add";
-        let cData = detail.damage_type_options || detail.choice; let oArr = [];
-        if (cData && cData.from && cData.from.options) oArr = cData.from.options; else if (Array.isArray(cData)) oArr = cData;
-        let rHtml = `<div class="equip-options-grid">`;
-        oArr.forEach((opt, idx) => {
-          let n = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
-          rHtml += `<div class="choice-option-wrapper"><button type="button" class="choice-option-btn temp-spell-btn" data-name="${escapeHtml(n)}"><strong>${escapeHtml(n)}</strong></button></div>`;
-        });
-        rHtml += `</div>`;
-        document.getElementById("choiceModalTitle").textContent = `Choose Variant: ${detail.name}`;
-        document.getElementById("choiceModalBody").innerHTML = `<div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">Pick Variant:</div>${rHtml}`;
-        document.getElementById("choiceModal").classList.add("open"); return;
+    try {
+        const badge = spellAddRow.querySelector(".spell-add-badge"); if (badge) badge.textContent = "Adding...";
+        let detail = null; if (spellAddRow.dataset.url) detail = await fetchAPI("https://www.dnd5eapi.co" + spellAddRow.dataset.url);
+        if (detail && (detail.damage_type_options || detail.choice)) {
+            tempSpellHold = detail; document.getElementById("spellModal")?.classList.remove("open");
+            if (badge) badge.textContent = "+ Add";
+            let cData = detail.damage_type_options || detail.choice; let oArr = [];
+            if (cData && cData.from && cData.from.options) oArr = cData.from.options; else if (Array.isArray(cData)) oArr = cData;
+            let rHtml = `<div class="equip-options-grid">`;
+            oArr.forEach((opt, idx) => {
+              let n = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
+              rHtml += `<div class="choice-option-wrapper"><button type="button" class="choice-option-btn temp-spell-btn" data-name="${escapeHtml(n)}"><strong>${escapeHtml(n)}</strong></button></div>`;
+            });
+            rHtml += `</div>`;
+            document.getElementById("choiceModalTitle").textContent = `Choose Variant: ${detail.name}`;
+            document.getElementById("choiceModalBody").innerHTML = `<div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">Pick Variant:</div>${rHtml}`;
+            document.getElementById("choiceModal").classList.add("open"); return;
+        }
+        let finalDesc = "Description not available."; let finalType = "Spell"; let finalCast = "1 Action"; let finalRange = "30 ft"; let finalDur = "Instantaneous";
+        if (detail) {
+            finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || "");
+            if (detail.higher_level) finalDesc += "\n\nAt Higher Levels: " + (Array.isArray(detail.higher_level) ? detail.higher_level.join(" ") : detail.higher_level);
+            finalType = detail.level === 0 ? "Cantrip" : `Level ${detail.level} ${detail.school?.name || ""}`.trim();
+            finalCast = detail.casting_time || finalCast; finalRange = detail.range || finalRange; finalDur = detail.duration || finalDur;
+        }
+        myCharacterSpells.push({ name: spellAddRow.dataset.name, type: finalType, casting_time: finalCast, range: finalRange, duration: finalDur, desc: finalDesc });
+        saveSheet(); renderMySpells(); document.getElementById("spellModal")?.classList.remove("open"); if (badge) badge.textContent = "+ Add";
+    } catch(err) {
+        console.error(err);
+        const badge = spellAddRow.querySelector(".spell-add-badge");
+        if (badge) badge.textContent = "Error";
+        setTimeout(() => { if (badge) badge.textContent = "+ Add"; }, 2000);
     }
-    let finalDesc = "Description not available."; let finalType = "Spell"; let finalCast = "1 Action"; let finalRange = "30 ft"; let finalDur = "Instantaneous";
-    if (detail) {
-        finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || "");
-        if (detail.higher_level) finalDesc += "\n\nAt Higher Levels: " + (Array.isArray(detail.higher_level) ? detail.higher_level.join(" ") : detail.higher_level);
-        finalType = detail.level === 0 ? "Cantrip" : `Level ${detail.level} ${detail.school?.name || ""}`.trim();
-        finalCast = detail.casting_time || finalCast; finalRange = detail.range || finalRange; finalDur = detail.duration || finalDur;
-    }
-    myCharacterSpells.push({ name: spellAddRow.dataset.name, type: finalType, casting_time: finalCast, range: finalRange, duration: finalDur, desc: finalDesc });
-    saveSheet(); renderMySpells(); document.getElementById("spellModal")?.classList.remove("open"); if (badge) badge.textContent = "+ Add";
   }
 
   // API List Selection logic for Traits
   const traitAddRow = e.target.closest(".trait-option-item");
   if (traitAddRow) {
-    const badge = traitAddRow.querySelector(".spell-add-badge"); if (badge) badge.textContent = "Adding...";
-    let detail = null; if (traitAddRow.dataset.url) detail = await fetchAPI("https://www.dnd5eapi.co" + traitAddRow.dataset.url);
-    let hasVariants = false; let specific = detail?.trait_specific || detail?.feature_specific || detail?.choice;
-    if (specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from)) hasVariants = true;
-    if (detail?.name === "Breath Weapon" || detail?.name === "Draconic Ancestry") { hasVariants = true; detail.choice = { desc: "Draconic Ancestry Variant", from: { options: Object.keys(DRAGON_ANCESTRY_MAP).map(c => ({ item: { name: c } })) } }; }
-    if (hasVariants) {
-        tempTraitHold = detail; document.getElementById("traitModal")?.classList.remove("open"); if (badge) badge.textContent = "+ Add";
-        let cData = detail.trait_specific?.subtrait_options || detail.trait_specific?.spell_options || detail.trait_specific?.damage_type_options || detail.trait_specific?.choice || detail.trait_specific?.breath_weapon_options || detail.feature_specific?.subfeature_options || detail.feature_specific?.expertise_options || detail.feature_specific?.choice || (detail.trait_specific?.from ? detail.trait_specific : null) || (detail.feature_specific?.from ? detail.feature_specific : null) || detail.choice || detail.damage_type_options;
-        let oArr = []; if (cData && cData.from && cData.from.options) oArr = cData.from.options; else if (Array.isArray(cData)) oArr = cData;
-        let rHtml = `<div class="equip-options-grid">`;
-        oArr.forEach((opt, idx) => {
-          let n = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
-          let u = opt.item?.url || opt.trait?.url || opt.feature?.url || null; 
-          rHtml += `<div class="choice-option-wrapper"><button type="button" class="choice-option-btn temp-trait-btn" data-name="${escapeHtml(n)}" data-url="${u || ''}"><strong>${escapeHtml(n)}</strong></button></div>`;
-        });
-        rHtml += `</div>`;
-        document.getElementById("choiceModalTitle").textContent = `Choose Variant: ${detail.name}`;
-        document.getElementById("choiceModalBody").innerHTML = `<div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">Pick Variant:</div>${rHtml}`;
-        document.getElementById("choiceModal").classList.add("open"); return;
+    try {
+        const badge = traitAddRow.querySelector(".spell-add-badge"); if (badge) badge.textContent = "Adding...";
+        let detail = null; if (traitAddRow.dataset.url) detail = await fetchAPI("https://www.dnd5eapi.co" + traitAddRow.dataset.url);
+        let hasVariants = false; let specific = detail?.trait_specific || detail?.feature_specific || detail?.choice;
+        if (specific && (specific.subtrait_options || specific.spell_options || specific.damage_type_options || specific.choice || specific.breath_weapon_options || specific.subfeature_options || specific.expertise_options || specific.from)) hasVariants = true;
+        if (detail?.name === "Breath Weapon" || detail?.name === "Draconic Ancestry") { hasVariants = true; detail.choice = { desc: "Draconic Ancestry Variant", from: { options: Object.keys(DRAGON_ANCESTRY_MAP).map(c => ({ item: { name: c } })) } }; }
+        if (hasVariants) {
+            tempTraitHold = detail; document.getElementById("traitModal")?.classList.remove("open"); if (badge) badge.textContent = "+ Add";
+            let cData = detail.trait_specific?.subtrait_options || detail.trait_specific?.spell_options || detail.trait_specific?.damage_type_options || detail.trait_specific?.choice || detail.trait_specific?.breath_weapon_options || detail.feature_specific?.subfeature_options || detail.feature_specific?.expertise_options || detail.feature_specific?.choice || (detail.trait_specific?.from ? detail.trait_specific : null) || (detail.feature_specific?.from ? detail.feature_specific : null) || detail.choice || detail.damage_type_options;
+            let oArr = []; if (cData && cData.from && cData.from.options) oArr = cData.from.options; else if (Array.isArray(cData)) oArr = cData;
+            let rHtml = `<div class="equip-options-grid">`;
+            oArr.forEach((opt, idx) => {
+              let n = opt.notes || opt.item?.name || opt.choice?.desc || opt.desc || opt.trait?.name || opt.spell?.name || opt.damage_type?.name || opt.feature?.name || "Variant " + (idx+1);
+              let u = opt.item?.url || opt.trait?.url || opt.feature?.url || null; 
+              rHtml += `<div class="choice-option-wrapper"><button type="button" class="choice-option-btn temp-trait-btn" data-name="${escapeHtml(n)}" data-url="${u || ''}"><strong>${escapeHtml(n)}</strong></button></div>`;
+            });
+            rHtml += `</div>`;
+            document.getElementById("choiceModalTitle").textContent = `Choose Variant: ${detail.name}`;
+            document.getElementById("choiceModalBody").innerHTML = `<div class="wizard-intro" style="font-size: 1.15rem; color: #cbd5e1; text-align: center; margin-bottom: 1.5rem;">Pick Variant:</div>${rHtml}`;
+            document.getElementById("choiceModal").classList.add("open"); return;
+        }
+        let finalDesc = "Description not available."; if (detail) finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || "");
+        myCharacterTraits.push({ name: traitAddRow.dataset.name, type: traitAddRow.dataset.type || "Feature", desc: finalDesc, isExpanded: false });
+        saveSheet(); renderMyTraits(); document.getElementById("traitModal")?.classList.remove("open"); if (badge) badge.textContent = "+ Add";
+    } catch(err) {
+        console.error(err);
+        const badge = traitAddRow.querySelector(".spell-add-badge");
+        if (badge) badge.textContent = "Error";
+        setTimeout(() => { if (badge) badge.textContent = "+ Add"; }, 2000);
     }
-    let finalDesc = "Description not available."; if (detail) finalDesc = Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || "");
-    myCharacterTraits.push({ name: traitAddRow.dataset.name, type: traitAddRow.dataset.type || "Feature", desc: finalDesc, isExpanded: false });
-    saveSheet(); renderMyTraits(); document.getElementById("traitModal")?.classList.remove("open"); if (badge) badge.textContent = "+ Add";
   }
 
 });
 
-// Global API Search Handlers
+// Global API Search Handlers with 5 Second Aggressive Timeout
+const apiCache = {};
+
+async function fetchAPI(url) {
+  if (apiCache[url]) return apiCache[url];
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second forced abort
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const data = await res.json();
+    apiCache[url] = data;
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+
 let spellSearchTimeout = null;
 let fullSpellsCache = [];
 document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
@@ -1159,6 +968,26 @@ function attachSpellDragEvents() {
     }
   });
 }
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
+});
+
+document.getElementById("restoreFile")?.addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const parsed = JSON.parse(evt.target.result);
+      const roster = getRoster();
+      if (parsed.allRoster) Object.assign(roster, parsed.allRoster);
+      else if (parsed.character) roster[parsed.character.id || "char_1"] = parsed.character;
+      saveRoster(roster); loadSheet(); showStatus("Restored successfully!");
+    } catch (err) { alert("Invalid backup file."); }
+  };
+  reader.readAsText(file);
+});
 
 // Initialization
 loadSheet();
