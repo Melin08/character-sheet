@@ -8,16 +8,23 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body id="top">
+
+  <!-- Floating Save Notification -->
+  <div id="saveToast" class="toast-msg">Saved!</div>
+
   <div class="sheet-container">
     
+    <!-- Dedicated Auth Widget -->
+    <div class="auth-widget-container">
+      <div id="authNavGroup" class="auth-nav-group">
+        <button class="btn outline blue" id="loginNavBtn" type="button">Log In</button>
+        <button class="btn red" id="signupNavBtn" type="button">Sign Up</button>
+      </div>
+    </div>
+
+    <!-- Master Control Header -->
     <header class="master-header">
       <div class="header-main-row">
-        <!-- Left Side: Empty Spacer / Status (Keeps the center perfectly aligned) -->
-        <div class="header-left-panel">
-          <span id="saveStatus" class="status-msg"></span>
-        </div>
-        
-        <!-- Center: App Controls -->
         <div class="app-controls">
           <div class="control-group">
             <button class="btn red" id="saveBtn" type="button">Save</button>
@@ -35,13 +42,7 @@
           </div>
         </div>
 
-        <!-- Right Side: Auth & Wikis -->
         <div class="header-side-panel">
-          <div id="authNavGroup" class="auth-nav-group">
-            <button class="btn outline blue" id="loginNavBtn" type="button">Log In</button>
-            <button class="btn red" id="signupNavBtn" type="button">Sign Up</button>
-          </div>
-          
           <div class="wiki-box">
             <span class="wiki-title">Wikis:</span>
             <a href="https://dnd5e.wikidot.com/" target="_blank">5e Wikidot</a>
@@ -147,12 +148,7 @@
         </div>
       </div>
 
-      <!-- NEW REST BAR MOVED ABOVE VITALS -->
-      <div class="rest-bar">
-        <button class="btn outline blue" id="shortRestBtn" type="button">Short Rest</button>
-        <button class="btn outline purple" id="longRestBtn" type="button">Long Rest</button>
-      </div>
-
+      <!-- VITALS & RESTS -->
       <div class="vitals-row">
         <div class="vital-unit">
           <span>Armor Class</span>
@@ -192,13 +188,9 @@
           </div>
         </div>
 
-        <div class="vital-unit">
-          <span>Class Points</span>
-          <div class="pair-box">
-            <input type="number" id="classPtsCur" class="save-field dual-input" value="0" />
-            <span class="dual-slash">/</span>
-            <input type="number" id="classPtsMax" class="save-field dual-input" value="0" />
-          </div>
+        <div class="vital-unit rests-unit">
+          <button class="btn outline blue rest-btn" id="shortRestBtn" type="button">☕ Short Rest</button>
+          <button class="btn outline purple rest-btn" id="longRestBtn" type="button">⛺ Long Rest</button>
         </div>
       </div>
 
