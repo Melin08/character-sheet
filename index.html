@@ -61,13 +61,15 @@
 
     <div id="tab-stats" class="tab-page active">
       <div class="meta-row-grid">
-        <div class="field-pill">
+        <div class="field-pill dropdown-pill-wrapper">
           <span class="pill-label">Class</span>
-          <input type="text" id="charClass" class="save-field pill-input" autocomplete="off" placeholder="e.g. Fighter" />
+          <input type="text" id="charClass" class="save-field pill-input" autocomplete="off" placeholder="Select or type class..." />
+          <div id="classDropdown" class="dropdown-menu"></div>
         </div>
-        <div class="field-pill">
+        <div class="field-pill dropdown-pill-wrapper">
           <span class="pill-label">Race</span>
-          <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="e.g. Elf" />
+          <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="Select or type race..." />
+          <div id="raceDropdown" class="dropdown-menu"></div>
         </div>
         <div class="field-pill">
           <span class="pill-label">Background</span>
@@ -543,8 +545,57 @@
 
           <hr class="red-divider" />
 
-          <h2 class="section-title tight-title">Proficiencies &amp; Languages</h2>
-          <textarea id="otherProfs" class="save-field block-text tight-block" rows="5" placeholder="Armor, weapons, tools, languages..."></textarea>
+          <!-- Magic Attunement Slot Box -->
+          <div class="attunement-container">
+            <div class="attunement-header">
+              <span class="tactical-title">Magic Item Attunement</span>
+              <span class="tactical-sub">Max 3</span>
+            </div>
+            <div class="attunement-slots">
+              <div class="attune-item">
+                <input type="checkbox" id="attune1_check" class="save-field attune-cb" />
+                <input type="text" id="attune1_name" class="save-field attune-input" placeholder="Attuned item 1..." />
+              </div>
+              <div class="attune-item">
+                <input type="checkbox" id="attune2_check" class="save-field attune-cb" />
+                <input type="text" id="attune2_name" class="save-field attune-input" placeholder="Attuned item 2..." />
+              </div>
+              <div class="attune-item">
+                <input type="checkbox" id="attune3_check" class="save-field attune-cb" />
+                <input type="text" id="attune3_name" class="save-field attune-input" placeholder="Attuned item 3..." />
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Conditions Tracker -->
+          <div class="conditions-container">
+            <div class="conditions-header-bar">
+              <span class="tactical-title">Conditions Tracker</span>
+              <div class="exhaustion-meter">
+                <span class="exhaustion-label">Exhaustion:</span>
+                <input type="number" id="exhaustionLevel" class="save-field exhaustion-input center" value="0" min="0" max="6" />
+              </div>
+            </div>
+            <div class="condition-chips-grid" id="conditionChips">
+              <button type="button" class="cond-chip" data-cond="blinded">Blinded</button>
+              <button type="button" class="cond-chip" data-cond="charmed">Charmed</button>
+              <button type="button" class="cond-chip" data-cond="deafened">Deafened</button>
+              <button type="button" class="cond-chip" data-cond="frightened">Frightened</button>
+              <button type="button" class="cond-chip" data-cond="grappled">Grappled</button>
+              <button type="button" class="cond-chip" data-cond="incapacitated">Incapacitated</button>
+              <button type="button" class="cond-chip" data-cond="invisible">Invisible</button>
+              <button type="button" class="cond-chip" data-cond="paralyzed">Paralyzed</button>
+              <button type="button" class="cond-chip" data-cond="petrified">Petrified</button>
+              <button type="button" class="cond-chip" data-cond="poisoned">Poisoned</button>
+              <button type="button" class="cond-chip" data-cond="prone">Prone</button>
+              <button type="button" class="cond-chip" data-cond="restrained">Restrained</button>
+              <button type="button" class="cond-chip" data-cond="stunned">Stunned</button>
+              <button type="button" class="cond-chip" data-cond="unconscious">Unconscious</button>
+            </div>
+          </div>
+
+          <h2 class="section-title tight-title">Proficiencies &amp; Resistances</h2>
+          <textarea id="otherProfs" class="save-field block-text tight-block" rows="5" placeholder="Armor, weapons, tools, languages, damage resistances, immunities..."></textarea>
 
           <h2 class="section-title tight-title">Equipment &amp; Inventory</h2>
           <textarea id="inventory" class="save-field block-text" rows="6" placeholder="Detailed inventory, weights, magic items, containers..."></textarea>
@@ -552,7 +603,7 @@
       </div>
 
       <!-- Dedicated Abilities & Traits Section -->
-      <section class="abilities-full-section">
+      <section class="abilities-full-section" id="abilitiesSection">
         <hr class="red-divider" />
         <div class="section-header-bar">
           <h2 class="section-title">Abilities &amp; Traits</h2>
