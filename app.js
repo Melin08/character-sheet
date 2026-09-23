@@ -1,5 +1,29 @@
 "use strict";
 
+// Firebase Initialization with Local Fallback
+const firebaseConfig = {
+  apiKey: "AIzaSyAIKe_hrxyQvn4uebwU5OZrP2qf-FwK0Rg",
+  authDomain: "character-sheet-bd250.firebaseapp.com",
+  projectId: "character-sheet-bd250",
+  storageBucket: "character-sheet-bd250.firebasestorage.app",
+  messagingSenderId: "881155587941",
+  appId: "1:881155587941:web:45087fba9dc7154fddeb8c"
+};
+
+let auth = null;
+let db = null;
+let currentUser = null;
+
+if (typeof firebase !== "undefined") {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+  } catch (err) {
+    console.warn("Firebase initialized with local fallback:", err);
+  }
+}
+
 const ROSTER_STORAGE_KEY = "badman_char_roster_v1";
 const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
 
@@ -14,12 +38,12 @@ let myCharacterWeapons = [
 let diceRollHistory = [];
 
 let draggedSpellIndex = null;
-let currentDropTarget = null;
+const apiCache = {};
 
 let allSpellsCache = [];
 let allTraitsCache = [];
-const apiCache = {};
 
+// Rich Instant Built-in Libraries
 const BUILTIN_SPELLS = [
   { name: "Fire Bolt", type: "Cantrip Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You hurl a mote of fire at a creature or object within range. Make a ranged spell attack. On a hit, the target takes 1d10 fire damage." },
   { name: "Mage Hand", type: "Cantrip Conjuration", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears at a point you choose within range. You can use your action to control the hand to manipulate objects up to 10 pounds." },
@@ -63,7 +87,7 @@ function showStatus(text) {
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     toast.classList.remove("show");
-  }, 2000);
+  }, 2200);
 }
 
 function getModifier(score) {
@@ -74,6 +98,16 @@ function getProfBonus(level) {
   return Math.ceil(1 + level / 4);
 }
 
+function autoResizeStatInput(input) {
+  if (!input || input.classList.contains("concentration-input")) return;
+  const content = input.value || input.placeholder || "";
+  input.style.width = Math.max(3, content.length + 1.5) + "ch";
+}
+
+function syncAllStatInputs() {
+  document.querySelectorAll(".spell-stat-input").forEach(autoResizeStatInput);
+}
+
 function autoExpandTextarea(el) {
   if (!el) return;
   el.style.height = "auto";
@@ -81,41 +115,43 @@ function autoExpandTextarea(el) {
 }
 
 function recalculateAll() {
-  const level = parseInt(document.getElementById("charLevel")?.value, 10) || 1;
+  const levelInput = document.getElementById("charLevel");
+  const level = parseInt(levelInput?.value, 10) || 1;
   const prof = getProfBonus(level);
-  const profDisplay = document.getElementById("profBonusDisplay");
-  if (profDisplay) profDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
+
+  const profBonusDisplay = document.getElementById("profBonusDisplay");
+  if (profBonusDisplay) profBonusDisplay.textContent = prof >= 0 ? `+${prof}` : `${prof}`;
 
   const stats = ["str", "dex", "con", "int", "wis", "cha"];
   const mods = {};
 
   stats.forEach((stat) => {
-    const score = parseInt(document.getElementById(`attr_${stat}`)?.value, 10) || 10;
-    const mod = getModifier(score);
+    const scoreVal = parseInt(document.getElementById(`attr_${stat}`)?.value, 10) || 10;
+    const mod = getModifier(scoreVal);
     mods[stat] = mod;
 
     const modElem = document.getElementById(`mod_${stat}`);
     if (modElem) modElem.textContent = mod >= 0 ? `+${mod}` : mod;
 
-    const isSave = document.getElementById(`save_${stat}`)?.checked;
-    const saveElem = document.getElementById(`save_val_${stat}`);
-    if (saveElem) {
-      const val = isSave ? mod + prof : mod;
-      saveElem.textContent = val >= 0 ? `+${val}` : val;
+    const isSaveChecked = document.getElementById(`save_${stat}`)?.checked;
+    const saveValElem = document.getElementById(`save_val_${stat}`);
+    if (saveValElem) {
+      const saveTotal = isSaveChecked ? mod + prof : mod;
+      saveValElem.textContent = saveTotal >= 0 ? `+${saveTotal}` : saveTotal;
     }
   });
 
   document.querySelectorAll(".skill-row").forEach((row) => {
     const stat = row.dataset.stat;
-    const mod = mods[stat] ?? 0;
+    const statMod = mods[stat] ?? 0;
     const isProf = row.querySelector(".prof-cb")?.checked;
     const isExp = row.querySelector(".exp-cb")?.checked;
 
-    let total = mod;
+    let total = statMod;
     if (isProf) total += prof;
     if (isExp) total += prof;
 
-    const valElem = row.querySelector(".skill-score");
+    const valElem = row.querySelector(".skill-val");
     if (valElem) valElem.textContent = total >= 0 ? `+${total}` : total;
   });
 }
@@ -131,8 +167,8 @@ function renderWeapons() {
   container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
     <div class="attack-entry" data-index="${idx}">
       <input type="text" class="save-field wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
-      <input type="text" class="save-field wpn-field" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
-      <input type="text" class="save-field wpn-field" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8+3" />
+      <input type="text" class="save-field wpn-field center" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
+      <input type="text" class="save-field wpn-field center" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
       <input type="text" class="save-field wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes..." />
       <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
     </div>
@@ -144,7 +180,7 @@ function renderMyTraits() {
   if (!container) return;
 
   if (myCharacterTraits.length === 0) {
-    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.85rem; color: #64748b; font-style: italic;">No active abilities added yet. Click "+ Add Ability" above to search.</p>`;
+    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.85rem; color: #64748b; font-style: italic;">No abilities added yet. Click "+ Add Ability" above to browse the compendium.</p>`;
     return;
   }
 
@@ -154,8 +190,8 @@ function renderMyTraits() {
         <input type="text" class="trait-name-input custom-trait-field" data-prop="name" value="${escapeHtml(trait.name || '')}" placeholder="Ability Name" />
         <button class="trait-card-delete" data-index="${idx}" type="button" title="Remove ability">&times;</button>
       </div>
-      <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || '')}" placeholder="Type (Racial, Class, Feat)" />
-      <textarea class="trait-desc-input custom-trait-field" data-prop="desc" placeholder="Ability rules...">${escapeHtml(trait.desc || '')}</textarea>
+      <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || '')}" placeholder="Type (Racial, Feat, etc.)" />
+      <textarea class="trait-desc-input custom-trait-field" data-prop="desc" placeholder="Ability description and rules...">${escapeHtml(trait.desc || '')}</textarea>
       <div class="trait-card-footer">
         <button type="button" class="trait-expand-btn">${trait.isExpanded ? 'Collapse' : 'Expand'}</button>
       </div>
@@ -168,7 +204,7 @@ function renderMySpells() {
   if (!container) return;
 
   if (myCharacterSpells.length === 0) {
-    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.9rem; color: #64748b;">No spells prepared yet. Click "+ Add Spell" above to browse the compendium.</p>`;
+    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.9rem; color: #64748b;">No spells added yet. Click "+ Add Spell" above to browse the compendium.</p>`;
     return;
   }
 
@@ -184,19 +220,19 @@ function renderMySpells() {
         </div>
         <div class="spell-card-meta">
           <div class="meta-field-group">
-            <input type="text" class="spell-meta-input custom-spell-field" data-prop="type" value="${escapeHtml(typeVal)}" placeholder="Cantrip Evocation" />
+            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="type" value="${escapeHtml(typeVal)}" placeholder="Cantrip" />
           </div>
           <div class="meta-field-group">
-            <input type="text" class="spell-meta-input custom-spell-field" data-prop="casting_time" value="${escapeHtml(spell.casting_time || "")}" placeholder="1 Action" />
+            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="casting_time" value="${escapeHtml(spell.casting_time || "")}" placeholder="1 Action" />
           </div>
           <div class="meta-field-group">
-            <input type="text" class="spell-meta-input custom-spell-field" data-prop="range" value="${escapeHtml(spell.range || "")}" placeholder="60 ft" />
+            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="range" value="${escapeHtml(spell.range || "")}" placeholder="30 ft" />
           </div>
           <div class="meta-field-group">
-            <input type="text" class="spell-meta-input custom-spell-field" data-prop="duration" value="${escapeHtml(spell.duration || "")}" placeholder="Instantaneous" />
+            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="duration" value="${escapeHtml(spell.duration || "")}" placeholder="Instantaneous" />
           </div>
         </div>
-        <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell rules and effects...">${escapeHtml(descVal)}</textarea>
+        <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description and effects...">${escapeHtml(descVal)}</textarea>
       </div>
     `;
   }).join("");
@@ -259,14 +295,14 @@ function renderDiceHistory() {
   if (!container) return;
 
   if (diceRollHistory.length === 0) {
-    container.innerHTML = `<span class="empty-log-msg">No rolls recorded yet.</span>`;
+    container.innerHTML = `<span class="dice-history-empty">No rolls logged yet.</span>`;
     return;
   }
 
   container.innerHTML = diceRollHistory.map((item) => `
     <div class="dice-history-item">
-      <span>${escapeHtml(item.desc)} <small style="color:#64748b;">(${item.time})</small></span>
-      <span style="font-weight:700; color:#f87171;">${escapeHtml(String(item.total))}</span>
+      <span class="dice-history-desc">${escapeHtml(item.desc)} <small style="color:#64748b;">(${item.time})</small></span>
+      <span class="dice-history-val">${escapeHtml(String(item.total))}</span>
     </div>
   `).join("");
 }
@@ -279,16 +315,26 @@ function getRoster() {
   }
 }
 
-function saveRoster(roster) {
+async function saveRoster(roster) {
   localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(roster));
+  if (currentUser && db) {
+    try {
+      await db.collection("user_rosters").doc(currentUser.uid).set({ data: roster });
+    } catch (err) {
+      console.warn("Cloud save sync deferred:", err);
+    }
+  }
 }
 
 function getCurrentSheetData() {
   const fields = {};
   document.querySelectorAll(".save-field").forEach((field) => {
     if (field.id) {
-      if (field.type === "checkbox") fields[field.id] = field.checked;
-      else fields[field.id] = field.value;
+      if (field.type === "checkbox") {
+        fields[field.id] = field.checked;
+      } else {
+        fields[field.id] = field.value;
+      }
     }
   });
   return fields;
@@ -314,11 +360,7 @@ function saveSheet(quiet = false) {
 
   saveRoster(roster);
   localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-
-  const badge = document.getElementById("activeCharBadge");
-  if (badge) badge.textContent = name;
-
-  if (!quiet) showStatus("Changes Saved");
+  if (!quiet) showStatus("Saved!");
 }
 
 function applyCharacterData(charData) {
@@ -339,14 +381,11 @@ function applyCharacterData(charData) {
     { name: "", atk: "", dmg: "", notes: "" }
   ];
 
-  const badge = document.getElementById("activeCharBadge");
-  if (badge) badge.textContent = charData.name || "Active Character";
-
   renderWeapons();
   renderMySpells();
   renderMyTraits();
   recalculateAll();
-  document.querySelectorAll(".console-textarea").forEach(autoExpandTextarea);
+  syncAllStatInputs();
 }
 
 function loadSheet() {
@@ -364,6 +403,7 @@ function loadSheet() {
       renderWeapons();
       renderMySpells();
       renderMyTraits();
+      syncAllStatInputs();
     }
   }
 }
@@ -373,13 +413,25 @@ function resetSheet() {
   localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
 
   document.querySelectorAll(".save-field").forEach((field) => {
-    if (field.type === "checkbox") field.checked = false;
-    else if (field.id === "charLevel") field.value = 1;
-    else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") field.value = 10;
-    else if (field.classList.contains("attr-score")) field.value = 10;
-    else if (field.id === "charSpeed") field.value = 30;
-    else if (field.classList.contains("ratio-field") || field.classList.contains("coin-box") || field.classList.contains("cube-input")) field.value = 0;
-    else field.value = "";
+    if (field.type === "checkbox") {
+      field.checked = false;
+    } else if (field.id === "charLevel") {
+      field.value = 1;
+    } else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") {
+      field.value = 10;
+    } else if (field.classList.contains("attr-input")) {
+      field.value = 10;
+    } else if (field.id === "charSpeed") {
+      field.value = 30;
+    } else if (
+      field.classList.contains("dual-input") ||
+      field.classList.contains("coin-input") ||
+      field.classList.contains("slot-input")
+    ) {
+      field.value = 0;
+    } else {
+      field.value = "";
+    }
   });
 
   myCharacterSpells = [];
@@ -395,7 +447,9 @@ function resetSheet() {
   renderWeapons();
   renderMySpells();
   renderMyTraits();
+  syncAllStatInputs();
   saveSheet(false);
+  showStatus("New Sheet Created!");
 }
 
 function renderCharList() {
@@ -415,7 +469,7 @@ function renderCharList() {
     return `
       <div class="char-item-row" data-id="${id}">
         <div class="char-item-info">
-          <span class="char-item-name">${escapeHtml(char.name || "Unnamed")}</span>
+          <span class="char-item-name">${escapeHtml(char.name || "Unnamed Character")}</span>
           <span class="char-item-sub">${escapeHtml(char.summary || "")}</span>
         </div>
         <div class="char-actions">
@@ -432,12 +486,15 @@ function renderCharList() {
 async function fetchAPI(url) {
   if (apiCache[url]) return apiCache[url];
   try {
-    const res = await fetch(url);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!res.ok) return null;
     const data = await res.json();
     apiCache[url] = data;
     return data;
-  } catch (e) {
+  } catch (err) {
     return null;
   }
 }
@@ -448,7 +505,7 @@ async function loadAllSpells() {
   if (res && res.results && res.results.length > 0) {
     allSpellsCache = res.results;
   } else {
-    allSpellsCache = BUILTIN_SPELLS.map((s) => ({ name: s.name, url: null, local: s }));
+    allSpellsCache = BUILTIN_SPELLS.map((s) => ({ name: s.name, url: null, localData: s }));
   }
   return allSpellsCache;
 }
@@ -467,7 +524,7 @@ async function loadAllTraits() {
   if (combined.length > 0) {
     allTraitsCache = combined.filter((x) => !x.name.includes("Dragon Ancestor (") && !x.name.includes("Draconic Ancestry ("));
   } else {
-    allTraitsCache = BUILTIN_TRAITS.map((item) => ({ name: item.name, type: item.type, url: null, local: item }));
+    allTraitsCache = BUILTIN_TRAITS.map((item) => ({ name: item.name, type: item.type, url: null, localData: item }));
   }
   return allTraitsCache;
 }
@@ -481,8 +538,8 @@ function renderModalSpells(list) {
     return;
   }
 
-  container.innerHTML = list.slice(0, 40).map((s) => `
-    <div class="spell-option-item" data-url="${s.url || ''}" data-name="${escapeHtml(s.name)}">
+  container.innerHTML = list.slice(0, 50).map((s) => `
+    <div class="spell-option-item spell-pick-row" data-url="${s.url || ''}" data-name="${escapeHtml(s.name)}">
       <span style="font-weight:700; color:#f8fafc;">${escapeHtml(s.name)}</span>
       <span class="spell-add-badge">+ Add</span>
     </div>
@@ -498,8 +555,8 @@ function renderModalTraits(list) {
     return;
   }
 
-  container.innerHTML = list.slice(0, 40).map((t) => `
-    <div class="spell-option-item trait-pick-item" data-url="${t.url || ''}" data-name="${escapeHtml(t.name)}" data-type="${escapeHtml(t.type || 'Feature')}">
+  container.innerHTML = list.slice(0, 50).map((t) => `
+    <div class="spell-option-item trait-pick-row" data-url="${t.url || ''}" data-name="${escapeHtml(t.name)}" data-type="${escapeHtml(t.type || 'Feature')}">
       <div>
         <div style="font-weight:700; color:#f8fafc;">${escapeHtml(t.name)}</div>
         <div class="spell-meta-tags"><span class="tag-pill blue">${escapeHtml(t.type || 'Feature')}</span></div>
@@ -518,10 +575,62 @@ function closeAllModals() {
   document.querySelectorAll(".modal-backdrop.open").forEach((m) => m.classList.remove("open"));
 }
 
+let authMode = "login";
+function openAuthModal(mode) {
+  authMode = mode;
+  document.getElementById("authModalTitle").textContent = mode === "login" ? "Sign In" : "Create Account";
+  document.getElementById("authSubmitBtn").textContent = mode === "login" ? "Log In" : "Sign Up";
+  document.getElementById("authError").style.display = "none";
+  document.getElementById("authPassword").value = "";
+  document.getElementById("authModal")?.classList.add("open");
+}
+
+if (auth) {
+  auth.onAuthStateChanged(async (user) => {
+    const authGroup = document.getElementById("authNavGroup");
+    if (!authGroup) return;
+    if (user) {
+      currentUser = user;
+      authGroup.innerHTML = `
+        <span style="font-size: 0.85rem; color: #94a3b8; font-weight: 700; padding: 0 0.5rem;">${escapeHtml(user.email || "Adventurer")}</span>
+        <button class="btn outline blue" id="logoutBtn" type="button">Log Out</button>
+      `;
+      if (db) {
+        try {
+          const docSnap = await db.collection("user_rosters").doc(user.uid).get();
+          if (docSnap.exists) {
+            localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(docSnap.data().data));
+          } else {
+            saveRoster(getRoster());
+          }
+          loadSheet();
+        } catch (e) {
+          console.warn("Cloud sync deferred:", e);
+        }
+      }
+    } else {
+      currentUser = null;
+      authGroup.innerHTML = `
+        <button class="btn outline blue" id="loginNavBtn" type="button">Log In</button>
+        <button class="btn red" id="signupNavBtn" type="button">Sign Up</button>
+      `;
+      loadSheet();
+    }
+  });
+}
+
+function switchMainTab(targetId) {
+  document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
+  document.querySelectorAll(".tab-page").forEach((p) => p.classList.remove("active"));
+  document.querySelector(`.main-tab[data-target="${targetId}"]`)?.classList.add("active");
+  document.getElementById(targetId)?.classList.add("active");
+}
+
 document.addEventListener("click", async (e) => {
-  if (e.target.classList.contains("modal-close-btn")) {
-    const modalId = e.target.dataset.modal || e.target.closest(".modal-backdrop")?.id;
-    if (modalId) closeModal(modalId);
+  // Modal Close Actions
+  if (e.target.classList.contains("modal-close-btn") || e.target.closest(".modal-close-btn")) {
+    const backdrop = e.target.closest(".modal-backdrop");
+    if (backdrop) backdrop.classList.remove("open");
     return;
   }
 
@@ -530,6 +639,47 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
+  // Auth Triggers
+  if (e.target.id === "loginNavBtn") openAuthModal("login");
+  if (e.target.id === "signupNavBtn") openAuthModal("signup");
+
+  if (e.target.id === "logoutBtn" && auth) {
+    await auth.signOut();
+    showStatus("Logged out");
+  }
+
+  if (e.target.id === "authSubmitBtn" && auth) {
+    const email = document.getElementById("authEmail").value;
+    const pass = document.getElementById("authPassword").value;
+    const errEl = document.getElementById("authError");
+    errEl.style.display = "none";
+    try {
+      if (authMode === "login") {
+        await auth.signInWithEmailAndPassword(email, pass);
+      } else {
+        await auth.createUserWithEmailAndPassword(email, pass);
+      }
+      closeModal("authModal");
+    } catch (err) {
+      errEl.textContent = err.message.replace("Firebase: ", "");
+      errEl.style.display = "block";
+    }
+  }
+
+  if (e.target.id === "googleAuthBtn" && auth) {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const errEl = document.getElementById("authError");
+    errEl.style.display = "none";
+    try {
+      await auth.signInWithPopup(provider);
+      closeModal("authModal");
+    } catch (err) {
+      errEl.textContent = err.message.replace("Firebase: ", "");
+      errEl.style.display = "block";
+    }
+  }
+
+  // Header Actions
   if (e.target.id === "saveBtn") saveSheet(false);
   if (e.target.id === "newBtn") {
     if (confirm("Create a new blank character sheet?")) resetSheet();
@@ -579,11 +729,9 @@ document.addEventListener("click", async (e) => {
     document.getElementById("helpModal")?.classList.add("open");
   }
 
-  if (e.target.classList.contains("nav-tab")) {
-    document.querySelectorAll(".nav-tab").forEach((b) => b.classList.remove("active"));
-    document.querySelectorAll(".tab-view").forEach((p) => p.classList.remove("active"));
-    e.target.classList.add("active");
-    document.getElementById(e.target.dataset.target)?.classList.add("active");
+  // Tab Navigation
+  if (e.target.classList.contains("main-tab")) {
+    switchMainTab(e.target.dataset.target);
   }
 
   if (e.target.classList.contains("sub-tab")) {
@@ -593,19 +741,17 @@ document.addEventListener("click", async (e) => {
     document.getElementById(e.target.dataset.sub)?.classList.add("active");
   }
 
-  if (e.target.classList.contains("footer-jump-btn")) {
+  if (e.target.classList.contains("footer-nav-btn")) {
     const tabTarget = e.target.dataset.tab;
-    document.querySelectorAll(".nav-tab").forEach((b) => b.classList.remove("active"));
-    document.querySelectorAll(".tab-view").forEach((p) => p.classList.remove("active"));
-    document.querySelector(`.nav-tab[data-target="${tabTarget}"]`)?.classList.add("active");
-    document.getElementById(tabTarget)?.classList.add("active");
-    const targetMap = { attr: ".attributes-stack", skills: ".skills-stack", spells: ".spells-section-wrap", journal: "#tab-journal" };
+    switchMainTab(tabTarget);
+    const targetMap = { attr: ".attributes-group", skills: ".skills-group", spells: ".spells-full-section", journal: "#tab-journal" };
     document.querySelector(targetMap[e.target.dataset.scroll])?.scrollIntoView({ behavior: "smooth" });
   }
 
+  // Resting
   if (e.target.id === "shortRestBtn") {
     if (confirm("Take a Short Rest? Spend hit dice to recover hit points.")) {
-      showStatus("Short Rest Finished");
+      showStatus("Short Rest Taken");
     }
   }
 
@@ -629,7 +775,8 @@ document.addEventListener("click", async (e) => {
     }
   }
 
-  if (e.target.classList.contains("die-trigger")) {
+  // Dice Roller
+  if (e.target.classList.contains("dice-btn")) {
     const sides = parseInt(e.target.dataset.sides, 10);
     const roll = Math.floor(Math.random() * sides) + 1;
     const out = document.getElementById("rollResult");
@@ -647,8 +794,8 @@ document.addEventListener("click", async (e) => {
       label = `${attr.toUpperCase()} Save`;
     } else if (e.target.dataset.type === "skill") {
       const row = e.target.closest(".skill-row");
-      bonus = parseInt(row?.querySelector(".skill-score")?.textContent, 10) || 0;
-      label = row?.querySelector(".skill-name")?.textContent || "Skill";
+      bonus = parseInt(row?.querySelector(".skill-val")?.textContent, 10) || 0;
+      label = row?.querySelector(".skill-label")?.textContent || "Skill";
     }
     const total = roll + bonus;
     const out = document.getElementById("rollResult");
@@ -657,6 +804,7 @@ document.addEventListener("click", async (e) => {
     addDiceHistory(`${label} (${roll} ${sign})`, total);
   }
 
+  // Spell Picker Open & Select
   if (e.target.id === "addSpellBtn") {
     document.getElementById("spellModal")?.classList.add("open");
     const input = document.getElementById("spellSearchInput");
@@ -679,10 +827,10 @@ document.addEventListener("click", async (e) => {
     closeModal("spellModal");
   }
 
-  const spellPick = e.target.closest(".spell-option-item:not(.trait-pick-item)");
-  if (spellPick) {
-    const name = spellPick.dataset.name;
-    const url = spellPick.dataset.url;
+  const spellRow = e.target.closest(".spell-pick-row");
+  if (spellRow) {
+    const name = spellRow.dataset.name;
+    const url = spellRow.dataset.url;
     let detail = BUILTIN_SPELLS.find((s) => s.name.toLowerCase() === name.toLowerCase());
 
     if (url) {
@@ -705,7 +853,7 @@ document.addEventListener("click", async (e) => {
       casting_time: "1 Action",
       range: "30 ft",
       duration: "Instantaneous",
-      desc: "No description provided."
+      desc: ""
     });
 
     saveSheet(false);
@@ -713,6 +861,7 @@ document.addEventListener("click", async (e) => {
     closeModal("spellModal");
   }
 
+  // Ability / Trait Picker Open & Select
   if (e.target.id === "addTraitBtn") {
     document.getElementById("traitModal")?.classList.add("open");
     const input = document.getElementById("traitSearchInput");
@@ -733,11 +882,11 @@ document.addEventListener("click", async (e) => {
     closeModal("traitModal");
   }
 
-  const traitPick = e.target.closest(".trait-pick-item");
-  if (traitPick) {
-    const name = traitPick.dataset.name;
-    const url = traitPick.dataset.url;
-    const type = traitPick.dataset.type || "Feature";
+  const traitRow = e.target.closest(".trait-pick-row");
+  if (traitRow) {
+    const name = traitRow.dataset.name;
+    const url = traitRow.dataset.url;
+    const type = traitRow.dataset.type || "Feature";
     let detail = BUILTIN_TRAITS.find((t) => t.name.toLowerCase() === name.toLowerCase());
 
     if (url) {
@@ -754,7 +903,7 @@ document.addEventListener("click", async (e) => {
     myCharacterTraits.push(detail || {
       name: name,
       type: type,
-      desc: "No description provided."
+      desc: ""
     });
 
     saveSheet(false);
@@ -762,6 +911,7 @@ document.addEventListener("click", async (e) => {
     closeModal("traitModal");
   }
 
+  // Attacks / Weapons Table
   if (e.target.id === "addWeaponBtn") {
     myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
     saveSheet(false);
@@ -776,6 +926,7 @@ document.addEventListener("click", async (e) => {
     renderWeapons();
   }
 
+  // Traits Card Actions
   if (e.target.classList.contains("trait-card-delete")) {
     const idx = parseInt(e.target.dataset.index, 10);
     myCharacterTraits.splice(idx, 1);
@@ -793,6 +944,7 @@ document.addEventListener("click", async (e) => {
     saveSheet(true);
   }
 
+  // Spells Card Actions
   if (e.target.classList.contains("spell-card-delete")) {
     const idx = parseInt(e.target.dataset.index, 10);
     myCharacterSpells.splice(idx, 1);
@@ -800,10 +952,11 @@ document.addEventListener("click", async (e) => {
     renderMySpells();
   }
 
+  // Saved Characters Selection
   if (e.target.classList.contains("char-delete-btn")) {
     const row = e.target.closest(".char-item-row");
     const roster = getRoster();
-    if (confirm(`Delete "${roster[row.dataset.id]?.name || "Unnamed"}"?`)) {
+    if (confirm(`Delete character "${roster[row.dataset.id]?.name || "Unnamed"}"?`)) {
       delete roster[row.dataset.id];
       saveRoster(roster);
       if (activeCharId === row.dataset.id) {
@@ -829,6 +982,7 @@ document.addEventListener("click", async (e) => {
   }
 });
 
+// Search & Filter Listeners
 let spellFilterTimeout = null;
 document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   const query = e.target.value.toLowerCase().trim();
@@ -836,7 +990,7 @@ document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   spellFilterTimeout = setTimeout(() => {
     const filtered = allSpellsCache.filter((s) => s.name.toLowerCase().includes(query));
     renderModalSpells(filtered);
-  }, 150);
+  }, 120);
 });
 
 let traitFilterTimeout = null;
@@ -846,7 +1000,7 @@ document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   traitFilterTimeout = setTimeout(() => {
     const filtered = allTraitsCache.filter((t) => t.name.toLowerCase().includes(query));
     renderModalTraits(filtered);
-  }, 150);
+  }, 120);
 });
 
 document.getElementById("filterSpellbookInput")?.addEventListener("input", (e) => {
@@ -862,6 +1016,7 @@ document.getElementById("filterSpellbookInput")?.addEventListener("input", (e) =
   });
 });
 
+// Input & Save Listeners
 document.addEventListener("change", (e) => {
   if (e.target.type === "checkbox" && e.target.classList.contains("save-field")) {
     recalculateAll();
@@ -873,6 +1028,10 @@ document.addEventListener("input", (e) => {
   if (e.target.classList.contains("save-field") && e.target.type !== "checkbox") {
     recalculateAll();
     saveSheet(true);
+  }
+
+  if (e.target.classList.contains("spell-stat-input")) {
+    autoResizeStatInput(e.target);
   }
 
   if (e.target.classList.contains("custom-spell-field")) {
@@ -946,14 +1105,16 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
       }
       saveRoster(roster);
       loadSheet();
-      showStatus("Character Restored");
+      showStatus("Sheet Restored!");
     } catch (err) {
-      alert("Invalid JSON backup file.");
+      alert("Invalid backup file.");
     }
   };
   reader.readAsText(file);
 });
 
+// Sheet Initialization
 loadSheet();
+renderMyTraits();
 loadAllSpells();
 loadAllTraits();
