@@ -12,13 +12,17 @@
     
     <header class="master-header">
       <div class="header-main-row">
-        <!-- Left Side: App Controls -->
+        <!-- Left Side: Empty Spacer / Status (Keeps the center perfectly aligned) -->
+        <div class="header-left-panel">
+          <span id="saveStatus" class="status-msg"></span>
+        </div>
+        
+        <!-- Center: App Controls -->
         <div class="app-controls">
           <div class="control-group">
             <button class="btn red" id="saveBtn" type="button">Save</button>
             <button class="btn red" id="loadBtn" type="button">Load</button>
             <button class="btn red" id="newBtn" type="button">New</button>
-            <span id="saveStatus" class="status-msg"></span>
           </div>
           
           <div class="control-group">
@@ -28,11 +32,6 @@
               <input type="file" id="restoreFile" accept=".json" />
             </label>
             <button class="btn gray" id="deleteBtn" type="button">Delete</button>
-          </div>
-
-          <div class="control-group">
-            <button class="btn outline blue" id="shortRestBtn" type="button">Short Rest</button>
-            <button class="btn outline purple" id="longRestBtn" type="button">Long Rest</button>
           </div>
         </div>
 
@@ -146,6 +145,12 @@
             <input type="text" id="hitDiceMax" class="save-field pill-sub-input" value="1" />
           </div>
         </div>
+      </div>
+
+      <!-- NEW REST BAR MOVED ABOVE VITALS -->
+      <div class="rest-bar">
+        <button class="btn outline blue" id="shortRestBtn" type="button">Short Rest</button>
+        <button class="btn outline purple" id="longRestBtn" type="button">Long Rest</button>
       </div>
 
       <div class="vitals-row">
