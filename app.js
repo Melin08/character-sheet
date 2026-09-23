@@ -450,6 +450,7 @@ document.addEventListener("change", (e) => {
     recalculateAll(); saveSheet();
   }
 
+  // Handle Class & Race changes natively from Datalists
   if (e.target.id === "charClass") {
       let classKey = e.target.value.trim();
       let dataKey = Object.keys(CLASS_DATA).find(k => k.toLowerCase() === classKey.toLowerCase());
@@ -543,10 +544,27 @@ document.addEventListener("input", (e) => {
 });
 
 document.addEventListener("click", async (e) => {
+  
   if (e.target.id === "loginNavBtn") openAuthModal("login");
   if (e.target.id === "signupNavBtn") openAuthModal("signup");
   if (e.target.id === "closeAuthModal") document.getElementById("authModal").classList.remove("open");
-  
+  if (e.target.id === "authSubmitBtn") {
+       const email = document.getElementById("authEmail").value;
+       const pass = document.getElementById("authPassword").value;
+       const errEl = document.getElementById("authError");
+       errEl.style.display = "none";
+       try {
+           if (authMode === "login") await signInWithEmailAndPassword(auth, email, pass);
+           else await createUserWithEmailAndPassword(auth, email, pass);
+           document.getElementById("authModal").classList.remove("open");
+       } catch (err) { errEl.textContent = err.message.replace("Firebase: ", ""); errEl.style.display = "block"; }
+  }
+  if (e.target.id === "googleAuthBtn") {
+       const provider = new GoogleAuthProvider(); const errEl = document.getElementById("authError"); errEl.style.display = "none";
+       try { await signInWithPopup(auth, provider); document.getElementById("authModal").classList.remove("open"); } 
+       catch (err) { errEl.textContent = err.message.replace("Firebase: ", ""); errEl.style.display = "block"; }
+  }
+
   if (e.target.id === "saveBtn") saveSheet();
   if (e.target.id === "newBtn") { if (confirm("Create a new blank character sheet?")) resetSheet(); }
   if (e.target.id === "loadBtn") { renderCharList(); document.getElementById("loadModal")?.classList.add("open"); }
@@ -608,6 +626,7 @@ document.addEventListener("click", async (e) => {
     document.querySelector(elId)?.scrollIntoView({ behavior: "smooth" });
   }
 
+  // WPN ADD/DEL
   if (e.target.closest("#addWeaponBtn")) {
     myCharacterWeapons.push({ name: "", dmg: "", dmg_type: "", notes: "" }); saveSheet(); renderWeapons();
   }
@@ -618,6 +637,7 @@ document.addEventListener("click", async (e) => {
     saveSheet(); renderWeapons();
   }
 
+  // TRAITS
   if (e.target.closest(".trait-card-delete")) {
     const idx = parseInt(e.target.closest(".trait-card-delete").dataset.index, 10);
     myCharacterTraits.splice(idx, 1); saveSheet(); renderMyTraits();
@@ -637,6 +657,7 @@ document.addEventListener("click", async (e) => {
     }
   }
 
+  // SPELLS
   if (e.target.closest(".spell-card-delete")) {
     const idx = parseInt(e.target.closest(".spell-card-delete").dataset.index, 10);
     myCharacterSpells.splice(idx, 1); saveSheet(); renderMySpells();
@@ -732,8 +753,13 @@ document.addEventListener("click", async (e) => {
      let sName = tBtn.dataset.name;
      let sUrl = tBtn.dataset.url;
      let tDesc = Array.isArray(tempTraitHold.desc) ? tempTraitHold.desc.join("\n\n") : (tempTraitHold.desc || "");
-     if (sUrl) { const sub = await fetchAPI("https://www.dnd5eapi.co" + sUrl); if (sub && sub.desc) tDesc += "\n\n" + (Array.isArray(sub.desc) ? sub.desc.join("\n\n") : sub.desc); } 
-     else tDesc += `\n\nSelected Variant: ${sName}`;
+     
+     if (sUrl) { 
+         const sub = await fetchAPI("https://www.dnd5eapi.co" + sUrl); 
+         if (sub && sub.desc) tDesc += "\n\n" + (Array.isArray(sub.desc) ? sub.desc.join("\n\n") : sub.desc); 
+     } else {
+         tDesc += `\n\nSelected Variant: ${sName}`;
+     }
      
      if (tempTraitHold.name === "Breath Weapon" || tempTraitHold.name === "Draconic Ancestry") {
          let dName = ""; const cols = ["Black", "Blue", "Brass", "Bronze", "Copper", "Gold", "Green", "Red", "Silver", "White"];
@@ -741,7 +767,9 @@ document.addEventListener("click", async (e) => {
          let drag = DRAGON_ANCESTRY_MAP[dName];
          if (drag) myCharacterTraits.push({ name: `Breath Weapon (${drag.damage})`, type: "Racial Trait", desc: `Exhale destructive energy. It is a ${drag.breath} dealing ${drag.damage} damage. Save: ${drag.save}.`, isExpanded: false });
          else myCharacterTraits.push({ name: `${tempTraitHold.name} (${sName})`, type: "Racial Trait", desc: tDesc, isExpanded: false });
-     } else myCharacterTraits.push({ name: `${tempTraitHold.name} (${sName})`, type: tempTraitHold.url?.includes("/features/") ? "Class Feature" : "Racial Trait", desc: tDesc, isExpanded: false });
+     } else {
+         myCharacterTraits.push({ name: `${tempTraitHold.name} (${sName})`, type: tempTraitHold.url?.includes("/features/") ? "Class Feature" : "Racial Trait", desc: tDesc, isExpanded: false });
+     }
      saveSheet(); renderMyTraits(); document.getElementById("choiceModal").classList.remove("open");
   }
 
@@ -896,9 +924,7 @@ document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   }, 400);
 });
 
-let tempSpellHold = null;
-let tempTraitHold = null;
-
+// Drag and Drop (Spells)
 function attachSpellDragEvents() {
   const cards = document.querySelectorAll(".spell-card");
   cards.forEach((card) => {
