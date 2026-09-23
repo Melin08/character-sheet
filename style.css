@@ -97,7 +97,6 @@ body {
   gap: 0.5rem;
 }
 
-/* Action toolbar pinned to the left */
 .top-nav {
   display: flex;
   justify-content: flex-start;
@@ -205,7 +204,7 @@ body {
   width: 100%;
   font-size: 2.2rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: #f8fafc;
   border: 1.5px solid #3b4c68;
   border-radius: 8px;
   padding: 0.6rem 1rem;
@@ -382,7 +381,69 @@ body {
   font-weight: bold;
 }
 
-/* Vitals HUD Console (No Recovery Card) */
+/* Dropdowns for Class & Race */
+.dropdown-pill-wrapper {
+  position: relative;
+}
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #0f172a;
+  border: 1.5px solid #3b4c68;
+  border-radius: 8px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
+  z-index: 10000;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.dropdown-menu.open {
+  display: block;
+}
+
+.dropdown-item {
+  padding: 0.55rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  cursor: pointer;
+  border-bottom: 1px solid #1e293b;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #1e293b;
+  color: #38bdf8;
+}
+
+.dropdown-item.subrace-item {
+  padding-left: 1.5rem;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.dropdown-item.subrace-item:hover {
+  color: #34d399;
+}
+
+.dropdown-header-item {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #64748b;
+  background: #080d18;
+  letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* Vitals HUD Console */
 .vitals-hud {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -440,7 +501,6 @@ body {
   font-weight: 600;
 }
 
-/* AC Card */
 .ac-card {
   border-left: 4px solid #38bdf8;
 }
@@ -483,7 +543,6 @@ body {
   padding-top: 2px;
 }
 
-/* HP Card */
 .hp-card {
   border-left: 4px solid #ef4444;
 }
@@ -525,7 +584,6 @@ body {
   font-weight: 800;
 }
 
-/* Death Saves Card */
 .death-card {
   border-left: 4px solid #f59e0b;
 }
@@ -581,7 +639,6 @@ body {
   color: #f87171 !important;
 }
 
-/* Class Resource Card */
 .resource-card {
   border-left: 4px solid #a855f7;
 }
@@ -614,7 +671,7 @@ body {
 /* Two-Column Layout */
 .two-col-layout {
   display: grid;
-  grid-template-columns: 340px 1fr;
+  grid-template-columns: 350px 1fr;
   gap: 2.75rem;
   margin-top: 1.5rem;
 }
@@ -628,7 +685,7 @@ body {
 }
 
 .section-title.tight-title {
-  margin-top: 0.65rem;
+  margin-top: 0.85rem;
   margin-bottom: 0.45rem;
 }
 
@@ -636,7 +693,7 @@ textarea.tight-block {
   margin-bottom: 0.75rem;
 }
 
-/* Reimagined Attributes Section with Shifted Number Box */
+/* Attributes Section with Shifted Number Box */
 .attributes-group {
   display: flex;
   flex-direction: column;
@@ -661,7 +718,7 @@ textarea.tight-block {
 .attr-badge {
   display: flex;
   flex-direction: column;
-  width: 78px;
+  width: 82px;
   flex-shrink: 0;
 }
 
@@ -681,13 +738,12 @@ textarea.tight-block {
   letter-spacing: 0.02em;
 }
 
-/* Shifted to the right with extra spacing */
 .attr-score-box {
   background: #151d2f;
   border: 1px solid #3b4c68;
   border-radius: 6px;
   padding: 0.18rem 0.25rem;
-  margin-left: 0.25rem;
+  margin-left: 0.35rem;
   flex-shrink: 0;
 }
 
@@ -752,42 +808,36 @@ textarea.tight-block {
   transform: scale(1.25);
 }
 
-/* STR */
 .attr-str { border-left: 4px solid #ef4444; }
 .attr-str:hover { border-color: #ef4444; box-shadow: 0 0 12px rgba(239, 68, 68, 0.2); }
 .attr-str .attr-abbr { color: #f87171; }
 .attr-str .attr-mod-box { background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.4); color: #f87171; }
 .attr-str .hex-die { background-color: #ef4444; }
 
-/* DEX */
 .attr-dex { border-left: 4px solid #10b981; }
 .attr-dex:hover { border-color: #10b981; box-shadow: 0 0 12px rgba(16, 185, 129, 0.2); }
 .attr-dex .attr-abbr { color: #34d399; }
 .attr-dex .attr-mod-box { background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.4); color: #34d399; }
 .attr-dex .hex-die { background-color: #10b981; }
 
-/* CON */
 .attr-con { border-left: 4px solid #f97316; }
 .attr-con:hover { border-color: #f97316; box-shadow: 0 0 12px rgba(249, 115, 22, 0.2); }
 .attr-con .attr-abbr { color: #fb923c; }
 .attr-con .attr-mod-box { background: rgba(249, 115, 22, 0.12); border-color: rgba(249, 115, 22, 0.4); color: #fb923c; }
 .attr-con .hex-die { background-color: #f97316; }
 
-/* INT */
 .attr-int { border-left: 4px solid #3b82f6; }
 .attr-int:hover { border-color: #3b82f6; box-shadow: 0 0 12px rgba(59, 130, 246, 0.2); }
 .attr-int .attr-abbr { color: #60a5fa; }
 .attr-int .attr-mod-box { background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.4); color: #60a5fa; }
 .attr-int .hex-die { background-color: #3b82f6; }
 
-/* WIS */
 .attr-wis { border-left: 4px solid #a855f7; }
 .attr-wis:hover { border-color: #a855f7; box-shadow: 0 0 12px rgba(168, 85, 247, 0.2); }
 .attr-wis .attr-abbr { color: #c084fc; }
 .attr-wis .attr-mod-box { background: rgba(168, 85, 247, 0.12); border-color: rgba(168, 85, 247, 0.4); color: #c084fc; }
 .attr-wis .hex-die { background-color: #a855f7; }
 
-/* CHA */
 .attr-cha { border-left: 4px solid #eab308; }
 .attr-cha:hover { border-color: #eab308; box-shadow: 0 0 12px rgba(234, 179, 8, 0.2); }
 .attr-cha .attr-abbr { color: #facc15; }
@@ -1102,6 +1152,140 @@ textarea.tight-block {
   border: none;
   border-top: 1.5px solid rgba(220, 38, 38, 0.45);
   margin: 2rem 0 1.5rem 0;
+}
+
+/* Attunement Slot Box */
+.attunement-container {
+  background: #080d18;
+  border: 1.5px solid #2d3d56;
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.attunement-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tactical-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #cbd5e1;
+  letter-spacing: 0.04em;
+}
+
+.tactical-sub {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.attunement-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.attune-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #151d2f;
+  border: 1px solid #3b4c68;
+  border-radius: 6px;
+  padding: 0.2rem 0.45rem;
+}
+
+.attune-cb {
+  accent-color: #a855f7;
+  cursor: pointer;
+}
+
+.attune-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.8rem;
+  color: #f8fafc;
+}
+
+/* Conditions Tracker Widget */
+.conditions-container {
+  background: #080d18;
+  border: 1.5px solid #2d3d56;
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.conditions-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.exhaustion-meter {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.exhaustion-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f87171;
+  text-transform: uppercase;
+}
+
+.exhaustion-input {
+  width: 34px;
+  background: #151d2f;
+  border: 1px solid #3b4c68;
+  border-radius: 4px;
+  color: #f87171;
+  font-weight: 800;
+  font-size: 0.88rem;
+  outline: none;
+}
+
+.condition-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.cond-chip {
+  background: #151d2f;
+  border: 1px solid #3b4c68;
+  border-radius: 4px;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.cond-chip:hover {
+  border-color: #cbd5e1;
+  color: #f8fafc;
+}
+
+.cond-chip.active {
+  background: rgba(220, 38, 38, 0.25);
+  border-color: #ef4444;
+  color: #fca5a5;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
 
 /* Dedicated Full Section for Abilities & Traits */
