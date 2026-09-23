@@ -34,6 +34,7 @@ let myCharacterWeapons = [
   { name: "", atk: "", dmg: "", notes: "" },
   { name: "", atk: "", dmg: "", notes: "" }
 ];
+let myActiveConditions = [];
 let diceRollHistory = [];
 
 let draggedSpellIndex = null;
@@ -41,6 +42,87 @@ const apiCache = {};
 
 let allSpellsCache = [];
 let allTraitsCache = [];
+
+const DND_CLASSES = [
+  "Barbarian", "Bard", "Cleric", "Druid", "Fighter",
+  "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer",
+  "Warlock", "Wizard", "Artificer", "Blood Hunter"
+];
+
+const DND_RACES_CATALOG = [
+  {
+    race: "Dragonborn",
+    subraces: ["Black Dragonborn", "Blue Dragonborn", "Brass Dragonborn", "Bronze Dragonborn", "Copper Dragonborn", "Gold Dragonborn", "Green Dragonborn", "Red Dragonborn", "Silver Dragonborn", "White Dragonborn"]
+  },
+  {
+    race: "Dwarf",
+    subraces: ["Hill Dwarf", "Mountain Dwarf", "Duergar"]
+  },
+  {
+    race: "Elf",
+    subraces: ["High Elf", "Wood Elf", "Dark Elf (Drow)", "Eladrin", "Sea Elf", "Shadar-kai"]
+  },
+  {
+    race: "Gnome",
+    subraces: ["Forest Gnome", "Rock Gnome", "Deep Gnome (Svirfneblin)"]
+  },
+  {
+    race: "Half-Elf",
+    subraces: ["Half-Elf (Standard)", "Half-Elf (Aquatic)", "Half-Elf (Drow)", "Half-Elf (Wood Elf)"]
+  },
+  {
+    race: "Half-Orc",
+    subraces: ["Half-Orc"]
+  },
+  {
+    race: "Halfling",
+    subraces: ["Lightfoot Halfling", "Stout Halfling", "Ghostwise Halfling"]
+  },
+  {
+    race: "Human",
+    subraces: ["Standard Human", "Variant Human"]
+  },
+  {
+    race: "Tiefling",
+    subraces: ["Tiefling (Bloodline of Asmodeus)", "Tiefling (Bloodline of Baalzebul)", "Tiefling (Bloodline of Dispater)", "Tiefling (Bloodline of Fierna)", "Tiefling (Bloodline of Glasya)", "Tiefling (Bloodline of Levistus)", "Tiefling (Bloodline of Mammon)", "Tiefling (Bloodline of Mephistopheles)", "Tiefling (Bloodline of Zariel)", "Feral Tiefling"]
+  },
+  {
+    race: "Aasimar",
+    subraces: ["Protector Aasimar", "Scourge Aasimar", "Fallen Aasimar"]
+  },
+  {
+    race: "Genasi",
+    subraces: ["Air Genasi", "Earth Genasi", "Fire Genasi", "Water Genasi"]
+  },
+  {
+    race: "Goliath",
+    subraces: ["Goliath"]
+  },
+  {
+    race: "Tabaxi",
+    subraces: ["Tabaxi"]
+  },
+  {
+    race: "Tortle",
+    subraces: ["Tortle"]
+  },
+  {
+    race: "Kenku",
+    subraces: ["Kenku"]
+  },
+  {
+    race: "Firbolg",
+    subraces: ["Firbolg"]
+  },
+  {
+    race: "Changeling",
+    subraces: ["Changeling"]
+  },
+  {
+    race: "Warforged",
+    subraces: ["Warforged"]
+  }
+];
 
 const SRD_SPELL_LEVELS = {
   "acid-arrow": 2, "acid-splash": 0, "aid": 2, "alarm": 1, "alter-self": 2, "animal-friendship": 1, "animal-messenger": 2, "animal-shapes": 8, "animate-dead": 3, "animate-objects": 5, "antimagic-field": 8, "antipathy-sympathy": 8, "arcane-eye": 4, "arcane-hand": 5, "arcane-lock": 2, "arcane-sword": 7, "arcanists-magic-aura": 2, "astral-projection": 9, "augury": 2, "awaken": 5, "bane": 1, "banishment": 4, "barkskin": 2, "beacon-of-hope": 3, "bestow-curse": 3, "black-tentacles": 4, "blade-barrier": 6, "bless": 1, "blight": 4, "blindness-deafness": 2, "blink": 3, "blur": 2, "branding-smite": 2, "burning-hands": 1, "call-lightning": 3, "calm-emotions": 2, "chain-lightning": 6, "charm-person": 1, "chill-touch": 0, "circle-of-death": 6, "clairvoyance": 3, "clone": 8, "cloudkill": 5, "color-spray": 1, "command": 1, "commune": 5, "commune-with-nature": 5, "comprehend-languages": 1, "cone-of-cold": 5, "confusion": 4, "conjure-animals": 3, "conjure-celestial": 7, "conjure-elemental": 5, "conjure-fey": 6, "conjure-minor-elementals": 4, "conjure-woodland-beings": 4, "contact-other-plane": 5, "contagion": 5, "contingency": 6, "continual-flame": 2, "control-water": 4, "control-weather": 8, "counterspell": 3, "create-food-and-water": 3, "create-or-destroy-water": 1, "create-undead": 6, "creation": 5, "cure-wounds": 1, "darkness": 2, "darkvision": 2, "daylight": 3, "death-ward": 4, "delayed-blast-fireball": 7, "demiplane": 8, "detect-evil-and-good": 1, "detect-magic": 1, "detect-poison-and-disease": 1, "detect-thoughts": 2, "dimension-door": 4, "disguise-self": 1, "disintegrate": 6, "dispel-evil-and-good": 5, "dispel-magic": 3, "divination": 4, "divine-favor": 1, "divine-word": 7, "dominate-beast": 4, "dominate-monster": 8, "dominate-person": 5, "dream": 5, "earthquake": 8, "eldritch-blast": 0, "enhance-ability": 2, "enlarge-reduce": 2, "entangle": 1, "enthrall": 2, "etherealness": 7, "expeditious-retreat": 1, "eyebite": 6, "fabricate": 4, "faerie-fire": 1, "faithful-hound": 4, "false-life": 1, "fear": 3, "feather-fall": 1, "feeblemind": 8, "find-familiar": 1, "find-steed": 2, "find-the-path": 6, "find-traps": 2, "finger-of-death": 7, "fire-shield": 4, "fire-storm": 7, "fireball": 3, "fire-bolt": 0, "flame-blade": 2, "flame-strike": 5, "flaming-sphere": 2, "flesh-to-stone": 6, "fly": 3, "fog-cloud": 1, "forbiddance": 6, "forcecage": 7, "foresight": 9, "freedom-of-movement": 4, "freezing-sphere": 6, "gaseous-form": 3, "gate": 9, "geas": 5, "gentle-repose": 2, "glibness": 8, "globe-of-invulnerability": 6, "glyph-of-warding": 3, "grease": 1, "greater-invisibility": 4, "greater-restoration": 5, "guardian-of-faith": 4, "guards-and-wards": 6, "guidance": 0, "guiding-bolt": 1, "gust-of-wind": 2, "hallow": 5, "hallucinatory-terrain": 4, "harm": 6, "haste": 3, "heal": 6, "healing-word": 1, "heat-metal": 2, "hellish-rebuke": 1, "heroes-feast": 6, "heroism": 1, "hideous-laughter": 1, "hold-monster": 5, "hold-person": 2, "holy-aura": 8, "hunters-mark": 1, "hypnotic-pattern": 3, "ice-storm": 4, "identify": 1, "illusory-script": 1, "imprisonment": 9, "incendiary-cloud": 8, "inflict-wounds": 1, "insect-plague": 5, "instant-summons": 6, "invisibility": 2, "jump": 1, "knock": 2, "legend-lore": 5, "lesser-restoration": 2, "levitate": 2, "light": 0, "lightning-bolt": 3, "locate-animals-or-plants": 2, "locate-creature": 4, "locate-object": 2, "longstrider": 1, "mage-armor": 1, "mage-hand": 0, "magic-circle": 3, "magic-jar": 6, "magic-missile": 1, "magic-mouth": 2, "magic-weapon": 2, "magnificent-mansion": 7, "major-image": 3, "mass-cure-wounds": 5, "mass-heal": 9, "mass-healing-word": 3, "mass-suggestion": 6, "maze": 8, "meld-into-stone": 3, "mending": 0, "message": 0, "meteor-swarm": 9, "mind-blank": 8, "minor-illusion": 0, "mirage-arcane": 7, "mirror-image": 2, "mislead": 5, "misty-step": 2, "modify-memory": 5, "moonbeam": 2, "move-earth": 6, "nondetection": 3, "pass-without-trace": 2, "passwall": 5, "phantasmal-killer": 4, "phantom-steed": 3, "planar-ally": 6, "planar-binding": 5, "plane-shift": 7, "plant-growth": 3, "poison-spray": 0, "polymorph": 4, "power-word-kill": 9, "power-word-stun": 8, "prayer-of-healing": 2, "prestidigitation": 0, "prismatic-spray": 7, "prismatic-wall": 9, "produce-flame": 0, "programmed-illusion": 6, "project-image": 7, "protection-from-energy": 3, "protection-from-evil-and-good": 1, "protection-from-poison": 2, "purify-food-and-drink": 1, "raise-dead": 5, "ray-of-enfeeblement": 2, "ray-of-frost": 0, "regenerate": 7, "reincarnate": 5, "remove-curse": 3, "resilient-sphere": 4, "resistance": 0, "resurrection": 7, "reverse-gravity": 7, "revivify": 3, "rope-trick": 2, "sacred-flame": 0, "sanctuary": 1, "scorching-ray": 2, "scrying": 5, "secret-chest": 4, "see-invisibility": 2, "seeming": 5, "sending": 3, "sequester": 7, "shapechange": 9, "shatter": 2, "shield": 1, "shield-of-faith": 1, "shillelagh": 0, "shocking-grasp": 0, "silence": 2, "silent-image": 1, "simulacrum": 7, "sleep": 1, "sleet-storm": 3, "slow": 3, "speak-with-animals": 1, "speak-with-dead": 3, "speak-with-plants": 3, "spider-climb": 2, "spike-growth": 2, "spirit-guardians": 3, "spiritual-weapon": 2, "stinking-cloud": 3, "stone-shape": 4, "stoneskin": 4, "storm-of-vengeance": 9, "suggestion": 2, "sunbeam": 6, "sunburst": 8, "symbol": 7, "telekinesis": 5, "telepathic-bond": 5, "teleport": 7, "teleportation-circle": 5, "thaumaturgy": 0, "thunderwave": 1, "time-stop": 9, "tiny-hut": 3, "tongues": 3, "transport-via-plants": 6, "tree-stride": 5, "true-polymorph": 9, "true-resurrection": 9, "true-seeing": 6, "true-strike": 0, "unseen-servant": 1, "vampiric-touch": 3, "vicious-mockery": 0, "wall-of-fire": 4, "wall-of-force": 5, "wall-of-ice": 6, "wall-of-stone": 5, "wall-of-thorns": 6, "warding-bond": 2, "water-breathing": 3, "water-walk": 3, "web": 2, "weird": 9, "wind-walk": 6, "wind-wall": 3, "wish": 9, "word-of-recall": 6, "zone-of-truth": 2
@@ -325,6 +407,17 @@ function renderDiceHistory() {
   `).join("");
 }
 
+function renderConditionChips() {
+  document.querySelectorAll(".cond-chip").forEach((chip) => {
+    const cond = chip.dataset.cond;
+    if (myActiveConditions.includes(cond)) {
+      chip.classList.add("active");
+    } else {
+      chip.classList.remove("active");
+    }
+  });
+}
+
 function getRoster() {
   try {
     return JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY)) || {};
@@ -373,7 +466,8 @@ function saveSheet(quiet = false) {
     fields: fields,
     spells: myCharacterSpells,
     traits: myCharacterTraits,
-    weapons: myCharacterWeapons
+    weapons: myCharacterWeapons,
+    conditions: myActiveConditions
   };
 
   saveRoster(roster);
@@ -397,6 +491,7 @@ function applyCharacterData(charData) {
 
   myCharacterSpells = charData.spells || [];
   myCharacterTraits = charData.traits || [];
+  myActiveConditions = charData.conditions || [];
   myCharacterWeapons = charData.weapons && charData.weapons.length >= 2 ? charData.weapons : [
     { name: "", atk: "", dmg: "", notes: "" },
     { name: "", atk: "", dmg: "", notes: "" }
@@ -405,6 +500,7 @@ function applyCharacterData(charData) {
   renderWeapons();
   renderMySpells();
   renderMyTraits();
+  renderConditionChips();
   recalculateAll();
   syncAllStatInputs();
 }
@@ -424,6 +520,7 @@ function loadSheet() {
       renderWeapons();
       renderMySpells();
       renderMyTraits();
+      renderConditionChips();
       syncAllStatInputs();
     }
   }
@@ -449,7 +546,8 @@ function resetSheet() {
       field.classList.contains("coin-input") ||
       field.classList.contains("slot-input") ||
       field.classList.contains("death-input") ||
-      field.classList.contains("res-input")
+      field.classList.contains("res-input") ||
+      field.classList.contains("exhaustion-input")
     ) {
       field.value = 0;
     } else {
@@ -459,6 +557,7 @@ function resetSheet() {
 
   myCharacterSpells = [];
   myCharacterTraits = [];
+  myActiveConditions = [];
   myCharacterWeapons = [
     { name: "", atk: "", dmg: "", notes: "" },
     { name: "", atk: "", dmg: "", notes: "" }
@@ -470,6 +569,7 @@ function resetSheet() {
   renderWeapons();
   renderMySpells();
   renderMyTraits();
+  renderConditionChips();
   syncAllStatInputs();
   saveSheet(false);
   showStatus("New Sheet Created!");
@@ -502,6 +602,53 @@ function renderCharList() {
       </div>
     `;
   }).join("");
+}
+
+function renderClassDropdown(filter = "") {
+  const dropdown = document.getElementById("classDropdown");
+  if (!dropdown) return;
+  const q = filter.toLowerCase().trim();
+  const filtered = DND_CLASSES.filter((c) => c.toLowerCase().includes(q));
+
+  if (filtered.length === 0) {
+    dropdown.innerHTML = `<div class="dropdown-item" style="color:#64748b; cursor:default;">No classes match</div>`;
+    return;
+  }
+
+  dropdown.innerHTML = filtered.map((c) => `
+    <div class="dropdown-item select-class-item" data-name="${escapeHtml(c)}">${escapeHtml(c)}</div>
+  `).join("");
+}
+
+function renderRaceDropdown(filter = "") {
+  const dropdown = document.getElementById("raceDropdown");
+  if (!dropdown) return;
+  const q = filter.toLowerCase().trim();
+
+  let html = "";
+  DND_RACES_CATALOG.forEach((group) => {
+    const subMatches = group.subraces.filter((s) => s.toLowerCase().includes(q));
+    const raceMatches = group.race.toLowerCase().includes(q);
+
+    if (raceMatches || subMatches.length > 0) {
+      html += `<div class="dropdown-header-item">${escapeHtml(group.race)}</div>`;
+      if (!q || raceMatches) {
+        html += `<div class="dropdown-item select-race-item" data-name="${escapeHtml(group.race)}">${escapeHtml(group.race)} (Base)</div>`;
+      }
+      const listToDisplay = q && !raceMatches ? subMatches : group.subraces;
+      listToDisplay.forEach((sub) => {
+        if (sub !== group.race) {
+          html += `<div class="dropdown-item subrace-item select-race-item" data-name="${escapeHtml(sub)}">${escapeHtml(sub)}</div>`;
+        }
+      });
+    }
+  });
+
+  if (!html) {
+    dropdown.innerHTML = `<div class="dropdown-item" style="color:#64748b; cursor:default;">No races match</div>`;
+  } else {
+    dropdown.innerHTML = html;
+  }
 }
 
 async function fetchAPI(url) {
@@ -854,6 +1001,45 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
+  if (!e.target.closest(".dropdown-pill-wrapper")) {
+    document.querySelectorAll(".dropdown-menu").forEach((d) => d.classList.remove("open"));
+  }
+
+  if (e.target.classList.contains("select-class-item")) {
+    const className = e.target.dataset.name;
+    const classInput = document.getElementById("charClass");
+    if (classInput) {
+      classInput.value = className;
+      saveSheet(false);
+    }
+    document.getElementById("classDropdown")?.classList.remove("open");
+    return;
+  }
+
+  if (e.target.classList.contains("select-race-item")) {
+    const raceName = e.target.dataset.name;
+    const raceInput = document.getElementById("charRace");
+    if (raceInput) {
+      raceInput.value = raceName;
+      saveSheet(false);
+    }
+    document.getElementById("raceDropdown")?.classList.remove("open");
+    return;
+  }
+
+  if (e.target.classList.contains("cond-chip")) {
+    const cond = e.target.dataset.cond;
+    if (myActiveConditions.includes(cond)) {
+      myActiveConditions = myActiveConditions.filter((c) => c !== cond);
+      e.target.classList.remove("active");
+    } else {
+      myActiveConditions.push(cond);
+      e.target.classList.add("active");
+    }
+    saveSheet(true);
+    return;
+  }
+
   if (e.target.id === "loginNavBtn") openAuthModal("login");
   if (e.target.id === "signupNavBtn") openAuthModal("signup");
 
@@ -926,7 +1112,8 @@ document.addEventListener("click", async (e) => {
       fields: getCurrentSheetData(),
       spells: myCharacterSpells,
       traits: myCharacterTraits,
-      weapons: myCharacterWeapons
+      weapons: myCharacterWeapons,
+      conditions: myActiveConditions
     };
     const blob = new Blob([JSON.stringify({ character: currentChar, allRoster: roster }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -959,7 +1146,7 @@ document.addEventListener("click", async (e) => {
     const targetMap = {
       attr: ".attributes-group",
       skills: ".skills-group",
-      traits: ".abilities-full-section",
+      traits: "#abilitiesSection",
       spells: ".spells-full-section",
       journal: "#tab-journal"
     };
@@ -1169,6 +1356,26 @@ document.addEventListener("click", async (e) => {
     closeModal("loadModal");
     showStatus("Character Loaded");
   }
+});
+
+document.getElementById("charClass")?.addEventListener("focus", (e) => {
+  renderClassDropdown(e.target.value);
+  document.getElementById("classDropdown")?.classList.add("open");
+});
+
+document.getElementById("charClass")?.addEventListener("input", (e) => {
+  renderClassDropdown(e.target.value);
+  document.getElementById("classDropdown")?.classList.add("open");
+});
+
+document.getElementById("charRace")?.addEventListener("focus", (e) => {
+  renderRaceDropdown(e.target.value);
+  document.getElementById("raceDropdown")?.classList.add("open");
+});
+
+document.getElementById("charRace")?.addEventListener("input", (e) => {
+  renderRaceDropdown(e.target.value);
+  document.getElementById("raceDropdown")?.classList.add("open");
 });
 
 let spellFilterTimeout = null;
