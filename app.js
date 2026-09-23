@@ -1,6 +1,5 @@
 "use strict";
 
-// Firebase Initialization with Local Fallback
 const firebaseConfig = {
   apiKey: "AIzaSyAIKe_hrxyQvn4uebwU5OZrP2qf-FwK0Rg",
   authDomain: "character-sheet-bd250.firebaseapp.com",
@@ -20,7 +19,7 @@ if (typeof firebase !== "undefined") {
     auth = firebase.auth();
     db = firebase.firestore();
   } catch (err) {
-    console.warn("Firebase initialized with local fallback:", err);
+    console.warn("Firebase running in offline mode:", err);
   }
 }
 
@@ -42,35 +41,39 @@ const apiCache = {};
 
 let allSpellsCache = [];
 let allTraitsCache = [];
+let activeSpellQuery = "";
+let activeTraitQuery = "";
 
-// Rich Instant Built-in Libraries
 const BUILTIN_SPELLS = [
-  { name: "Fire Bolt", type: "Cantrip Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You hurl a mote of fire at a creature or object within range. Make a ranged spell attack. On a hit, the target takes 1d10 fire damage." },
-  { name: "Mage Hand", type: "Cantrip Conjuration", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears at a point you choose within range. You can use your action to control the hand to manipulate objects up to 10 pounds." },
-  { name: "Eldritch Blast", type: "Cantrip Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "A beam of crackling energy streaks toward a creature within range. On a hit, the target takes 1d10 force damage." },
-  { name: "Vicious Mockery", type: "Cantrip Enchantment", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "You unleash a string of insults. Target takes 1d4 psychic damage and has disadvantage on its next attack roll on a failed Wisdom save." },
-  { name: "Prestidigitation", type: "Cantrip Transmutation", casting_time: "1 Action", range: "10 ft", duration: "Up to 1 hour", desc: "Perform minor harmless sensory effects, light or snuff flames, clean or soil items, or chill and warm food." },
-  { name: "Shield", type: "Level 1 Abjuration", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "An invisible barrier of magical force protects you. You gain a +5 bonus to AC until the start of your next turn and take no damage from magic missile." },
-  { name: "Magic Missile", type: "Level 1 Evocation", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You create three glowing darts of magical force. Each dart automatically strikes a creature for 1d4 + 1 force damage." },
-  { name: "Cure Wounds", type: "Level 1 Evocation", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "A creature you touch regains hit points equal to 1d8 + your spellcasting ability modifier." },
-  { name: "Healing Word", type: "Level 1 Evocation", casting_time: "1 Bonus Action", range: "60 ft", duration: "Instantaneous", desc: "A creature of your choice that you can see within range regains 1d4 + spellcasting modifier hit points." },
-  { name: "Misty Step", type: "Level 2 Conjuration", casting_time: "1 Bonus Action", range: "Self", duration: "Instantaneous", desc: "Surrounded by silvery mist, you teleport up to 30 feet to an unoccupied space you can see." },
-  { name: "Fireball", type: "Level 3 Evocation", casting_time: "1 Action", range: "150 ft", duration: "Instantaneous", desc: "A 20-foot-radius sphere of fire deals 8d6 fire damage to all creatures failing a Dexterity saving throw, or half as much on a successful one." },
-  { name: "Counterspell", type: "Level 3 Abjuration", casting_time: "1 Reaction", range: "60 ft", duration: "Instantaneous", desc: "You attempt to interrupt a creature in the process of casting a spell. If the spell is 3rd level or lower, it automatically fails." }
+  { name: "Fire Bolt", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You hurl a mote of fire at a creature or object within range. Make a ranged spell attack. On a hit, the target takes 1d10 fire damage." },
+  { name: "Mage Hand", levelTag: "Cantrip", schoolTag: "Conjuration", classesTag: "Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears at a point you choose within range. You can use your action to control the hand to manipulate objects up to 10 pounds." },
+  { name: "Eldritch Blast", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Warlock", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "A beam of crackling energy streaks toward a creature within range. On a hit, the target takes 1d10 force damage." },
+  { name: "Vicious Mockery", levelTag: "Cantrip", schoolTag: "Enchantment", classesTag: "Bard", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "You unleash a string of insults. Target takes 1d4 psychic damage and has disadvantage on its next attack roll on a failed Wisdom save." },
+  { name: "Prestidigitation", levelTag: "Cantrip", schoolTag: "Transmutation", classesTag: "Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "10 ft", duration: "Up to 1 hour", desc: "Perform minor harmless sensory effects, light or snuff flames, clean or soil items, or chill and warm food." },
+  { name: "Shield", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Sorcerer, Wizard", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "An invisible barrier of magical force protects you. You gain a +5 bonus to AC until the start of your next turn and take no damage from magic missile." },
+  { name: "Magic Missile", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You create three glowing darts of magical force. Each dart automatically strikes a creature for 1d4 + 1 force damage." },
+  { name: "Cure Wounds", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid, Paladin, Ranger", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "A creature you touch regains hit points equal to 1d8 + your spellcasting ability modifier." },
+  { name: "Healing Word", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid", casting_time: "1 Bonus Action", range: "60 ft", duration: "Instantaneous", desc: "A creature of your choice that you can see within range regains 1d4 + spellcasting modifier hit points." },
+  { name: "Misty Step", levelTag: "Level 2", schoolTag: "Conjuration", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Bonus Action", range: "Self", duration: "Instantaneous", desc: "Surrounded by silvery mist, you teleport up to 30 feet to an unoccupied space you can see." },
+  { name: "Fireball", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "150 ft", duration: "Instantaneous", desc: "A 20-foot-radius sphere of fire deals 8d6 fire damage to all creatures failing a Dexterity saving throw, or half as much on a successful one." },
+  { name: "Counterspell", levelTag: "Level 3", schoolTag: "Abjuration", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Reaction", range: "60 ft", duration: "Instantaneous", desc: "You attempt to interrupt a creature in the process of casting a spell. If the spell is 3rd level or lower, it automatically fails." }
 ];
 
 const BUILTIN_TRAITS = [
-  { name: "Action Surge", type: "Class Feature", desc: "On your turn, you can take one additional action on top of your regular action and bonus action." },
-  { name: "Sneak Attack", type: "Class Feature", desc: "Once per turn, deal an extra 1d6 damage to one creature you hit with advantage using a finesse or ranged weapon." },
-  { name: "Rage", type: "Class Feature", desc: "Enter a primal rage as a bonus action, gaining advantage on Strength checks, melee bonus damage, and resistance to physical damage." },
-  { name: "Bardic Inspiration", type: "Class Feature", desc: "Use a bonus action to give a companion within 60 feet a d6 to add to an attack roll, ability check, or saving throw." },
-  { name: "Divine Smite", type: "Class Feature", desc: "When you hit a creature with a melee weapon attack, expend a spell slot to deal 2d8 plus 1d8 per spell level above 1st radiant damage." },
-  { name: "Second Wind", type: "Class Feature", desc: "On your turn, use a bonus action to regain hit points equal to 1d10 + your fighter level once per short or long rest." },
-  { name: "Cunning Action", type: "Class Feature", desc: "You can take a bonus action on each of your turns in combat to Dash, Disengage, or Hide." },
-  { name: "Wild Shape", type: "Class Feature", desc: "Magically assume the shape of a beast you have seen before as an action twice per rest." },
-  { name: "Darkvision", type: "Racial Trait", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
-  { name: "Fey Ancestry", type: "Racial Trait", desc: "Advantage on saving throws against being charmed, and magic cannot put you to sleep." },
-  { name: "Lucky", type: "Racial Trait", desc: "When you roll a 1 on an attack roll, ability check, or saving throw, you can reroll the die." }
+  { name: "Action Surge", type: "Class Feature", parentTag: "Fighter", desc: "On your turn, you can take one additional action on top of your regular action and bonus action." },
+  { name: "Sneak Attack", type: "Class Feature", parentTag: "Rogue", desc: "Once per turn, deal an extra 1d6 damage to one creature you hit with advantage using a finesse or ranged weapon." },
+  { name: "Rage", type: "Class Feature", parentTag: "Barbarian", desc: "Enter a primal rage as a bonus action, gaining advantage on Strength checks, melee bonus damage, and resistance to physical damage." },
+  { name: "Bardic Inspiration", type: "Class Feature", parentTag: "Bard", desc: "Use a bonus action to give a companion within 60 feet a d6 to add to an attack roll, ability check, or saving throw." },
+  { name: "Divine Smite", type: "Class Feature", parentTag: "Paladin", desc: "When you hit a creature with a melee weapon attack, expend a spell slot to deal 2d8 plus 1d8 per spell level above 1st radiant damage." },
+  { name: "Second Wind", type: "Class Feature", parentTag: "Fighter", desc: "On your turn, use a bonus action to regain hit points equal to 1d10 + your fighter level once per short or long rest." },
+  { name: "Cunning Action", type: "Class Feature", parentTag: "Rogue", desc: "You can take a bonus action on each of your turns in combat to Dash, Disengage, or Hide." },
+  { name: "Wild Shape", type: "Class Feature", parentTag: "Druid", desc: "Magically assume the shape of a beast you have seen before as an action twice per rest." },
+  { name: "Darkvision", type: "Racial Trait", parentTag: "Elf, Dwarf, Gnome", desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+  { name: "Fey Ancestry", type: "Racial Trait", parentTag: "Elf, Half-Elf", desc: "Advantage on saving throws against being charmed, and magic cannot put you to sleep." },
+  { name: "Lucky", type: "Racial Trait", parentTag: "Halfling", desc: "When you roll a 1 on an attack roll, ability check, or saving throw, you can reroll the die." },
+  { name: "Relentless Endurance", type: "Racial Trait", parentTag: "Half-Orc", desc: "When you are reduced to 0 HP but not killed outright, you can drop to 1 HP instead once per long rest." },
+  { name: "Hellish Resistance", type: "Racial Trait", parentTag: "Tiefling", desc: "You have resistance to fire damage." },
+  { name: "Breath Weapon", type: "Racial Trait", parentTag: "Dragonborn", desc: "Exhale destructive energy based on your draconic ancestry once per rest." }
 ];
 
 function escapeHtml(str) {
@@ -369,8 +372,11 @@ function applyCharacterData(charData) {
   Object.keys(fields).forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
-      if (el.type === "checkbox") el.checked = fields[id];
-      else el.value = fields[id];
+      if (el.type === "checkbox") {
+        el.checked = fields[id];
+      } else {
+        el.value = fields[id];
+      }
     }
   });
 
@@ -473,9 +479,7 @@ function renderCharList() {
           <span class="char-item-sub">${escapeHtml(char.summary || "")}</span>
         </div>
         <div class="char-actions">
-          <button type="button" class="char-select-btn ${isActive ? "active" : ""}">
-            ${isActive ? "Active" : "Select"}
-          </button>
+          <button type="button" class="char-select-btn ${isActive ? "active" : ""}">${isActive ? "Active" : "Select"}</button>
           <button type="button" class="char-delete-btn" title="Delete character">&times;</button>
         </div>
       </div>
@@ -503,9 +507,15 @@ async function loadAllSpells() {
   if (allSpellsCache.length > 0) return allSpellsCache;
   const res = await fetchAPI("https://www.dnd5eapi.co/api/spells");
   if (res && res.results && res.results.length > 0) {
-    allSpellsCache = res.results;
+    const combined = [...BUILTIN_SPELLS];
+    res.results.forEach((s) => {
+      if (!combined.some((b) => b.name.toLowerCase() === s.name.toLowerCase())) {
+        combined.push({ name: s.name, url: s.url });
+      }
+    });
+    allSpellsCache = combined;
   } else {
-    allSpellsCache = BUILTIN_SPELLS.map((s) => ({ name: s.name, url: null, localData: s }));
+    allSpellsCache = [...BUILTIN_SPELLS];
   }
   return allSpellsCache;
 }
@@ -517,16 +527,68 @@ async function loadAllTraits() {
     fetchAPI("https://www.dnd5eapi.co/api/traits")
   ]);
 
-  let combined = [];
-  if (f && f.results) combined.push(...f.results.map((x) => ({ ...x, type: "Class Feature" })));
-  if (t && t.results) combined.push(...t.results.map((x) => ({ ...x, type: "Racial Trait" })));
-
-  if (combined.length > 0) {
-    allTraitsCache = combined.filter((x) => !x.name.includes("Dragon Ancestor (") && !x.name.includes("Draconic Ancestry ("));
-  } else {
-    allTraitsCache = BUILTIN_TRAITS.map((item) => ({ name: item.name, type: item.type, url: null, localData: item }));
+  const combined = [...BUILTIN_TRAITS];
+  if (f && f.results) {
+    f.results.forEach((item) => {
+      if (!item.name.includes("Dragon Ancestor (") && !item.name.includes("Draconic Ancestry (")) {
+        if (!combined.some((b) => b.name.toLowerCase() === item.name.toLowerCase())) {
+          combined.push({ name: item.name, url: item.url, type: "Class Feature" });
+        }
+      }
+    });
   }
+  if (t && t.results) {
+    t.results.forEach((item) => {
+      if (!combined.some((b) => b.name.toLowerCase() === item.name.toLowerCase())) {
+        combined.push({ name: item.name, url: item.url, type: "Racial Trait" });
+      }
+    });
+  }
+  allTraitsCache = combined;
   return allTraitsCache;
+}
+
+async function enrichSpellList(items) {
+  const topSlice = items.slice(0, 25);
+  let updated = false;
+  await Promise.all(topSlice.map(async (s) => {
+    if (!s.levelTag && s.url) {
+      const data = await fetchAPI("https://www.dnd5eapi.co" + s.url);
+      if (data) {
+        s.levelTag = data.level === 0 ? "Cantrip" : `Level ${data.level}`;
+        s.schoolTag = data.school?.name || "";
+        s.classesTag = (data.classes || []).map((c) => c.name).join(", ");
+        s.casting_time = data.casting_time || "1 Action";
+        s.range = data.range || "30 ft";
+        s.duration = data.duration || "Instantaneous";
+        s.desc = Array.isArray(data.desc) ? data.desc.join("\n\n") : (data.desc || "");
+        updated = true;
+      }
+    }
+  }));
+  return updated;
+}
+
+async function enrichTraitList(items) {
+  const topSlice = items.slice(0, 25);
+  let updated = false;
+  await Promise.all(topSlice.map(async (t) => {
+    if (!t.parentTag && t.url) {
+      const data = await fetchAPI("https://www.dnd5eapi.co" + t.url);
+      if (data) {
+        const parents = [];
+        if (data.class?.name) parents.push(data.class.name);
+        if (data.subclass?.name) parents.push(data.subclass.name);
+        if (data.races && data.races.length > 0) parents.push(...data.races.map((r) => r.name));
+        if (data.subraces && data.subraces.length > 0) parents.push(...data.subraces.map((sr) => sr.name));
+        if (data.parent?.name) parents.push(data.parent.name);
+        t.parentTag = parents.length > 0 ? parents.join(", ") : (t.type || "Feature");
+        t.desc = Array.isArray(data.desc) ? data.desc.join("\n\n") : (data.desc || "");
+        updated = true;
+      }
+    }
+  }));
+  return updated;
 }
 
 function renderModalSpells(list) {
@@ -538,12 +600,28 @@ function renderModalSpells(list) {
     return;
   }
 
-  container.innerHTML = list.slice(0, 50).map((s) => `
-    <div class="spell-option-item spell-pick-row" data-url="${s.url || ''}" data-name="${escapeHtml(s.name)}">
-      <span style="font-weight:700; color:#f8fafc;">${escapeHtml(s.name)}</span>
-      <span class="spell-add-badge">+ Add</span>
-    </div>
-  `).join("");
+  container.innerHTML = list.slice(0, 30).map((s) => {
+    let tagsHtml = "";
+    if (s.levelTag) {
+      tagsHtml += `<span class="tag-pill green">${escapeHtml(s.levelTag)}</span>`;
+    }
+    if (s.schoolTag) {
+      tagsHtml += `<span class="tag-pill purple">${escapeHtml(s.schoolTag)}</span>`;
+    }
+    if (s.classesTag) {
+      tagsHtml += `<span class="tag-pill blue">${escapeHtml(s.classesTag)}</span>`;
+    }
+
+    return `
+      <div class="spell-option-item spell-pick-row" data-url="${s.url || ''}" data-name="${escapeHtml(s.name)}">
+        <div>
+          <div style="font-weight:700; color:#f8fafc;">${escapeHtml(s.name)}</div>
+          ${tagsHtml ? `<div class="spell-meta-tags">${tagsHtml}</div>` : ''}
+        </div>
+        <span class="spell-add-badge">+ Add</span>
+      </div>
+    `;
+  }).join("");
 }
 
 function renderModalTraits(list) {
@@ -555,15 +633,22 @@ function renderModalTraits(list) {
     return;
   }
 
-  container.innerHTML = list.slice(0, 50).map((t) => `
-    <div class="spell-option-item trait-pick-row" data-url="${t.url || ''}" data-name="${escapeHtml(t.name)}" data-type="${escapeHtml(t.type || 'Feature')}">
-      <div>
-        <div style="font-weight:700; color:#f8fafc;">${escapeHtml(t.name)}</div>
-        <div class="spell-meta-tags"><span class="tag-pill blue">${escapeHtml(t.type || 'Feature')}</span></div>
+  container.innerHTML = list.slice(0, 30).map((t) => {
+    let tagsHtml = `<span class="tag-pill blue">${escapeHtml(t.type || 'Feature')}</span>`;
+    if (t.parentTag) {
+      tagsHtml += `<span class="tag-pill purple">${escapeHtml(t.parentTag)}</span>`;
+    }
+
+    return `
+      <div class="spell-option-item trait-pick-row" data-url="${t.url || ''}" data-name="${escapeHtml(t.name)}" data-type="${escapeHtml(t.type || 'Feature')}">
+        <div>
+          <div style="font-weight:700; color:#f8fafc;">${escapeHtml(t.name)}</div>
+          <div class="spell-meta-tags">${tagsHtml}</div>
+        </div>
+        <span class="spell-add-badge">+ Add</span>
       </div>
-      <span class="spell-add-badge">+ Add</span>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 
 function closeModal(modalId) {
@@ -627,7 +712,6 @@ function switchMainTab(targetId) {
 }
 
 document.addEventListener("click", async (e) => {
-  // Modal Close Actions
   if (e.target.classList.contains("modal-close-btn") || e.target.closest(".modal-close-btn")) {
     const backdrop = e.target.closest(".modal-backdrop");
     if (backdrop) backdrop.classList.remove("open");
@@ -639,7 +723,6 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Auth Triggers
   if (e.target.id === "loginNavBtn") openAuthModal("login");
   if (e.target.id === "signupNavBtn") openAuthModal("signup");
 
@@ -679,7 +762,6 @@ document.addEventListener("click", async (e) => {
     }
   }
 
-  // Header Actions
   if (e.target.id === "saveBtn") saveSheet(false);
   if (e.target.id === "newBtn") {
     if (confirm("Create a new blank character sheet?")) resetSheet();
@@ -729,7 +811,6 @@ document.addEventListener("click", async (e) => {
     document.getElementById("helpModal")?.classList.add("open");
   }
 
-  // Tab Navigation
   if (e.target.classList.contains("main-tab")) {
     switchMainTab(e.target.dataset.target);
   }
@@ -748,7 +829,6 @@ document.addEventListener("click", async (e) => {
     document.querySelector(targetMap[e.target.dataset.scroll])?.scrollIntoView({ behavior: "smooth" });
   }
 
-  // Resting
   if (e.target.id === "shortRestBtn") {
     if (confirm("Take a Short Rest? Spend hit dice to recover hit points.")) {
       showStatus("Short Rest Taken");
@@ -775,7 +855,6 @@ document.addEventListener("click", async (e) => {
     }
   }
 
-  // Dice Roller
   if (e.target.classList.contains("dice-btn")) {
     const sides = parseInt(e.target.dataset.sides, 10);
     const roll = Math.floor(Math.random() * sides) + 1;
@@ -804,13 +883,18 @@ document.addEventListener("click", async (e) => {
     addDiceHistory(`${label} (${roll} ${sign})`, total);
   }
 
-  // Spell Picker Open & Select
   if (e.target.id === "addSpellBtn") {
     document.getElementById("spellModal")?.classList.add("open");
     const input = document.getElementById("spellSearchInput");
     if (input) input.value = "";
+    activeSpellQuery = "";
     const list = await loadAllSpells();
     renderModalSpells(list);
+    enrichSpellList(list).then((changed) => {
+      if (changed && activeSpellQuery === "") {
+        renderModalSpells(allSpellsCache);
+      }
+    });
   }
 
   if (e.target.id === "addCustomSpellBtn") {
@@ -831,9 +915,9 @@ document.addEventListener("click", async (e) => {
   if (spellRow) {
     const name = spellRow.dataset.name;
     const url = spellRow.dataset.url;
-    let detail = BUILTIN_SPELLS.find((s) => s.name.toLowerCase() === name.toLowerCase());
+    let detail = allSpellsCache.find((s) => s.name.toLowerCase() === name.toLowerCase());
 
-    if (url) {
+    if (url && (!detail || !detail.desc)) {
       const fetched = await fetchAPI("https://www.dnd5eapi.co" + url);
       if (fetched) {
         detail = {
@@ -861,13 +945,18 @@ document.addEventListener("click", async (e) => {
     closeModal("spellModal");
   }
 
-  // Ability / Trait Picker Open & Select
   if (e.target.id === "addTraitBtn") {
     document.getElementById("traitModal")?.classList.add("open");
     const input = document.getElementById("traitSearchInput");
     if (input) input.value = "";
+    activeTraitQuery = "";
     const list = await loadAllTraits();
     renderModalTraits(list);
+    enrichTraitList(list).then((changed) => {
+      if (changed && activeTraitQuery === "") {
+        renderModalTraits(allTraitsCache);
+      }
+    });
   }
 
   if (e.target.id === "addCustomTraitBtn") {
@@ -887,9 +976,9 @@ document.addEventListener("click", async (e) => {
     const name = traitRow.dataset.name;
     const url = traitRow.dataset.url;
     const type = traitRow.dataset.type || "Feature";
-    let detail = BUILTIN_TRAITS.find((t) => t.name.toLowerCase() === name.toLowerCase());
+    let detail = allTraitsCache.find((t) => t.name.toLowerCase() === name.toLowerCase());
 
-    if (url) {
+    if (url && (!detail || !detail.desc)) {
       const fetched = await fetchAPI("https://www.dnd5eapi.co" + url);
       if (fetched) {
         detail = {
@@ -911,7 +1000,6 @@ document.addEventListener("click", async (e) => {
     closeModal("traitModal");
   }
 
-  // Attacks / Weapons Table
   if (e.target.id === "addWeaponBtn") {
     myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
     saveSheet(false);
@@ -926,7 +1014,6 @@ document.addEventListener("click", async (e) => {
     renderWeapons();
   }
 
-  // Traits Card Actions
   if (e.target.classList.contains("trait-card-delete")) {
     const idx = parseInt(e.target.dataset.index, 10);
     myCharacterTraits.splice(idx, 1);
@@ -944,7 +1031,6 @@ document.addEventListener("click", async (e) => {
     saveSheet(true);
   }
 
-  // Spells Card Actions
   if (e.target.classList.contains("spell-card-delete")) {
     const idx = parseInt(e.target.dataset.index, 10);
     myCharacterSpells.splice(idx, 1);
@@ -952,7 +1038,6 @@ document.addEventListener("click", async (e) => {
     renderMySpells();
   }
 
-  // Saved Characters Selection
   if (e.target.classList.contains("char-delete-btn")) {
     const row = e.target.closest(".char-item-row");
     const roster = getRoster();
@@ -982,24 +1067,35 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-// Search & Filter Listeners
 let spellFilterTimeout = null;
 document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   const query = e.target.value.toLowerCase().trim();
+  activeSpellQuery = query;
   clearTimeout(spellFilterTimeout);
   spellFilterTimeout = setTimeout(() => {
     const filtered = allSpellsCache.filter((s) => s.name.toLowerCase().includes(query));
     renderModalSpells(filtered);
+    enrichSpellList(filtered).then((changed) => {
+      if (changed && activeSpellQuery === query) {
+        renderModalSpells(filtered);
+      }
+    });
   }, 120);
 });
 
 let traitFilterTimeout = null;
 document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   const query = e.target.value.toLowerCase().trim();
+  activeTraitQuery = query;
   clearTimeout(traitFilterTimeout);
   traitFilterTimeout = setTimeout(() => {
     const filtered = allTraitsCache.filter((t) => t.name.toLowerCase().includes(query));
     renderModalTraits(filtered);
+    enrichTraitList(filtered).then((changed) => {
+      if (changed && activeTraitQuery === query) {
+        renderModalTraits(filtered);
+      }
+    });
   }, 120);
 });
 
@@ -1016,7 +1112,6 @@ document.getElementById("filterSpellbookInput")?.addEventListener("input", (e) =
   });
 });
 
-// Input & Save Listeners
 document.addEventListener("change", (e) => {
   if (e.target.type === "checkbox" && e.target.classList.contains("save-field")) {
     recalculateAll();
@@ -1105,15 +1200,14 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
       }
       saveRoster(roster);
       loadSheet();
-      showStatus("Sheet Restored!");
+      showStatus("Character Restored");
     } catch (err) {
-      alert("Invalid backup file.");
+      alert("Invalid JSON backup file.");
     }
   };
   reader.readAsText(file);
 });
 
-// Sheet Initialization
 loadSheet();
 renderMyTraits();
 loadAllSpells();
