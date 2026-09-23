@@ -165,11 +165,10 @@ function escapeHtml(str) {
 }
 
 function showStatus(text) {
-  const toast = document.getElementById("saveToast");
-  if (!toast) return;
-  toast.textContent = text;
-  toast.classList.add("show");
-  setTimeout(() => { toast.classList.remove("show"); }, 2500);
+  const statusElem = document.getElementById("saveStatus");
+  if (!statusElem) return;
+  statusElem.textContent = text;
+  setTimeout(() => { statusElem.textContent = ""; }, 2500);
 }
 
 function getModifier(score) { return Math.floor((score - 10) / 2); }
@@ -190,36 +189,6 @@ function autoResizeStatInput(input) {
 
 function syncAllStatInputs() {
   document.querySelectorAll(".spell-stat-input").forEach(autoResizeStatInput);
-}
-
-function addDiceHistory(desc, total) {
-  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  diceRollHistory.unshift({ desc, total, time });
-  if (diceRollHistory.length > 25) {
-    diceRollHistory.pop();
-  }
-  renderDiceHistory();
-}
-
-function renderDiceHistory() {
-  const container = document.getElementById("diceHistoryList");
-  if (!container) return;
-
-  if (diceRollHistory.length === 0) {
-    container.innerHTML = `<span class="dice-history-empty">No rolls logged yet.</span>`;
-    return;
-  }
-
-  container.innerHTML = diceRollHistory
-    .map(
-      (item) => `
-      <div class="dice-history-item">
-        <span class="dice-history-desc">${escapeHtml(item.desc)} <small style="color:#64748b;">(${item.time})</small></span>
-        <span class="dice-history-val">${escapeHtml(String(item.total))}</span>
-      </div>
-    `
-    )
-    .join("");
 }
 
 function recalculateAll() {
@@ -260,7 +229,7 @@ function recalculateAll() {
     if (isExp) total += prof;
 
     const valElem = row.querySelector(".skill-val");
-    if (valElem) valElem.textContent = total >= 0 ? `+${total}` : total;
+    if (valElem) valElem.textContent = total;
   });
 }
 
@@ -377,8 +346,7 @@ function getCurrentSheetData() {
   return fields;
 }
 
-// quiet saves prevent the toast from spamming the user while they are actively typing.
-function saveSheet(quiet = false) {
+function saveSheet() {
   const roster = getRoster();
   const fields = getCurrentSheetData();
   const name = fields.charName?.trim() || "Unnamed Character";
@@ -398,7 +366,7 @@ function saveSheet(quiet = false) {
 
   saveRoster(roster);
   localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-  if (!quiet) showStatus("Saved!");
+  showStatus("Saved!");
 }
 
 function applyCharacterData(charData) {
@@ -479,9 +447,7 @@ function renderCharList() {
 
 document.addEventListener("change", (e) => {
   if (e.target.type === "checkbox" && e.target.classList.contains("save-field")) {
-    recalculateAll(); saveSheet(); // Loud save
-  } else if (e.target.classList.contains("save-field") || e.target.classList.contains("custom-spell-field") || e.target.classList.contains("custom-trait-field") || e.target.classList.contains("wpn-field")) {
-    saveSheet(); // Loud save when finishing typing and blurring field
+    recalculateAll(); saveSheet();
   }
 
   // Handle Class & Race changes natively from Datalists
@@ -511,7 +477,7 @@ document.addEventListener("change", (e) => {
           }
           let cLower = classKey.toLowerCase();
           if (CLASS_SPELL_ABILITY[cLower]) { let sa = document.getElementById("spellAbility"); if (sa && !sa.value) sa.value = CLASS_SPELL_ABILITY[cLower]; }
-          saveSheet(); renderMyTraits(); recalculateAll();
+          saveSheet(); renderMyTraits(); recalculateAll(); showStatus("Class loaded!");
       }
   }
 
@@ -533,14 +499,14 @@ document.addEventListener("change", (e) => {
                   if (!myCharacterTraits.find(ex => ex.name === t.name)) myCharacterTraits.push({ name: t.name, type: "Racial Trait", desc: t.desc, isExpanded: false });
               });
           }
-          saveSheet(); renderMyTraits(); recalculateAll();
+          saveSheet(); renderMyTraits(); recalculateAll(); showStatus("Race loaded!");
       }
   }
 });
 
 document.addEventListener("input", (e) => {
   if (e.target.classList.contains("save-field")) {
-    recalculateAll(); saveSheet(true);
+    recalculateAll(); saveSheet();
   }
   if (e.target.classList.contains("spell-stat-input")) autoResizeStatInput(e.target);
   
@@ -549,7 +515,7 @@ document.addEventListener("input", (e) => {
     if(card) {
       const idx = parseInt(card.dataset.index, 10);
       if (myCharacterSpells[idx]) {
-        myCharacterSpells[idx][e.target.dataset.prop] = e.target.value; saveSheet(true);
+        myCharacterSpells[idx][e.target.dataset.prop] = e.target.value; saveSheet();
       }
       if (e.target.tagName.toLowerCase() === "textarea") autoExpandTextarea(e.target);
     }
@@ -560,7 +526,7 @@ document.addEventListener("input", (e) => {
     if(card) {
       const idx = parseInt(card.dataset.index, 10);
       if (myCharacterTraits[idx]) {
-        myCharacterTraits[idx][e.target.dataset.prop] = e.target.value; saveSheet(true);
+        myCharacterTraits[idx][e.target.dataset.prop] = e.target.value; saveSheet();
       }
       if (e.target.tagName.toLowerCase() === "textarea") autoExpandTextarea(e.target);
     }
@@ -571,7 +537,7 @@ document.addEventListener("input", (e) => {
     if(entry) {
         const idx = parseInt(entry.dataset.index, 10);
         if (myCharacterWeapons[idx]) {
-            myCharacterWeapons[idx][e.target.dataset.prop] = e.target.value; saveSheet(true);
+            myCharacterWeapons[idx][e.target.dataset.prop] = e.target.value; saveSheet();
         }
     }
   }
@@ -582,8 +548,6 @@ document.addEventListener("click", async (e) => {
   if (e.target.id === "loginNavBtn") openAuthModal("login");
   if (e.target.id === "signupNavBtn") openAuthModal("signup");
   if (e.target.id === "closeAuthModal") document.getElementById("authModal").classList.remove("open");
-  if (e.target.id === "logoutBtn") { signOut(auth); showStatus("Logged out"); }
-
   if (e.target.id === "authSubmitBtn") {
        const email = document.getElementById("authEmail").value;
        const pass = document.getElementById("authPassword").value;
@@ -682,14 +646,14 @@ document.addEventListener("click", async (e) => {
     const card = e.target.closest(".trait-card"); const idx = parseInt(card.dataset.index, 10);
     card.classList.toggle("expanded"); const isExp = card.classList.contains("expanded");
     e.target.closest(".trait-expand-btn").textContent = isExp ? "Collapse" : "Expand";
-    if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp; saveSheet(true);
+    if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp; saveSheet();
   }
   if (e.target.classList.contains("custom-trait-field")) {
     const card = e.target.closest(".trait-card");
     if (card && !card.classList.contains("expanded")) {
       card.classList.add("expanded"); const btn = card.querySelector(".trait-expand-btn"); if (btn) btn.textContent = "Collapse";
       const idx = parseInt(card.dataset.index, 10);
-      if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = true; saveSheet(true);
+      if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = true; saveSheet();
     }
   }
 
@@ -703,18 +667,16 @@ document.addEventListener("click", async (e) => {
   if (e.target.closest("#closeSpellModal")) document.getElementById("spellModal")?.classList.remove("open");
   if (e.target.closest("#closeTraitModal")) document.getElementById("traitModal")?.classList.remove("open");
   
-  // Resting
   if (e.target.id === "longRestBtn") {
       if (confirm("Take a Long Rest? This restores all HP, Hit Dice, and Spell Slots.")) {
         const maxHp = document.getElementById("maxHp")?.value || 0; if (document.getElementById("curHp")) document.getElementById("curHp").value = maxHp;
         const maxHd = document.getElementById("hitDiceMax")?.value || 0; if (document.getElementById("hitDiceCur")) document.getElementById("hitDiceCur").value = maxHd;
         for (let i = 1; i <= 9; i++) { let cur = document.getElementById(`slot${i}_cur`); let max = document.getElementById(`slot${i}_max`); if (cur && max) cur.value = max.value; }
-        saveSheet();
+        saveSheet(); showStatus("Rested!");
       }
   }
-  if (e.target.id === "shortRestBtn") { if (confirm("Take a Short Rest? Use your hit dice to heal!")) showStatus("Short Rest Taken!"); }
+  if (e.target.id === "shortRestBtn") { if (confirm("Take a Short Rest? Use your hit dice to heal!")) showStatus("Rested!"); }
 
-  // Dice Rolls
   if (e.target.classList.contains("dice-btn")) {
      const sides = parseInt(e.target.dataset.sides, 10);
      const roll = Math.floor(Math.random() * sides) + 1;
@@ -962,6 +924,7 @@ document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   }, 400);
 });
 
+// Drag and Drop (Spells)
 function attachSpellDragEvents() {
   const cards = document.querySelectorAll(".spell-card");
   cards.forEach((card) => {
@@ -1007,6 +970,22 @@ function attachSpellDragEvents() {
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
+});
+
+document.getElementById("restoreFile")?.addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const parsed = JSON.parse(evt.target.result);
+      const roster = getRoster();
+      if (parsed.allRoster) Object.assign(roster, parsed.allRoster);
+      else if (parsed.character) roster[parsed.character.id || "char_1"] = parsed.character;
+      saveRoster(roster); loadSheet(); showStatus("Restored successfully!");
+    } catch (err) { alert("Invalid backup file."); }
+  };
+  reader.readAsText(file);
 });
 
 // Initialization
