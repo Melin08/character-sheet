@@ -12,7 +12,6 @@ body {
   line-height: 1.5;
 }
 
-/* Floating Save Notification */
 .toast-banner {
   position: fixed;
   top: -80px;
@@ -48,7 +47,6 @@ body {
   border: 1.5px solid #3b4c68;
 }
 
-/* Utilities Bar (Wikis Left, Login Right) */
 .top-utility-bar {
   display: flex;
   justify-content: space-between;
@@ -99,7 +97,6 @@ body {
   gap: 0.5rem;
 }
 
-/* Centered Main Buttons */
 .top-nav {
   display: flex;
   justify-content: center;
@@ -199,7 +196,6 @@ body {
   cursor: pointer;
 }
 
-/* Character Title Input */
 .name-box {
   margin-bottom: 1.5rem;
 }
@@ -223,7 +219,6 @@ body {
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
 }
 
-/* Tab Controls */
 .tab-controls {
   display: flex;
   border-bottom: 2px solid #dc2626;
@@ -303,12 +298,10 @@ body {
   display: block;
 }
 
-/* Universal Centering Helpers */
 .center {
   text-align: center !important;
 }
 
-/* Metadata Rows */
 .meta-row-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr) 130px;
@@ -388,7 +381,6 @@ body {
   font-weight: bold;
 }
 
-/* Vitals Hub */
 .vitals-row {
   display: flex;
   gap: 1.5rem;
@@ -534,7 +526,6 @@ body {
   font-size: 0.8rem;
 }
 
-/* Two-Column Layout */
 .two-col-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -559,7 +550,6 @@ textarea.tight-block {
   margin-bottom: 0.55rem;
 }
 
-/* Attributes Stack */
 .attr-row {
   display: flex;
   align-items: center;
@@ -624,7 +614,6 @@ textarea.tight-block {
   transform: scale(1.25);
 }
 
-/* Skills */
 .skill-row {
   display: flex;
   align-items: center;
@@ -702,7 +691,6 @@ textarea.tight-block {
   color: #f8fafc;
 }
 
-/* Dice Roller & History */
 .dice-bar {
   display: flex;
   gap: 0.45rem;
@@ -803,7 +791,6 @@ textarea.tight-block {
   padding: 0.35rem 0;
 }
 
-/* Coins */
 .currency-bar {
   display: flex;
   gap: 1.5rem;
@@ -838,7 +825,6 @@ textarea.tight-block {
   box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
 }
 
-/* Weapons Table */
 .attacks-table-wrapper {
   width: 100%;
 }
@@ -929,7 +915,6 @@ textarea.tight-block {
   margin: 1.75rem 0;
 }
 
-/* Abilities Grid */
 .abilities-header {
   display: flex;
   align-items: center;
@@ -1064,7 +1049,6 @@ textarea.tight-block {
   color: #f87171;
 }
 
-/* Spells Section */
 .spells-full-section {
   margin-top: 1.5rem;
 }
@@ -1122,6 +1106,7 @@ textarea.tight-block {
   color: #f8fafc;
   font-size: 0.95rem;
   font-weight: 700;
+  text-align: center;
   padding: 0.25rem 0.5rem;
   min-width: 48px;
   width: 48px;
@@ -1333,7 +1318,7 @@ textarea.tight-block {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1.5px solid #3b4c68;
+  border-bottom: 1px solid #1e293b;
   padding-bottom: 0.45rem;
   gap: 0.5rem;
 }
@@ -1423,7 +1408,6 @@ textarea.tight-block {
   border-color: #dc2626;
 }
 
-/* Modals */
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -1658,20 +1642,41 @@ textarea.tight-block {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  margin-top: 0.2rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
 }
 
 .tag-pill {
   font-size: 0.72rem;
   font-weight: 700;
   border-radius: 4px;
-  padding: 0.15rem 0.4rem;
+  padding: 0.15rem 0.45rem;
   text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .tag-pill.blue {
   background-color: rgba(56, 189, 248, 0.15);
   color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.tag-pill.green {
+  background-color: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+.tag-pill.purple {
+  background-color: rgba(192, 132, 252, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(192, 132, 252, 0.35);
+}
+
+.tag-pill.orange {
+  background-color: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.35);
 }
 
 .spell-add-badge {
@@ -1701,7 +1706,6 @@ textarea.tight-block {
   color: #cbd5e1;
 }
 
-/* Footer */
 .sheet-footer {
   margin-top: 3.5rem;
 }
@@ -1785,7 +1789,6 @@ textarea.tight-block {
   text-decoration: underline;
 }
 
-/* Responsive Media Queries */
 @media (max-width: 1024px) and (min-width: 769px) {
   .meta-row-grid { grid-template-columns: repeat(2, 1fr); }
   .two-col-layout { grid-template-columns: 1fr; }
