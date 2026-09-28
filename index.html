@@ -61,58 +61,88 @@
 
     <div id="tab-stats" class="tab-page active">
       <div class="meta-row-grid">
-        <div class="field-pill">
+        <div class="field-pill dropdown-pill-wrapper" data-pill-id="class">
           <span class="pill-label">Class</span>
-          <input type="text" id="charClass" class="save-field pill-input" autocomplete="off" placeholder="e.g. Fighter" />
+          <input type="text" id="charClass" class="save-field pill-input" autocomplete="off" placeholder="Select or type class..." />
+          <button type="button" class="pill-blur-btn" title="Toggle blur" aria-label="Toggle blur">
+            <svg viewBox="0 0 24 24" class="blur-eye-svg"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          </button>
+          <div id="classDropdown" class="dropdown-menu"></div>
         </div>
-        <div class="field-pill">
+        <div class="field-pill dropdown-pill-wrapper" data-pill-id="race">
           <span class="pill-label">Race</span>
-          <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="e.g. Elf" />
+          <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="Select or type race..." />
+          <button type="button" class="pill-blur-btn" title="Toggle blur" aria-label="Toggle blur">
+            <svg viewBox="0 0 24 24" class="blur-eye-svg"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          </button>
+          <div id="raceDropdown" class="dropdown-menu"></div>
         </div>
-        <div class="field-pill">
+        <div class="field-pill" data-pill-id="background">
           <span class="pill-label">Background</span>
           <input type="text" id="charBackground" class="save-field pill-input" placeholder="e.g. Soldier" />
+          <button type="button" class="pill-blur-btn" title="Toggle blur" aria-label="Toggle blur">
+            <svg viewBox="0 0 24 24" class="blur-eye-svg"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          </button>
         </div>
-        <div class="field-pill">
+        <div class="field-pill" data-pill-id="alignment">
           <span class="pill-label">Alignment</span>
           <input type="text" id="charAlignment" class="save-field pill-input" placeholder="e.g. Chaotic Good" />
+          <button type="button" class="pill-blur-btn" title="Toggle blur" aria-label="Toggle blur">
+            <svg viewBox="0 0 24 24" class="blur-eye-svg"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          </button>
         </div>
-        <div class="field-pill mini">
+        <div class="field-pill mini" data-pill-id="level">
           <span class="pill-label">Level</span>
           <input type="number" id="charLevel" class="save-field pill-input center" value="1" min="1" max="20" />
+          <button type="button" class="pill-blur-btn" title="Toggle blur" aria-label="Toggle blur">
+            <svg viewBox="0 0 24 24" class="blur-eye-svg"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          </button>
         </div>
       </div>
 
       <div class="meta-row-grid">
-        <div class="field-pill">
+        <div class="field-pill" data-pill-id="exp">
           <span class="pill-label">Experience</span>
           <input type="text" id="charExp" class="save-field pill-input center" placeholder="0 XP" />
+          <button type="button" class="pill-blur-btn" title="Toggle blur" aria-label="Toggle blur">
+            <svg viewBox="0 0 24 24" class="blur-eye-svg"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          </button>
         </div>
-        <div class="field-pill badge-pill">
+        <div class="field-pill badge-pill" data-pill-id="prof">
           <span class="pill-label">Proficiency</span>
           <span id="profBonusDisplay" class="pill-badge">+2</span>
+          <button type="button" class="pill-blur-btn" title="Toggle blur" aria-label="Toggle blur">
+            <svg viewBox="0 0 24 24" class="blur-eye-svg"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          </button>
         </div>
-        <div class="field-pill">
+        <div class="field-pill" data-pill-id="inspiration">
           <span class="pill-label">Inspiration</span>
           <input type="text" id="charInspiration" class="save-field pill-input center" placeholder="None" />
+          <button type="button" class="pill-blur-btn" title="Toggle blur" aria-label="Toggle blur">
+            <svg viewBox="0 0 24 24" class="blur-eye-svg"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          </button>
         </div>
-        <div class="field-pill">
+        <div class="field-pill" data-pill-id="speed">
           <span class="pill-label">Speed</span>
           <input type="number" id="charSpeed" class="save-field pill-input center" value="30" />
+          <button type="button" class="pill-blur-btn" title="Toggle blur" aria-label="Toggle blur">
+            <svg viewBox="0 0 24 24" class="blur-eye-svg"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          </button>
         </div>
-        <div class="field-pill mini">
+        <div class="field-pill mini" data-pill-id="hitdice">
           <span class="pill-label">Hit Dice</span>
           <div class="dual-inputs-box">
             <input type="text" id="hitDiceCur" class="save-field pill-sub-input" value="1" />
             <span class="dual-slash">/</span>
             <input type="text" id="hitDiceMax" class="save-field pill-sub-input" value="1" />
           </div>
+          <button type="button" class="pill-blur-btn" title="Toggle blur" aria-label="Toggle blur">
+            <svg viewBox="0 0 24 24" class="blur-eye-svg"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+          </button>
         </div>
       </div>
 
-      <!-- Reimagined Vitals HUD Console -->
       <div class="vitals-hud">
-        
         <div class="vitals-card ac-card">
           <div class="card-tag">Defenses</div>
           <div class="card-main">
@@ -178,22 +208,12 @@
             </div>
           </div>
         </div>
-
-        <div class="vitals-card rest-card">
-          <div class="card-tag">Recovery</div>
-          <div class="rest-buttons-col">
-            <button class="btn outline blue rest-hud-btn" id="shortRestBtn" type="button">Short Rest</button>
-            <button class="btn outline purple rest-hud-btn" id="longRestBtn" type="button">Long Rest</button>
-          </div>
-        </div>
-
       </div>
 
       <div class="two-col-layout">
         <div class="left-pane">
           <h2 class="section-title">Attributes</h2>
           
-          <!-- Reimagined Distinctly Colored Attribute Pods -->
           <div class="attributes-group">
             <div class="attr-pod attr-str" data-attr="str">
               <div class="attr-badge">
@@ -555,19 +575,72 @@
 
           <hr class="red-divider" />
 
-          <h2 class="section-title tight-title">Proficiencies &amp; Languages</h2>
-          <textarea id="otherProfs" class="save-field block-text tight-block" rows="4" placeholder="Armor, weapons, tools, languages..."></textarea>
+          <!-- Magic Attunement Slot Box -->
+          <div class="attunement-container">
+            <div class="attunement-header">
+              <span class="tactical-title">Magic Item Attunement</span>
+              <span class="tactical-sub">Max 3</span>
+            </div>
+            <div class="attunement-slots">
+              <div class="attune-item">
+                <input type="checkbox" id="attune1_check" class="save-field attune-cb" />
+                <input type="text" id="attune1_name" class="save-field attune-input" placeholder="Attuned item 1..." />
+              </div>
+              <div class="attune-item">
+                <input type="checkbox" id="attune2_check" class="save-field attune-cb" />
+                <input type="text" id="attune2_name" class="save-field attune-input" placeholder="Attuned item 2..." />
+              </div>
+              <div class="attune-item">
+                <input type="checkbox" id="attune3_check" class="save-field attune-cb" />
+                <input type="text" id="attune3_name" class="save-field attune-input" placeholder="Attuned item 3..." />
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Conditions Tracker -->
+          <div class="conditions-container">
+            <div class="conditions-header-bar">
+              <span class="tactical-title">Conditions Tracker</span>
+              <div class="exhaustion-meter">
+                <span class="exhaustion-label">Exhaustion:</span>
+                <input type="number" id="exhaustionLevel" class="save-field exhaustion-input center" value="0" min="0" max="6" />
+              </div>
+            </div>
+            <div class="condition-chips-grid" id="conditionChips">
+              <button type="button" class="cond-chip" data-cond="blinded">Blinded</button>
+              <button type="button" class="cond-chip" data-cond="charmed">Charmed</button>
+              <button type="button" class="cond-chip" data-cond="deafened">Deafened</button>
+              <button type="button" class="cond-chip" data-cond="frightened">Frightened</button>
+              <button type="button" class="cond-chip" data-cond="grappled">Grappled</button>
+              <button type="button" class="cond-chip" data-cond="incapacitated">Incapacitated</button>
+              <button type="button" class="cond-chip" data-cond="invisible">Invisible</button>
+              <button type="button" class="cond-chip" data-cond="paralyzed">Paralyzed</button>
+              <button type="button" class="cond-chip" data-cond="petrified">Petrified</button>
+              <button type="button" class="cond-chip" data-cond="poisoned">Poisoned</button>
+              <button type="button" class="cond-chip" data-cond="prone">Prone</button>
+              <button type="button" class="cond-chip" data-cond="restrained">Restrained</button>
+              <button type="button" class="cond-chip" data-cond="stunned">Stunned</button>
+              <button type="button" class="cond-chip" data-cond="unconscious">Unconscious</button>
+            </div>
+          </div>
+
+          <h2 class="section-title tight-title">Proficiencies &amp; Resistances</h2>
+          <textarea id="otherProfs" class="save-field block-text tight-block" rows="5" placeholder="Armor, weapons, tools, languages, damage resistances, immunities..."></textarea>
 
           <h2 class="section-title tight-title">Equipment &amp; Inventory</h2>
-          <textarea id="inventory" class="save-field block-text" rows="5" placeholder="Detailed inventory, weights, magic items, containers..."></textarea>
-
-          <div class="abilities-header">
-            <h2 class="section-title tight-title">Abilities &amp; Traits</h2>
-            <button class="btn-text-red" id="addTraitBtn" type="button">+ Add Ability</button>
-          </div>
-          <div id="traitsList" class="traits-grid-container"></div>
+          <textarea id="inventory" class="save-field block-text" rows="6" placeholder="Detailed inventory, weights, magic items, containers..."></textarea>
         </div>
       </div>
+
+      <!-- Dedicated Abilities & Traits Section -->
+      <section class="abilities-full-section" id="abilitiesSection">
+        <hr class="red-divider" />
+        <div class="section-header-bar">
+          <h2 class="section-title">Abilities &amp; Traits</h2>
+          <button class="btn-text-red" id="addTraitBtn" type="button">+ Add Ability</button>
+        </div>
+        <div id="traitsList" class="traits-grid-container"></div>
+      </section>
 
       <!-- Spells Section -->
       <section class="spells-full-section">
@@ -686,6 +759,8 @@
         <span>|</span>
         <button class="footer-nav-btn" data-tab="tab-stats" data-scroll="skills">Skills</button>
         <span>|</span>
+        <button class="footer-nav-btn" data-tab="tab-stats" data-scroll="traits">Abilities</button>
+        <span>|</span>
         <button class="footer-nav-btn" data-tab="tab-stats" data-scroll="spells">Spells</button>
         <span>|</span>
         <button class="footer-nav-btn" data-tab="tab-journal" data-scroll="journal">Notes</button>
@@ -693,7 +768,6 @@
     </footer>
   </div>
 
-  <!-- Authentication Modal -->
   <div id="authModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box auth-modal-box">
       <div class="modal-header">
@@ -715,7 +789,6 @@
     </div>
   </div>
 
-  <!-- Help Modal -->
   <div id="helpModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box help-modal-box">
       <div class="modal-header">
@@ -728,7 +801,6 @@
     </div>
   </div>
 
-  <!-- Saved Characters Modal -->
   <div id="loadModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box char-modal-box">
       <div class="modal-header">
@@ -739,7 +811,6 @@
     </div>
   </div>
 
-  <!-- Spell Picker Compendium Modal -->
   <div id="spellModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-header">
@@ -754,7 +825,6 @@
     </div>
   </div>
 
-  <!-- Trait / Ability Picker Compendium Modal -->
   <div id="traitModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box">
       <div class="modal-header">
