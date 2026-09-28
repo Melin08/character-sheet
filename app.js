@@ -1,28 +1,5 @@
 "use strict";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAIKe_hrxyQvn4uebwU5OZrP2qf-FwK0Rg",
-  authDomain: "character-sheet-bd250.firebaseapp.com",
-  projectId: "character-sheet-bd250",
-  storageBucket: "character-sheet-bd250.firebasestorage.app",
-  messagingSenderId: "881155587941",
-  appId: "1:881155587941:web:45087fba9dc7154fddeb8c"
-};
-
-let auth = null;
-let db = null;
-let currentUser = null;
-
-if (typeof firebase !== "undefined") {
-  try {
-    firebase.initializeApp(firebaseConfig);
-    auth = firebase.auth();
-    db = firebase.firestore();
-  } catch (err) {
-    console.warn("Firebase running in offline mode:", err);
-  }
-}
-
 const ROSTER_STORAGE_KEY = "badman_char_roster_v1";
 const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
 
@@ -35,6 +12,7 @@ let myCharacterWeapons = [
   { name: "", atk: "", dmg: "", notes: "" }
 ];
 let myActiveConditions = [];
+let myBlurredPills = [];
 let diceRollHistory = [];
 
 let draggedSpellIndex = null;
@@ -43,14 +21,12 @@ const apiCache = {};
 let allSpellsCache = [];
 let allTraitsCache = [];
 
-// Comprehensive Classes Catalog
 const DND_CLASSES = [
   "Barbarian", "Bard", "Cleric", "Druid", "Fighter",
   "Monk", "Paladin", "Ranger", "Rogue", "Sorcerer",
   "Warlock", "Wizard", "Artificer", "Blood Hunter"
 ];
 
-// Comprehensive Races and Subraces Catalog
 const DND_RACES_CATALOG = [
   {
     race: "Dragonborn",
@@ -256,20 +232,6 @@ function recalculateAll() {
     const valElem = row.querySelector(".skill-val");
     if (valElem) valElem.textContent = total >= 0 ? `+${total}` : total;
   });
-
-  // Calculate Passive Senses (10 + skill bonus)
-  const percSkill = parseInt(document.getElementById("val_perc")?.textContent, 10) || 0;
-  const invSkill = parseInt(document.getElementById("val_inv")?.textContent, 10) || 0;
-  const insSkill = parseInt(document.getElementById("val_ins")?.textContent, 10) || 0;
-
-  const passivePerc = document.getElementById("passivePerception");
-  if (passivePerc) passivePerc.textContent = 10 + percSkill;
-
-  const passiveInv = document.getElementById("passiveInvestigation");
-  if (passiveInv) passiveInv.textContent = 10 + invSkill;
-
-  const passiveIns = document.getElementById("passiveInsight");
-  if (passiveIns) passiveIns.textContent = 10 + insSkill;
 }
 
 function renderWeapons() {
@@ -434,6 +396,17 @@ function renderConditionChips() {
   });
 }
 
+function renderBlurredPills() {
+  document.querySelectorAll(".field-pill[data-blur-id]").forEach((pill) => {
+    const blurId = pill.dataset.blurId;
+    if (myBlurredPills.includes(blurId)) {
+      pill.classList.add("blurred");
+    } else {
+      pill.classList.remove("blurred");
+    }
+  });
+}
+
 function getRoster() {
   try {
     return JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY)) || {};
@@ -444,13 +417,6 @@ function getRoster() {
 
 async function saveRoster(roster) {
   localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(roster));
-  if (currentUser && db) {
-    try {
-      await db.collection("user_rosters").doc(currentUser.uid).set({ data: roster });
-    } catch (err) {
-      console.warn("Cloud save sync deferred:", err);
-    }
-  }
 }
 
 function getCurrentSheetData() {
@@ -483,7 +449,8 @@ function saveSheet(quiet = false) {
     spells: myCharacterSpells,
     traits: myCharacterTraits,
     weapons: myCharacterWeapons,
-    conditions: myActiveConditions
+    conditions: myActiveConditions,
+    blurredPills: myBlurredPills
   };
 
   saveRoster(roster);
@@ -497,14 +464,18 @@ function applyCharacterData(charData) {
   Object.keys(fields).forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
-      if (el.type === "checkbox") el.checked = fields[id];
-      else el.value = fields[id];
+      if (el.type === "checkbox") {
+        el.checked = fields[id];
+      } else {
+        el.value = fields[id];
+      }
     }
   });
 
   myCharacterSpells = charData.spells || [];
   myCharacterTraits = charData.traits || [];
   myActiveConditions = charData.conditions || [];
+  myBlurredPills = charData.blurredPills || [];
   myCharacterWeapons = charData.weapons && charData.weapons.length >= 2 ? charData.weapons : [
     { name: "", atk: "", dmg: "", notes: "" },
     { name: "", atk: "", dmg: "", notes: "" }
@@ -514,6 +485,7 @@ function applyCharacterData(charData) {
   renderMySpells();
   renderMyTraits();
   renderConditionChips();
+  renderBlurredPills();
   recalculateAll();
   syncAllStatInputs();
 }
@@ -534,6 +506,7 @@ function loadSheet() {
       renderMySpells();
       renderMyTraits();
       renderConditionChips();
+      renderBlurredPills();
       syncAllStatInputs();
     }
   }
@@ -571,6 +544,7 @@ function resetSheet() {
   myCharacterSpells = [];
   myCharacterTraits = [];
   myActiveConditions = [];
+  myBlurredPills = [];
   myCharacterWeapons = [
     { name: "", atk: "", dmg: "", notes: "" },
     { name: "", atk: "", dmg: "", notes: "" }
@@ -583,6 +557,7 @@ function resetSheet() {
   renderMySpells();
   renderMyTraits();
   renderConditionChips();
+  renderBlurredPills();
   syncAllStatInputs();
   saveSheet(false);
   showStatus("New Sheet Created!");
@@ -617,7 +592,6 @@ function renderCharList() {
   }).join("");
 }
 
-// Render Dropdown Menus for Class and Race
 function renderClassDropdown(filter = "") {
   const dropdown = document.getElementById("classDropdown");
   if (!dropdown) return;
@@ -952,50 +926,6 @@ function closeAllModals() {
   document.querySelectorAll(".modal-backdrop.open").forEach((m) => m.classList.remove("open"));
 }
 
-let authMode = "login";
-function openAuthModal(mode) {
-  authMode = mode;
-  document.getElementById("authModalTitle").textContent = mode === "login" ? "Sign In" : "Create Account";
-  document.getElementById("authSubmitBtn").textContent = mode === "login" ? "Log In" : "Sign Up";
-  document.getElementById("authError").style.display = "none";
-  document.getElementById("authPassword").value = "";
-  document.getElementById("authModal")?.classList.add("open");
-}
-
-if (auth) {
-  auth.onAuthStateChanged(async (user) => {
-    const authGroup = document.getElementById("authNavGroup");
-    if (!authGroup) return;
-    if (user) {
-      currentUser = user;
-      authGroup.innerHTML = `
-        <span style="font-size: 0.85rem; color: #94a3b8; font-weight: 700; padding: 0 0.5rem;">${escapeHtml(user.email || "Adventurer")}</span>
-        <button class="btn outline blue" id="logoutBtn" type="button">Log Out</button>
-      `;
-      if (db) {
-        try {
-          const docSnap = await db.collection("user_rosters").doc(user.uid).get();
-          if (docSnap.exists) {
-            localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(docSnap.data().data));
-          } else {
-            saveRoster(getRoster());
-          }
-          loadSheet();
-        } catch (e) {
-          console.warn("Cloud sync deferred:", e);
-        }
-      }
-    } else {
-      currentUser = null;
-      authGroup.innerHTML = `
-        <button class="btn outline blue" id="loginNavBtn" type="button">Log In</button>
-        <button class="btn red" id="signupNavBtn" type="button">Sign Up</button>
-      `;
-      loadSheet();
-    }
-  });
-}
-
 function switchMainTab(targetId) {
   document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
   document.querySelectorAll(".tab-page").forEach((p) => p.classList.remove("active"));
@@ -1015,12 +945,26 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Close dropdowns if clicked outside
+  if (e.target.closest(".blur-toggle-btn")) {
+    const btn = e.target.closest(".blur-toggle-btn");
+    const pill = btn.closest(".field-pill");
+    if (pill) {
+      pill.classList.toggle("blurred");
+      const blurId = pill.dataset.blurId;
+      if (pill.classList.contains("blurred")) {
+        if (!myBlurredPills.includes(blurId)) myBlurredPills.push(blurId);
+      } else {
+        myBlurredPills = myBlurredPills.filter((id) => id !== blurId);
+      }
+      saveSheet(true);
+    }
+    return;
+  }
+
   if (!e.target.closest(".dropdown-pill-wrapper")) {
     document.querySelectorAll(".dropdown-menu").forEach((d) => d.classList.remove("open"));
   }
 
-  // Dropdown Item Selections
   if (e.target.classList.contains("select-class-item")) {
     const className = e.target.dataset.name;
     const classInput = document.getElementById("charClass");
@@ -1043,7 +987,6 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Interactive Conditions Tracker Toggle
   if (e.target.classList.contains("cond-chip")) {
     const cond = e.target.dataset.cond;
     if (myActiveConditions.includes(cond)) {
@@ -1055,45 +998,6 @@ document.addEventListener("click", async (e) => {
     }
     saveSheet(true);
     return;
-  }
-
-  if (e.target.id === "loginNavBtn") openAuthModal("login");
-  if (e.target.id === "signupNavBtn") openAuthModal("signup");
-
-  if (e.target.id === "logoutBtn" && auth) {
-    await auth.signOut();
-    showStatus("Logged out");
-  }
-
-  if (e.target.id === "authSubmitBtn" && auth) {
-    const email = document.getElementById("authEmail").value;
-    const pass = document.getElementById("authPassword").value;
-    const errEl = document.getElementById("authError");
-    errEl.style.display = "none";
-    try {
-      if (authMode === "login") {
-        await auth.signInWithEmailAndPassword(email, pass);
-      } else {
-        await auth.createUserWithEmailAndPassword(email, pass);
-      }
-      closeModal("authModal");
-    } catch (err) {
-      errEl.textContent = err.message.replace("Firebase: ", "");
-      errEl.style.display = "block";
-    }
-  }
-
-  if (e.target.id === "googleAuthBtn" && auth) {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    const errEl = document.getElementById("authError");
-    errEl.style.display = "none";
-    try {
-      await auth.signInWithPopup(provider);
-      closeModal("authModal");
-    } catch (err) {
-      errEl.textContent = err.message.replace("Firebase: ", "");
-      errEl.style.display = "block";
-    }
   }
 
   if (e.target.id === "saveBtn") saveSheet(false);
@@ -1130,7 +1034,8 @@ document.addEventListener("click", async (e) => {
       spells: myCharacterSpells,
       traits: myCharacterTraits,
       weapons: myCharacterWeapons,
-      conditions: myActiveConditions
+      conditions: myActiveConditions,
+      blurredPills: myBlurredPills
     };
     const blob = new Blob([JSON.stringify({ character: currentChar, allRoster: roster }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -1375,7 +1280,6 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-// Dropdown input listeners
 document.getElementById("charClass")?.addEventListener("focus", (e) => {
   renderClassDropdown(e.target.value);
   document.getElementById("classDropdown")?.classList.add("open");
@@ -1396,7 +1300,6 @@ document.getElementById("charRace")?.addEventListener("input", (e) => {
   document.getElementById("raceDropdown")?.classList.add("open");
 });
 
-// Search & Filter Listeners
 let spellFilterTimeout = null;
 document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   const query = e.target.value.toLowerCase().trim();
