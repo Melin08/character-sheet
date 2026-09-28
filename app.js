@@ -10,9 +10,17 @@ const firebaseConfig = {
 };
 
 let auth = null;
-if (typeof firebase !== "undefined" && firebaseConfig.apiKey !== "YOUR_API_KEY") {
-  firebase.initializeApp(firebaseConfig);
-  auth = firebase.auth();
+let db = null;
+let currentUser = null;
+
+try {
+  if (typeof firebase !== "undefined" && firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+  }
+} catch (err) {
+  console.warn("Firebase initialization skipped or failed:", err);
 }
 
 const ROSTER_STORAGE_KEY = "badman_char_roster_v1";
@@ -122,115 +130,77 @@ const SRD_SPELL_LEVELS = {
 };
 
 const BUILTIN_SPELLS = [
-  { name: "Hunter's Mark", levelTag: "Level 1", schoolTag: "Divination", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "90 ft", duration: "Concentration, up to 1 hour", desc: "You choose a creature you can see within range and mark it as your quarry. You deal an extra 1d6 damage to the target whenever you hit it with a weapon attack, and you have advantage on any Wisdom (Perception) or Wisdom (Survival) check to find it." },
-  { name: "Hail of Thorns", levelTag: "Level 1", schoolTag: "Conjuration", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "The next time you hit a creature with a ranged weapon attack, a rain of thorns sprouts from your weapon. The target and each creature within 5 feet must make a Dexterity saving throw, taking 1d10 piercing damage on a failure, or half on a success." },
-  { name: "Zephyr Strike", levelTag: "Level 1", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "You move like the wind. Your movement doesn't provoke opportunity attacks. Once before the spell ends, you can give yourself advantage on one weapon attack roll. That attack deals an extra 1d8 force damage on a hit, and your speed increases by 30 feet for that turn." },
-  { name: "Ensnaring Strike", levelTag: "Level 1", schoolTag: "Conjuration", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "The next time you hit a creature with a weapon attack, writhing thorny vines appear. The target must succeed on a Strength saving throw or be restrained by the vines until the spell ends." },
-  { name: "Goodberry", levelTag: "Level 1", schoolTag: "Transmutation", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "Touch", duration: "24 hours", desc: "Up to ten berries appear in your hand. Eating a berry restores 1 hit point and provides enough nourishment to sustain a creature for one day." },
-  { name: "Absorb Elements", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Artificer, Druid, Ranger, Sorcerer, Wizard", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "You gain resistance to the triggering elemental damage type until the start of your next turn. Also, your first melee attack on your next turn deals an extra 1d6 damage of that type." },
-  { name: "Fog Cloud", levelTag: "Level 1", schoolTag: "Conjuration", classesTag: "Druid, Ranger, Sorcerer, Wizard, Triton", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 hour", desc: "You create a 20-foot-radius sphere of fog centered on a point within range. The sphere spreads around corners, and its area is heavily obscured." },
-  { name: "Pass without Trace", levelTag: "Level 2", schoolTag: "Abjuration", classesTag: "Druid, Ranger, Earth Genasi", casting_time: "1 Action", range: "Self", duration: "Concentration, up to 1 hour", desc: "A veil of shadows and silence radiates from you. Each creature you choose within 30 feet gains a +10 bonus to Dexterity (Stealth) checks and can't be tracked except by magical means." },
-  { name: "Spike Growth", levelTag: "Level 2", schoolTag: "Transmutation", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "150 ft", duration: "Concentration, up to 10 minutes", desc: "The ground in a 20-foot radius twists into hard spikes and thorns. When a creature moves into or within the area, it takes 2d4 piercing damage for every 5 feet traveled." },
-  { name: "Cordon of Arrows", levelTag: "Level 2", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Action", range: "5 ft", duration: "8 hours", desc: "You plant four arrows or bolts in the ground. Whenever an enemy comes within 30 feet, an arrow strikes it, dealing 1d6 piercing damage on a failed Dexterity save." },
-  { name: "Silence", levelTag: "Level 2", schoolTag: "Illusion", classesTag: "Bard, Cleric, Ranger", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 10 minutes", desc: "No sound can be created within or pass through a 20-foot-radius sphere. Creatures inside are deafened and immune to thunder damage, and casting verbal spells is impossible." },
-  { name: "Lesser Restoration", levelTag: "Level 2", schoolTag: "Abjuration", classesTag: "Artificer, Bard, Cleric, Druid, Paladin, Ranger", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "You touch a creature and end either one disease or one condition afflicting it: blinded, deafened, paralyzed, or poisoned." },
-  { name: "Conjure Animals", levelTag: "Level 3", schoolTag: "Conjuration", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 hour", desc: "You summon fey spirits that take the form of beasts and appear in unoccupied spaces you can see within range. They obey your verbal commands." },
-  { name: "Conjure Barrage", levelTag: "Level 3", schoolTag: "Conjuration", classesTag: "Ranger", casting_time: "1 Action", range: "Self (60-ft cone)", duration: "Instantaneous", desc: "You throw a nonmagical weapon or fire ammunition into the air to create a storm of identical weapons. Each creature in a 60-foot cone takes 3d8 damage on a failed Dexterity save, or half on a success." },
-  { name: "Lightning Arrow", levelTag: "Level 3", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "The next time you make a ranged weapon attack, your ammunition becomes a bolt of lightning. It deals 4d8 lightning damage on a hit, and creatures within 10 feet take 2d8 lightning damage on a failed Dexterity save." },
-  { name: "Wind Wall", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "A wall of strong wind rises from the ground up to 50 feet long and 15 feet high. It deflects arrows, bolts, and ordinary small projectiles." },
-  { name: "Guardian of Nature", levelTag: "Level 4", schoolTag: "Transmutation", classesTag: "Druid, Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "A nature spirit transforms you into a primal guardian. Choose Primal Beast (speed boost, darkvision, and advantage on Strength attacks) or Great Tree (temporary HP and advantage on Dexterity/Wisdom attacks)." },
-  { name: "Freedom of Movement", levelTag: "Level 4", schoolTag: "Abjuration", classesTag: "Artificer, Bard, Cleric, Druid, Ranger", casting_time: "1 Action", range: "Touch", duration: "1 hour", desc: "The target's movement is unaffected by difficult terrain, and spells cannot reduce its speed, paralyze it, or restrain it." },
-  { name: "Swift Quiver", levelTag: "Level 5", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Touch", duration: "Concentration, up to 1 minute", desc: "Your quiver produces an endless supply of ammunition. On each of your turns, you can use a bonus action to make two attacks with a weapon using this quiver." },
-  { name: "Steel Wind Strike", levelTag: "Level 5", schoolTag: "Conjuration", classesTag: "Ranger, Wizard", casting_time: "1 Action", range: "30 ft", duration: "Instantaneous", desc: "You flourish your weapon and vanish to strike up to five creatures. Make a melee spell attack against each target, dealing 6d10 force damage on a hit, then teleport within 5 feet of one target." },
-  { name: "Divine Favor", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your prayer empowers you with divine radiance. Your weapon attacks deal an extra 1d4 radiant damage on a hit." },
-  { name: "Compelled Duel", levelTag: "Level 1", schoolTag: "Enchantment", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "30 ft", duration: "Concentration, up to 1 minute", desc: "You compel a creature into a duel on a failed Wisdom saving throw. It has disadvantage on attack rolls against anyone other than you." },
-  { name: "Thunderous Smite", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your next melee weapon attack deals an extra 2d6 thunder damage. The target must succeed on a Strength saving throw or be pushed 10 feet away and knocked prone." },
-  { name: "Wrathful Smite", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your next melee weapon attack deals an extra 1d6 psychic damage and forces a Wisdom save to avoid becoming frightened of you." },
-  { name: "Searing Smite", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your next melee weapon attack deals an extra 1d6 fire damage and ignites the target for ongoing fire damage each round." },
-  { name: "Branding Smite", levelTag: "Level 2", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your next weapon attack deals an extra 2d6 radiant damage. It sheds dim light and prevents the target from becoming invisible." },
-  { name: "Blinding Smite", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your next melee weapon attack deals an extra 3d8 radiant damage and blinds the target on a failed Constitution save." },
-  { name: "Hex", levelTag: "Level 1", schoolTag: "Enchantment", classesTag: "Warlock", casting_time: "1 Bonus Action", range: "90 ft", duration: "Concentration, up to 1 hour", desc: "You curse a creature, dealing an extra 1d6 necrotic damage whenever you hit it with an attack and giving it disadvantage on checks with one chosen ability." },
-  { name: "Armor of Agathys", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Warlock", casting_time: "1 Action", range: "Self", duration: "1 hour", desc: "Gain 5 temporary hit points. If a creature hits you with a melee attack while you have these temporary hit points, it takes 5 cold damage." },
-  { name: "Arms of Hadar", levelTag: "Level 1", schoolTag: "Conjuration", classesTag: "Warlock", casting_time: "1 Action", range: "Self (10-ft radius)", duration: "Instantaneous", desc: "Dark tendrils erupt from you. Creatures within 10 feet take 2d6 necrotic damage on a failed Strength save and cannot take reactions until their next turn." },
-  { name: "Hellish Rebuke", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Warlock, Tiefling", casting_time: "1 Reaction", range: "60 ft", duration: "Instantaneous", desc: "Point at a creature that damaged you to surround it in hellfire for 2d10 fire damage on a failed Dexterity save, or half on a success." },
-  { name: "Darkness", levelTag: "Level 2", schoolTag: "Evocation", classesTag: "Sorcerer, Warlock, Wizard, Drow, Tiefling", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 10 minutes", desc: "Magical darkness fills a 15-foot sphere. Darkvision cannot see through it, and nonmagical light cannot illuminate it." },
-  { name: "Hunger of Hadar", levelTag: "Level 3", schoolTag: "Conjuration", classesTag: "Warlock", casting_time: "1 Action", range: "150 ft", duration: "Concentration, up to 1 minute", desc: "Open a gateway to blackness and bitter cold. The area is difficult terrain and causes cold and acid damage to trapped creatures." },
-  { name: "Shadow Blade", levelTag: "Level 2", schoolTag: "Illusion", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Weave dark threads into a solid blade dealing 2d8 psychic damage with the finesse, light, and thrown properties. Gain advantage in dim light or darkness." },
-  { name: "Dancing Lights", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Bard, Sorcerer, Wizard, Drow", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "Create up to four glowing orbs or torchlights that hover and shed dim light in a 10-foot radius." },
-  { name: "Faerie Fire", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Artificer, Bard, Druid, Drow", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 minute", desc: "Outline objects and creatures in colorful light inside a 20-foot cube. Attack rolls against outlined creatures have advantage." },
-  { name: "Thaumaturgy", levelTag: "Cantrip", schoolTag: "Transmutation", classesTag: "Cleric, Tiefling", casting_time: "1 Action", range: "30 ft", duration: "Up to 1 minute", desc: "Manifest minor wonders like booming voices, flickering flames, small tremors, or slamming doors." },
-  { name: "Light", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Artificer, Bard, Cleric, Sorcerer, Wizard, Aasimar", casting_time: "1 Action", range: "Touch", duration: "1 hour", desc: "Touch an object to make it shed bright light in a 20-foot radius and dim light for another 20 feet." },
-  { name: "Produce Flame", levelTag: "Cantrip", schoolTag: "Conjuration", classesTag: "Druid, Fire Genasi", casting_time: "1 Action", range: "Self", duration: "10 minutes", desc: "A flame appears in your hand shedding light. You can also hurl it up to 30 feet as a ranged spell attack for 1d8 fire damage." },
-  { name: "Minor Illusion", levelTag: "Cantrip", schoolTag: "Illusion", classesTag: "Bard, Sorcerer, Warlock, Wizard, Forest Gnome", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "Create a harmless sound or an image of an object that lasts up to one minute." },
-  { name: "Guidance", levelTag: "Cantrip", schoolTag: "Divination", classesTag: "Artificer, Cleric, Druid", casting_time: "1 Action", range: "Touch", duration: "Concentration, up to 1 minute", desc: "Touch one willing companion. It can add 1d4 to one ability check of its choice before the spell ends." },
-  { name: "Sacred Flame", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Cleric", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "Radiance descends on a creature for 1d8 radiant damage on a failed Dexterity save, ignoring cover bonuses." },
-  { name: "Toll the Dead", levelTag: "Cantrip", schoolTag: "Necromancy", classesTag: "Cleric, Warlock, Wizard", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "A sound of a dolorous bell deals 1d8 necrotic damage on a failed Wisdom save, increasing to 1d12 if the target is already hurt." },
-  { name: "Ray of Frost", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Artificer, Sorcerer, Wizard", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "A beam of frost deals 1d8 cold damage on a hit and reduces the target's speed by 10 feet until your next turn." },
-  { name: "Shocking Grasp", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Artificer, Sorcerer, Wizard", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "Lightning shocks a target for 1d8 lightning damage. You gain advantage against targets in metal armor, and it prevents them from taking reactions." },
-  { name: "Thorn Whip", levelTag: "Cantrip", schoolTag: "Transmutation", classesTag: "Artificer, Druid", casting_time: "1 Action", range: "30 ft", duration: "Instantaneous", desc: "A thorny vine whip deals 1d6 piercing damage and pulls Large or smaller targets up to 10 feet closer to you." },
-  { name: "Booming Blade", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Artificer, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "Self (5-ft radius)", duration: "1 round", desc: "Make a melee weapon attack. If the target willingly moves before the start of your next turn, it takes 1d8 thunder damage." },
-  { name: "Green-Flame Blade", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Artificer, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "Self (5-ft radius)", duration: "Instantaneous", desc: "Make a melee weapon attack. Green fire leaps to a second creature within 5 feet, dealing fire damage equal to your spell modifier." },
-  { name: "Mind Sliver", levelTag: "Cantrip", schoolTag: "Enchantment", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "60 ft", duration: "1 round", desc: "A psychic spike deals 1d6 psychic damage on a failed Intelligence save and subtracts 1d4 from its next saving throw." },
-  { name: "Bless", levelTag: "Level 1", schoolTag: "Enchantment", classesTag: "Cleric, Paladin", casting_time: "1 Action", range: "30 ft", duration: "Concentration, up to 1 minute", desc: "Bless up to three allies. They add 1d4 to every attack roll and saving throw made before the spell ends." },
-  { name: "Guiding Bolt", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Cleric", casting_time: "1 Action", range: "120 ft", duration: "1 round", desc: "A streak of radiant light deals 4d6 radiant damage on a hit, giving advantage to the next attack roll made against the target." },
-  { name: "Inflict Wounds", levelTag: "Level 1", schoolTag: "Necromancy", classesTag: "Cleric", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "Make a melee spell attack to deal 3d10 necrotic damage on a hit." },
-  { name: "Sanctuary", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Artificer, Cleric", casting_time: "1 Bonus Action", range: "30 ft", duration: "1 minute", desc: "Ward a creature so anyone targeting it must pass a Wisdom save or lose the attack or target someone else." },
-  { name: "Spiritual Weapon", levelTag: "Level 2", schoolTag: "Evocation", classesTag: "Cleric", casting_time: "1 Bonus Action", range: "60 ft", duration: "1 minute", desc: "Create a floating spectral weapon that attacks as a bonus action each round for 1d8 + modifier force damage." },
-  { name: "Hold Person", levelTag: "Level 2", schoolTag: "Enchantment", classesTag: "Bard, Cleric, Druid, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 minute", desc: "Paralyze a humanoid on a failed Wisdom saving throw. The target repeats the save at the end of each turn." },
-  { name: "Moonbeam", levelTag: "Level 2", schoolTag: "Evocation", classesTag: "Druid", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "A silvery cylinder of light deals 2d10 radiant damage when a creature enters it or starts its turn there." },
-  { name: "Heat Metal", levelTag: "Level 2", schoolTag: "Transmutation", classesTag: "Artificer, Bard, Druid", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 minute", desc: "Make a manufactured metal object glowing hot, dealing 2d8 fire damage immediately and on following turns as a bonus action." },
-  { name: "Invisibility", levelTag: "Level 2", schoolTag: "Illusion", classesTag: "Artificer, Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "Touch", duration: "Concentration, up to 1 hour", desc: "Touch a creature to make it invisible until the spell ends or until it attacks or casts a spell." },
-  { name: "Spirit Guardians", levelTag: "Level 3", schoolTag: "Conjuration", classesTag: "Cleric", casting_time: "1 Action", range: "Self (15-ft radius)", duration: "Concentration, up to 10 minutes", desc: "Protective spirits flit around you. Enemy speed is halved, and they take 3d8 radiant or necrotic damage on entering the area." },
-  { name: "Call Lightning", levelTag: "Level 3", schoolTag: "Conjuration", classesTag: "Druid", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 10 minutes", desc: "A storm cloud gathers and lets you call down bolts of lightning as an action for 3d10 lightning damage." },
-  { name: "Revivify", levelTag: "Level 3", schoolTag: "Necromancy", classesTag: "Artificer, Cleric, Druid, Paladin, Ranger", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "Touch a creature that died within the last minute to return it to life with 1 hit point." },
-  { name: "Haste", levelTag: "Level 3", schoolTag: "Transmutation", classesTag: "Artificer, Sorcerer, Wizard", casting_time: "1 Action", range: "30 ft", duration: "Concentration, up to 1 minute", desc: "The target gains double speed, +2 AC, advantage on Dexterity saves, and an extra action on each turn." },
-  { name: "Slow", levelTag: "Level 3", schoolTag: "Transmutation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "Alter time for up to six creatures. Their speed is halved, they suffer -2 to AC and Dex saves, and they lose reactions." },
-  { name: "Hypnotic Pattern", levelTag: "Level 3", schoolTag: "Illusion", classesTag: "Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "Twisting colors incapacitate creatures on a failed Wisdom saving throw, leaving their speed at zero." },
-  { name: "Polymorph", levelTag: "Level 4", schoolTag: "Transmutation", classesTag: "Bard, Druid, Sorcerer, Wizard", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 hour", desc: "Transform a target creature into a beast form with equal or lower challenge rating or level." },
-  { name: "Greater Invisibility", levelTag: "Level 4", schoolTag: "Illusion", classesTag: "Bard, Sorcerer, Wizard", casting_time: "1 Action", range: "Touch", duration: "Concentration, up to 1 minute", desc: "Make a target invisible. Unlike regular invisibility, this effect does not break when the creature attacks or casts a spell." },
-  { name: "Dimension Door", levelTag: "Level 4", schoolTag: "Conjuration", classesTag: "Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "500 ft", duration: "Instantaneous", desc: "Teleport yourself and up to one willing creature of your size or smaller directly to any spot within range." },
-  { name: "Fire Bolt", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You hurl a mote of fire at a creature or object within range. On a hit, the target takes 1d10 fire damage." },
-  { name: "Mage Hand", levelTag: "Cantrip", schoolTag: "Conjuration", classesTag: "Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears within range to manipulate objects up to 10 pounds." },
-  { name: "Eldritch Blast", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Warlock", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "A beam of crackling energy deals 1d10 force damage on a hit." },
-  { name: "Vicious Mockery", levelTag: "Cantrip", schoolTag: "Enchantment", classesTag: "Bard", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "Unleash insults that deal 1d4 psychic damage and impose disadvantage on the target's next attack on a failed Wisdom save." },
-  { name: "Prestidigitation", levelTag: "Cantrip", schoolTag: "Transmutation", classesTag: "Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "10 ft", duration: "Up to 1 hour", desc: "Perform minor sensory tricks, clean or soil items, light small fires, or change food flavors." },
-  { name: "Shield", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Sorcerer, Wizard", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "Gain a +5 bonus to AC until the start of your next turn and take no damage from magic missile." },
-  { name: "Magic Missile", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "Three glowing darts automatically strike targets for 1d4 + 1 force damage each." },
-  { name: "Cure Wounds", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid, Paladin, Ranger", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "A creature you touch regains hit points equal to 1d8 + your spellcasting ability modifier." },
-  { name: "Healing Word", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid", casting_time: "1 Bonus Action", range: "60 ft", duration: "Instantaneous", desc: "A creature within range regains 1d4 + your spellcasting ability modifier in hit points." },
-  { name: "Misty Step", levelTag: "Level 2", schoolTag: "Conjuration", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Bonus Action", range: "Self", duration: "Instantaneous", desc: "Surrounded by silvery mist, teleport up to 30 feet to an unoccupied space you can see." },
-  { name: "Fireball", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "150 ft", duration: "Instantaneous", desc: "A 20-foot-radius sphere of fire deals 8d6 fire damage on a failed Dexterity save, or half on a success." },
-  { name: "Counterspell", levelTag: "Level 3", schoolTag: "Abjuration", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Reaction", range: "60 ft", duration: "Instantaneous", desc: "Interrupt a creature casting a spell. If the spell is 3rd level or lower, it automatically fails." }
+  { name: "Hunter's Mark", levelTag: "Level 1", schoolTag: "Divination", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "90 ft", duration: "Concentration, up to 1 hour", desc: "You mark a creature as your quarry. Deal an extra 1d6 damage when hitting it with a weapon attack, and gain advantage on Perception or Survival checks to find it." },
+  { name: "Hail of Thorns", levelTag: "Level 1", schoolTag: "Conjuration", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "The next time you hit a creature with a ranged weapon attack, thorns rain down. Target and creatures within 5 feet take 1d10 piercing damage on a failed Dex save, or half on a success." },
+  { name: "Zephyr Strike", levelTag: "Level 1", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Move like wind. Movement does not provoke opportunity attacks. Gain advantage on one attack roll dealing an extra 1d8 force damage and boost speed by 30 feet." },
+  { name: "Ensnaring Strike", levelTag: "Level 1", schoolTag: "Conjuration", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "The next time you hit with a weapon attack, writhing thorny vines appear. The target must pass a Strength save or become restrained." },
+  { name: "Goodberry", levelTag: "Level 1", schoolTag: "Transmutation", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "Touch", duration: "24 hours", desc: "Ten berries appear in hand. Eating a berry restores 1 hit point and provides nourishment for a full day." },
+  { name: "Absorb Elements", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Artificer, Druid, Ranger, Sorcerer, Wizard", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "Gain resistance to the triggering elemental damage type until next turn, and add 1d6 damage of that type to your next melee attack." },
+  { name: "Fog Cloud", levelTag: "Level 1", schoolTag: "Conjuration", classesTag: "Druid, Ranger, Sorcerer, Wizard, Triton", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 hour", desc: "Create a 20-foot-radius sphere of fog centered on a point. The sphere spreads around corners and heavily obscures the area." },
+  { name: "Pass without Trace", levelTag: "Level 2", schoolTag: "Abjuration", classesTag: "Druid, Ranger, Earth Genasi", casting_time: "1 Action", range: "Self", duration: "Concentration, up to 1 hour", desc: "A veil of shadows radiates from you. Each chosen creature within 30 feet gets +10 to Stealth checks and cannot be tracked by nonmagical means." },
+  { name: "Spike Growth", levelTag: "Level 2", schoolTag: "Transmutation", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "150 ft", duration: "Concentration, up to 10 minutes", desc: "The ground twists into hard thorns. Any creature moving through takes 2d4 piercing damage for every 5 feet traveled." },
+  { name: "Cordon of Arrows", levelTag: "Level 2", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Action", range: "5 ft", duration: "8 hours", desc: "Plant four arrows or bolts in the ground. When an enemy steps within 30 feet, an arrow strikes for 1d6 piercing damage on a failed Dex save." },
+  { name: "Silence", levelTag: "Level 2", schoolTag: "Illusion", classesTag: "Bard, Cleric, Ranger", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 10 minutes", desc: "No sound can pass through a 20-foot sphere. Creatures inside are deafened, immune to thunder damage, and cannot cast verbal spells." },
+  { name: "Lesser Restoration", levelTag: "Level 2", schoolTag: "Abjuration", classesTag: "Artificer, Bard, Cleric, Druid, Paladin, Ranger", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "Touch a creature to end one disease or condition: blinded, deafened, paralyzed, or poisoned." },
+  { name: "Conjure Animals", levelTag: "Level 3", schoolTag: "Conjuration", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 hour", desc: "Summon fey spirits taking the form of beasts that obey your verbal commands." },
+  { name: "Conjure Barrage", levelTag: "Level 3", schoolTag: "Conjuration", classesTag: "Ranger", casting_time: "1 Action", range: "Self (60-ft cone)", duration: "Instantaneous", desc: "Throw a nonmagical weapon to unleash a storm of duplicates. Each creature in a 60-foot cone takes 3d8 damage on a failed Dex save." },
+  { name: "Lightning Arrow", levelTag: "Level 3", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your next ranged attack transforms into lightning, dealing 4d8 lightning damage on a hit, and 2d8 to targets within 10 feet on a failed Dex save." },
+  { name: "Wind Wall", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "A gale up to 50 feet long and 15 feet high rises from the ground, deflecting arrows and small projectiles." },
+  { name: "Guardian of Nature", levelTag: "Level 4", schoolTag: "Transmutation", classesTag: "Druid, Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Assume the form of a primal guardian: Primal Beast (speed boost, darkvision, Str advantage) or Great Tree (temp HP and Dex/Wis advantage)." },
+  { name: "Freedom of Movement", levelTag: "Level 4", schoolTag: "Abjuration", classesTag: "Artificer, Bard, Cleric, Druid, Ranger", casting_time: "1 Action", range: "Touch", duration: "1 hour", desc: "Target ignores difficult terrain and cannot be paralyzed or restrained by magic." },
+  { name: "Swift Quiver", levelTag: "Level 5", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Touch", duration: "Concentration, up to 1 minute", desc: "Your quiver produces endless ammo. Make two weapon attacks as a bonus action on each turn." },
+  { name: "Steel Wind Strike", levelTag: "Level 5", schoolTag: "Conjuration", classesTag: "Ranger, Wizard", casting_time: "1 Action", range: "30 ft", duration: "Instantaneous", desc: "Strike up to five creatures within 30 feet, dealing 6d10 force damage to each target on a hit, then teleport near one." },
+  { name: "Divine Favor", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Empower your weapon with holy light to deal an extra 1d4 radiant damage on every hit." },
+  { name: "Compelled Duel", levelTag: "Level 1", schoolTag: "Enchantment", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "30 ft", duration: "Concentration, up to 1 minute", desc: "Force a creature into a duel on a failed Wis save, giving it disadvantage on attacks against anyone else." },
+  { name: "Thunderous Smite", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Next melee hit deals an extra 2d6 thunder damage and knocks target prone 10 feet away on a failed Strength save." },
+  { name: "Wrathful Smite", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Next melee hit deals 1d6 psychic damage and can frighten the target on a failed Wisdom saving throw." },
+  { name: "Hex", levelTag: "Level 1", schoolTag: "Enchantment", classesTag: "Warlock", casting_time: "1 Bonus Action", range: "90 ft", duration: "Concentration, up to 1 hour", desc: "Curse a target for an extra 1d6 necrotic damage on hits, and give it disadvantage on checks with one chosen ability score." },
+  { name: "Armor of Agathys", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Warlock", casting_time: "1 Action", range: "Self", duration: "1 hour", desc: "Gain 5 temporary hit points. Attackers hitting you with melee take 5 cold damage as long as these points remain." },
+  { name: "Hellish Rebuke", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Warlock, Tiefling", casting_time: "1 Reaction", range: "60 ft", duration: "Instantaneous", desc: "Surround an attacker that hurt you with flames for 2d10 fire damage on a failed Dexterity save." },
+  { name: "Darkness", levelTag: "Level 2", schoolTag: "Evocation", classesTag: "Sorcerer, Warlock, Wizard, Drow, Tiefling", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 10 minutes", desc: "Magical darkness fills a 15-foot sphere that darkvision and standard torches cannot penetrate." },
+  { name: "Dancing Lights", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Bard, Sorcerer, Wizard, Drow", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "Create four glowing lights that float within range and illuminate 10-foot areas." },
+  { name: "Faerie Fire", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Artificer, Bard, Druid, Drow", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 minute", desc: "Outline targets in radiant light inside a 20-foot cube, giving advantage to attackers." },
+  { name: "Thaumaturgy", levelTag: "Cantrip", schoolTag: "Transmutation", classesTag: "Cleric, Tiefling", casting_time: "1 Action", range: "30 ft", duration: "Up to 1 minute", desc: "Manifest minor wonders like booming voices, flickering flames, tremors, or swinging doors." },
+  { name: "Light", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Artificer, Bard, Cleric, Sorcerer, Wizard, Aasimar", casting_time: "1 Action", range: "Touch", duration: "1 hour", desc: "Touch an object to make it shine brightly for 20 feet and dimly for another 20 feet." },
+  { name: "Produce Flame", levelTag: "Cantrip", schoolTag: "Conjuration", classesTag: "Druid, Fire Genasi", casting_time: "1 Action", range: "Self", duration: "10 minutes", desc: "Hold a flame in hand shedding bright light, or hurl it up to 30 feet for 1d8 fire damage." },
+  { name: "Minor Illusion", levelTag: "Cantrip", schoolTag: "Illusion", classesTag: "Bard, Sorcerer, Warlock, Wizard, Forest Gnome", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "Create an image of an object or a sound that lasts up to one minute." },
+  { name: "Guidance", levelTag: "Cantrip", schoolTag: "Divination", classesTag: "Artificer, Cleric, Druid", casting_time: "1 Action", range: "Touch", duration: "Concentration, up to 1 minute", desc: "Touch an ally to add 1d4 to one ability check of their choice." },
+  { name: "Fire Bolt", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "Hurl a mote of fire at a target for 1d10 fire damage on a ranged spell hit." },
+  { name: "Mage Hand", levelTag: "Cantrip", schoolTag: "Conjuration", classesTag: "Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral hand appears within range to manipulate objects up to 10 pounds." },
+  { name: "Eldritch Blast", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Warlock", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "A beam of energy deals 1d10 force damage on a hit." },
+  { name: "Shield", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Sorcerer, Wizard", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "Gain +5 to AC until next turn and take no damage from magic missile." },
+  { name: "Magic Missile", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "Three darts strike targets automatically for 1d4 + 1 force damage each." },
+  { name: "Cure Wounds", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid, Paladin, Ranger", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "Restore 1d8 + modifier hit points to a touched creature." },
+  { name: "Healing Word", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid", casting_time: "1 Bonus Action", range: "60 ft", duration: "Instantaneous", desc: "Restore 1d4 + modifier hit points to a seen creature within range." },
+  { name: "Misty Step", levelTag: "Level 2", schoolTag: "Conjuration", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Bonus Action", range: "Self", duration: "Instantaneous", desc: "Teleport up to 30 feet to an unoccupied space you can see." },
+  { name: "Fireball", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "150 ft", duration: "Instantaneous", desc: "A 20-foot fireball deals 8d6 fire damage to creatures failing a Dexterity save." },
+  { name: "Counterspell", levelTag: "Level 3", schoolTag: "Abjuration", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Reaction", range: "60 ft", duration: "Instantaneous", desc: "Attempt to interrupt a spellcaster. 3rd-level or lower spells fail automatically." }
 ];
 
 const BUILTIN_TRAITS = [
-  { name: "Action Surge", classes: ["Fighter"], desc: "On your turn, you can take one additional action on top of your regular action and bonus action." },
-  { name: "Second Wind", classes: ["Fighter"], desc: "On your turn, use a bonus action to regain hit points equal to 1d10 + your fighter level once per short or long rest." },
-  { name: "Sneak Attack", classes: ["Rogue"], desc: "Once per turn, deal an extra 1d6 damage to one creature you hit with advantage using a finesse or ranged weapon." },
-  { name: "Cunning Action", classes: ["Rogue"], desc: "You can take a bonus action on each of your turns in combat to Dash, Disengage, or Hide." },
-  { name: "Rage", classes: ["Barbarian"], desc: "Enter a primal rage as a bonus action, gaining advantage on Strength checks, melee bonus damage, and resistance to physical damage." },
-  { name: "Reckless Attack", classes: ["Barbarian"], desc: "Gain advantage on melee weapon attack rolls using Strength during this turn, but attack rolls against you have advantage until your next turn." },
-  { name: "Bardic Inspiration", classes: ["Bard"], desc: "Use a bonus action to give a companion within 60 feet a d6 to add to an attack roll, ability check, or saving throw." },
-  { name: "Divine Smite", classes: ["Paladin"], desc: "When you hit a creature with a melee weapon attack, expend a spell slot to deal 2d8 plus 1d8 per spell level above 1st radiant damage." },
-  { name: "Lay on Hands", classes: ["Paladin"], desc: "Heal wounds through blessed touch using a pool of healing power equal to your paladin level x 5." },
-  { name: "Wild Shape", classes: ["Druid"], desc: "Magically assume the shape of a beast you have seen before as an action twice per short or long rest." },
-  { name: "Channel Divinity", classes: ["Cleric", "Paladin"], desc: "Channel divine energy directly from your deity to fuel potent domain or oath effects." },
-  { name: "Flurry of Blows", classes: ["Monk"], desc: "Immediately after you take the Attack action, spend 1 ki point to make two unarmed strikes as a bonus action." },
-  { name: "Pact Magic", classes: ["Warlock"], desc: "Your spell slots are all of the highest available slot level and recover fully upon a short rest." },
-  { name: "Arcane Recovery", classes: ["Wizard"], desc: "Once per day during a short rest, recover expended spell slots up to half your wizard level (rounded up)." },
-  { name: "Darkvision", races: ["Dwarf", "Elf", "Gnome", "Half-Elf", "Half-Orc", "Tiefling"], desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
-  { name: "Fey Ancestry", races: ["Elf", "Half-Elf"], desc: "Advantage on saving throws against being charmed, and magic cannot put you to sleep." },
-  { name: "Trance", races: ["Elf"], desc: "Elves don't need to sleep. Instead, they meditate deeply for 4 hours a day, gaining the full benefits of an 8-hour rest." },
-  { name: "Dwarven Resilience", races: ["Dwarf"], desc: "Advantage on saving throws against poison, and resistance against poison damage." },
-  { name: "Stonecunning", races: ["Dwarf"], desc: "Whenever you make an Intelligence (History) check related to the origin of stonework, add double your proficiency bonus." },
-  { name: "Lucky", races: ["Halfling"], desc: "When you roll a 1 on an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll." },
-  { name: "Brave", races: ["Halfling"], desc: "Advantage on saving throws against being frightened." },
-  { name: "Relentless Endurance", races: ["Half-Orc"], desc: "When reduced to 0 HP but not killed outright, you can drop to 1 HP instead once per long rest." },
-  { name: "Savage Attacks", races: ["Half-Orc"], desc: "When you score a critical hit with a melee weapon attack, roll one of the weapon's damage dice one additional time." },
-  { name: "Hellish Resistance", races: ["Tiefling"], desc: "You have resistance to fire damage." },
-  { name: "Breath Weapon", races: ["Dragonborn"], desc: "Exhale destructive elemental energy based on your draconic ancestry once per short or long rest." },
-  { name: "Damage Resistance", races: ["Dragonborn"], desc: "You have resistance to the damage type associated with your draconic ancestry." },
-  { name: "Gnome Cunning", races: ["Gnome"], desc: "Advantage on all Intelligence, Wisdom, and Charisma saving throws against magic." }
+  { name: "Action Surge", classes: ["Fighter"], desc: "Take one additional action on your turn once per short or long rest." },
+  { name: "Second Wind", classes: ["Fighter"], desc: "Use a bonus action to regain 1d10 + fighter level hit points once per rest." },
+  { name: "Sneak Attack", classes: ["Rogue"], desc: "Deal an extra 1d6 damage once per turn using finesse or ranged weapons with advantage." },
+  { name: "Cunning Action", classes: ["Rogue"], desc: "Take Dash, Disengage, or Hide as a bonus action on each turn." },
+  { name: "Rage", classes: ["Barbarian"], desc: "Enter a rage granting melee damage bonus, advantage on Strength checks, and weapon damage resistance." },
+  { name: "Reckless Attack", classes: ["Barbarian"], desc: "Gain advantage on melee Strength attacks this turn, but enemies gain advantage against you." },
+  { name: "Bardic Inspiration", classes: ["Bard"], desc: "Give an ally within 60 feet an inspiration die to add to one roll." },
+  { name: "Divine Smite", classes: ["Paladin"], desc: "Expend spell slots on melee weapon hits for 2d8 plus 1d8 per slot level in radiant damage." },
+  { name: "Lay on Hands", classes: ["Paladin"], desc: "Heal creatures with a pool of power equal to your paladin level x 5." },
+  { name: "Wild Shape", classes: ["Druid"], desc: "Assume the shape of a beast you have seen before as an action." },
+  { name: "Channel Divinity", classes: ["Cleric", "Paladin"], desc: "Fuel divine subclass effects by channeling deity power." },
+  { name: "Flurry of Blows", classes: ["Monk"], desc: "Spend 1 ki point to make two unarmed strikes as a bonus action right after an Attack action." },
+  { name: "Pact Magic", classes: ["Warlock"], desc: "Spell slots recover completely on short rests and scale to highest slot level." },
+  { name: "Arcane Recovery", classes: ["Wizard"], desc: "Recover spell slots totaling up to half your wizard level on a short rest once per day." },
+  { name: "Darkvision", races: ["Dwarf", "Elf", "Gnome", "Half-Elf", "Half-Orc", "Tiefling"], desc: "See in dim light within 60 feet as if it were bright, and darkness as dim light." },
+  { name: "Fey Ancestry", races: ["Elf", "Half-Elf"], desc: "Advantage on saves against being charmed, and magic cannot put you to sleep." },
+  { name: "Trance", races: ["Elf"], desc: "Meditate for 4 hours instead of sleeping 8 hours." },
+  { name: "Dwarven Resilience", races: ["Dwarf"], desc: "Advantage on poison saving throws and resistance against poison damage." },
+  { name: "Lucky", races: ["Halfling"], desc: "Reroll natural 1s on attack rolls, ability checks, or saving throws." },
+  { name: "Relentless Endurance", races: ["Half-Orc"], desc: "Drop to 1 HP instead of 0 once per long rest." },
+  { name: "Savage Attacks", races: ["Half-Orc"], desc: "Roll an extra weapon damage die when you score a critical hit." },
+  { name: "Hellish Resistance", races: ["Tiefling"], desc: "Resistance to fire damage." },
+  { name: "Breath Weapon", races: ["Dragonborn"], desc: "Exhale destructive elemental damage based on your dragon ancestry once per rest." }
 ];
 
 function escapeHtml(str) {
@@ -344,19 +314,22 @@ function renderMyTraits() {
     return;
   }
 
-  container.innerHTML = myCharacterTraits.map((trait, idx) => `
-    <div class="trait-card ${trait.isExpanded ? 'expanded' : ''}" data-index="${idx}">
-      <div class="trait-card-header">
-        <input type="text" class="trait-name-input custom-trait-field" data-prop="name" value="${escapeHtml(trait.name || '')}" placeholder="Ability Name" />
-        <button class="trait-card-delete" data-index="${idx}" type="button" title="Remove ability">&times;</button>
+  container.innerHTML = myCharacterTraits.map((trait, idx) => {
+    if (!trait) return "";
+    return `
+      <div class="trait-card ${trait.isExpanded ? 'expanded' : ''}" data-index="${idx}">
+        <div class="trait-card-header">
+          <input type="text" class="trait-name-input custom-trait-field" data-prop="name" value="${escapeHtml(trait.name || '')}" placeholder="Ability Name" />
+          <button class="trait-card-delete" data-index="${idx}" type="button" title="Remove ability">&times;</button>
+        </div>
+        <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || '')}" placeholder="Type (Racial, Feat, etc.)" />
+        <textarea class="trait-desc-input custom-trait-field" data-prop="desc" placeholder="Ability description and rules...">${escapeHtml(trait.desc || '')}</textarea>
+        <div class="trait-card-footer">
+          <button type="button" class="trait-expand-btn">${trait.isExpanded ? 'Collapse' : 'Expand'}</button>
+        </div>
       </div>
-      <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || '')}" placeholder="Type (Racial, Feat, etc.)" />
-      <textarea class="trait-desc-input custom-trait-field" data-prop="desc" placeholder="Ability description and rules...">${escapeHtml(trait.desc || '')}</textarea>
-      <div class="trait-card-footer">
-        <button type="button" class="trait-expand-btn">${trait.isExpanded ? 'Collapse' : 'Expand'}</button>
-      </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 
 function renderMySpells() {
@@ -369,6 +342,7 @@ function renderMySpells() {
   }
 
   container.innerHTML = myCharacterSpells.map((spell, idx) => {
+    if (!spell) return "";
     const typeVal = spell.type || spell.levelTag || "Spell";
     const descVal = Array.isArray(spell.desc) ? spell.desc.join("\n\n") : (spell.desc || "");
     return `
@@ -497,8 +471,21 @@ function getRoster() {
   }
 }
 
+async function syncRosterToCloud(roster) {
+  if (!currentUser || !db) return;
+  try {
+    await db.collection("users").doc(currentUser.uid).set({
+      roster: roster,
+      updatedAt: Date.now()
+    }, { merge: true });
+  } catch (err) {
+    console.error("Cloud sync failed:", err);
+  }
+}
+
 function saveRoster(roster) {
   localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(roster));
+  syncRosterToCloud(roster);
 }
 
 function getCurrentSheetData() {
@@ -560,7 +547,7 @@ function applyCharacterData(charData) {
   myBlurredPills = charData.blurredPills || [];
   myCharacterWeapons = charData.weapons && charData.weapons.length >= 2 ? charData.weapons : [
     { name: "", atk: "", dmg: "", notes: "" },
-    { name: "", atk: "", dmg: "" , notes: "" }
+    { name: "", atk: "", dmg: "", notes: "" }
   ];
 
   renderWeapons();
@@ -1045,8 +1032,30 @@ function updateAuthUI(user) {
 }
 
 if (auth) {
-  auth.onAuthStateChanged((user) => {
+  auth.onAuthStateChanged(async (user) => {
+    currentUser = user;
     updateAuthUI(user);
+
+    if (user && db) {
+      try {
+        const doc = await db.collection("users").doc(user.uid).get();
+        if (doc.exists && doc.data()?.roster) {
+          const cloudRoster = doc.data().roster;
+          const localRoster = getRoster();
+          const merged = { ...localRoster, ...cloudRoster };
+          localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(merged));
+          loadSheet();
+          showStatus("Cloud Synced");
+        } else {
+          const localRoster = getRoster();
+          if (Object.keys(localRoster).length > 0) {
+            syncRosterToCloud(localRoster);
+          }
+        }
+      } catch (err) {
+        console.error("Cloud sync load error:", err);
+      }
+    }
   });
 }
 
@@ -1136,7 +1145,7 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.id === "emailLoginBtn") {
-    if (!auth) return setAuthError("Please insert your Firebase config keys in app.js first.");
+    if (!auth) return setAuthError("Add your Firebase keys at the top of app.js first.");
     const email = document.getElementById("authEmail")?.value.trim();
     const password = document.getElementById("authPassword")?.value;
     setAuthError("");
@@ -1150,7 +1159,7 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.id === "emailSignUpBtn") {
-    if (!auth) return setAuthError("Please insert your Firebase config keys in app.js first.");
+    if (!auth) return setAuthError("Add your Firebase keys at the top of app.js first.");
     const email = document.getElementById("authEmail")?.value.trim();
     const password = document.getElementById("authPassword")?.value;
     setAuthError("");
@@ -1164,12 +1173,12 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.id === "googleLoginBtn") {
-    if (!auth) return setAuthError("Please insert your Firebase config keys in app.js first.");
+    if (!auth) return setAuthError("Add your Firebase keys at the top of app.js first.");
     setAuthError("");
     try {
       const provider = new firebase.auth.GoogleAuthProvider();
       await auth.signInWithPopup(provider);
-      showStatus("Logged In with Google!");
+      showStatus("Logged In!");
       document.getElementById("authModal")?.classList.remove("open");
     } catch (err) {
       setAuthError(err.message);
@@ -1180,6 +1189,11 @@ document.addEventListener("click", async (e) => {
     if (!auth) return;
     try {
       await auth.signOut();
+      currentUser = null;
+      localStorage.removeItem(ROSTER_STORAGE_KEY);
+      localStorage.removeItem(ACTIVE_CHAR_ID_KEY);
+      activeCharId = "default";
+      resetSheet();
       showStatus("Signed Out");
       document.getElementById("authModal")?.classList.remove("open");
     } catch (err) {
