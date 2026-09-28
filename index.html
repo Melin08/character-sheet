@@ -37,8 +37,6 @@
           <input type="file" id="restoreFile" accept=".json" />
         </label>
         <button class="btn gray" id="deleteBtn" type="button">Delete</button>
-      </div>
-      <div class="btn-group">
         <button class="btn gray" id="authModalBtn" type="button">Account</button>
       </div>
       <span id="saveStatus" class="status-msg"></span>
@@ -82,7 +80,7 @@
           <span class="pill-label">Alignment</span>
           <input type="text" id="charAlignment" class="save-field pill-input" placeholder="e.g. Chaotic Good" />
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
-            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
         <div class="field-pill mini" data-blur-id="level">
@@ -808,33 +806,38 @@
   </div>
 
   <div id="authModal" class="modal-backdrop" role="dialog" aria-modal="true">
-    <div class="modal-box">
+    <div class="modal-box auth-modal-box">
       <div class="modal-header">
-        <h3 id="authModalTitle">Player Account</h3>
+        <h3 id="authModalTitle">Account &amp; Cloud Sync</h3>
         <button id="closeAuthModal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
       </div>
-      <div style="padding: 1.5rem; display: flex; flex-direction: column; gap: 0.85rem;">
+      <div class="auth-modal-content">
         <div id="authLoggedOutView">
-          <input type="email" id="authEmail" class="save-field" placeholder="Email address" style="width:100%; margin-bottom: 0.5rem; padding: 0.55rem; background:#080d18; border:1.5px solid #3b4c68; border-radius:6px; color:#fff;" />
-          <input type="password" id="authPassword" class="save-field" placeholder="Password" style="width:100%; margin-bottom: 0.85rem; padding: 0.55rem; background:#080d18; border:1.5px solid #3b4c68; border-radius:6px; color:#fff;" />
-          <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
-            <button class="btn red" id="emailLoginBtn" type="button" style="flex:1;">Sign In</button>
-            <button class="btn gray" id="emailSignUpBtn" type="button" style="flex:1;">Sign Up</button>
+          <div class="auth-input-group">
+            <input type="email" id="authEmail" class="auth-input" placeholder="Email address" autocomplete="username" />
+            <input type="password" id="authPassword" class="auth-input" placeholder="Password" autocomplete="current-password" />
           </div>
-          <button class="btn gray" id="googleLoginBtn" type="button" style="width:100%;">Sign in with Google</button>
+          <div class="auth-btn-row">
+            <button class="btn red" id="emailLoginBtn" type="button">Sign In</button>
+            <button class="btn gray" id="emailSignUpBtn" type="button">Sign Up</button>
+          </div>
+          <div class="auth-divider"><span>OR</span></div>
+          <button class="btn gray auth-google-btn" id="googleLoginBtn" type="button">Sign in with Google</button>
         </div>
-        <div id="authLoggedInView" style="display:none; text-align:center; padding: 0.5rem 0;">
-          <p style="color:#94a3b8; font-size:0.9rem; margin-bottom:0.35rem;">Signed in as</p>
-          <p id="currentUserText" style="margin-bottom: 1.25rem; color: #38bdf8; font-weight:700; font-size:1.05rem;"></p>
-          <button class="btn red" id="logoutBtn" type="button" style="width:100%;">Log Out</button>
+        <div id="authLoggedInView" style="display: none;">
+          <p class="auth-user-label">Signed in as</p>
+          <p id="currentUserText" class="auth-user-email"></p>
+          <div class="auth-sync-status" id="cloudSyncStatus">Cloud Sync: Active</div>
+          <button class="btn red auth-logout-btn" id="logoutBtn" type="button">Log Out</button>
         </div>
-        <p id="authErrorMsg" style="color: #f87171; font-size: 0.85rem; text-align: center; margin:0;"></p>
+        <p id="authErrorMsg" class="auth-error-msg"></p>
       </div>
     </div>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-  <script src="app.js?v=3"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>
