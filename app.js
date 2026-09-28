@@ -287,7 +287,7 @@ function renderMySpells() {
   }
 
   container.innerHTML = myCharacterSpells.map((spell, idx) => {
-    const typeVal = spell.type || "Spell";
+    const typeVal = spell.type || spell.levelTag || "Spell";
     const descVal = Array.isArray(spell.desc) ? spell.desc.join("\n\n") : (spell.desc || "");
     return `
       <div class="spell-card" draggable="true" data-index="${idx}">
@@ -415,7 +415,7 @@ function getRoster() {
   }
 }
 
-async function saveRoster(roster) {
+function saveRoster(roster) {
   localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(roster));
 }
 
@@ -478,7 +478,7 @@ function applyCharacterData(charData) {
   myBlurredPills = charData.blurredPills || [];
   myCharacterWeapons = charData.weapons && charData.weapons.length >= 2 ? charData.weapons : [
     { name: "", atk: "", dmg: "", notes: "" },
-    { name: "", atk: "", dmg: "", notes: "" }
+    { name: "", atk: "", dmg: "" , notes: "" }
   ];
 
   renderWeapons();
@@ -527,8 +527,11 @@ function resetSheet() {
       field.value = 10;
     } else if (field.id === "charSpeed") {
       field.value = 30;
+    } else if (field.id === "hitDiceCur" || field.id === "hitDiceMax") {
+      field.value = 1;
     } else if (
       field.classList.contains("dual-input") ||
+      field.classList.contains("pill-sub-input") ||
       field.classList.contains("coin-input") ||
       field.classList.contains("slot-input") ||
       field.classList.contains("death-input") ||
@@ -1150,14 +1153,25 @@ document.addEventListener("click", async (e) => {
       }
     }
 
-    myCharacterSpells.push(detail || {
-      name: name,
-      type: getSpellLevelTag({ name }),
-      casting_time: "1 Action",
-      range: "30 ft",
-      duration: "Instantaneous",
-      desc: ""
-    });
+    if (detail) {
+      myCharacterSpells.push({
+        name: detail.name || name,
+        type: detail.type || detail.levelTag || getSpellLevelTag(detail) || "Spell",
+        casting_time: detail.casting_time || "1 Action",
+        range: detail.range || "30 ft",
+        duration: detail.duration || "Instantaneous",
+        desc: Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || "")
+      });
+    } else {
+      myCharacterSpells.push({
+        name: name,
+        type: getSpellLevelTag({ name }),
+        casting_time: "1 Action",
+        range: "30 ft",
+        duration: "Instantaneous",
+        desc: ""
+      });
+    }
 
     saveSheet(false);
     renderMySpells();
@@ -1202,11 +1216,21 @@ document.addEventListener("click", async (e) => {
       }
     }
 
-    myCharacterTraits.push(detail || {
-      name: name,
-      type: type,
-      desc: ""
-    });
+    if (detail) {
+      myCharacterTraits.push({
+        name: detail.name || name,
+        type: detail.type || type,
+        desc: Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || ""),
+        isExpanded: false
+      });
+    } else {
+      myCharacterTraits.push({
+        name: name,
+        type: type,
+        desc: "",
+        isExpanded: false
+      });
+    }
 
     saveSheet(false);
     renderMyTraits();
@@ -1426,8 +1450,16 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
       const roster = getRoster();
       if (parsed.allRoster) {
         Object.assign(roster, parsed.allRoster);
+        const keys = Object.keys(parsed.allRoster);
+        if (keys.length > 0) {
+          activeCharId = keys[0];
+          localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+        }
       } else if (parsed.character) {
-        roster[parsed.character.id || "char_1"] = parsed.character;
+        const charId = parsed.character.id || "char_" + Date.now();
+        roster[charId] = parsed.character;
+        activeCharId = charId;
+        localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
       }
       saveRoster(roster);
       loadSheet();
