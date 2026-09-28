@@ -178,29 +178,97 @@ const BUILTIN_SPELLS = [
 ];
 
 const BUILTIN_TRAITS = [
-  { name: "Action Surge", classes: ["Fighter"], desc: "Take one additional action on your turn once per short or long rest." },
-  { name: "Second Wind", classes: ["Fighter"], desc: "Use a bonus action to regain 1d10 + fighter level hit points once per rest." },
-  { name: "Sneak Attack", classes: ["Rogue"], desc: "Deal an extra 1d6 damage once per turn using finesse or ranged weapons with advantage." },
-  { name: "Cunning Action", classes: ["Rogue"], desc: "Take Dash, Disengage, or Hide as a bonus action on each turn." },
-  { name: "Rage", classes: ["Barbarian"], desc: "Enter a rage granting melee damage bonus, advantage on Strength checks, and weapon damage resistance." },
-  { name: "Reckless Attack", classes: ["Barbarian"], desc: "Gain advantage on melee Strength attacks this turn, but enemies gain advantage against you." },
-  { name: "Bardic Inspiration", classes: ["Bard"], desc: "Give an ally within 60 feet an inspiration die to add to one roll." },
-  { name: "Divine Smite", classes: ["Paladin"], desc: "Expend spell slots on melee weapon hits for 2d8 plus 1d8 per slot level in radiant damage." },
-  { name: "Lay on Hands", classes: ["Paladin"], desc: "Heal creatures with a pool of power equal to your paladin level x 5." },
-  { name: "Wild Shape", classes: ["Druid"], desc: "Assume the shape of a beast you have seen before as an action." },
-  { name: "Channel Divinity", classes: ["Cleric", "Paladin"], desc: "Fuel divine subclass effects by channeling deity power." },
-  { name: "Flurry of Blows", classes: ["Monk"], desc: "Spend 1 ki point to make two unarmed strikes as a bonus action right after an Attack action." },
-  { name: "Pact Magic", classes: ["Warlock"], desc: "Spell slots recover completely on short rests and scale to highest slot level." },
-  { name: "Arcane Recovery", classes: ["Wizard"], desc: "Recover spell slots totaling up to half your wizard level on a short rest once per day." },
-  { name: "Darkvision", races: ["Dwarf", "Elf", "Gnome", "Half-Elf", "Half-Orc", "Tiefling"], desc: "See in dim light within 60 feet as if it were bright, and darkness as dim light." },
-  { name: "Fey Ancestry", races: ["Elf", "Half-Elf"], desc: "Advantage on saves against being charmed, and magic cannot put you to sleep." },
-  { name: "Trance", races: ["Elf"], desc: "Meditate for 4 hours instead of sleeping 8 hours." },
-  { name: "Dwarven Resilience", races: ["Dwarf"], desc: "Advantage on poison saving throws and resistance against poison damage." },
-  { name: "Lucky", races: ["Halfling"], desc: "Reroll natural 1s on attack rolls, ability checks, or saving throws." },
-  { name: "Relentless Endurance", races: ["Half-Orc"], desc: "Drop to 1 HP instead of 0 once per long rest." },
-  { name: "Savage Attacks", races: ["Half-Orc"], desc: "Roll an extra weapon damage die when you score a critical hit." },
-  { name: "Hellish Resistance", races: ["Tiefling"], desc: "Resistance to fire damage." },
-  { name: "Breath Weapon", races: ["Dragonborn"], desc: "Exhale destructive elemental damage based on your dragon ancestry once per rest." }
+  { name: "Deft Explorer", classes: ["Ranger"], desc: "Gain benefits as you level: Canny (expertise in one skill plus two languages), Roving (+5 walking speed plus climbing and swimming speed), and Tireless (temporary HP several times a day and exhaustion reduction on short rests)." },
+  { name: "Favored Foe", classes: ["Ranger"], desc: "When you hit a creature with an attack, you can call on your mystical bond with nature to mark the target as your favored enemy for 1 minute, dealing an extra 1d4 (scaling to 1d8) damage once per turn." },
+  { name: "Primal Awareness", classes: ["Ranger"], desc: "You learn additional spells at specific ranger levels that do not count against your spells known: Speak with Animals, Beast Sense, Speak with Plants, Locate Creature, and Commune with Nature. You can cast each once per long rest without expending a spell slot." },
+  { name: "Favored Enemy", classes: ["Ranger"], desc: "You have significant study and experience tracking and hunting specific types of foes. You gain advantage on Wisdom (Survival) checks to track your favored enemies, as well as on Intelligence checks to recall information about them." },
+  { name: "Natural Explorer", classes: ["Ranger"], desc: "You are particularly familiar with one type of natural environment and adept at traveling and surviving in such regions. Difficult terrain doesn't slow your group's travel, you cannot become lost by nonmagical means, and you remain alert to danger even while foraging." },
+  { name: "Primeval Awareness", classes: ["Ranger"], desc: "You can use an action and expend one ranger spell slot to focus your awareness on the region around you. For 1 minute per level of the spell slot, you sense whether aberrations, celestials, dragons, elementals, fey, fiends, or undead are present within 1 mile." },
+  { name: "Dread Ambusher", classes: ["Ranger"], desc: "Gloom Stalker feature: Add your Wisdom modifier to initiative rolls. At the start of your first turn of each combat, your walking speed increases by 10 feet and you can make one additional weapon attack dealing an extra 1d8 damage on a hit." },
+  { name: "Umbral Sight", classes: ["Ranger"], desc: "Gloom Stalker feature: You gain darkvision out to a range of 60 feet. If you already have darkvision, its range increases by 30 feet. You are also invisible to any creature that relies on darkvision to see you in darkness." },
+  { name: "Colossus Slayer", classes: ["Ranger"], desc: "Hunter feature: Your tenacity can wear down the most potent foes. When you hit a creature with a weapon attack, the creature takes an extra 1d8 damage if it's below its hit point maximum. You can deal this extra damage once per turn." },
+  { name: "Horde Breaker", classes: ["Ranger"], desc: "Hunter feature: Once on each of your turns when you make a weapon attack, you can make another attack with the same weapon against a different creature that is within 5 feet of the original target and within range of your weapon." },
+  { name: "Land's Stride", classes: ["Ranger", "Druid"], desc: "Moving through nonmagical difficult terrain costs you no extra movement. You can also pass through nonmagical plants without being slowed by them and without taking damage from them. You have advantage on saves against magically created plants." },
+  { name: "Hide in Plain Sight", classes: ["Ranger"], desc: "You can spend 1 minute creating camouflage for yourself. Once you are camouflaged, you gain a +10 bonus to Dexterity (Stealth) checks as long as you remain there without moving or taking actions." },
+  { name: "Vanish", classes: ["Ranger"], desc: "You can use the Hide action as a bonus action on your turn. Also, you can't be tracked by nonmagical means, unless you choose to leave a trail." },
+  { name: "Feral Senses", classes: ["Ranger"], desc: "You gain preternatural senses that help you fight creatures you can't see. When you attack a creature you can't see, your inability to see it doesn't impose disadvantage on your attack rolls, and you are aware of invisible creatures within 30 feet." },
+  { name: "Foe Slayer", classes: ["Ranger"], desc: "You become an unparalleled hunter of your enemies. Once on each of your turns, you can add your Wisdom modifier to the attack roll or the damage roll of an attack you make against one of your favored enemies." },
+
+  { name: "Rage", classes: ["Barbarian"], desc: "Enter a primal rage as a bonus action. Gain advantage on Strength checks and saves, bonus melee weapon damage, and resistance to bludgeoning, piercing, and slashing damage." },
+  { name: "Reckless Attack", classes: ["Barbarian"], desc: "Throw aside all defense. Gain advantage on melee weapon attack rolls using Strength during this turn, but attack rolls against you have advantage until your next turn." },
+  { name: "Danger Sense", classes: ["Barbarian"], desc: "You gain an uncanny sense of when things nearby aren't as they should be. You have advantage on Dexterity saving throws against effects that you can see, such as traps and spells." },
+  { name: "Frenzy", classes: ["Barbarian"], desc: "Berserker feature: You can go into a frenzy when you rage. For the duration of your rage, you can make a single melee weapon attack as a bonus action on each of your turns. When your rage ends, you suffer one level of exhaustion." },
+  { name: "Mindless Rage", classes: ["Barbarian"], desc: "Berserker feature: You can't be charmed or frightened while raging. If you are charmed or frightened when you enter your rage, the effect is suspended for the duration of the rage." },
+  { name: "Retaliation", classes: ["Barbarian"], desc: "Berserker feature: When you take damage from a creature that is within 5 feet of you, you can use your reaction to make a melee weapon attack against that creature." },
+  { name: "Totem Spirit", classes: ["Barbarian"], desc: "Totem Warrior feature: Choose a totem spirit (Bear for resistance to all damage except psychic, Eagle for dash bonus action and opportunity disadvantage, or Wolf for melee ally advantage)." },
+  { name: "Fast Movement", classes: ["Barbarian"], desc: "Your speed increases by 10 feet while you aren't wearing heavy armor." },
+  { name: "Feral Instinct", classes: ["Barbarian"], desc: "Your instincts are so honed that you have advantage on initiative rolls. If you are surprised at the beginning of combat and aren't incapacitated, you can act normally on your first turn if you enter your rage before doing anything else." },
+  { name: "Brutal Critical", classes: ["Barbarian"], desc: "You can roll one additional weapon damage die when determining the extra damage for a critical hit with a melee attack. This increases to two and three dice at higher barbarian levels." },
+  { name: "Relentless Rage", classes: ["Barbarian"], desc: "Your rage can keep you fighting despite grievous wounds. If you drop to 0 hit points while raging and don't die outright, you can make a DC 10 Constitution saving throw to drop to 1 hit point instead." },
+
+  { name: "Action Surge", classes: ["Fighter"], desc: "Push yourself beyond normal limits. Take one additional action on top of your regular action and bonus action once per short or long rest." },
+  { name: "Second Wind", classes: ["Fighter"], desc: "Use a bonus action on your turn to regain hit points equal to 1d10 + your fighter level once per short or long rest." },
+  { name: "Fighting Style", classes: ["Fighter", "Paladin", "Ranger"], desc: "Adopt a particular style of fighting as your specialty, such as Archery (+2 attack with ranged weapons), Defense (+1 AC in armor), Dueling (+2 damage with one-handed melee), or Great Weapon Fighting." },
+  { name: "Combat Superiority", classes: ["Fighter"], desc: "Battle Master feature: You learn maneuvers that are fueled by superiority dice (d8s). Use them to add tactical effects like Trip Attack, Riposte, Menacing Attack, or Precision Attack to your strikes." },
+  { name: "Improved Critical", classes: ["Fighter"], desc: "Champion feature: Your weapon attacks score a critical hit on a roll of 19 or 20." },
+  { name: "Indomitable", classes: ["Fighter"], desc: "You can reroll a saving throw that you fail. If you do so, you must use the new roll, and you can't use this feature again until you finish a long rest." },
+
+  { name: "Sneak Attack", classes: ["Rogue"], desc: "Once per turn, deal extra damage (scaling from 1d6 to 10d6) to one creature you hit with advantage using a finesse or ranged weapon, or if an ally is within 5 feet of the target." },
+  { name: "Cunning Action", classes: ["Rogue"], desc: "Quick thinking and agility let you take a bonus action on each of your turns in combat to Dash, Disengage, or Hide." },
+  { name: "Steady Aim", classes: ["Rogue"], desc: "As a bonus action, you give yourself advantage on your next attack roll on the current turn. You can use this bonus action only if you haven't moved during this turn, and your speed becomes 0 until the end of the turn." },
+  { name: "Uncanny Dodge", classes: ["Rogue"], desc: "When an attacker that you can see hits you with an attack, you can use your reaction to halve the attack's damage against you." },
+  { name: "Evasion", classes: ["Rogue", "Monk"], desc: "When subjected to an area effect that allows a Dexterity saving throw to take only half damage, you instead take no damage on a success, and only half damage on a failure." },
+  { name: "Reliable Talent", classes: ["Rogue"], desc: "By 11th level, you have refined your skills to near perfection. Whenever you make an ability check that lets you add your proficiency bonus, you can treat a d20 roll of 9 or lower as a 10." },
+  { name: "Assassinate", classes: ["Rogue"], desc: "Assassin feature: You have advantage on attack rolls against any creature that hasn't taken a turn in combat yet. Any hit you score against a creature that is surprised is a critical hit." },
+
+  { name: "Divine Smite", classes: ["Paladin"], desc: "When you hit a creature with a melee weapon attack, expend a spell slot to deal 2d8 radiant damage plus 1d8 per spell level above 1st (max 5d8), plus an extra 1d8 against fiends and undead." },
+  { name: "Lay on Hands", classes: ["Paladin"], desc: "Blessed touch draws from a pool of healing power equal to your paladin level x 5. You can restore hit points or expend 5 points to cure a disease or neutralize a poison." },
+  { name: "Divine Sense", classes: ["Paladin"], desc: "Open your awareness to detect evil and good. As an action, sense the location of any celestial, fiend, or undead within 60 feet not behind total cover." },
+  { name: "Aura of Protection", classes: ["Paladin"], desc: "Whenever you or a friendly creature within 10 feet must make a saving throw, the creature gains a bonus to the save equal to your Charisma modifier." },
+  { name: "Aura of Courage", classes: ["Paladin"], desc: "You and friendly creatures within 10 feet of you can't be frightened while you are conscious." },
+
+  { name: "Ki", classes: ["Monk"], desc: "Harness mystic energy. Spend ki points to fuel Flurry of Blows (two unarmed strikes as bonus action), Patient Defense (Dodge as bonus action), or Step of the Wind (Disengage or Dash as bonus action plus double jump distance)." },
+  { name: "Stunning Strike", classes: ["Monk"], desc: "Spend 1 ki point when you hit with a melee weapon attack to force the target to make a Constitution save or become stunned until the end of your next turn." },
+  { name: "Deflect Missiles", classes: ["Monk"], desc: "Use your reaction to deflect or catch the missile when you are hit by a ranged weapon attack, reducing damage by 1d10 + Dex modifier + monk level." },
+  { name: "Martial Arts", classes: ["Monk"], desc: "Gain mastery of combat styles using unarmed strikes and monk weapons: use Dexterity instead of Strength, roll martial arts dice for damage, and make an unarmed strike as a bonus action." },
+
+  { name: "Channel Divinity", classes: ["Cleric", "Paladin"], desc: "Channel divine energy directly from your deity to fuel potent effects such as Turn Undead, Preserve Life, or subclass oaths." },
+  { name: "Destroy Undead", classes: ["Cleric"], desc: "When an undead fails its saving throw against your Turn Undead feature, the creature is instantly destroyed if its challenge rating is at or below the threshold for your cleric level." },
+  { name: "Divine Intervention", classes: ["Cleric"], desc: "Implore your deity for aid as an action. Roll percentile dice: if you roll a number equal to or lower than your cleric level, your deity intervenes." },
+
+  { name: "Wild Shape", classes: ["Druid"], desc: "Assume the shape of a beast you have seen before as an action twice per short or long rest. Gain the beast's physical stats and hit points while keeping your mental ability scores." },
+  { name: "Combat Wild Shape", classes: ["Druid"], desc: "Circle of the Moon feature: You gain the ability to use Wild Shape on your turn as a bonus action rather than an action, and you can expend spell slots to heal yourself in beast form." },
+
+  { name: "Bardic Inspiration", classes: ["Bard"], desc: "Use a bonus action to inspire another creature within 60 feet. They gain an inspiration die (d6 scaling to d12) to add to an attack roll, ability check, or saving throw." },
+  { name: "Jack of All Trades", classes: ["Bard"], desc: "Add half your proficiency bonus, rounded down, to any ability check you make that doesn't already include your proficiency bonus." },
+  { name: "Song of Rest", classes: ["Bard"], desc: "Perform soothing music during a short rest. Allies who regain hit points by spending Hit Dice restore an extra 1d6 (scaling to 1d12) hit points." },
+  { name: "Magical Secrets", classes: ["Bard"], desc: "Plunder magical knowledge from any class spell list. The chosen spells count as bard spells for you and are included in the number in your Spells Known column." },
+
+  { name: "Font of Magic", classes: ["Sorcerer"], desc: "Tap into a deep wellspring of magic represented by sorcery points. Create extra spell slots as a bonus action, or convert unused spell slots into sorcery points." },
+  { name: "Metamagic", classes: ["Sorcerer"], desc: "Twist spells to suit your needs using sorcery points: Quickened Spell (cast action spell as bonus action), Twinned Spell (target second creature), Subtle Spell (cast without verbal or somatic components), or Empowered Spell." },
+
+  { name: "Eldritch Invocations", classes: ["Warlock"], desc: "Unearth forbidden knowledge granting permanent magical abilities, such as Agonizing Blast (add Cha modifier to Eldritch Blast damage), Devil's Sight (see in magical darkness), or Armor of Shadows (at-will Mage Armor)." },
+  { name: "Pact Boon", classes: ["Warlock"], desc: "A gift bestowed by your otherworldly patron: Pact of the Blade (summon magic weapons), Pact of the Tome (book of cantrips and rituals), Pact of the Chain (find familiar), or Pact of the Talisman." },
+
+  { name: "Arcane Recovery", classes: ["Wizard"], desc: "Once per day when you finish a short rest, recover expended spell slots with a combined level equal to or less than half your wizard level (rounded up)." },
+  { name: "Portent", classes: ["Wizard"], desc: "School of Divination feature: Roll two d20s at the end of a long rest and record the results. Replace any attack roll, saving throw, or ability check made by you or a seen creature with one of the foretelling rolls." },
+  { name: "Sculpt Spells", classes: ["Wizard"], desc: "School of Evocation feature: Create pockets of relative safety within your evocation spells. Choose a number of creatures equal to 1 + spell level to automatically succeed on saves and take no damage." },
+
+  { name: "Infuse Item", classes: ["Artificer"], desc: "Imbue mundane items with magical power, turning them into magic items like Enhanced Weapon (+1 attack/damage), Repeating Shot, or Replicate Magic Item." },
+  { name: "Flash of Genius", classes: ["Artificer"], desc: "When you or another creature within 30 feet makes an ability check or saving throw, use your reaction to add your Intelligence modifier to the roll." },
+
+  { name: "Darkvision", races: ["Dwarf", "Elf", "Gnome", "Half-Elf", "Half-Orc", "Tiefling", "Aasimar"], desc: "See in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
+  { name: "Fey Ancestry", races: ["Elf", "Half-Elf"], desc: "Advantage on saving throws against being charmed, and magic cannot put you to sleep." },
+  { name: "Trance", races: ["Elf"], desc: "Elves do not need sleep. Meditate deeply for 4 hours a day to gain the full benefits of an 8-hour rest." },
+  { name: "Drow Magic", races: ["Elf"], desc: "Dark Elf feature: You know Dancing Lights. At 3rd level, cast Faerie Fire once per long rest. At 5th level, cast Darkness once per long rest using Charisma." },
+  { name: "Dwarven Resilience", races: ["Dwarf"], desc: "Advantage on saving throws against poison, and resistance against poison damage." },
+  { name: "Stonecunning", races: ["Dwarf"], desc: "Whenever you make an Intelligence (History) check related to the origin of stonework, add double your proficiency bonus." },
+  { name: "Lucky", races: ["Halfling"], desc: "When you roll a 1 on the d20 for an attack roll, ability check, or saving throw, reroll the die and take the new result." },
+  { name: "Relentless Endurance", races: ["Half-Orc"], desc: "When reduced to 0 hit points but not killed outright, drop to 1 hit point instead once per long rest." },
+  { name: "Savage Attacks", races: ["Half-Orc"], desc: "When you score a critical hit with a melee weapon attack, roll one of the weapon's damage dice one additional time." },
+  { name: "Hellish Resistance", races: ["Tiefling"], desc: "You have resistance to fire damage." },
+  { name: "Breath Weapon", races: ["Dragonborn"], desc: "Exhale destructive elemental energy based on your draconic ancestry once per short or long rest." },
+  { name: "Gnome Cunning", races: ["Gnome"], desc: "Advantage on all Intelligence, Wisdom, and Charisma saving throws against magic." }
 ];
 
 function escapeHtml(str) {
@@ -547,7 +615,7 @@ function applyCharacterData(charData) {
   myBlurredPills = charData.blurredPills || [];
   myCharacterWeapons = charData.weapons && charData.weapons.length >= 2 ? charData.weapons : [
     { name: "", atk: "", dmg: "", notes: "" },
-    { name: "", atk: "", dmg: "", notes: "" }
+    { name: "", atk: "", dmg: "" , notes: "" }
   ];
 
   renderWeapons();
@@ -838,7 +906,14 @@ async function syncClassAndRaceFeatureTags() {
   const traitModal = document.getElementById("traitModal");
   if (traitModal && traitModal.classList.contains("open")) {
     const query = document.getElementById("traitSearchInput")?.value.toLowerCase().trim() || "";
-    const filtered = allTraitsCache.filter((t) => t.name.toLowerCase().includes(query));
+    const filtered = allTraitsCache.filter((t) => {
+      const matchName = (t.name || "").toLowerCase().includes(query);
+      const matchType = (t.type || "").toLowerCase().includes(query);
+      const matchClass = (t.classes || []).some(c => c.toLowerCase().includes(query));
+      const matchRace = (t.races || []).some(r => r.toLowerCase().includes(query));
+      const matchDesc = (t.desc || "").toLowerCase().includes(query);
+      return matchName || matchType || matchClass || matchRace || matchDesc;
+    });
     renderModalTraits(filtered);
   }
 }
@@ -1206,14 +1281,17 @@ document.addEventListener("click", async (e) => {
     if (confirm(`Permanently delete "${roster[activeCharId]?.name || "this character"}"?`)) {
       delete roster[activeCharId];
       saveRoster(roster);
-      const remaining = Object.keys(roster);
-      if (remaining.length > 0) {
-        activeCharId = remaining[0];
-        localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-        loadSheet();
-      } else {
-        resetSheet();
+      if (activeCharId === row?.dataset?.id || activeCharId) {
+        const remaining = Object.keys(roster);
+        if (remaining.length > 0) {
+          activeCharId = remaining[0];
+          localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+          loadSheet();
+        } else {
+          resetSheet();
+        }
       }
+      renderCharList();
     }
   }
 
@@ -1540,10 +1618,12 @@ document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   clearTimeout(traitFilterTimeout);
   traitFilterTimeout = setTimeout(() => {
     const filtered = allTraitsCache.filter((t) => {
-      const matchName = t.name.toLowerCase().includes(query);
+      const matchName = (t.name || "").toLowerCase().includes(query);
+      const matchType = (t.type || "").toLowerCase().includes(query);
       const matchClass = (t.classes || []).some(c => c.toLowerCase().includes(query));
       const matchRace = (t.races || []).some(r => r.toLowerCase().includes(query));
-      return matchName || matchClass || matchRace;
+      const matchDesc = (t.desc || "").toLowerCase().includes(query);
+      return matchName || matchType || matchClass || matchRace || matchDesc;
     });
     renderModalTraits(filtered);
   }, 120);
