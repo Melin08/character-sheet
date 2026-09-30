@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>D&D 5e Character Sheet</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  <link rel="stylesheet" href="style.css?v=11" />
+  <link rel="stylesheet" href="style.css?v=12" />
 </head>
 <body id="top">
 
@@ -137,12 +137,12 @@
           </button>
         </div>
 
-        <div class="field-pill mini-pill hitdice-pill" data-blur-id="hitdice">
+        <div class="field-pill hitdice-pill" data-blur-id="hitdice">
           <span class="pill-label">Hit Dice</span>
-          <div class="dual-inputs-box">
-            <input type="text" id="hitDiceCur" class="save-field pill-sub-input" value="1" placeholder="Cur" />
-            <span class="dual-slash">/</span>
-            <input type="text" id="hitDiceMax" class="save-field pill-sub-input" value="1" placeholder="Max" />
+          <div class="hitdice-split-box">
+            <input type="text" id="hitDiceCur" class="save-field hitdice-box-input" value="1" placeholder="Cur" />
+            <span class="hitdice-sep">/</span>
+            <input type="text" id="hitDiceMax" class="save-field hitdice-box-input" value="1" placeholder="Max" />
           </div>
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -621,9 +621,9 @@
         <div id="traitsList" class="traits-grid-container"></div>
       </section>
 
-      <section class="spells-full-section">
+      <section class="spells-full-section" id="spellsSection">
         <hr class="red-divider" />
-        <h2 class="section-title">Spells</h2>
+        <h2 class="section-title center">Spells</h2>
         
         <div class="spell-basics">
           <div class="spell-stat-card">
@@ -652,7 +652,7 @@
           </div>
         </div>
 
-        <h3 class="subsection-title">Spell Slots</h3>
+        <h3 class="subsection-title center">Spell Slots</h3>
         <div class="slots-grid">
           <div class="slot-tile"><span class="slot-level">1st</span><div class="slot-counter"><input type="number" id="slot1_cur" class="save-field slot-input center" value="0" /><span class="slot-divider">/</span><input type="number" id="slot1_max" class="save-field slot-input center" value="0" /></div></div>
           <div class="slot-tile"><span class="slot-level">2nd</span><div class="slot-counter"><input type="number" id="slot2_cur" class="save-field slot-input center" value="0" /><span class="slot-divider">/</span><input type="number" id="slot2_max" class="save-field slot-input center" value="0" /></div></div>
@@ -829,6 +829,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>
