@@ -18,7 +18,7 @@
         <button class="btn gray" id="authModalBtn" type="button">Account</button>
       </div>
       <div class="wiki-box">
-        <span class="wiki-title">Wikis for any D&D information you could ever need!</span>
+        <span class="wiki-title">D&D Reference Vault</span>
         <div class="wiki-links">
           <a href="https://dnd5e.wikidot.com/" target="_blank" rel="noopener noreferrer">D&D 5e Wikidot</a>
           <span class="wiki-sep">|</span>
@@ -49,8 +49,8 @@
     </div>
 
     <div class="tab-controls">
-      <button class="main-tab active" data-target="tab-stats" type="button">Statistics, Abilities, Equipment, etc.</button>
-      <button class="main-tab" data-target="tab-journal" type="button">Notes, Personality, NPCs, etc.</button>
+      <button class="main-tab active" data-target="tab-stats" type="button">Statistics, Abilities, Equipment</button>
+      <button class="main-tab" data-target="tab-journal" type="button">Notes, Lore &amp; Background</button>
     </div>
 
     <div id="tab-stats" class="tab-page active">
@@ -138,7 +138,7 @@
 
       <div class="vitals-hud">
         <div class="vitals-card ac-card">
-          <div class="card-tag">Defenses</div>
+          <div class="card-tag">Defense</div>
           <div class="card-main">
             <div class="crest-icon">
               <svg viewBox="0 0 100 115" class="crest-svg">
@@ -169,7 +169,7 @@
         </div>
 
         <div class="vitals-card death-card">
-          <div class="card-tag">Status</div>
+          <div class="card-tag">Mortality</div>
           <div class="card-main">
             <div class="death-saves-box">
               <div class="save-track succ">
@@ -183,13 +183,13 @@
             </div>
             <div class="card-details">
               <span class="card-title">Death Saves</span>
-              <span class="card-caption">3 to Stabilize / Die</span>
+              <span class="card-caption">3 to Live or Die</span>
             </div>
           </div>
         </div>
 
         <div class="vitals-card resource-card">
-          <div class="card-tag">Energy</div>
+          <div class="card-tag">Power</div>
           <div class="card-main">
             <div class="resource-counter-box">
               <input type="number" id="classPtsCur" class="save-field res-input" value="0" title="Current Points" />
@@ -198,7 +198,7 @@
             </div>
             <div class="card-details">
               <span class="card-title">Class Points</span>
-              <span class="card-caption">Ki, Sorcery, Rages...</span>
+              <span class="card-caption">Ki, Sorcery, Rages</span>
             </div>
           </div>
         </div>
@@ -841,6 +841,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
