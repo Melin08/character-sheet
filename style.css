@@ -387,30 +387,38 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.15rem;
   width: 100%;
-  gap: 0.35rem;
+  min-width: 0;
   position: relative;
   z-index: 2;
+  overflow: hidden;
 }
 
 .pill-sub-input {
-  width: 38px;
+  width: 24px;
+  max-width: 28px;
   min-width: 0;
   background: transparent;
   border: none;
   outline: none;
   color: var(--text-main);
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-weight: 700;
   text-align: center;
+  padding: 0;
   cursor: text;
 }
 
 .dual-slash {
   color: var(--text-dim);
   font-weight: bold;
+  font-size: 0.85rem;
+  user-select: none;
+  flex-shrink: 0;
 }
 
+/* Eye / Blur toggle button - hidden until hovered or already blurred */
 .blur-toggle-btn {
   background: transparent;
   border: none;
@@ -422,15 +430,23 @@ body {
   justify-content: center;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
-  transition: color var(--transition-fast);
+  transition: opacity var(--transition-fast), color var(--transition-fast);
   z-index: 5;
+  opacity: 0; /* invisible by default */
 }
 
-.blur-toggle-btn:hover {
+/* Reveal eye button when hovering over the pill */
+.field-pill:hover .blur-toggle-btn {
+  opacity: 1;
+}
+
+/* Keep eye button visible if the pill is currently blurred so you can unblur it easily */
+.field-pill.blurred .blur-toggle-btn {
+  opacity: 1;
   color: var(--primary-red);
 }
 
-.field-pill.blurred .blur-toggle-btn {
+.blur-toggle-btn:hover {
   color: var(--primary-red);
 }
 
