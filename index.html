@@ -5,161 +5,165 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>D&D 5e Character Sheet</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=11" />
 </head>
-  <link rel="stylesheet" href="style.css?v=10" />
 <body id="top">
 
   <div id="saveToast" class="toast-banner">Saved!</div>
 
   <div class="sheet-container">
     
-    <div class="top-utility-bar">
-      <div class="account-panel">
-        <button class="btn gray" id="authModalBtn" type="button">Account</button>
+    <header class="top-utility-bar">
+      <div class="app-brand">
+        <span class="app-logo">⚔</span>
+        <span class="app-title">Character Sheet</span>
       </div>
-      <div class="wiki-box">
-        <span class="wiki-title">D&D Reference Vault</span>
-        <div class="wiki-links">
-          <a href="https://dnd5e.wikidot.com/" target="_blank" rel="noopener noreferrer">D&D 5e Wikidot</a>
-          <span class="wiki-sep">|</span>
-          <a href="https://roll20.net/compendium/dnd5e/Weapons#content" target="_blank" rel="noopener noreferrer">Roll20 Weapons</a>
+
+      <div class="header-right">
+        <button class="btn btn-outline" id="authModalBtn" type="button">Account</button>
+        <div class="wiki-box">
+          <span class="wiki-title">Reference:</span>
+          <div class="wiki-links">
+            <a href="https://dnd5e.wikidot.com/" target="_blank" rel="noopener noreferrer">Wikidot</a>
+            <span class="wiki-sep">/</span>
+            <a href="https://roll20.net/compendium/dnd5e/Weapons#content" target="_blank" rel="noopener noreferrer">Weapons</a>
+          </div>
         </div>
       </div>
-    </div>
+    </header>
 
-    <header class="top-nav">
+    <div class="top-nav">
       <div class="btn-group">
-        <button class="btn red" id="saveBtn" type="button">Save</button>
-        <button class="btn red" id="loadBtn" type="button">Load</button>
-        <button class="btn red" id="newBtn" type="button">New</button>
+        <button class="btn btn-primary" id="saveBtn" type="button">Save</button>
+        <button class="btn btn-ghost" id="loadBtn" type="button">Load</button>
+        <button class="btn btn-ghost" id="newBtn" type="button">New</button>
       </div>
       <div class="btn-group">
-        <button class="btn gray" id="backupBtn" type="button">Backup</button>
-        <label class="btn gray file-label">
+        <button class="btn btn-ghost" id="backupBtn" type="button">Backup</button>
+        <label class="btn btn-ghost file-label">
           Restore
           <input type="file" id="restoreFile" accept=".json" />
         </label>
-        <button class="btn gray" id="deleteBtn" type="button">Delete</button>
+        <button class="btn btn-danger-ghost" id="deleteBtn" type="button">Delete</button>
       </div>
       <span id="saveStatus" class="status-msg"></span>
-    </header>
+    </div>
 
     <div class="name-box">
       <input type="text" id="charName" class="save-field name-input" placeholder="Character Name" />
     </div>
 
     <div class="tab-controls">
-      <button class="main-tab active" data-target="tab-stats" type="button">Statistics, Abilities, Equipment</button>
-      <button class="main-tab" data-target="tab-journal" type="button">Notes, Lore &amp; Background</button>
+      <button class="main-tab active" data-target="tab-stats" type="button">Stats &amp; Equipment</button>
+      <button class="main-tab" data-target="tab-journal" type="button">Notes &amp; Lore</button>
     </div>
 
     <div id="tab-stats" class="tab-page active">
+      
       <div class="meta-row-grid">
         <div class="field-pill dropdown-pill-wrapper" data-blur-id="class">
           <span class="pill-label">Class</span>
           <input type="text" id="charClass" class="save-field pill-input" autocomplete="off" placeholder="Select class..." />
           <div id="classDropdown" class="dropdown-menu"></div>
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
-            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
+
         <div class="field-pill dropdown-pill-wrapper" data-blur-id="race">
           <span class="pill-label">Race</span>
           <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="Select race..." />
           <div id="raceDropdown" class="dropdown-menu"></div>
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
-            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
+
         <div class="field-pill" data-blur-id="background">
           <span class="pill-label">Background</span>
           <input type="text" id="charBackground" class="save-field pill-input" placeholder="e.g. Soldier" />
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
-            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
+
         <div class="field-pill" data-blur-id="alignment">
           <span class="pill-label">Alignment</span>
           <input type="text" id="charAlignment" class="save-field pill-input" placeholder="e.g. Chaotic Good" />
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
-            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
-        <div class="field-pill mini" data-blur-id="level">
+
+        <div class="field-pill mini-pill" data-blur-id="level">
           <span class="pill-label">Level</span>
           <input type="number" id="charLevel" class="save-field pill-input center" value="1" min="1" max="20" />
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
-            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
       </div>
 
       <div class="meta-row-grid">
         <div class="field-pill" data-blur-id="exp">
-          <span class="pill-label">Experience</span>
+          <span class="pill-label">XP</span>
           <input type="text" id="charExp" class="save-field pill-input center" placeholder="0 XP" />
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
-            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
+
         <div class="field-pill badge-pill" data-blur-id="prof">
           <span class="pill-label">Proficiency</span>
           <span id="profBonusDisplay" class="pill-badge">+2</span>
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
-            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
+
         <div class="field-pill" data-blur-id="inspiration">
           <span class="pill-label">Inspiration</span>
           <input type="text" id="charInspiration" class="save-field pill-input center" placeholder="None" />
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
-            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
+
         <div class="field-pill" data-blur-id="speed">
           <span class="pill-label">Speed</span>
           <input type="number" id="charSpeed" class="save-field pill-input center" value="30" />
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
-            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
-     <div class="field-pill mini hitdice-pill" data-blur-id="hitdice">
-  <span class="pill-label">Hit Dice</span>
-  <div class="dual-inputs-box">
-    <input type="number" id="hitDiceCur" class="save-field pill-sub-input" value="1" min="0" max="99" />
-    <span class="dual-slash">/</span>
-    <input type="number" id="hitDiceMax" class="save-field pill-sub-input" value="1" min="0" max="99" />
-  </div>
-  <button type="button" class="blur-toggle-btn" title="Toggle blur">
-    <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-  </button>
-</div>
+
+        <div class="field-pill mini-pill hitdice-pill" data-blur-id="hitdice">
+          <span class="pill-label">Hit Dice</span>
+          <div class="dual-inputs-box">
+            <input type="text" id="hitDiceCur" class="save-field pill-sub-input" value="1" placeholder="Cur" />
+            <span class="dual-slash">/</span>
+            <input type="text" id="hitDiceMax" class="save-field pill-sub-input" value="1" placeholder="Max" />
+          </div>
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
-            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
       </div>
 
       <div class="vitals-hud">
         <div class="vitals-card ac-card">
-          <div class="card-tag">Defense</div>
+          <span class="card-tag">Armor</span>
           <div class="card-main">
-            <div class="crest-icon">
-              <svg viewBox="0 0 100 115" class="crest-svg">
-                <path d="M6,6 L94,6 L94,52 Q94,105 50,111 Q6,105 6,52 Z" />
-              </svg>
-              <input type="number" id="ac" class="save-field crest-val" value="10" />
-            </div>
+            <input type="number" id="ac" class="save-field ac-input" value="10" />
             <div class="card-details">
               <span class="card-title">Armor Class</span>
-              <span class="card-caption">Base Protection</span>
+              <span class="card-caption">Total AC</span>
             </div>
           </div>
         </div>
 
         <div class="vitals-card hp-card">
-          <div class="card-tag">Health Pool</div>
+          <span class="card-tag">Health</span>
           <div class="card-main">
             <div class="hp-gauge-box">
               <input type="number" id="curHp" class="save-field hp-input cur" value="10" title="Current HP" />
@@ -168,13 +172,13 @@
             </div>
             <div class="card-details">
               <span class="card-title">Hit Points</span>
-              <span class="card-caption">Current vs Maximum</span>
+              <span class="card-caption">Current / Max</span>
             </div>
           </div>
         </div>
 
         <div class="vitals-card death-card">
-          <div class="card-tag">Mortality</div>
+          <span class="card-tag">Saves</span>
           <div class="card-main">
             <div class="death-saves-box">
               <div class="save-track succ">
@@ -188,13 +192,13 @@
             </div>
             <div class="card-details">
               <span class="card-title">Death Saves</span>
-              <span class="card-caption">3 to Live or Die</span>
+              <span class="card-caption">3 to live / die</span>
             </div>
           </div>
         </div>
 
         <div class="vitals-card resource-card">
-          <div class="card-tag">Power</div>
+          <span class="card-tag">Points</span>
           <div class="card-main">
             <div class="resource-counter-box">
               <input type="number" id="classPtsCur" class="save-field res-input" value="0" title="Current Points" />
@@ -203,7 +207,7 @@
             </div>
             <div class="card-details">
               <span class="card-title">Class Points</span>
-              <span class="card-caption">Ki, Sorcery, Rages</span>
+              <span class="card-caption">Ki, Rages, Sorcery</span>
             </div>
           </div>
         </div>
@@ -825,6 +829,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
