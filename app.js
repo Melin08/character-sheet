@@ -1,12 +1,13 @@
 "use strict";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+apiKey: "AIzaSyAIKe_hrxyQvn4uebwU5OZrP2qf-FwK0Rg",
+authDomain: "character-sheet-bd250.firebaseapp.com",
+projectId: "character-sheet-bd250",
+storageBucket: "character-sheet-bd250.firebasestorage.app",
+messagingSenderId: "881155587941",
+appId: "1:881155587941:web:45087fba9dc7154fddeb8c",
+measurementId: "G-E0LD6CXQ2W"
 };
 
 let auth = null;
