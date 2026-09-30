@@ -205,7 +205,7 @@ function renderMySpells() {
   if (!container) return;
 
   if (myCharacterSpells.length === 0) {
-    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.88rem; color: #64748b;">No spells added yet. Click "+ Add Spell" above to browse the compendium.</p>`;
+    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.88rem; color: #64748b; text-align: center;">No spells added yet. Click "+ Add Spell" above to browse the compendium.</p>`;
     return;
   }
 
@@ -218,7 +218,7 @@ function renderMySpells() {
         <div class="spell-card-header">
           <span class="spell-drag-handle" title="Drag to reorder">&#8942;&#8942;</span>
           <input type="text" class="spell-custom-title-input custom-spell-field" data-prop="name" value="${escapeHtml(spell.name || "")}" placeholder="Spell Name" />
-          <button class="spell-card-delete" data-index="${idx}" type="button">&times;</button>
+          <button class="spell-card-delete" data-index="${idx}" type="button" title="Remove spell">&times;</button>
         </div>
         <div class="spell-card-meta">
           <input type="text" class="spell-meta-input custom-spell-field center" data-prop="type" value="${escapeHtml(typeVal)}" placeholder="Cantrip" />
@@ -437,7 +437,7 @@ function resetSheet() {
     else if (field.id === "charSpeed") field.value = 30;
     else if (field.id === "hitDiceCur" || field.id === "hitDiceMax") field.value = 1;
     else if (
-      field.classList.contains("pill-sub-input") ||
+      field.classList.contains("hitdice-box-input") ||
       field.classList.contains("coin-input") ||
       field.classList.contains("slot-input") ||
       field.classList.contains("death-input") ||
@@ -924,7 +924,7 @@ document.addEventListener("click", async (e) => {
       attr: ".attributes-group",
       skills: ".skills-group",
       traits: "#abilitiesSection",
-      spells: ".spells-full-section",
+      spells: "#spellsSection",
       journal: "#tab-journal"
     };
     document.querySelector(map[e.target.dataset.scroll])?.scrollIntoView({ behavior: "smooth" });
@@ -1099,7 +1099,7 @@ document.addEventListener("click", async (e) => {
   if (e.target.classList.contains("char-delete-btn")) {
     const row = e.target.closest(".char-item-row");
     const roster = getRoster();
-    if (confirm(`Delete "${roster[row.dataset.id]?.name || "character"}"?`)) {
+    if (confirm(`Delete character "${roster[row.dataset.id]?.name || "Unnamed"}"?`)) {
       delete roster[row.dataset.id];
       saveRoster(roster);
       if (activeCharId === row.dataset.id) {
