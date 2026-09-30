@@ -230,16 +230,22 @@ function renderMyTraits() {
 
   container.innerHTML = myCharacterTraits.map((trait, idx) => {
     if (!trait) return "";
+    const isExpanded = !!trait.isExpanded;
     return `
-      <div class="trait-card ${trait.isExpanded ? 'expanded' : ''}" data-index="${idx}">
+      <div class="trait-card ${isExpanded ? 'expanded' : ''}" data-index="${idx}">
         <div class="trait-card-header">
           <input type="text" class="trait-name-input custom-trait-field" data-prop="name" value="${escapeHtml(trait.name || '')}" placeholder="Ability Name" />
-          <button class="trait-card-delete" data-index="${idx}" type="button">&times;</button>
+          <button class="trait-card-delete" data-index="${idx}" type="button" title="Delete ability">&times;</button>
         </div>
-        <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || '')}" placeholder="Type (Racial, Feat, etc.)" />
+        <div class="trait-type-wrap">
+          <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || 'FEATURE')}" placeholder="Category" />
+        </div>
         <textarea class="trait-desc-input custom-trait-field" data-prop="desc" placeholder="Ability description and rules...">${escapeHtml(trait.desc || '')}</textarea>
         <div class="trait-card-footer">
-          <button type="button" class="trait-expand-btn">${trait.isExpanded ? 'Collapse' : 'Expand'}</button>
+          <button type="button" class="trait-expand-btn">
+            ${isExpanded ? 'Collapse' : 'Expand'}
+            <span class="trait-expand-icon">▼</span>
+          </button>
         </div>
       </div>
     `;
