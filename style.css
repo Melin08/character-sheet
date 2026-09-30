@@ -382,40 +382,52 @@ body {
   text-align: center;
 }
 
-/* Hit Dice & Dual inputs */
+/* Hit Dice & Dual inputs fix */
+.hitdice-pill {
+  overflow: visible;
+}
+
 .dual-inputs-box {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
-  width: 100%;
+  gap: 0.2rem;
+  flex: 1;
   min-width: 0;
   position: relative;
   z-index: 2;
-  overflow: hidden;
+  pointer-events: auto;
 }
 
 .pill-sub-input {
-  width: 24px;
-  max-width: 28px;
-  min-width: 0;
+  width: 32px;
+  min-width: 24px;
   background: transparent;
   border: none;
   outline: none;
   color: var(--text-main);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 700;
   text-align: center;
   padding: 0;
   cursor: text;
+  pointer-events: auto;
+  -moz-appearance: textfield;
+}
+
+.pill-sub-input::-webkit-outer-spin-button,
+.pill-sub-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .dual-slash {
   color: var(--text-dim);
   font-weight: bold;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   user-select: none;
   flex-shrink: 0;
+  pointer-events: none;
 }
 
 /* Eye / Blur toggle button - hidden until hovered or already blurred */
