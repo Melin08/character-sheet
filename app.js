@@ -437,7 +437,7 @@ function resetSheet() {
     else if (field.id === "charSpeed") field.value = 30;
     else if (field.id === "hitDiceCur" || field.id === "hitDiceMax") field.value = 1;
     else if (
-      field.classList.contains("hitdice-box-input") ||
+      field.classList.contains("hitdice-input") ||
       field.classList.contains("coin-input") ||
       field.classList.contains("slot-input") ||
       field.classList.contains("death-input") ||
@@ -1099,7 +1099,7 @@ document.addEventListener("click", async (e) => {
   if (e.target.classList.contains("char-delete-btn")) {
     const row = e.target.closest(".char-item-row");
     const roster = getRoster();
-    if (confirm(`Delete character "${roster[row.dataset.id]?.name || "Unnamed"}"?`)) {
+    if (confirm(`Delete "${roster[row.dataset.id]?.name || "character"}"?`)) {
       delete roster[row.dataset.id];
       saveRoster(roster);
       if (activeCharId === row.dataset.id) {
