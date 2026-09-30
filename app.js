@@ -1,18 +1,26 @@
 "use strict";
 
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyAIKe_hrxyQvn4uebwU5OZrP2qf-FwK0Rg",
   authDomain: "character-sheet-bd250.firebaseapp.com",
   projectId: "character-sheet-bd250",
   storageBucket: "character-sheet-bd250.firebasestorage.app",
   messagingSenderId: "881155587941",
-  appId: "1:881155587941:web:45087fba9dc7154fddeb8c"
+  appId: "1:881155587941:web:45087fba9dc7154fddeb8c",
+  measurementId: "G-E0LD6CXQ2W"
 };
 
-let auth = null;
-let db = null;
-let currentUser = null;
-
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 try {
   if (typeof firebase !== "undefined" && firebaseConfig.apiKey && firebaseConfig.apiKey !== "AIzaSyAIKe_hrxyQvn4uebwU5OZrP2qf-FwK0Rg") {
     firebase.initializeApp(firebaseConfig);
