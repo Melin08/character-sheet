@@ -1,5 +1,31 @@
 "use strict";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyAIKe_hrxyQvn4uebwU5OZrP2qf-FwK0Rg",
+  authDomain: "character-sheet-bd250.firebaseapp.com",
+  projectId: "character-sheet-bd250",
+  storageBucket: "character-sheet-bd250.firebasestorage.app",
+  messagingSenderId: "881155587941",
+  appId: "1:881155587941:web:45087fba9dc7154fddeb8c",
+  measurementId: "G-E0LD6CXQ2W"
+};
+
+let auth = null;
+let db = null;
+let analytics = null;
+let currentUser = null;
+
+try {
+  if (typeof firebase !== "undefined") {
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    if (firebase.analytics) analytics = firebase.analytics();
+  }
+} catch (err) {
+  console.warn("Firebase initialization skipped or failed:", err);
+}
+
 const ROSTER_STORAGE_KEY = "badman_char_roster_v1";
 const ACTIVE_CHAR_ID_KEY = "badman_active_char_id";
 
@@ -28,78 +54,24 @@ const DND_CLASSES = [
 ];
 
 const DND_RACES_CATALOG = [
-  {
-    race: "Dragonborn",
-    subraces: ["Black Dragonborn", "Blue Dragonborn", "Brass Dragonborn", "Bronze Dragonborn", "Copper Dragonborn", "Gold Dragonborn", "Green Dragonborn", "Red Dragonborn", "Silver Dragonborn", "White Dragonborn"]
-  },
-  {
-    race: "Dwarf",
-    subraces: ["Hill Dwarf", "Mountain Dwarf", "Duergar"]
-  },
-  {
-    race: "Elf",
-    subraces: ["High Elf", "Wood Elf", "Dark Elf (Drow)", "Eladrin", "Sea Elf", "Shadar-kai"]
-  },
-  {
-    race: "Gnome",
-    subraces: ["Forest Gnome", "Rock Gnome", "Deep Gnome (Svirfneblin)"]
-  },
-  {
-    race: "Half-Elf",
-    subraces: ["Half-Elf (Standard)", "Half-Elf (Aquatic)", "Half-Elf (Drow)", "Half-Elf (Wood Elf)"]
-  },
-  {
-    race: "Half-Orc",
-    subraces: ["Half-Orc"]
-  },
-  {
-    race: "Halfling",
-    subraces: ["Lightfoot Halfling", "Stout Halfling", "Ghostwise Halfling"]
-  },
-  {
-    race: "Human",
-    subraces: ["Standard Human", "Variant Human"]
-  },
-  {
-    race: "Tiefling",
-    subraces: ["Tiefling (Bloodline of Asmodeus)", "Tiefling (Bloodline of Baalzebul)", "Tiefling (Bloodline of Dispater)", "Tiefling (Bloodline of Fierna)", "Tiefling (Bloodline of Glasya)", "Tiefling (Bloodline of Levistus)", "Tiefling (Bloodline of Mammon)", "Tiefling (Bloodline of Mephistopheles)", "Tiefling (Bloodline of Zariel)", "Feral Tiefling"]
-  },
-  {
-    race: "Aasimar",
-    subraces: ["Protector Aasimar", "Scourge Aasimar", "Fallen Aasimar"]
-  },
-  {
-    race: "Genasi",
-    subraces: ["Air Genasi", "Earth Genasi", "Fire Genasi", "Water Genasi"]
-  },
-  {
-    race: "Goliath",
-    subraces: ["Goliath"]
-  },
-  {
-    race: "Tabaxi",
-    subraces: ["Tabaxi"]
-  },
-  {
-    race: "Tortle",
-    subraces: ["Tortle"]
-  },
-  {
-    race: "Kenku",
-    subraces: ["Kenku"]
-  },
-  {
-    race: "Firbolg",
-    subraces: ["Firbolg"]
-  },
-  {
-    race: "Changeling",
-    subraces: ["Changeling"]
-  },
-  {
-    race: "Warforged",
-    subraces: ["Warforged"]
-  }
+  { race: "Dragonborn", subraces: ["Black Dragonborn", "Blue Dragonborn", "Brass Dragonborn", "Bronze Dragonborn", "Copper Dragonborn", "Gold Dragonborn", "Green Dragonborn", "Red Dragonborn", "Silver Dragonborn", "White Dragonborn"] },
+  { race: "Dwarf", subraces: ["Hill Dwarf", "Mountain Dwarf", "Duergar"] },
+  { race: "Elf", subraces: ["High Elf", "Wood Elf", "Dark Elf (Drow)", "Eladrin", "Sea Elf", "Shadar-kai"] },
+  { race: "Gnome", subraces: ["Forest Gnome", "Rock Gnome", "Deep Gnome (Svirfneblin)"] },
+  { race: "Half-Elf", subraces: ["Half-Elf (Standard)", "Half-Elf (Aquatic)", "Half-Elf (Drow)", "Half-Elf (Wood Elf)"] },
+  { race: "Half-Orc", subraces: ["Half-Orc"] },
+  { race: "Halfling", subraces: ["Lightfoot Halfling", "Stout Halfling", "Ghostwise Halfling"] },
+  { race: "Human", subraces: ["Standard Human", "Variant Human"] },
+  { race: "Tiefling", subraces: ["Tiefling (Bloodline of Asmodeus)", "Tiefling (Bloodline of Baalzebul)", "Tiefling (Bloodline of Dispater)", "Tiefling (Bloodline of Fierna)", "Tiefling (Bloodline of Glasya)", "Tiefling (Bloodline of Levistus)", "Tiefling (Bloodline of Mammon)", "Tiefling (Bloodline of Mephistopheles)", "Tiefling (Bloodline of Zariel)", "Feral Tiefling"] },
+  { race: "Aasimar", subraces: ["Protector Aasimar", "Scourge Aasimar", "Fallen Aasimar"] },
+  { race: "Genasi", subraces: ["Air Genasi", "Earth Genasi", "Fire Genasi", "Water Genasi"] },
+  { race: "Goliath", subraces: ["Goliath"] },
+  { race: "Tabaxi", subraces: ["Tabaxi"] },
+  { race: "Tortle", subraces: ["Tortle"] },
+  { race: "Kenku", subraces: ["Kenku"] },
+  { race: "Firbolg", subraces: ["Firbolg"] },
+  { race: "Changeling", subraces: ["Changeling"] },
+  { race: "Warforged", subraces: ["Warforged"] }
 ];
 
 const SRD_SPELL_LEVELS = {
@@ -107,115 +79,20 @@ const SRD_SPELL_LEVELS = {
 };
 
 const BUILTIN_SPELLS = [
-  { name: "Hunter's Mark", levelTag: "Level 1", schoolTag: "Divination", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "90 ft", duration: "Concentration, up to 1 hour", desc: "You choose a creature you can see within range and mark it as your quarry. You deal an extra 1d6 damage to the target whenever you hit it with a weapon attack, and you have advantage on any Wisdom (Perception) or Wisdom (Survival) check to find it." },
-  { name: "Hail of Thorns", levelTag: "Level 1", schoolTag: "Conjuration", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "The next time you hit a creature with a ranged weapon attack, a rain of thorns sprouts from your weapon. The target and each creature within 5 feet must make a Dexterity saving throw, taking 1d10 piercing damage on a failure, or half on a success." },
-  { name: "Zephyr Strike", levelTag: "Level 1", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "You move like the wind. Your movement doesn't provoke opportunity attacks. Once before the spell ends, you can give yourself advantage on one weapon attack roll. That attack deals an extra 1d8 force damage on a hit, and your speed increases by 30 feet for that turn." },
-  { name: "Ensnaring Strike", levelTag: "Level 1", schoolTag: "Conjuration", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "The next time you hit a creature with a weapon attack, writhing thorny vines appear. The target must succeed on a Strength saving throw or be restrained by the vines until the spell ends." },
-  { name: "Goodberry", levelTag: "Level 1", schoolTag: "Transmutation", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "Touch", duration: "24 hours", desc: "Up to ten berries appear in your hand. Eating a berry restores 1 hit point and provides enough nourishment to sustain a creature for one day." },
-  { name: "Absorb Elements", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Artificer, Druid, Ranger, Sorcerer, Wizard", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "You gain resistance to the triggering elemental damage type until the start of your next turn. Also, your first melee attack on your next turn deals an extra 1d6 damage of that type." },
-  { name: "Fog Cloud", levelTag: "Level 1", schoolTag: "Conjuration", classesTag: "Druid, Ranger, Sorcerer, Wizard, Triton", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 hour", desc: "You create a 20-foot-radius sphere of fog centered on a point within range. The sphere spreads around corners, and its area is heavily obscured." },
-  { name: "Pass without Trace", levelTag: "Level 2", schoolTag: "Abjuration", classesTag: "Druid, Ranger, Earth Genasi", casting_time: "1 Action", range: "Self", duration: "Concentration, up to 1 hour", desc: "A veil of shadows and silence radiates from you. Each creature you choose within 30 feet gains a +10 bonus to Dexterity (Stealth) checks and can't be tracked except by magical means." },
-  { name: "Spike Growth", levelTag: "Level 2", schoolTag: "Transmutation", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "150 ft", duration: "Concentration, up to 10 minutes", desc: "The ground in a 20-foot radius twists into hard spikes and thorns. When a creature moves into or within the area, it takes 2d4 piercing damage for every 5 feet traveled." },
-  { name: "Cordon of Arrows", levelTag: "Level 2", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Action", range: "5 ft", duration: "8 hours", desc: "You plant four arrows or bolts in the ground. Whenever an enemy comes within 30 feet, an arrow strikes it, dealing 1d6 piercing damage on a failed Dexterity save." },
-  { name: "Silence", levelTag: "Level 2", schoolTag: "Illusion", classesTag: "Bard, Cleric, Ranger", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 10 minutes", desc: "No sound can be created within or pass through a 20-foot-radius sphere. Creatures inside are deafened and immune to thunder damage, and casting verbal spells is impossible." },
-  { name: "Lesser Restoration", levelTag: "Level 2", schoolTag: "Abjuration", classesTag: "Artificer, Bard, Cleric, Druid, Paladin, Ranger", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "You touch a creature and end either one disease or one condition afflicting it: blinded, deafened, paralyzed, or poisoned." },
-  { name: "Conjure Animals", levelTag: "Level 3", schoolTag: "Conjuration", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 hour", desc: "You summon fey spirits that take the form of beasts and appear in unoccupied spaces you can see within range. They obey your verbal commands." },
-  { name: "Conjure Barrage", levelTag: "Level 3", schoolTag: "Conjuration", classesTag: "Ranger", casting_time: "1 Action", range: "Self (60-ft cone)", duration: "Instantaneous", desc: "You throw a nonmagical weapon or fire ammunition into the air to create a storm of identical weapons. Each creature in a 60-foot cone takes 3d8 damage on a failed Dexterity save, or half on a success." },
-  { name: "Lightning Arrow", levelTag: "Level 3", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "The next time you make a ranged weapon attack, your ammunition becomes a bolt of lightning. It deals 4d8 lightning damage on a hit, and creatures within 10 feet take 2d8 lightning damage on a failed Dexterity save." },
-  { name: "Wind Wall", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "A wall of strong wind rises from the ground up to 50 feet long and 15 feet high. It deflects arrows, bolts, and ordinary small projectiles." },
-  { name: "Guardian of Nature", levelTag: "Level 4", schoolTag: "Transmutation", classesTag: "Druid, Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "A nature spirit transforms you into a primal guardian. Choose Primal Beast (speed boost, darkvision, and advantage on Strength attacks) or Great Tree (temporary HP and advantage on Dexterity/Wisdom attacks)." },
-  { name: "Freedom of Movement", levelTag: "Level 4", schoolTag: "Abjuration", classesTag: "Artificer, Bard, Cleric, Druid, Ranger", casting_time: "1 Action", range: "Touch", duration: "1 hour", desc: "The target's movement is unaffected by difficult terrain, and spells cannot reduce its speed, paralyze it, or restrain it." },
-  { name: "Swift Quiver", levelTag: "Level 5", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Touch", duration: "Concentration, up to 1 minute", desc: "Your quiver produces an endless supply of ammunition. On each of your turns, you can use a bonus action to make two attacks with a weapon using this quiver." },
-  { name: "Steel Wind Strike", levelTag: "Level 5", schoolTag: "Conjuration", classesTag: "Ranger, Wizard", casting_time: "1 Action", range: "30 ft", duration: "Instantaneous", desc: "You flourish your weapon and vanish to strike up to five creatures. Make a melee spell attack against each target, dealing 6d10 force damage on a hit, then teleport within 5 feet of one target." },
-  { name: "Divine Favor", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your prayer empowers you with divine radiance. Your weapon attacks deal an extra 1d4 radiant damage on a hit." },
-  { name: "Compelled Duel", levelTag: "Level 1", schoolTag: "Enchantment", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "30 ft", duration: "Concentration, up to 1 minute", desc: "You compel a creature into a duel on a failed Wisdom saving throw. It has disadvantage on attack rolls against anyone other than you." },
-  { name: "Thunderous Smite", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your next melee weapon attack deals an extra 2d6 thunder damage. The target must succeed on a Strength saving throw or be pushed 10 feet away and knocked prone." },
-  { name: "Wrathful Smite", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your next melee weapon attack deals an extra 1d6 psychic damage and forces a Wisdom save to avoid becoming frightened of you." },
-  { name: "Searing Smite", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your next melee weapon attack deals an extra 1d6 fire damage and ignites the target for ongoing fire damage each round." },
-  { name: "Branding Smite", levelTag: "Level 2", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your next weapon attack deals an extra 2d6 radiant damage. It sheds dim light and prevents the target from becoming invisible." },
-  { name: "Blinding Smite", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Paladin", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Your next melee weapon attack deals an extra 3d8 radiant damage and blinds the target on a failed Constitution save." },
-  { name: "Hex", levelTag: "Level 1", schoolTag: "Enchantment", classesTag: "Warlock", casting_time: "1 Bonus Action", range: "90 ft", duration: "Concentration, up to 1 hour", desc: "You curse a creature, dealing an extra 1d6 necrotic damage whenever you hit it with an attack and giving it disadvantage on checks with one chosen ability." },
-  { name: "Armor of Agathys", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Warlock", casting_time: "1 Action", range: "Self", duration: "1 hour", desc: "Gain 5 temporary hit points. If a creature hits you with a melee attack while you have these temporary hit points, it takes 5 cold damage." },
-  { name: "Arms of Hadar", levelTag: "Level 1", schoolTag: "Conjuration", classesTag: "Warlock", casting_time: "1 Action", range: "Self (10-ft radius)", duration: "Instantaneous", desc: "Dark tendrils erupt from you. Creatures within 10 feet take 2d6 necrotic damage on a failed Strength save and cannot take reactions until their next turn." },
-  { name: "Hellish Rebuke", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Warlock, Tiefling", casting_time: "1 Reaction", range: "60 ft", duration: "Instantaneous", desc: "Point at a creature that damaged you to surround it in hellfire for 2d10 fire damage on a failed Dexterity save, or half on a success." },
-  { name: "Darkness", levelTag: "Level 2", schoolTag: "Evocation", classesTag: "Sorcerer, Warlock, Wizard, Drow, Tiefling", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 10 minutes", desc: "Magical darkness fills a 15-foot sphere. Darkvision cannot see through it, and nonmagical light cannot illuminate it." },
-  { name: "Hunger of Hadar", levelTag: "Level 3", schoolTag: "Conjuration", classesTag: "Warlock", casting_time: "1 Action", range: "150 ft", duration: "Concentration, up to 1 minute", desc: "Open a gateway to blackness and bitter cold. The area is difficult terrain and causes cold and acid damage to trapped creatures." },
-  { name: "Shadow Blade", levelTag: "Level 2", schoolTag: "Illusion", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Weave dark threads into a solid blade dealing 2d8 psychic damage with the finesse, light, and thrown properties. Gain advantage in dim light or darkness." },
-  { name: "Dancing Lights", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Bard, Sorcerer, Wizard, Drow", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "Create up to four glowing orbs or torchlights that hover and shed dim light in a 10-foot radius." },
-  { name: "Faerie Fire", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Artificer, Bard, Druid, Drow", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 minute", desc: "Outline objects and creatures in colorful light inside a 20-foot cube. Attack rolls against outlined creatures have advantage." },
-  { name: "Thaumaturgy", levelTag: "Cantrip", schoolTag: "Transmutation", classesTag: "Cleric, Tiefling", casting_time: "1 Action", range: "30 ft", duration: "Up to 1 minute", desc: "Manifest minor wonders like booming voices, flickering flames, small tremors, or slamming doors." },
-  { name: "Light", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Artificer, Bard, Cleric, Sorcerer, Wizard, Aasimar", casting_time: "1 Action", range: "Touch", duration: "1 hour", desc: "Touch an object to make it shed bright light in a 20-foot radius and dim light for another 20 feet." },
-  { name: "Produce Flame", levelTag: "Cantrip", schoolTag: "Conjuration", classesTag: "Druid, Fire Genasi", casting_time: "1 Action", range: "Self", duration: "10 minutes", desc: "A flame appears in your hand shedding light. You can also hurl it up to 30 feet as a ranged spell attack for 1d8 fire damage." },
-  { name: "Minor Illusion", levelTag: "Cantrip", schoolTag: "Illusion", classesTag: "Bard, Sorcerer, Warlock, Wizard, Forest Gnome", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "Create a harmless sound or an image of an object that lasts up to one minute." },
-  { name: "Guidance", levelTag: "Cantrip", schoolTag: "Divination", classesTag: "Artificer, Cleric, Druid", casting_time: "1 Action", range: "Touch", duration: "Concentration, up to 1 minute", desc: "Touch one willing companion. It can add 1d4 to one ability check of its choice before the spell ends." },
-  { name: "Sacred Flame", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Cleric", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "Radiance descends on a creature for 1d8 radiant damage on a failed Dexterity save, ignoring cover bonuses." },
-  { name: "Toll the Dead", levelTag: "Cantrip", schoolTag: "Necromancy", classesTag: "Cleric, Warlock, Wizard", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "A sound of a dolorous bell deals 1d8 necrotic damage on a failed Wisdom save, increasing to 1d12 if the target is already hurt." },
-  { name: "Ray of Frost", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Artificer, Sorcerer, Wizard", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "A beam of frost deals 1d8 cold damage on a hit and reduces the target's speed by 10 feet until your next turn." },
-  { name: "Shocking Grasp", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Artificer, Sorcerer, Wizard", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "Lightning shocks a target for 1d8 lightning damage. You gain advantage against targets in metal armor, and it prevents them from taking reactions." },
-  { name: "Thorn Whip", levelTag: "Cantrip", schoolTag: "Transmutation", classesTag: "Artificer, Druid", casting_time: "1 Action", range: "30 ft", duration: "Instantaneous", desc: "A thorny vine whip deals 1d6 piercing damage and pulls Large or smaller targets up to 10 feet closer to you." },
-  { name: "Booming Blade", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Artificer, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "Self (5-ft radius)", duration: "1 round", desc: "Make a melee weapon attack. If the target willingly moves before the start of your next turn, it takes 1d8 thunder damage." },
-  { name: "Green-Flame Blade", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Artificer, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "Self (5-ft radius)", duration: "Instantaneous", desc: "Make a melee weapon attack. Green fire leaps to a second creature within 5 feet, dealing fire damage equal to your spell modifier." },
-  { name: "Mind Sliver", levelTag: "Cantrip", schoolTag: "Enchantment", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "60 ft", duration: "1 round", desc: "A psychic spike deals 1d6 psychic damage on a failed Intelligence save and subtracts 1d4 from its next saving throw." },
-  { name: "Bless", levelTag: "Level 1", schoolTag: "Enchantment", classesTag: "Cleric, Paladin", casting_time: "1 Action", range: "30 ft", duration: "Concentration, up to 1 minute", desc: "Bless up to three allies. They add 1d4 to every attack roll and saving throw made before the spell ends." },
-  { name: "Guiding Bolt", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Cleric", casting_time: "1 Action", range: "120 ft", duration: "1 round", desc: "A streak of radiant light deals 4d6 radiant damage on a hit, giving advantage to the next attack roll made against the target." },
-  { name: "Inflict Wounds", levelTag: "Level 1", schoolTag: "Necromancy", classesTag: "Cleric", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "Make a melee spell attack to deal 3d10 necrotic damage on a hit." },
-  { name: "Sanctuary", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Artificer, Cleric", casting_time: "1 Bonus Action", range: "30 ft", duration: "1 minute", desc: "Ward a creature so anyone targeting it must pass a Wisdom save or lose the attack or target someone else." },
-  { name: "Spiritual Weapon", levelTag: "Level 2", schoolTag: "Evocation", classesTag: "Cleric", casting_time: "1 Bonus Action", range: "60 ft", duration: "1 minute", desc: "Create a floating spectral weapon that attacks as a bonus action each round for 1d8 + modifier force damage." },
-  { name: "Hold Person", levelTag: "Level 2", schoolTag: "Enchantment", classesTag: "Bard, Cleric, Druid, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 minute", desc: "Paralyze a humanoid on a failed Wisdom saving throw. The target repeats the save at the end of each turn." },
-  { name: "Moonbeam", levelTag: "Level 2", schoolTag: "Evocation", classesTag: "Druid", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "A silvery cylinder of light deals 2d10 radiant damage when a creature enters it or starts its turn there." },
-  { name: "Heat Metal", levelTag: "Level 2", schoolTag: "Transmutation", classesTag: "Artificer, Bard, Druid", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 minute", desc: "Make a manufactured metal object glowing hot, dealing 2d8 fire damage immediately and on following turns as a bonus action." },
-  { name: "Invisibility", levelTag: "Level 2", schoolTag: "Illusion", classesTag: "Artificer, Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "Touch", duration: "Concentration, up to 1 hour", desc: "Touch a creature to make it invisible until the spell ends or until it attacks or casts a spell." },
-  { name: "Spirit Guardians", levelTag: "Level 3", schoolTag: "Conjuration", classesTag: "Cleric", casting_time: "1 Action", range: "Self (15-ft radius)", duration: "Concentration, up to 10 minutes", desc: "Protective spirits flit around you. Enemy speed is halved, and they take 3d8 radiant or necrotic damage on entering the area." },
-  { name: "Call Lightning", levelTag: "Level 3", schoolTag: "Conjuration", classesTag: "Druid", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 10 minutes", desc: "A storm cloud gathers and lets you call down bolts of lightning as an action for 3d10 lightning damage." },
-  { name: "Revivify", levelTag: "Level 3", schoolTag: "Necromancy", classesTag: "Artificer, Cleric, Druid, Paladin, Ranger", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "Touch a creature that died within the last minute to return it to life with 1 hit point." },
-  { name: "Haste", levelTag: "Level 3", schoolTag: "Transmutation", classesTag: "Artificer, Sorcerer, Wizard", casting_time: "1 Action", range: "30 ft", duration: "Concentration, up to 1 minute", desc: "The target gains double speed, +2 AC, advantage on Dexterity saves, and an extra action on each turn." },
-  { name: "Slow", levelTag: "Level 3", schoolTag: "Transmutation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "Alter time for up to six creatures. Their speed is halved, they suffer -2 to AC and Dex saves, and they lose reactions." },
-  { name: "Hypnotic Pattern", levelTag: "Level 3", schoolTag: "Illusion", classesTag: "Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "120 ft", duration: "Concentration, up to 1 minute", desc: "Twisting colors incapacitate creatures on a failed Wisdom saving throw, leaving their speed at zero." },
-  { name: "Polymorph", levelTag: "Level 4", schoolTag: "Transmutation", classesTag: "Bard, Druid, Sorcerer, Wizard", casting_time: "1 Action", range: "60 ft", duration: "Concentration, up to 1 hour", desc: "Transform a target creature into a beast form with equal or lower challenge rating or level." },
-  { name: "Greater Invisibility", levelTag: "Level 4", schoolTag: "Illusion", classesTag: "Bard, Sorcerer, Wizard", casting_time: "1 Action", range: "Touch", duration: "Concentration, up to 1 minute", desc: "Make a target invisible. Unlike regular invisibility, this effect does not break when the creature attacks or casts a spell." },
-  { name: "Dimension Door", levelTag: "Level 4", schoolTag: "Conjuration", classesTag: "Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "500 ft", duration: "Instantaneous", desc: "Teleport yourself and up to one willing creature of your size or smaller directly to any spot within range." },
-  { name: "Fire Bolt", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "You hurl a mote of fire at a creature or object within range. On a hit, the target takes 1d10 fire damage." },
-  { name: "Mage Hand", levelTag: "Cantrip", schoolTag: "Conjuration", classesTag: "Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "30 ft", duration: "1 minute", desc: "A spectral, floating hand appears within range to manipulate objects up to 10 pounds." },
-  { name: "Eldritch Blast", levelTag: "Cantrip", schoolTag: "Evocation", classesTag: "Warlock", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "A beam of crackling energy deals 1d10 force damage on a hit." },
-  { name: "Vicious Mockery", levelTag: "Cantrip", schoolTag: "Enchantment", classesTag: "Bard", casting_time: "1 Action", range: "60 ft", duration: "Instantaneous", desc: "Unleash insults that deal 1d4 psychic damage and impose disadvantage on the target's next attack on a failed Wisdom save." },
-  { name: "Prestidigitation", levelTag: "Cantrip", schoolTag: "Transmutation", classesTag: "Bard, Sorcerer, Warlock, Wizard", casting_time: "1 Action", range: "10 ft", duration: "Up to 1 hour", desc: "Perform minor sensory tricks, clean or soil items, light small fires, or change food flavors." },
-  { name: "Shield", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Sorcerer, Wizard", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "Gain a +5 bonus to AC until the start of your next turn and take no damage from magic missile." },
-  { name: "Magic Missile", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "120 ft", duration: "Instantaneous", desc: "Three glowing darts automatically strike targets for 1d4 + 1 force damage each." },
-  { name: "Cure Wounds", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid, Paladin, Ranger", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "A creature you touch regains hit points equal to 1d8 + your spellcasting ability modifier." },
-  { name: "Healing Word", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid", casting_time: "1 Bonus Action", range: "60 ft", duration: "Instantaneous", desc: "A creature within range regains 1d4 + your spellcasting ability modifier in hit points." },
-  { name: "Misty Step", levelTag: "Level 2", schoolTag: "Conjuration", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Bonus Action", range: "Self", duration: "Instantaneous", desc: "Surrounded by silvery mist, teleport up to 30 feet to an unoccupied space you can see." },
-  { name: "Fireball", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "150 ft", duration: "Instantaneous", desc: "A 20-foot-radius sphere of fire deals 8d6 fire damage on a failed Dexterity save, or half on a success." },
-  { name: "Counterspell", levelTag: "Level 3", schoolTag: "Abjuration", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Reaction", range: "60 ft", duration: "Instantaneous", desc: "Interrupt a creature casting a spell. If the spell is 3rd level or lower, it automatically fails." }
+  { name: "Hunter's Mark", levelTag: "Level 1", schoolTag: "Divination", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "90 ft", duration: "Concentration, up to 1 hour", desc: "Mark a quarry for extra 1d6 damage on hits and gain advantage to track it." },
+  { name: "Hail of Thorns", levelTag: "Level 1", schoolTag: "Conjuration", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Ranged attack causes thorns to rain down dealing 1d10 piercing on failed Dex save." },
+  { name: "Zephyr Strike", levelTag: "Level 1", schoolTag: "Transmutation", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "Self", duration: "Concentration, up to 1 minute", desc: "Movement doesn't provoke opportunity attacks; gain advantage, +1d8 force damage, and +30 ft speed." },
+  { name: "Pass without Trace", levelTag: "Level 2", schoolTag: "Abjuration", classesTag: "Druid, Ranger", casting_time: "1 Action", range: "Self", duration: "Concentration, up to 1 hour", desc: "Gain +10 to Stealth checks and become untrackable by nonmagical means." },
+  { name: "Shield", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Sorcerer, Wizard", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "Gain +5 bonus to AC until start of your next turn and take no magic missile damage." },
+  { name: "Fireball", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "150 ft", duration: "Instantaneous", desc: "A 20-foot radius burst of flame deals 8d6 fire damage on failed Dexterity save." }
 ];
 
 const BUILTIN_TRAITS = [
-  { name: "Action Surge", classes: ["Fighter"], desc: "On your turn, you can take one additional action on top of your regular action and bonus action." },
-  { name: "Second Wind", classes: ["Fighter"], desc: "On your turn, use a bonus action to regain hit points equal to 1d10 + your fighter level once per short or long rest." },
-  { name: "Sneak Attack", classes: ["Rogue"], desc: "Once per turn, deal an extra 1d6 damage to one creature you hit with advantage using a finesse or ranged weapon." },
-  { name: "Cunning Action", classes: ["Rogue"], desc: "You can take a bonus action on each of your turns in combat to Dash, Disengage, or Hide." },
-  { name: "Rage", classes: ["Barbarian"], desc: "Enter a primal rage as a bonus action, gaining advantage on Strength checks, melee bonus damage, and resistance to physical damage." },
-  { name: "Reckless Attack", classes: ["Barbarian"], desc: "Gain advantage on melee weapon attack rolls using Strength during this turn, but attack rolls against you have advantage until your next turn." },
-  { name: "Bardic Inspiration", classes: ["Bard"], desc: "Use a bonus action to give a companion within 60 feet a d6 to add to an attack roll, ability check, or saving throw." },
-  { name: "Divine Smite", classes: ["Paladin"], desc: "When you hit a creature with a melee weapon attack, expend a spell slot to deal 2d8 plus 1d8 per spell level above 1st radiant damage." },
-  { name: "Lay on Hands", classes: ["Paladin"], desc: "Heal wounds through blessed touch using a pool of healing power equal to your paladin level x 5." },
-  { name: "Wild Shape", classes: ["Druid"], desc: "Magically assume the shape of a beast you have seen before as an action twice per short or long rest." },
-  { name: "Channel Divinity", classes: ["Cleric", "Paladin"], desc: "Channel divine energy directly from your deity to fuel potent domain or oath effects." },
-  { name: "Flurry of Blows", classes: ["Monk"], desc: "Immediately after you take the Attack action, spend 1 ki point to make two unarmed strikes as a bonus action." },
-  { name: "Pact Magic", classes: ["Warlock"], desc: "Your spell slots are all of the highest available slot level and recover fully upon a short rest." },
-  { name: "Arcane Recovery", classes: ["Wizard"], desc: "Once per day during a short rest, recover expended spell slots up to half your wizard level (rounded up)." },
-  { name: "Darkvision", races: ["Dwarf", "Elf", "Gnome", "Half-Elf", "Half-Orc", "Tiefling"], desc: "You can see in dim light within 60 feet as if it were bright light, and in darkness as if it were dim light." },
-  { name: "Fey Ancestry", races: ["Elf", "Half-Elf"], desc: "Advantage on saving throws against being charmed, and magic cannot put you to sleep." },
-  { name: "Trance", races: ["Elf"], desc: "Elves don't need to sleep. Instead, they meditate deeply for 4 hours a day, gaining the full benefits of an 8-hour rest." },
-  { name: "Dwarven Resilience", races: ["Dwarf"], desc: "Advantage on saving throws against poison, and resistance against poison damage." },
-  { name: "Stonecunning", races: ["Dwarf"], desc: "Whenever you make an Intelligence (History) check related to the origin of stonework, add double your proficiency bonus." },
-  { name: "Lucky", races: ["Halfling"], desc: "When you roll a 1 on an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll." },
-  { name: "Brave", races: ["Halfling"], desc: "Advantage on saving throws against being frightened." },
-  { name: "Relentless Endurance", races: ["Half-Orc"], desc: "When reduced to 0 HP but not killed outright, you can drop to 1 HP instead once per long rest." },
-  { name: "Savage Attacks", races: ["Half-Orc"], desc: "When you score a critical hit with a melee weapon attack, roll one of the weapon's damage dice one additional time." },
-  { name: "Hellish Resistance", races: ["Tiefling"], desc: "You have resistance to fire damage." },
-  { name: "Breath Weapon", races: ["Dragonborn"], desc: "Exhale destructive elemental energy based on your draconic ancestry once per short or long rest." },
-  { name: "Damage Resistance", races: ["Dragonborn"], desc: "You have resistance to the damage type associated with your draconic ancestry." },
-  { name: "Gnome Cunning", races: ["Gnome"], desc: "Advantage on all Intelligence, Wisdom, and Charisma saving throws against magic." }
+  { name: "Deft Explorer", classes: ["Ranger"], desc: "Gain skill expertise and extra movement speeds or temporary HP as you gain ranger levels." },
+  { name: "Favored Foe", classes: ["Ranger"], desc: "Call on mystical bond to mark targets and deal extra damage when landing strikes." },
+  { name: "Action Surge", classes: ["Fighter"], desc: "Push beyond limits to take an additional action on your turn once per short or long rest." },
+  { name: "Sneak Attack", classes: ["Rogue"], desc: "Deal extra precision damage when striking with advantage or an ally adjacent to the target." },
+  { name: "Rage", classes: ["Barbarian"], desc: "Enter a primal fury for advantage on Strength checks, physical damage resistance, and melee damage boosts." }
 ];
 
 function escapeHtml(str) {
@@ -230,9 +107,7 @@ function showStatus(text) {
   toast.textContent = text;
   toast.classList.add("show");
   if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    toast.classList.remove("show");
-  }, 2200);
+  toastTimer = setTimeout(() => { toast.classList.remove("show"); }, 2200);
 }
 
 function getModifier(score) {
@@ -241,22 +116,6 @@ function getModifier(score) {
 
 function getProfBonus(level) {
   return Math.ceil(1 + level / 4);
-}
-
-function autoResizeStatInput(input) {
-  if (!input || input.classList.contains("concentration-input")) return;
-  const content = input.value || input.placeholder || "";
-  input.style.width = Math.max(3, content.length + 1.5) + "ch";
-}
-
-function syncAllStatInputs() {
-  document.querySelectorAll(".spell-stat-input").forEach(autoResizeStatInput);
-}
-
-function autoExpandTextarea(el) {
-  if (!el) return;
-  el.style.height = "auto";
-  el.style.height = el.scrollHeight + "px";
 }
 
 function recalculateAll() {
@@ -314,8 +173,8 @@ function renderWeapons() {
       <input type="text" class="save-field wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
       <input type="text" class="save-field wpn-field center" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
       <input type="text" class="save-field wpn-field center" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
-      <input type="text" class="save-field wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes..." />
-      <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
+      <input type="text" class="save-field wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Properties..." />
+      <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete">&times;</button>
     </div>
   `).join("");
 }
@@ -325,23 +184,26 @@ function renderMyTraits() {
   if (!container) return;
 
   if (myCharacterTraits.length === 0) {
-    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.9rem; color: #64748b; font-style: italic; padding: 0.5rem 0;">No abilities added yet. Click "+ Add Ability" above to browse the compendium.</p>`;
+    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.88rem; color: #64748b; font-style: italic; padding: 0.5rem 0;">No abilities in codex. Use "+ Add Ability" above to discover traits.</p>`;
     return;
   }
 
-  container.innerHTML = myCharacterTraits.map((trait, idx) => `
-    <div class="trait-card ${trait.isExpanded ? 'expanded' : ''}" data-index="${idx}">
-      <div class="trait-card-header">
-        <input type="text" class="trait-name-input custom-trait-field" data-prop="name" value="${escapeHtml(trait.name || '')}" placeholder="Ability Name" />
-        <button class="trait-card-delete" data-index="${idx}" type="button" title="Remove ability">&times;</button>
+  container.innerHTML = myCharacterTraits.map((trait, idx) => {
+    if (!trait) return "";
+    return `
+      <div class="trait-card ${trait.isExpanded ? 'expanded' : ''}" data-index="${idx}">
+        <div class="trait-card-header">
+          <input type="text" class="trait-name-input custom-trait-field" data-prop="name" value="${escapeHtml(trait.name || '')}" placeholder="Ability Name" />
+          <button class="trait-card-delete" data-index="${idx}" type="button">&times;</button>
+        </div>
+        <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || '')}" placeholder="Category (Racial, Feat, etc.)" />
+        <textarea class="trait-desc-input custom-trait-field" data-prop="desc" placeholder="Rules description...">${escapeHtml(trait.desc || '')}</textarea>
+        <div class="trait-card-footer">
+          <button type="button" class="trait-expand-btn">${trait.isExpanded ? 'Collapse' : 'Expand'}</button>
+        </div>
       </div>
-      <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || '')}" placeholder="Type (Racial, Feat, etc.)" />
-      <textarea class="trait-desc-input custom-trait-field" data-prop="desc" placeholder="Ability description and rules...">${escapeHtml(trait.desc || '')}</textarea>
-      <div class="trait-card-footer">
-        <button type="button" class="trait-expand-btn">${trait.isExpanded ? 'Collapse' : 'Expand'}</button>
-      </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 
 function renderMySpells() {
@@ -349,11 +211,12 @@ function renderMySpells() {
   if (!container) return;
 
   if (myCharacterSpells.length === 0) {
-    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.9rem; color: #64748b;">No spells added yet. Click "+ Add Spell" above to browse the compendium.</p>`;
+    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.88rem; color: #64748b;">No spells inscribed. Tap "+ Add Spell" to consult the compendium.</p>`;
     return;
   }
 
   container.innerHTML = myCharacterSpells.map((spell, idx) => {
+    if (!spell) return "";
     const typeVal = spell.type || spell.levelTag || "Spell";
     const descVal = Array.isArray(spell.desc) ? spell.desc.join("\n\n") : (spell.desc || "");
     return `
@@ -361,28 +224,19 @@ function renderMySpells() {
         <div class="spell-card-header">
           <span class="spell-drag-handle" title="Drag to reorder">&#8942;&#8942;</span>
           <input type="text" class="spell-custom-title-input custom-spell-field" data-prop="name" value="${escapeHtml(spell.name || "")}" placeholder="Spell Name" />
-          <button class="spell-card-delete" data-index="${idx}" type="button" title="Remove spell">&times;</button>
+          <button class="spell-card-delete" data-index="${idx}" type="button">&times;</button>
         </div>
         <div class="spell-card-meta">
-          <div class="meta-field-group">
-            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="type" value="${escapeHtml(typeVal)}" placeholder="Cantrip" />
-          </div>
-          <div class="meta-field-group">
-            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="casting_time" value="${escapeHtml(spell.casting_time || "")}" placeholder="1 Action" />
-          </div>
-          <div class="meta-field-group">
-            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="range" value="${escapeHtml(spell.range || "")}" placeholder="30 ft" />
-          </div>
-          <div class="meta-field-group">
-            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="duration" value="${escapeHtml(spell.duration || "")}" placeholder="Instantaneous" />
-          </div>
+          <input type="text" class="spell-meta-input custom-spell-field center" data-prop="type" value="${escapeHtml(typeVal)}" placeholder="Cantrip" />
+          <input type="text" class="spell-meta-input custom-spell-field center" data-prop="casting_time" value="${escapeHtml(spell.casting_time || "")}" placeholder="1 Action" />
+          <input type="text" class="spell-meta-input custom-spell-field center" data-prop="range" value="${escapeHtml(spell.range || "")}" placeholder="30 ft" />
+          <input type="text" class="spell-meta-input custom-spell-field center" data-prop="duration" value="${escapeHtml(spell.duration || "")}" placeholder="Instantaneous" />
         </div>
-        <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description and effects...">${escapeHtml(descVal)}</textarea>
+        <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description...">${escapeHtml(descVal)}</textarea>
       </div>
     `;
   }).join("");
 
-  document.querySelectorAll(".spell-custom-desc-textarea").forEach(autoExpandTextarea);
   attachSpellDragEvents();
 }
 
@@ -440,13 +294,13 @@ function renderDiceHistory() {
   if (!container) return;
 
   if (diceRollHistory.length === 0) {
-    container.innerHTML = `<span class="dice-history-empty">No rolls logged yet.</span>`;
+    container.innerHTML = `<span class="dice-history-empty">No dice rolls logged.</span>`;
     return;
   }
 
   container.innerHTML = diceRollHistory.map((item) => `
     <div class="dice-history-item">
-      <span class="dice-history-desc">${escapeHtml(item.desc)} <small style="color:#64748b;">(${item.time})</small></span>
+      <span>${escapeHtml(item.desc)} <small style="color:#64748b;">(${item.time})</small></span>
       <span class="dice-history-val">${escapeHtml(String(item.total))}</span>
     </div>
   `).join("");
@@ -455,22 +309,16 @@ function renderDiceHistory() {
 function renderConditionChips() {
   document.querySelectorAll(".cond-chip").forEach((chip) => {
     const cond = chip.dataset.cond;
-    if (myActiveConditions.includes(cond)) {
-      chip.classList.add("active");
-    } else {
-      chip.classList.remove("active");
-    }
+    if (myActiveConditions.includes(cond)) chip.classList.add("active");
+    else chip.classList.remove("active");
   });
 }
 
 function renderBlurredPills() {
   document.querySelectorAll(".field-pill[data-blur-id]").forEach((pill) => {
     const blurId = pill.dataset.blurId;
-    if (myBlurredPills.includes(blurId)) {
-      pill.classList.add("blurred");
-    } else {
-      pill.classList.remove("blurred");
-    }
+    if (myBlurredPills.includes(blurId)) pill.classList.add("blurred");
+    else pill.classList.remove("blurred");
   });
 }
 
@@ -482,19 +330,28 @@ function getRoster() {
   }
 }
 
+async function syncRosterToCloud(roster) {
+  if (!currentUser || !db) return;
+  try {
+    await db.collection("users").doc(currentUser.uid).set({
+      roster: roster,
+      updatedAt: Date.now()
+    }, { merge: true });
+  } catch (err) {
+    console.error("Cloud sync failed:", err);
+  }
+}
+
 function saveRoster(roster) {
   localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(roster));
+  syncRosterToCloud(roster);
 }
 
 function getCurrentSheetData() {
   const fields = {};
   document.querySelectorAll(".save-field").forEach((field) => {
     if (field.id) {
-      if (field.type === "checkbox") {
-        fields[field.id] = field.checked;
-      } else {
-        fields[field.id] = field.value;
-      }
+      fields[field.id] = field.type === "checkbox" ? field.checked : field.value;
     }
   });
   return fields;
@@ -503,7 +360,7 @@ function getCurrentSheetData() {
 function saveSheet(quiet = false) {
   const roster = getRoster();
   const fields = getCurrentSheetData();
-  const name = fields.charName?.trim() || "Unnamed Character";
+  const name = fields.charName?.trim() || "Unnamed Legend";
   const charClass = fields.charClass?.trim() || "";
   const level = fields.charLevel || 1;
 
@@ -522,7 +379,7 @@ function saveSheet(quiet = false) {
 
   saveRoster(roster);
   localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-  if (!quiet) showStatus("Saved!");
+  if (!quiet) showStatus("Codex Inscribed!");
 }
 
 function applyCharacterData(charData) {
@@ -531,11 +388,8 @@ function applyCharacterData(charData) {
   Object.keys(fields).forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
-      if (el.type === "checkbox") {
-        el.checked = fields[id];
-      } else {
-        el.value = fields[id];
-      }
+      if (el.type === "checkbox") el.checked = fields[id];
+      else el.value = fields[id];
     }
   });
 
@@ -545,7 +399,7 @@ function applyCharacterData(charData) {
   myBlurredPills = charData.blurredPills || [];
   myCharacterWeapons = charData.weapons && charData.weapons.length >= 2 ? charData.weapons : [
     { name: "", atk: "", dmg: "", notes: "" },
-    { name: "", atk: "", dmg: "" , notes: "" }
+    { name: "", atk: "", dmg: "", notes: "" }
   ];
 
   renderWeapons();
@@ -554,7 +408,6 @@ function applyCharacterData(charData) {
   renderConditionChips();
   renderBlurredPills();
   recalculateAll();
-  syncAllStatInputs();
 }
 
 function loadSheet() {
@@ -574,7 +427,6 @@ function loadSheet() {
       renderMyTraits();
       renderConditionChips();
       renderBlurredPills();
-      syncAllStatInputs();
     }
   }
 }
@@ -584,31 +436,21 @@ function resetSheet() {
   localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
 
   document.querySelectorAll(".save-field").forEach((field) => {
-    if (field.type === "checkbox") {
-      field.checked = false;
-    } else if (field.id === "charLevel") {
-      field.value = 1;
-    } else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") {
-      field.value = 10;
-    } else if (field.classList.contains("attr-input")) {
-      field.value = 10;
-    } else if (field.id === "charSpeed") {
-      field.value = 30;
-    } else if (field.id === "hitDiceCur" || field.id === "hitDiceMax") {
-      field.value = 1;
-    } else if (
-      field.classList.contains("dual-input") ||
+    if (field.type === "checkbox") field.checked = false;
+    else if (field.id === "charLevel") field.value = 1;
+    else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") field.value = 10;
+    else if (field.classList.contains("attr-input")) field.value = 10;
+    else if (field.id === "charSpeed") field.value = 30;
+    else if (field.id === "hitDiceCur" || field.id === "hitDiceMax") field.value = 1;
+    else if (
       field.classList.contains("pill-sub-input") ||
       field.classList.contains("coin-input") ||
       field.classList.contains("slot-input") ||
       field.classList.contains("death-input") ||
       field.classList.contains("res-input") ||
       field.classList.contains("exhaustion-input")
-    ) {
-      field.value = 0;
-    } else {
-      field.value = "";
-    }
+    ) field.value = 0;
+    else field.value = "";
   });
 
   myCharacterSpells = [];
@@ -628,9 +470,8 @@ function resetSheet() {
   renderMyTraits();
   renderConditionChips();
   renderBlurredPills();
-  syncAllStatInputs();
   saveSheet(false);
-  showStatus("New Sheet Created!");
+  showStatus("New Grimoire Created!");
 }
 
 function renderCharList() {
@@ -640,7 +481,7 @@ function renderCharList() {
   const keys = Object.keys(roster);
 
   if (keys.length === 0) {
-    container.innerHTML = `<p class="loading-text">No saved characters found.</p>`;
+    container.innerHTML = `<p style="color:#64748b; font-style:italic;">No saved heroes found.</p>`;
     return;
   }
 
@@ -649,13 +490,13 @@ function renderCharList() {
     const isActive = id === activeCharId;
     return `
       <div class="char-item-row" data-id="${id}">
-        <div class="char-item-info">
-          <span class="char-item-name">${escapeHtml(char.name || "Unnamed Character")}</span>
-          <span class="char-item-sub">${escapeHtml(char.summary || "")}</span>
+        <div>
+          <div class="char-item-name">${escapeHtml(char.name || "Unnamed Legend")}</div>
+          <div class="char-item-sub">${escapeHtml(char.summary || "")}</div>
         </div>
         <div class="char-actions">
           <button type="button" class="char-select-btn ${isActive ? "active" : ""}">${isActive ? "Active" : "Select"}</button>
-          <button type="button" class="char-delete-btn" title="Delete character">&times;</button>
+          <button type="button" class="char-delete-btn" title="Delete">&times;</button>
         </div>
       </div>
     `;
@@ -669,7 +510,7 @@ function renderClassDropdown(filter = "") {
   const filtered = DND_CLASSES.filter((c) => c.toLowerCase().includes(q));
 
   if (filtered.length === 0) {
-    dropdown.innerHTML = `<div class="dropdown-item" style="color:#64748b; cursor:default;">No classes match</div>`;
+    dropdown.innerHTML = `<div class="dropdown-item" style="color:#64748b; cursor:default;">No class found</div>`;
     return;
   }
 
@@ -702,11 +543,7 @@ function renderRaceDropdown(filter = "") {
     }
   });
 
-  if (!html) {
-    dropdown.innerHTML = `<div class="dropdown-item" style="color:#64748b; cursor:default;">No races match</div>`;
-  } else {
-    dropdown.innerHTML = html;
-  }
+  dropdown.innerHTML = html || `<div class="dropdown-item" style="color:#64748b; cursor:default;">No race found</div>`;
 }
 
 async function fetchAPI(url) {
@@ -762,9 +599,7 @@ async function loadAllSpells() {
 
 async function loadAllTraits() {
   if (allTraitsCache.length > 0) return allTraitsCache;
-
   const combined = [...BUILTIN_TRAITS];
-
   const [f, t] = await Promise.all([
     fetchAPI("https://www.dnd5eapi.co/api/features"),
     fetchAPI("https://www.dnd5eapi.co/api/traits")
@@ -772,141 +607,20 @@ async function loadAllTraits() {
 
   if (f && f.results) {
     f.results.forEach((item) => {
-      if (!item.name.includes("Dragon Ancestor (") && !item.name.includes("Draconic Ancestry (")) {
-        const existing = combined.find((b) => b.name.toLowerCase() === item.name.toLowerCase());
-        if (!existing) {
-          combined.push({ name: item.name, url: item.url, type: "Class Feature" });
-        }
+      if (!combined.some((b) => b.name.toLowerCase() === item.name.toLowerCase())) {
+        combined.push({ name: item.name, url: item.url, type: "Feature" });
       }
     });
   }
-
   if (t && t.results) {
     t.results.forEach((item) => {
-      const existing = combined.find((b) => b.name.toLowerCase() === item.name.toLowerCase());
-      if (!existing) {
+      if (!combined.some((b) => b.name.toLowerCase() === item.name.toLowerCase())) {
         combined.push({ name: item.name, url: item.url, type: "Racial Trait" });
       }
     });
   }
-
   allTraitsCache = combined;
-  syncClassAndRaceFeatureTags();
   return allTraitsCache;
-}
-
-async function syncClassAndRaceFeatureTags() {
-  const classes = ["barbarian", "bard", "cleric", "druid", "fighter", "monk", "paladin", "ranger", "rogue", "sorcerer", "warlock", "wizard"];
-  const races = ["dragonborn", "dwarf", "elf", "gnome", "half-elf", "half-orc", "halfling", "human", "tiefling"];
-
-  const classFetches = classes.map((c) => fetchAPI(`https://www.dnd5eapi.co/api/classes/${c}/features`));
-  const raceFetches = races.map((r) => fetchAPI(`https://www.dnd5eapi.co/api/races/${r}/traits`));
-
-  const [classResults, raceResults] = await Promise.all([
-    Promise.all(classFetches),
-    Promise.all(raceFetches)
-  ]);
-
-  classResults.forEach((res, idx) => {
-    if (res && res.results) {
-      const className = classes[idx].charAt(0).toUpperCase() + classes[idx].slice(1);
-      res.results.forEach((feat) => {
-        const match = allTraitsCache.find((t) => t.name.toLowerCase() === feat.name.toLowerCase());
-        if (match) {
-          if (!match.classes) match.classes = [];
-          if (!match.classes.includes(className)) match.classes.push(className);
-        }
-      });
-    }
-  });
-
-  raceResults.forEach((res, idx) => {
-    if (res && res.results) {
-      const raceName = races[idx].split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-');
-      res.results.forEach((trait) => {
-        const match = allTraitsCache.find((t) => t.name.toLowerCase() === trait.name.toLowerCase());
-        if (match) {
-          if (!match.races) match.races = [];
-          if (!match.races.includes(raceName)) match.races.push(raceName);
-        }
-      });
-    }
-  });
-
-  const traitModal = document.getElementById("traitModal");
-  if (traitModal && traitModal.classList.contains("open")) {
-    const query = document.getElementById("traitSearchInput")?.value.toLowerCase().trim() || "";
-    const filtered = allTraitsCache.filter((t) => t.name.toLowerCase().includes(query));
-    renderModalTraits(filtered);
-  }
-}
-
-async function enrichSpellList(items) {
-  const topSlice = items.slice(0, 20);
-  let updated = false;
-  await Promise.all(topSlice.map(async (s) => {
-    if (!s.schoolTag && s.url) {
-      const data = await fetchAPI("https://www.dnd5eapi.co" + s.url);
-      if (data) {
-        s.levelTag = data.level === 0 ? "Cantrip" : `Level ${data.level}`;
-        s.schoolTag = data.school?.name || "";
-        s.classesTag = (data.classes || []).map((c) => c.name).join(", ");
-        s.casting_time = data.casting_time || "1 Action";
-        s.range = data.range || "30 ft";
-        s.duration = data.duration || "Instantaneous";
-        s.desc = Array.isArray(data.desc) ? data.desc.join("\n\n") : (data.desc || "");
-        updated = true;
-      }
-    }
-  }));
-  return updated;
-}
-
-function getSchoolCssClass(school) {
-  if (!school) return "purple";
-  const s = school.toLowerCase();
-  if (s.includes("evoc")) return "school-evocation";
-  if (s.includes("abjur")) return "school-abjuration";
-  if (s.includes("conjur")) return "school-conjuration";
-  if (s.includes("transmut")) return "school-transmutation";
-  if (s.includes("enchant")) return "school-enchantment";
-  if (s.includes("illus")) return "school-illusion";
-  if (s.includes("divin")) return "school-divination";
-  if (s.includes("necro")) return "school-necromancy";
-  return "purple";
-}
-
-function getClassCssClass(className) {
-  if (!className) return "blue";
-  const c = className.toLowerCase();
-  if (c.includes("fighter")) return "class-fighter";
-  if (c.includes("rogue")) return "class-rogue";
-  if (c.includes("wizard")) return "class-wizard";
-  if (c.includes("sorcerer")) return "class-sorcerer";
-  if (c.includes("warlock")) return "class-warlock";
-  if (c.includes("cleric")) return "class-cleric";
-  if (c.includes("paladin")) return "class-paladin";
-  if (c.includes("barbarian")) return "class-barbarian";
-  if (c.includes("bard")) return "class-bard";
-  if (c.includes("druid")) return "class-druid";
-  if (c.includes("monk")) return "class-monk";
-  if (c.includes("ranger")) return "class-ranger";
-  return "blue";
-}
-
-function getRaceCssClass(raceName) {
-  if (!raceName) return "purple";
-  const r = raceName.toLowerCase();
-  if (r.includes("elf") && !r.includes("half")) return "race-elf";
-  if (r.includes("half-elf")) return "race-half-elf";
-  if (r.includes("dwarf")) return "race-dwarf";
-  if (r.includes("tiefling")) return "race-tiefling";
-  if (r.includes("dragon")) return "race-dragonborn";
-  if (r.includes("halfling")) return "race-halfling";
-  if (r.includes("half-orc")) return "race-half-orc";
-  if (r.includes("gnome")) return "race-gnome";
-  if (r.includes("human")) return "race-human";
-  return "purple";
 }
 
 function renderModalSpells(list) {
@@ -914,7 +628,7 @@ function renderModalSpells(list) {
   if (!container) return;
 
   if (!list || list.length === 0) {
-    container.innerHTML = `<p class="loading-text">No matching spells found.</p>`;
+    container.innerHTML = `<p style="color:#64748b; font-style:italic;">No spells matched your incantation.</p>`;
     return;
   }
 
@@ -923,26 +637,13 @@ function renderModalSpells(list) {
     const isCantrip = levelStr.toLowerCase().includes("cantrip");
     const lvlClass = isCantrip ? "spell-cantrip" : "spell-level";
 
-    let tagsHtml = `<span class="tag-pill ${lvlClass}">${escapeHtml(levelStr)}</span>`;
-    
-    if (s.schoolTag) {
-      tagsHtml += `<span class="tag-pill ${getSchoolCssClass(s.schoolTag)}">${escapeHtml(s.schoolTag)}</span>`;
-    }
-    
-    if (s.classesTag) {
-      const cList = s.classesTag.split(",").map(c => c.trim());
-      cList.forEach((cls) => {
-        const isRace = ["elf", "dwarf", "tiefling", "dragonborn", "halfling", "half-orc", "gnome", "half-elf", "human", "drow", "genasi", "aasimar", "triton"].some(r => cls.toLowerCase().includes(r));
-        const pillClass = isRace ? getRaceCssClass(cls) : getClassCssClass(cls);
-        tagsHtml += `<span class="tag-pill ${pillClass}">${escapeHtml(cls)}</span>`;
-      });
-    }
-
     return `
       <div class="spell-option-item spell-pick-row" data-url="${s.url || ''}" data-name="${escapeHtml(s.name)}">
         <div>
-          <div style="font-weight:700; color:#f8fafc;">${escapeHtml(s.name)}</div>
-          <div class="spell-meta-tags">${tagsHtml}</div>
+          <div style="font-weight:700; color:#fff;">${escapeHtml(s.name)}</div>
+          <div class="spell-meta-tags">
+            <span class="tag-pill ${lvlClass}">${escapeHtml(levelStr)}</span>
+          </div>
         </div>
         <span class="spell-add-badge">+ Add</span>
       </div>
@@ -955,43 +656,25 @@ function renderModalTraits(list) {
   if (!container) return;
 
   if (!list || list.length === 0) {
-    container.innerHTML = `<p class="loading-text">No matching abilities found.</p>`;
+    container.innerHTML = `<p style="color:#64748b; font-style:italic;">No abilities discovered.</p>`;
     return;
   }
 
-  container.innerHTML = list.slice(0, 40).map((t) => {
-    let tagsHtml = "";
-
-    const classes = Array.isArray(t.classes) ? t.classes : (t.class ? [t.class] : []);
-    const races = Array.isArray(t.races) ? t.races : (t.race ? [t.race] : []);
-
-    classes.forEach((c) => {
-      tagsHtml += `<span class="tag-pill ${getClassCssClass(c)}">${escapeHtml(c)}</span>`;
-    });
-
-    races.forEach((r) => {
-      tagsHtml += `<span class="tag-pill ${getRaceCssClass(r)}">${escapeHtml(r)}</span>`;
-    });
-
-    if (!tagsHtml) {
-      tagsHtml = `<span class="tag-pill blue">${escapeHtml(t.type || 'Feature')}</span>`;
-    }
-
-    return `
-      <div class="spell-option-item trait-pick-row" data-url="${t.url || ''}" data-name="${escapeHtml(t.name)}" data-type="${escapeHtml(t.type || 'Feature')}">
-        <div>
-          <div style="font-weight:700; color:#f8fafc;">${escapeHtml(t.name)}</div>
-          <div class="spell-meta-tags">${tagsHtml}</div>
+  container.innerHTML = list.slice(0, 40).map((t) => `
+    <div class="spell-option-item trait-pick-row" data-url="${t.url || ''}" data-name="${escapeHtml(t.name)}" data-type="${escapeHtml(t.type || 'Feature')}">
+      <div>
+        <div style="font-weight:700; color:#fff;">${escapeHtml(t.name)}</div>
+        <div class="spell-meta-tags">
+          <span class="tag-pill">${escapeHtml(t.type || 'Feature')}</span>
         </div>
-        <span class="spell-add-badge">+ Add</span>
       </div>
-    `;
-  }).join("");
+      <span class="spell-add-badge">+ Add</span>
+    </div>
+  `).join("");
 }
 
 function closeModal(modalId) {
-  const m = document.getElementById(modalId);
-  if (m) m.classList.remove("open");
+  document.getElementById(modalId)?.classList.remove("open");
 }
 
 function closeAllModals() {
@@ -1005,10 +688,57 @@ function switchMainTab(targetId) {
   document.getElementById(targetId)?.classList.add("active");
 }
 
+function setAuthError(message) {
+  const el = document.getElementById("authErrorMsg");
+  if (el) el.textContent = message || "";
+}
+
+function updateAuthUI(user) {
+  const authBtn = document.getElementById("authModalBtn");
+  const loggedOutView = document.getElementById("authLoggedOutView");
+  const loggedInView = document.getElementById("authLoggedInView");
+  const userText = document.getElementById("currentUserText");
+
+  if (user) {
+    if (authBtn) authBtn.textContent = user.displayName || user.email.split("@")[0];
+    if (loggedOutView) loggedOutView.style.display = "none";
+    if (loggedInView) loggedInView.style.display = "block";
+    if (userText) userText.textContent = user.email;
+  } else {
+    if (authBtn) authBtn.textContent = "Account";
+    if (loggedOutView) loggedOutView.style.display = "block";
+    if (loggedInView) loggedInView.style.display = "none";
+    if (userText) userText.textContent = "";
+  }
+}
+
+if (auth) {
+  auth.onAuthStateChanged(async (user) => {
+    currentUser = user;
+    updateAuthUI(user);
+
+    if (user && db) {
+      try {
+        const doc = await db.collection("users").doc(user.uid).get();
+        if (doc.exists && doc.data()?.roster) {
+          const merged = { ...getRoster(), ...doc.data().roster };
+          localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(merged));
+          loadSheet();
+          showStatus("Cloud Synced");
+        } else {
+          const localRoster = getRoster();
+          if (Object.keys(localRoster).length > 0) syncRosterToCloud(localRoster);
+        }
+      } catch (err) {
+        console.error("Cloud sync load error:", err);
+      }
+    }
+  });
+}
+
 document.addEventListener("click", async (e) => {
   if (e.target.classList.contains("modal-close-btn") || e.target.closest(".modal-close-btn")) {
-    const backdrop = e.target.closest(".modal-backdrop");
-    if (backdrop) backdrop.classList.remove("open");
+    e.target.closest(".modal-backdrop")?.classList.remove("open");
     return;
   }
 
@@ -1018,8 +748,7 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.closest(".blur-toggle-btn")) {
-    const btn = e.target.closest(".blur-toggle-btn");
-    const pill = btn.closest(".field-pill");
+    const pill = e.target.closest(".blur-toggle-btn").closest(".field-pill");
     if (pill) {
       pill.classList.toggle("blurred");
       const blurId = pill.dataset.blurId;
@@ -1038,10 +767,9 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.classList.contains("select-class-item")) {
-    const className = e.target.dataset.name;
     const classInput = document.getElementById("charClass");
     if (classInput) {
-      classInput.value = className;
+      classInput.value = e.target.dataset.name;
       saveSheet(false);
     }
     document.getElementById("classDropdown")?.classList.remove("open");
@@ -1049,10 +777,9 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.classList.contains("select-race-item")) {
-    const raceName = e.target.dataset.name;
     const raceInput = document.getElementById("charRace");
     if (raceInput) {
-      raceInput.value = raceName;
+      raceInput.value = e.target.dataset.name;
       saveSheet(false);
     }
     document.getElementById("raceDropdown")?.classList.remove("open");
@@ -1074,16 +801,78 @@ document.addEventListener("click", async (e) => {
 
   if (e.target.id === "saveBtn") saveSheet(false);
   if (e.target.id === "newBtn") {
-    if (confirm("Create a new blank character sheet?")) resetSheet();
+    if (confirm("Inscribe a clean hero character sheet?")) resetSheet();
   }
   if (e.target.id === "loadBtn") {
     renderCharList();
     document.getElementById("loadModal")?.classList.add("open");
   }
 
+  if (e.target.id === "authModalBtn" || e.target.closest("#authModalBtn")) {
+    setAuthError("");
+    document.getElementById("authModal")?.classList.add("open");
+    return;
+  }
+
+  if (e.target.id === "closeAuthModal" || e.target.closest("#closeAuthModal")) {
+    document.getElementById("authModal")?.classList.remove("open");
+    return;
+  }
+
+  if (e.target.id === "emailLoginBtn") {
+    if (!auth) return setAuthError("Firebase not connected.");
+    try {
+      await auth.signInWithEmailAndPassword(
+        document.getElementById("authEmail")?.value.trim(),
+        document.getElementById("authPassword")?.value
+      );
+      showStatus("Authenticated");
+      document.getElementById("authModal")?.classList.remove("open");
+    } catch (err) {
+      setAuthError(err.message);
+    }
+  }
+
+  if (e.target.id === "emailSignUpBtn") {
+    if (!auth) return setAuthError("Firebase not connected.");
+    try {
+      await auth.createUserWithEmailAndPassword(
+        document.getElementById("authEmail")?.value.trim(),
+        document.getElementById("authPassword")?.value
+      );
+      showStatus("Hero Account Created");
+      document.getElementById("authModal")?.classList.remove("open");
+    } catch (err) {
+      setAuthError(err.message);
+    }
+  }
+
+  if (e.target.id === "googleLoginBtn") {
+    if (!auth) return setAuthError("Firebase not connected.");
+    try {
+      await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+      showStatus("Google Synced");
+      document.getElementById("authModal")?.classList.remove("open");
+    } catch (err) {
+      setAuthError(err.message);
+    }
+  }
+
+  if (e.target.id === "logoutBtn") {
+    if (!auth) return;
+    await auth.signOut();
+    currentUser = null;
+    localStorage.removeItem(ROSTER_STORAGE_KEY);
+    localStorage.removeItem(ACTIVE_CHAR_ID_KEY);
+    activeCharId = "default";
+    resetSheet();
+    showStatus("Disconnected");
+    document.getElementById("authModal")?.classList.remove("open");
+  }
+
   if (e.target.id === "deleteBtn") {
     const roster = getRoster();
-    if (confirm(`Permanently delete "${roster[activeCharId]?.name || "this character"}"?`)) {
+    if (confirm(`Erase "${roster[activeCharId]?.name || "this hero"}" from records?`)) {
       delete roster[activeCharId];
       saveRoster(roster);
       const remaining = Object.keys(roster);
@@ -1094,6 +883,7 @@ document.addEventListener("click", async (e) => {
       } else {
         resetSheet();
       }
+      renderCharList();
     }
   }
 
@@ -1113,18 +903,19 @@ document.addEventListener("click", async (e) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${(currentChar.name || "character").toLowerCase().replace(/\s+/g, "_")}-backup.json`;
+    a.download = `${(currentChar.name || "hero").toLowerCase().replace(/\s+/g, "_")}-grimoire.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showStatus("Backup Downloaded");
+    showStatus("Backup Scroll Exported");
   }
 
   if (e.target.id === "helpLinkBtn") {
     document.getElementById("helpModal")?.classList.add("open");
   }
 
-  if (e.target.classList.contains("main-tab")) {
-    switchMainTab(e.target.dataset.target);
+  if (e.target.classList.contains("main-tab") || e.target.closest(".main-tab")) {
+    const tabBtn = e.target.classList.contains("main-tab") ? e.target : e.target.closest(".main-tab");
+    switchMainTab(tabBtn.dataset.target);
   }
 
   if (e.target.classList.contains("sub-tab")) {
@@ -1135,16 +926,15 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.classList.contains("footer-nav-btn")) {
-    const tabTarget = e.target.dataset.tab;
-    switchMainTab(tabTarget);
-    const targetMap = {
-      attr: ".attributes-group",
-      skills: ".skills-group",
+    switchMainTab(e.target.dataset.tab);
+    const map = {
+      attr: ".attributes-rack",
+      skills: ".skills-catalog",
       traits: "#abilitiesSection",
-      spells: ".spells-full-section",
+      spells: "#spellsSection",
       journal: "#tab-journal"
     };
-    document.querySelector(targetMap[e.target.dataset.scroll])?.scrollIntoView({ behavior: "smooth" });
+    document.querySelector(map[e.target.dataset.scroll])?.scrollIntoView({ behavior: "smooth" });
   }
 
   if (e.target.classList.contains("dice-btn")) {
@@ -1171,26 +961,19 @@ document.addEventListener("click", async (e) => {
     const total = roll + bonus;
     const out = document.getElementById("rollResult");
     if (out) out.textContent = total;
-    const sign = bonus >= 0 ? `+ ${bonus}` : `- ${Math.abs(bonus)}`;
-    addDiceHistory(`${label} (${roll} ${sign})`, total);
+    addDiceHistory(`${label} (${roll} ${bonus >= 0 ? `+ ${bonus}` : `- ${Math.abs(bonus)}`})`, total);
   }
 
   if (e.target.id === "addSpellBtn") {
     document.getElementById("spellModal")?.classList.add("open");
     const input = document.getElementById("spellSearchInput");
     if (input) input.value = "";
-    const list = await loadAllSpells();
-    renderModalSpells(list);
-    enrichSpellList(list).then((changed) => {
-      if (changed && (!input || input.value === "")) {
-        renderModalSpells(allSpellsCache);
-      }
-    });
+    renderModalSpells(await loadAllSpells());
   }
 
   if (e.target.id === "addCustomSpellBtn") {
     myCharacterSpells.push({
-      name: "New Spell",
+      name: "New Incantation",
       type: "Cantrip",
       casting_time: "1 Action",
       range: "30 ft",
@@ -1213,7 +996,7 @@ document.addEventListener("click", async (e) => {
       if (fetched) {
         detail = {
           name: fetched.name,
-          type: fetched.level === 0 ? "Cantrip" : `Level ${fetched.level} ${fetched.school?.name || ""}`.trim(),
+          type: fetched.level === 0 ? "Cantrip" : `Level ${fetched.level}`,
           casting_time: fetched.casting_time || "1 Action",
           range: fetched.range || "30 ft",
           duration: fetched.duration || "Instantaneous",
@@ -1222,25 +1005,14 @@ document.addEventListener("click", async (e) => {
       }
     }
 
-    if (detail) {
-      myCharacterSpells.push({
-        name: detail.name || name,
-        type: detail.type || detail.levelTag || getSpellLevelTag(detail) || "Spell",
-        casting_time: detail.casting_time || "1 Action",
-        range: detail.range || "30 ft",
-        duration: detail.duration || "Instantaneous",
-        desc: Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || "")
-      });
-    } else {
-      myCharacterSpells.push({
-        name: name,
-        type: getSpellLevelTag({ name }),
-        casting_time: "1 Action",
-        range: "30 ft",
-        duration: "Instantaneous",
-        desc: ""
-      });
-    }
+    myCharacterSpells.push({
+      name: detail?.name || name,
+      type: detail?.type || getSpellLevelTag({ name }),
+      casting_time: detail?.casting_time || "1 Action",
+      range: detail?.range || "30 ft",
+      duration: detail?.duration || "Instantaneous",
+      desc: detail?.desc || ""
+    });
 
     saveSheet(false);
     renderMySpells();
@@ -1251,13 +1023,12 @@ document.addEventListener("click", async (e) => {
     document.getElementById("traitModal")?.classList.add("open");
     const input = document.getElementById("traitSearchInput");
     if (input) input.value = "";
-    const list = await loadAllTraits();
-    renderModalTraits(list);
+    renderModalTraits(await loadAllTraits());
   }
 
   if (e.target.id === "addCustomTraitBtn") {
     myCharacterTraits.push({
-      name: "New Ability",
+      name: "New Trait",
       type: "Feature",
       desc: "",
       isExpanded: true
@@ -1271,7 +1042,6 @@ document.addEventListener("click", async (e) => {
   if (traitRow) {
     const name = traitRow.dataset.name;
     const url = traitRow.dataset.url;
-    const type = traitRow.dataset.type || "Feature";
     let detail = allTraitsCache.find((t) => t.name.toLowerCase() === name.toLowerCase());
 
     if (url && (!detail || !detail.desc)) {
@@ -1279,27 +1049,18 @@ document.addEventListener("click", async (e) => {
       if (fetched) {
         detail = {
           name: fetched.name,
-          type: type,
+          type: traitRow.dataset.type || "Feature",
           desc: Array.isArray(fetched.desc) ? fetched.desc.join("\n\n") : (fetched.desc || "")
         };
       }
     }
 
-    if (detail) {
-      myCharacterTraits.push({
-        name: detail.name || name,
-        type: detail.type || type,
-        desc: Array.isArray(detail.desc) ? detail.desc.join("\n\n") : (detail.desc || ""),
-        isExpanded: false
-      });
-    } else {
-      myCharacterTraits.push({
-        name: name,
-        type: type,
-        desc: "",
-        isExpanded: false
-      });
-    }
+    myCharacterTraits.push({
+      name: detail?.name || name,
+      type: detail?.type || "Feature",
+      desc: detail?.desc || "",
+      isExpanded: false
+    });
 
     saveSheet(false);
     renderMyTraits();
@@ -1321,8 +1082,7 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.classList.contains("trait-card-delete")) {
-    const idx = parseInt(e.target.dataset.index, 10);
-    myCharacterTraits.splice(idx, 1);
+    myCharacterTraits.splice(parseInt(e.target.dataset.index, 10), 1);
     saveSheet(false);
     renderMyTraits();
   }
@@ -1338,8 +1098,7 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.classList.contains("spell-card-delete")) {
-    const idx = parseInt(e.target.dataset.index, 10);
-    myCharacterSpells.splice(idx, 1);
+    myCharacterSpells.splice(parseInt(e.target.dataset.index, 10), 1);
     saveSheet(false);
     renderMySpells();
   }
@@ -1347,7 +1106,7 @@ document.addEventListener("click", async (e) => {
   if (e.target.classList.contains("char-delete-btn")) {
     const row = e.target.closest(".char-item-row");
     const roster = getRoster();
-    if (confirm(`Delete character "${roster[row.dataset.id]?.name || "Unnamed"}"?`)) {
+    if (confirm(`Delete "${roster[row.dataset.id]?.name || "Hero"}"?`)) {
       delete roster[row.dataset.id];
       saveRoster(roster);
       if (activeCharId === row.dataset.id) {
@@ -1362,14 +1121,13 @@ document.addEventListener("click", async (e) => {
       }
       renderCharList();
     }
-  } else if (e.target.closest(".char-item-info") || e.target.classList.contains("char-select-btn")) {
+  } else if (e.target.closest(".char-item-name") || e.target.classList.contains("char-select-btn")) {
     const row = e.target.closest(".char-item-row");
-    const roster = getRoster();
     activeCharId = row.dataset.id;
     localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-    applyCharacterData(roster[activeCharId]);
+    applyCharacterData(getRoster()[activeCharId]);
     closeModal("loadModal");
-    showStatus("Character Loaded");
+    showStatus("Hero Loaded");
   }
 });
 
@@ -1393,52 +1151,23 @@ document.getElementById("charRace")?.addEventListener("input", (e) => {
   document.getElementById("raceDropdown")?.classList.add("open");
 });
 
-let spellFilterTimeout = null;
 document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   const query = e.target.value.toLowerCase().trim();
-  clearTimeout(spellFilterTimeout);
-  spellFilterTimeout = setTimeout(() => {
-    const filtered = allSpellsCache.filter((s) => {
-      const matchName = (s.name || "").toLowerCase().includes(query);
-      const matchClass = (s.classesTag || "").toLowerCase().includes(query);
-      const matchSchool = (s.schoolTag || "").toLowerCase().includes(query);
-      const matchLevel = (s.levelTag || "").toLowerCase().includes(query);
-      return matchName || matchClass || matchSchool || matchLevel;
-    });
-    renderModalSpells(filtered);
-    enrichSpellList(filtered).then((changed) => {
-      if (changed && document.getElementById("spellSearchInput")?.value.toLowerCase().trim() === query) {
-        renderModalSpells(filtered);
-      }
-    });
-  }, 120);
+  const filtered = allSpellsCache.filter((s) => (s.name || "").toLowerCase().includes(query));
+  renderModalSpells(filtered);
 });
 
-let traitFilterTimeout = null;
 document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   const query = e.target.value.toLowerCase().trim();
-  clearTimeout(traitFilterTimeout);
-  traitFilterTimeout = setTimeout(() => {
-    const filtered = allTraitsCache.filter((t) => {
-      const matchName = t.name.toLowerCase().includes(query);
-      const matchClass = (t.classes || []).some(c => c.toLowerCase().includes(query));
-      const matchRace = (t.races || []).some(r => r.toLowerCase().includes(query));
-      return matchName || matchClass || matchRace;
-    });
-    renderModalTraits(filtered);
-  }, 120);
+  const filtered = allTraitsCache.filter((t) => (t.name || "").toLowerCase().includes(query));
+  renderModalTraits(filtered);
 });
 
 document.getElementById("filterSpellbookInput")?.addEventListener("input", (e) => {
   const q = e.target.value.toLowerCase().trim();
   document.querySelectorAll(".spell-card").forEach((card) => {
     const title = card.querySelector(".spell-custom-title-input")?.value.toLowerCase() || "";
-    const desc = card.querySelector(".spell-custom-desc-textarea")?.value.toLowerCase() || "";
-    if (!q || title.includes(q) || desc.includes(q)) {
-      card.style.display = "flex";
-    } else {
-      card.style.display = "none";
-    }
+    card.style.display = (!q || title.includes(q)) ? "flex" : "none";
   });
 });
 
@@ -1455,10 +1184,6 @@ document.addEventListener("input", (e) => {
     saveSheet(true);
   }
 
-  if (e.target.classList.contains("spell-stat-input")) {
-    autoResizeStatInput(e.target);
-  }
-
   if (e.target.classList.contains("custom-spell-field")) {
     const card = e.target.closest(".spell-card");
     if (card) {
@@ -1467,7 +1192,6 @@ document.addEventListener("input", (e) => {
         myCharacterSpells[idx][e.target.dataset.prop] = e.target.value;
         saveSheet(true);
       }
-      if (e.target.tagName.toLowerCase() === "textarea") autoExpandTextarea(e.target);
     }
   }
 
@@ -1479,7 +1203,6 @@ document.addEventListener("input", (e) => {
         myCharacterTraits[idx][e.target.dataset.prop] = e.target.value;
         saveSheet(true);
       }
-      if (e.target.tagName.toLowerCase() === "textarea") autoExpandTextarea(e.target);
     }
   }
 
@@ -1502,16 +1225,12 @@ document.addEventListener("focusout", (e) => {
     e.target.classList.contains("custom-trait-field") ||
     e.target.classList.contains("wpn-field")
   ) {
-    if (e.target.type !== "checkbox") {
-      saveSheet(false);
-    }
+    if (e.target.type !== "checkbox") saveSheet(false);
   }
 });
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    closeAllModals();
-  }
+  if (e.key === "Escape") closeAllModals();
 });
 
 document.getElementById("restoreFile")?.addEventListener("change", (e) => {
@@ -1538,9 +1257,9 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
       }
       saveRoster(roster);
       loadSheet();
-      showStatus("Sheet Restored!");
+      showStatus("Grimoire Restored!");
     } catch (err) {
-      alert("Invalid backup file.");
+      alert("Invalid backup scroll.");
     }
   };
   reader.readAsText(file);
