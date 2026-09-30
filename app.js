@@ -79,14 +79,17 @@ const SRD_SPELL_LEVELS = {
 };
 
 const BUILTIN_SPELLS = [
-  { name: "Hunter's Mark", levelTag: "Level 1", desc: "Mark quarry for extra 1d6 damage." },
-  { name: "Shield", levelTag: "Level 1", desc: "+5 AC until start of your next turn." },
-  { name: "Fireball", levelTag: "Level 3", desc: "8d6 fire damage in a 20-ft radius." }
+  { name: "Hunter's Mark", levelTag: "Level 1", schoolTag: "Divination", classesTag: "Ranger", casting_time: "1 Bonus Action", range: "90 ft", duration: "Concentration, up to 1 hour", desc: "Mark quarry for extra 1d6 damage." },
+  { name: "Shield", levelTag: "Level 1", schoolTag: "Abjuration", classesTag: "Sorcerer, Wizard", casting_time: "1 Reaction", range: "Self", duration: "1 round", desc: "Gain +5 bonus to AC until start of your next turn and take no magic missile damage." },
+  { name: "Fireball", levelTag: "Level 3", schoolTag: "Evocation", classesTag: "Sorcerer, Wizard", casting_time: "1 Action", range: "150 ft", duration: "Instantaneous", desc: "A 20-foot radius burst of flame deals 8d6 fire damage on failed Dexterity save." },
+  { name: "Cure Wounds", levelTag: "Level 1", schoolTag: "Evocation", classesTag: "Bard, Cleric, Druid, Paladin, Ranger", casting_time: "1 Action", range: "Touch", duration: "Instantaneous", desc: "Restore 1d8 + spellcasting modifier hit points to a touched creature." },
+  { name: "Misty Step", levelTag: "Level 2", schoolTag: "Conjuration", classesTag: "Sorcerer, Warlock, Wizard", casting_time: "1 Bonus Action", range: "Self", duration: "Instantaneous", desc: "Teleport up to 30 feet to an unoccupied space you can see." }
 ];
 
 const BUILTIN_TRAITS = [
-  { name: "Action Surge", classes: ["Fighter"], desc: "Take one additional action on your turn." },
-  { name: "Sneak Attack", classes: ["Rogue"], desc: "Deal extra damage once per turn with advantage or adjacent ally." }
+  { name: "Action Surge", classes: ["Fighter"], desc: "Take one additional action on your turn once per short or long rest." },
+  { name: "Sneak Attack", classes: ["Rogue"], desc: "Deal extra damage once per turn with advantage or adjacent ally." },
+  { name: "Rage", classes: ["Barbarian"], desc: "Enter a rage for advantage on Strength checks, weapon damage bonus, and physical resistance." }
 ];
 
 function escapeHtml(str) {
@@ -110,6 +113,49 @@ function getModifier(score) {
 
 function getProfBonus(level) {
   return Math.ceil(1 + level / 4);
+}
+
+function getSchoolCssClass(school) {
+  if (!school) return "school-transmutation";
+  const s = school.toLowerCase();
+  if (s.includes("abjur")) return "school-abjuration";
+  if (s.includes("conjur")) return "school-conjuration";
+  if (s.includes("divin")) return "school-divination";
+  if (s.includes("enchant")) return "school-enchantment";
+  if (s.includes("evoc")) return "school-evocation";
+  if (s.includes("illus")) return "school-illusion";
+  if (s.includes("necro")) return "school-necromancy";
+  if (s.includes("transmut")) return "school-transmutation";
+  return "school-transmutation";
+}
+
+function getClassCssClass(className) {
+  if (!className) return "class-fighter";
+  const c = className.toLowerCase();
+  if (c.includes("barbarian")) return "class-barbarian";
+  if (c.includes("bard")) return "class-bard";
+  if (c.includes("cleric")) return "class-cleric";
+  if (c.includes("druid")) return "class-druid";
+  if (c.includes("fighter")) return "class-fighter";
+  if (c.includes("monk")) return "class-monk";
+  if (c.includes("paladin")) return "class-paladin";
+  if (c.includes("ranger")) return "class-ranger";
+  if (c.includes("rogue")) return "class-rogue";
+  if (c.includes("sorcerer")) return "class-sorcerer";
+  if (c.includes("warlock")) return "class-warlock";
+  if (c.includes("wizard")) return "class-wizard";
+  if (c.includes("artificer")) return "class-artificer";
+  return "class-fighter";
+}
+
+function getRaceCssClass(raceName) {
+  if (!raceName) return "race-generic";
+  const r = raceName.toLowerCase();
+  if (r.includes("elf")) return "race-elf";
+  if (r.includes("dwarf")) return "race-dwarf";
+  if (r.includes("tiefling")) return "race-tiefling";
+  if (r.includes("dragon")) return "race-dragonborn";
+  return "race-generic";
 }
 
 function recalculateAll() {
@@ -591,6 +637,27 @@ async function loadAllSpells() {
   return allSpellsCache;
 }
 
+async function enrichSpellList(items) {
+  const topSlice = items.slice(0, 25);
+  let updated = false;
+  await Promise.all(topSlice.map(async (s) => {
+    if (!s.schoolTag && s.url) {
+      const data = await fetchAPI("https://www.dnd5eapi.co" + s.url);
+      if (data) {
+        s.levelTag = data.level === 0 ? "Cantrip" : `Level ${data.level}`;
+        s.schoolTag = data.school?.name || "";
+        s.classesTag = (data.classes || []).map((c) => c.name).join(", ");
+        s.casting_time = data.casting_time || "1 Action";
+        s.range = data.range || "30 ft";
+        s.duration = data.duration || "Instantaneous";
+        s.desc = Array.isArray(data.desc) ? data.desc.join("\n\n") : (data.desc || "");
+        updated = true;
+      }
+    }
+  }));
+  return updated;
+}
+
 async function loadAllTraits() {
   if (allTraitsCache.length > 0) return allTraitsCache;
   const combined = [...BUILTIN_TRAITS];
@@ -614,7 +681,60 @@ async function loadAllTraits() {
     });
   }
   allTraitsCache = combined;
+  syncClassAndRaceFeatureTags();
   return allTraitsCache;
+}
+
+async function syncClassAndRaceFeatureTags() {
+  const classes = ["barbarian", "bard", "cleric", "druid", "fighter", "monk", "paladin", "ranger", "rogue", "sorcerer", "warlock", "wizard"];
+  const races = ["dragonborn", "dwarf", "elf", "gnome", "half-elf", "half-orc", "halfling", "human", "tiefling"];
+
+  const classFetches = classes.map((c) => fetchAPI(`https://www.dnd5eapi.co/api/classes/${c}/features`));
+  const raceFetches = races.map((r) => fetchAPI(`https://www.dnd5eapi.co/api/races/${r}/traits`));
+
+  const [classResults, raceResults] = await Promise.all([
+    Promise.all(classFetches),
+    Promise.all(raceFetches)
+  ]);
+
+  classResults.forEach((res, idx) => {
+    if (res && res.results) {
+      const className = classes[idx].charAt(0).toUpperCase() + classes[idx].slice(1);
+      res.results.forEach((feat) => {
+        const match = allTraitsCache.find((t) => t.name.toLowerCase() === feat.name.toLowerCase());
+        if (match) {
+          if (!match.classes) match.classes = [];
+          if (!match.classes.includes(className)) match.classes.push(className);
+        }
+      });
+    }
+  });
+
+  raceResults.forEach((res, idx) => {
+    if (res && res.results) {
+      const raceName = races[idx].split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-');
+      res.results.forEach((trait) => {
+        const match = allTraitsCache.find((t) => t.name.toLowerCase() === trait.name.toLowerCase());
+        if (match) {
+          if (!match.races) match.races = [];
+          if (!match.races.includes(raceName)) match.races.push(raceName);
+        }
+      });
+    }
+  });
+
+  const traitModal = document.getElementById("traitModal");
+  if (traitModal && traitModal.classList.contains("open")) {
+    const query = document.getElementById("traitSearchInput")?.value.toLowerCase().trim() || "";
+    const filtered = allTraitsCache.filter((t) => {
+      const matchName = (t.name || "").toLowerCase().includes(query);
+      const matchType = (t.type || "").toLowerCase().includes(query);
+      const matchClass = (t.classes || []).some(c => c.toLowerCase().includes(query));
+      const matchRace = (t.races || []).some(r => r.toLowerCase().includes(query));
+      return matchName || matchType || matchClass || matchRace;
+    });
+    renderModalTraits(filtered);
+  }
 }
 
 function renderModalSpells(list) {
@@ -629,17 +749,30 @@ function renderModalSpells(list) {
   container.innerHTML = list.slice(0, 40).map((s) => {
     const levelStr = getSpellLevelTag(s);
     const isCantrip = levelStr.toLowerCase().includes("cantrip");
-    const lvlClass = isCantrip ? "spell-cantrip" : "spell-level";
+    const lvlClass = isCantrip ? "tag-cantrip" : "tag-level";
+
+    let tagsHtml = `<span class="tag-pill ${lvlClass}">${escapeHtml(levelStr)}</span>`;
+
+    if (s.schoolTag) {
+      tagsHtml += `<span class="tag-pill ${getSchoolCssClass(s.schoolTag)}">${escapeHtml(s.schoolTag)}</span>`;
+    }
+
+    if (s.classesTag) {
+      const cList = s.classesTag.split(",").map(c => c.trim()).filter(Boolean);
+      cList.forEach((cls) => {
+        const isRace = ["elf", "dwarf", "tiefling", "dragonborn", "halfling", "half-orc", "gnome", "half-elf", "human", "drow", "genasi", "aasimar", "triton"].some(r => cls.toLowerCase().includes(r));
+        const pillClass = isRace ? getRaceCssClass(cls) : getClassCssClass(cls);
+        tagsHtml += `<span class="tag-pill ${pillClass}">${escapeHtml(cls)}</span>`;
+      });
+    }
 
     return `
       <div class="spell-option-item spell-pick-row" data-url="${s.url || ''}" data-name="${escapeHtml(s.name)}">
-        <div>
-          <div style="font-weight:700; color:#f8fafc;">${escapeHtml(s.name)}</div>
-          <div class="spell-meta-tags">
-            <span class="tag-pill ${lvlClass}">${escapeHtml(levelStr)}</span>
-          </div>
+        <div class="spell-option-details">
+          <div class="spell-option-title">${escapeHtml(s.name)}</div>
+          <div class="spell-meta-tags">${tagsHtml}</div>
         </div>
-        <span class="spell-add-badge">+ Add</span>
+        <button type="button" class="spell-add-badge">+ Add</button>
       </div>
     `;
   }).join("");
@@ -654,17 +787,32 @@ function renderModalTraits(list) {
     return;
   }
 
-  container.innerHTML = list.slice(0, 40).map((t) => `
-    <div class="spell-option-item trait-pick-row" data-url="${t.url || ''}" data-name="${escapeHtml(t.name)}" data-type="${escapeHtml(t.type || 'Feature')}">
-      <div>
-        <div style="font-weight:700; color:#f8fafc;">${escapeHtml(t.name)}</div>
-        <div class="spell-meta-tags">
-          <span class="tag-pill">${escapeHtml(t.type || 'Feature')}</span>
+  container.innerHTML = list.slice(0, 40).map((t) => {
+    let tagsHtml = "";
+    const classes = Array.isArray(t.classes) ? t.classes : (t.class ? [t.class] : []);
+    const races = Array.isArray(t.races) ? t.races : (t.race ? [t.race] : []);
+
+    classes.forEach((c) => {
+      tagsHtml += `<span class="tag-pill ${getClassCssClass(c)}">${escapeHtml(c)}</span>`;
+    });
+    races.forEach((r) => {
+      tagsHtml += `<span class="tag-pill ${getRaceCssClass(r)}">${escapeHtml(r)}</span>`;
+    });
+
+    if (!tagsHtml) {
+      tagsHtml = `<span class="tag-pill race-generic">${escapeHtml(t.type || 'Feature')}</span>`;
+    }
+
+    return `
+      <div class="spell-option-item trait-pick-row" data-url="${t.url || ''}" data-name="${escapeHtml(t.name)}" data-type="${escapeHtml(t.type || 'Feature')}">
+        <div class="spell-option-details">
+          <div class="spell-option-title">${escapeHtml(t.name)}</div>
+          <div class="spell-meta-tags">${tagsHtml}</div>
         </div>
+        <button type="button" class="spell-add-badge">+ Add</button>
       </div>
-      <span class="spell-add-badge">+ Add</span>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 
 function closeModal(modalId) {
@@ -961,7 +1109,13 @@ document.addEventListener("click", async (e) => {
     document.getElementById("spellModal")?.classList.add("open");
     const input = document.getElementById("spellSearchInput");
     if (input) input.value = "";
-    renderModalSpells(await loadAllSpells());
+    const list = await loadAllSpells();
+    renderModalSpells(list);
+    enrichSpellList(list).then((changed) => {
+      if (changed && (!input || input.value === "")) {
+        renderModalSpells(allSpellsCache);
+      }
+    });
   }
 
   if (e.target.id === "addCustomSpellBtn") {
@@ -1144,16 +1298,41 @@ document.getElementById("charRace")?.addEventListener("input", (e) => {
   document.getElementById("raceDropdown")?.classList.add("open");
 });
 
+let spellSearchTimeout = null;
 document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   const query = e.target.value.toLowerCase().trim();
-  const filtered = allSpellsCache.filter((s) => (s.name || "").toLowerCase().includes(query));
-  renderModalSpells(filtered);
+  clearTimeout(spellSearchTimeout);
+  spellSearchTimeout = setTimeout(() => {
+    const filtered = allSpellsCache.filter((s) => {
+      const matchName = (s.name || "").toLowerCase().includes(query);
+      const matchClass = (s.classesTag || "").toLowerCase().includes(query);
+      const matchSchool = (s.schoolTag || "").toLowerCase().includes(query);
+      const matchLevel = (s.levelTag || "").toLowerCase().includes(query);
+      return matchName || matchClass || matchSchool || matchLevel;
+    });
+    renderModalSpells(filtered);
+    enrichSpellList(filtered).then((changed) => {
+      if (changed && document.getElementById("spellSearchInput")?.value.toLowerCase().trim() === query) {
+        renderModalSpells(filtered);
+      }
+    });
+  }, 120);
 });
 
+let traitSearchTimeout = null;
 document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   const query = e.target.value.toLowerCase().trim();
-  const filtered = allTraitsCache.filter((t) => (t.name || "").toLowerCase().includes(query));
-  renderModalTraits(filtered);
+  clearTimeout(traitSearchTimeout);
+  traitSearchTimeout = setTimeout(() => {
+    const filtered = allTraitsCache.filter((t) => {
+      const matchName = (t.name || "").toLowerCase().includes(query);
+      const matchType = (t.type || "").toLowerCase().includes(query);
+      const matchClass = (t.classes || []).some(c => c.toLowerCase().includes(query));
+      const matchRace = (t.races || []).some(r => r.toLowerCase().includes(query));
+      return matchName || matchType || matchClass || matchRace;
+    });
+    renderModalTraits(filtered);
+  }, 120);
 });
 
 document.getElementById("filterSpellbookInput")?.addEventListener("input", (e) => {
