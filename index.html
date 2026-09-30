@@ -5,11 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>D&D 5e Character Sheet</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-  
   <link rel="stylesheet" href="style.css" />
 </head>
 <body id="top">
@@ -19,18 +14,16 @@
   <div class="sheet-container">
     
     <div class="top-utility-bar">
-      <div class="wiki-box">
-        <span class="wiki-title">Compendiums:</span>
-        <a href="https://5e.tools/" target="_blank" rel="noopener noreferrer">5e.tools</a>
-        <span class="wiki-sep">|</span>
-        <a href="https://dnd5e.wikidot.com/" target="_blank" rel="noopener noreferrer">Wikidot</a>
-        <span class="wiki-sep">|</span>
-        <a href="https://app.roll20.net/compendium/dnd5e/BookIndex" target="_blank" rel="noopener noreferrer">Roll20</a>
+      <div class="account-panel">
+        <button class="btn gray" id="authModalBtn" type="button">Account</button>
       </div>
-
-      <div class="auth-bar" id="authNavGroup">
-        <button class="btn outline blue" id="loginNavBtn" type="button">Log In</button>
-        <button class="btn red" id="signupNavBtn" type="button">Sign Up</button>
+      <div class="wiki-box">
+        <span class="wiki-title">D&D Reference Vault</span>
+        <div class="wiki-links">
+          <a href="https://dnd5e.wikidot.com/" target="_blank" rel="noopener noreferrer">D&D 5e Wikidot</a>
+          <span class="wiki-sep">|</span>
+          <a href="https://roll20.net/compendium/dnd5e/Weapons#content" target="_blank" rel="noopener noreferrer">Roll20 Weapons</a>
+        </div>
       </div>
     </div>
 
@@ -48,6 +41,7 @@
         </label>
         <button class="btn gray" id="deleteBtn" type="button">Delete</button>
       </div>
+      <span id="saveStatus" class="status-msg"></span>
     </header>
 
     <div class="name-box">
@@ -55,66 +49,96 @@
     </div>
 
     <div class="tab-controls">
-      <button class="main-tab active" data-target="tab-stats" type="button">Statistics, Abilities, Equipment, etc.</button>
-      <button class="main-tab" data-target="tab-journal" type="button">Notes, Personality, NPCs, etc.</button>
+      <button class="main-tab active" data-target="tab-stats" type="button">Statistics, Abilities, Equipment</button>
+      <button class="main-tab" data-target="tab-journal" type="button">Notes, Lore &amp; Background</button>
     </div>
 
     <div id="tab-stats" class="tab-page active">
       <div class="meta-row-grid">
-        <div class="field-pill dropdown-pill-wrapper">
+        <div class="field-pill dropdown-pill-wrapper" data-blur-id="class">
           <span class="pill-label">Class</span>
-          <input type="text" id="charClass" class="save-field pill-input" autocomplete="off" placeholder="Select or type class..." />
+          <input type="text" id="charClass" class="save-field pill-input" autocomplete="off" placeholder="Select class..." />
           <div id="classDropdown" class="dropdown-menu"></div>
+          <button type="button" class="blur-toggle-btn" title="Toggle blur">
+            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
-        <div class="field-pill dropdown-pill-wrapper">
+        <div class="field-pill dropdown-pill-wrapper" data-blur-id="race">
           <span class="pill-label">Race</span>
-          <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="Select or type race..." />
+          <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="Select race..." />
           <div id="raceDropdown" class="dropdown-menu"></div>
+          <button type="button" class="blur-toggle-btn" title="Toggle blur">
+            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
-        <div class="field-pill">
+        <div class="field-pill" data-blur-id="background">
           <span class="pill-label">Background</span>
           <input type="text" id="charBackground" class="save-field pill-input" placeholder="e.g. Soldier" />
+          <button type="button" class="blur-toggle-btn" title="Toggle blur">
+            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
-        <div class="field-pill">
+        <div class="field-pill" data-blur-id="alignment">
           <span class="pill-label">Alignment</span>
           <input type="text" id="charAlignment" class="save-field pill-input" placeholder="e.g. Chaotic Good" />
+          <button type="button" class="blur-toggle-btn" title="Toggle blur">
+            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
-        <div class="field-pill mini">
+        <div class="field-pill mini" data-blur-id="level">
           <span class="pill-label">Level</span>
           <input type="number" id="charLevel" class="save-field pill-input center" value="1" min="1" max="20" />
+          <button type="button" class="blur-toggle-btn" title="Toggle blur">
+            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
       </div>
 
       <div class="meta-row-grid">
-        <div class="field-pill">
+        <div class="field-pill" data-blur-id="exp">
           <span class="pill-label">Experience</span>
           <input type="text" id="charExp" class="save-field pill-input center" placeholder="0 XP" />
+          <button type="button" class="blur-toggle-btn" title="Toggle blur">
+            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
-        <div class="field-pill badge-pill">
+        <div class="field-pill badge-pill" data-blur-id="prof">
           <span class="pill-label">Proficiency</span>
           <span id="profBonusDisplay" class="pill-badge">+2</span>
+          <button type="button" class="blur-toggle-btn" title="Toggle blur">
+            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
-        <div class="field-pill">
+        <div class="field-pill" data-blur-id="inspiration">
           <span class="pill-label">Inspiration</span>
           <input type="text" id="charInspiration" class="save-field pill-input center" placeholder="None" />
+          <button type="button" class="blur-toggle-btn" title="Toggle blur">
+            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
-        <div class="field-pill">
+        <div class="field-pill" data-blur-id="speed">
           <span class="pill-label">Speed</span>
           <input type="number" id="charSpeed" class="save-field pill-input center" value="30" />
+          <button type="button" class="blur-toggle-btn" title="Toggle blur">
+            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
-        <div class="field-pill mini">
+        <div class="field-pill mini" data-blur-id="hitdice">
           <span class="pill-label">Hit Dice</span>
           <div class="dual-inputs-box">
             <input type="text" id="hitDiceCur" class="save-field pill-sub-input" value="1" />
             <span class="dual-slash">/</span>
             <input type="text" id="hitDiceMax" class="save-field pill-sub-input" value="1" />
           </div>
+          <button type="button" class="blur-toggle-btn" title="Toggle blur">
+            <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </button>
         </div>
       </div>
 
       <div class="vitals-hud">
         <div class="vitals-card ac-card">
-          <div class="card-tag">Defenses</div>
+          <div class="card-tag">Defense</div>
           <div class="card-main">
             <div class="crest-icon">
               <svg viewBox="0 0 100 115" class="crest-svg">
@@ -145,7 +169,7 @@
         </div>
 
         <div class="vitals-card death-card">
-          <div class="card-tag">Status</div>
+          <div class="card-tag">Mortality</div>
           <div class="card-main">
             <div class="death-saves-box">
               <div class="save-track succ">
@@ -159,13 +183,13 @@
             </div>
             <div class="card-details">
               <span class="card-title">Death Saves</span>
-              <span class="card-caption">3 to Stabilize / Die</span>
+              <span class="card-caption">3 to Live or Die</span>
             </div>
           </div>
         </div>
 
         <div class="vitals-card resource-card">
-          <div class="card-tag">Energy</div>
+          <div class="card-tag">Power</div>
           <div class="card-main">
             <div class="resource-counter-box">
               <input type="number" id="classPtsCur" class="save-field res-input" value="0" title="Current Points" />
@@ -174,7 +198,7 @@
             </div>
             <div class="card-details">
               <span class="card-title">Class Points</span>
-              <span class="card-caption">Ki, Sorcery, Rages...</span>
+              <span class="card-caption">Ki, Sorcery, Rages</span>
             </div>
           </div>
         </div>
@@ -545,7 +569,6 @@
 
           <hr class="red-divider" />
 
-          <!-- Magic Attunement Slot Box -->
           <div class="attunement-container">
             <div class="attunement-header">
               <span class="tactical-title">Magic Item Attunement</span>
@@ -567,7 +590,6 @@
             </div>
           </div>
 
-          <!-- Interactive Conditions Tracker -->
           <div class="conditions-container">
             <div class="conditions-header-bar">
               <span class="tactical-title">Conditions Tracker</span>
@@ -602,7 +624,6 @@
         </div>
       </div>
 
-      <!-- Dedicated Abilities & Traits Section -->
       <section class="abilities-full-section" id="abilitiesSection">
         <hr class="red-divider" />
         <div class="section-header-bar">
@@ -612,7 +633,6 @@
         <div id="traitsList" class="traits-grid-container"></div>
       </section>
 
-      <!-- Spells Section -->
       <section class="spells-full-section">
         <hr class="red-divider" />
         <h2 class="section-title">Spells</h2>
@@ -672,7 +692,6 @@
       </section>
     </div>
 
-    <!-- MAIN TAB 2: Notes, Personality, NPCs -->
     <div id="tab-journal" class="tab-page">
       <div class="subtab-controls">
         <button class="sub-tab active" data-sub="sub-notes" type="button">General Notes</button>
@@ -738,27 +757,6 @@
     </footer>
   </div>
 
-  <div id="authModal" class="modal-backdrop" role="dialog" aria-modal="true">
-    <div class="modal-box auth-modal-box">
-      <div class="modal-header">
-        <h3 id="authModalTitle">Sign In</h3>
-        <button id="closeAuthModal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
-      </div>
-      <div class="auth-modal-content">
-        <input type="email" id="authEmail" class="modal-text-input" placeholder="Email address" autocomplete="email" />
-        <input type="password" id="authPassword" class="modal-text-input" placeholder="Password" autocomplete="current-password" />
-        <p id="authError" class="auth-err-msg"></p>
-        <button type="button" class="btn red full-width" id="authSubmitBtn">Sign In</button>
-        
-        <div class="auth-divider">
-          <span>OR</span>
-        </div>
-        
-        <button type="button" class="btn outline blue full-width" id="googleAuthBtn">Sign in with Google</button>
-      </div>
-    </div>
-  </div>
-
   <div id="helpModal" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal-box help-modal-box">
       <div class="modal-header">
@@ -809,6 +807,40 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <div id="authModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-box auth-modal-box">
+      <div class="modal-header">
+        <h3 id="authModalTitle">Account &amp; Cloud Sync</h3>
+        <button id="closeAuthModal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="auth-modal-content">
+        <div id="authLoggedOutView">
+          <div class="auth-input-group">
+            <input type="email" id="authEmail" class="auth-input" placeholder="Email address" autocomplete="username" />
+            <input type="password" id="authPassword" class="auth-input" placeholder="Password" autocomplete="current-password" />
+          </div>
+          <div class="auth-btn-row">
+            <button class="btn red" id="emailLoginBtn" type="button">Sign In</button>
+            <button class="btn gray" id="emailSignUpBtn" type="button">Sign Up</button>
+          </div>
+          <div class="auth-divider"><span>OR</span></div>
+          <button class="btn gray auth-google-btn" id="googleLoginBtn" type="button">Sign in with Google</button>
+        </div>
+        <div id="authLoggedInView" style="display: none;">
+          <p class="auth-user-label">Signed in as</p>
+          <p id="currentUserText" class="auth-user-email"></p>
+          <div class="auth-sync-status" id="cloudSyncStatus">Cloud Sync: Active</div>
+          <button class="btn red auth-logout-btn" id="logoutBtn" type="button">Log Out</button>
+        </div>
+        <p id="authErrorMsg" class="auth-error-msg"></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
