@@ -124,13 +124,17 @@
             <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
-        <div class="field-pill mini" data-blur-id="hitdice">
-          <span class="pill-label">Hit Dice</span>
-          <div class="dual-inputs-box">
-            <input type="text" id="hitDiceCur" class="save-field pill-sub-input" value="1" />
-            <span class="dual-slash">/</span>
-            <input type="text" id="hitDiceMax" class="save-field pill-sub-input" value="1" />
-          </div>
+     <div class="field-pill mini hitdice-pill" data-blur-id="hitdice">
+  <span class="pill-label">Hit Dice</span>
+  <div class="dual-inputs-box">
+    <input type="number" id="hitDiceCur" class="save-field pill-sub-input" value="1" min="0" max="99" />
+    <span class="dual-slash">/</span>
+    <input type="number" id="hitDiceMax" class="save-field pill-sub-input" value="1" min="0" max="99" />
+  </div>
+  <button type="button" class="blur-toggle-btn" title="Toggle blur">
+    <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+  </button>
+</div>
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
             <svg class="eye-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
