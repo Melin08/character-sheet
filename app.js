@@ -257,28 +257,36 @@ function renderMySpells() {
   if (!container) return;
 
   if (myCharacterSpells.length === 0) {
-    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.88rem; color: #64748b; text-align: center;">No spells added yet. Click "+ Add Spell" above to browse the compendium.</p>`;
+    container.innerHTML = `<p style="grid-column: 1 / -1; font-size: 0.88rem; color: #64748b; text-align: center; font-style: italic; padding: 1rem 0;">No spells added yet. Click "+ Add Spell" above to browse the compendium.</p>`;
     return;
   }
 
   container.innerHTML = myCharacterSpells.map((spell, idx) => {
     if (!spell) return "";
-    const typeVal = spell.type || spell.levelTag || "Spell";
+    const typeVal = spell.type || spell.levelTag || "Cantrip";
     const descVal = Array.isArray(spell.desc) ? spell.desc.join("\n\n") : (spell.desc || "");
     return `
       <div class="spell-card" draggable="true" data-index="${idx}">
         <div class="spell-card-header">
-          <span class="spell-drag-handle" title="Drag to reorder">&#8942;&#8942;</span>
+          <span class="spell-drag-handle" title="Drag to reorder">⋮⋮</span>
           <input type="text" class="spell-custom-title-input custom-spell-field" data-prop="name" value="${escapeHtml(spell.name || "")}" placeholder="Spell Name" />
-          <button class="spell-card-delete" data-index="${idx}" type="button" title="Remove spell">&times;</button>
+          <button class="spell-card-delete" data-index="${idx}" type="button" title="Delete spell">&times;</button>
         </div>
         <div class="spell-card-meta">
-          <input type="text" class="spell-meta-input custom-spell-field center" data-prop="type" value="${escapeHtml(typeVal)}" placeholder="Cantrip" />
-          <input type="text" class="spell-meta-input custom-spell-field center" data-prop="casting_time" value="${escapeHtml(spell.casting_time || "")}" placeholder="1 Action" />
-          <input type="text" class="spell-meta-input custom-spell-field center" data-prop="range" value="${escapeHtml(spell.range || "")}" placeholder="30 ft" />
-          <input type="text" class="spell-meta-input custom-spell-field center" data-prop="duration" value="${escapeHtml(spell.duration || "")}" placeholder="Instantaneous" />
+          <div class="spell-meta-badge">
+            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="type" value="${escapeHtml(typeVal)}" placeholder="Level / Type" />
+          </div>
+          <div class="spell-meta-badge">
+            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="casting_time" value="${escapeHtml(spell.casting_time || "")}" placeholder="1 Action" />
+          </div>
+          <div class="spell-meta-badge">
+            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="range" value="${escapeHtml(spell.range || "")}" placeholder="30 ft" />
+          </div>
+          <div class="spell-meta-badge">
+            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="duration" value="${escapeHtml(spell.duration || "")}" placeholder="Instant" />
+          </div>
         </div>
-        <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description...">${escapeHtml(descVal)}</textarea>
+        <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description and effects...">${escapeHtml(descVal)}</textarea>
       </div>
     `;
   }).join("");
