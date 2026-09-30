@@ -6,7 +6,7 @@
   --bg-hover: #1c273c;
   --border-subtle: #1e293b;
   --border-medium: #2a3a54;
-  --border-active: #dc2626;
+  --border-active: #ef4444;
   --primary-red: #ef4444;
   --primary-red-hover: #dc2626;
   --accent-blue: #38bdf8;
@@ -24,7 +24,6 @@
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.7);
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-smooth: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * {
@@ -47,7 +46,48 @@ body {
 }
 
 /* =========================================
-   BUTTON HOVER POP & CLICK ANIMATIONS
+   TEXTBOX MODERNIZATION (NO DEFAULT BORDERS)
+========================================= */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+textarea {
+  background: linear-gradient(180deg, rgba(9, 14, 23, 0.9) 0%, rgba(6, 10, 17, 0.95) 100%) !important;
+  border: 1px solid var(--border-medium) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55) !important;
+  border-radius: var(--radius-sm) !important;
+  color: var(--text-main) !important;
+  outline: none !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease !important;
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--primary-red) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Scrollbars */
+textarea::-webkit-scrollbar,
+.modal-list::-webkit-scrollbar,
+.dice-history-list::-webkit-scrollbar {
+  width: 6px;
+}
+textarea::-webkit-scrollbar-thumb,
+.modal-list::-webkit-scrollbar-thumb,
+.dice-history-list::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 999px;
+}
+textarea::-webkit-scrollbar-thumb:hover,
+.modal-list::-webkit-scrollbar-thumb:hover,
+.dice-history-list::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* =========================================
+   BUTTON HOVER POP & PRESS ANIMATIONS
 ========================================= */
 .btn,
 .main-tab,
@@ -314,18 +354,8 @@ body {
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #ffffff;
-  border: 1.5px solid var(--border-medium);
-  border-radius: var(--radius-md);
   padding: 0.75rem 1.25rem;
-  outline: none;
-  background: var(--bg-input);
-  transition: all var(--transition-smooth);
   text-align: center;
-}
-
-.name-input:focus {
-  border-color: var(--primary-red);
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25);
 }
 
 .tab-controls {
@@ -414,7 +444,7 @@ body {
 }
 
 /* =========================================
-   PERFECT 5-COLUMN METADATA ROW GRID
+   5-COLUMN METADATA GRID
 ========================================= */
 .meta-row-grid {
   display: grid;
@@ -456,10 +486,11 @@ body {
   width: 100%;
   flex: 1;
   min-width: 0;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text-main);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: var(--text-main) !important;
   font-size: 0.92rem;
   font-weight: 600;
 }
@@ -490,23 +521,15 @@ body {
 }
 
 .hitdice-input {
-  width: 32px;
-  height: 28px;
-  min-width: 0;
-  background: var(--bg-card);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-xs);
-  color: #ffffff;
-  font-size: 0.9rem;
-  font-weight: 800;
-  text-align: center;
-  outline: none;
-  cursor: text;
-  padding: 0;
-}
-
-.hitdice-input:focus {
-  border-color: var(--primary-red);
+  width: 34px !important;
+  height: 28px !important;
+  min-width: 0 !important;
+  color: #ffffff !important;
+  font-size: 0.9rem !important;
+  font-weight: 800 !important;
+  text-align: center !important;
+  cursor: text !important;
+  padding: 0 !important;
 }
 
 .hitdice-divider {
@@ -677,38 +700,35 @@ body {
 .ac-input {
   width: 52px;
   height: 44px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  color: #ffffff;
   font-size: 1.35rem;
   font-weight: 800;
   text-align: center;
-  outline: none;
 }
 
 .hp-gauge-box {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  background: var(--bg-input);
+  background: linear-gradient(180deg, rgba(9, 14, 23, 0.9) 0%, rgba(6, 10, 17, 0.95) 100%);
   border: 1px solid var(--border-medium);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55);
   border-radius: var(--radius-md);
   padding: 0.4rem 0.65rem;
 }
 
 .hp-input {
   width: 44px;
-  background: transparent;
-  border: none;
-  outline: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
   text-align: center;
   font-size: 1.2rem;
   font-weight: 800;
 }
 
-.hp-input.cur { color: #f87171; }
-.hp-input.max { color: #ffffff; }
+.hp-input.cur { color: #f87171 !important; }
+.hp-input.max { color: #ffffff !important; }
 
 .hp-divider {
   color: var(--text-dim);
@@ -724,8 +744,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: var(--bg-input);
+  background: linear-gradient(180deg, rgba(9, 14, 23, 0.9) 0%, rgba(6, 10, 17, 0.95) 100%);
   border: 1px solid var(--border-medium);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55);
   border-radius: var(--radius-sm);
   padding: 0.25rem 0.45rem;
 }
@@ -741,9 +762,10 @@ body {
 
 .death-input {
   width: 28px;
-  background: transparent;
-  border: none;
-  outline: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
   text-align: center;
   font-size: 1rem;
   font-weight: 800;
@@ -756,21 +778,23 @@ body {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  background: var(--bg-input);
+  background: linear-gradient(180deg, rgba(9, 14, 23, 0.9) 0%, rgba(6, 10, 17, 0.95) 100%);
   border: 1px solid var(--border-medium);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55);
   border-radius: var(--radius-md);
   padding: 0.4rem 0.65rem;
 }
 
 .res-input {
   width: 36px;
-  background: transparent;
-  border: none;
-  outline: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
   text-align: center;
   font-size: 1.15rem;
   font-weight: 800;
-  color: var(--accent-purple);
+  color: var(--accent-purple) !important;
 }
 
 .two-col-layout {
@@ -848,12 +872,12 @@ body {
 
 .attr-input {
   width: 40px;
-  border: none;
-  background: transparent;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   font-size: 1rem;
   font-weight: 800;
   color: #ffffff;
-  outline: none;
 }
 
 .attr-mod-box {
@@ -1132,14 +1156,9 @@ body {
 
 .coin-input {
   width: 58px;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
   padding: 0.4rem 0.3rem;
   font-size: 0.95rem;
   font-weight: 700;
-  background: var(--bg-input);
-  color: #ffffff;
-  outline: none;
 }
 
 .attacks-table-wrapper { width: 100%; }
@@ -1168,12 +1187,7 @@ body {
 
 .attack-entry input {
   width: 100%;
-  background: var(--bg-input);
-  border: 1px solid var(--border-medium);
-  color: #ffffff;
   padding: 0.45rem 0.75rem;
-  border-radius: var(--radius-sm);
-  outline: none;
 }
 
 .weapon-delete-btn {
@@ -1244,13 +1258,9 @@ body {
 
 .exhaustion-input {
   width: 38px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  color: #f87171;
+  color: #f87171 !important;
   font-weight: 800;
   font-size: 0.95rem;
-  outline: none;
 }
 
 .condition-chips-grid {
@@ -1313,12 +1323,12 @@ body {
 
 .trait-name-input {
   width: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   font-weight: 800;
   font-size: 1.05rem;
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 .trait-card-delete {
@@ -1334,25 +1344,20 @@ body {
 
 .trait-type-input {
   width: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   font-size: 0.78rem;
-  color: var(--accent-emerald);
+  color: var(--accent-emerald) !important;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .trait-desc-input {
   width: 100%;
-  background: var(--bg-input);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  color: var(--text-main);
   font-size: 0.88rem;
   line-height: 1.55;
   padding: 0.65rem;
-  outline: none;
   resize: vertical;
   min-height: 75px;
 }
@@ -1379,7 +1384,7 @@ body {
 }
 
 /* =========================================
-   PERFECTLY CENTERED SPELLS SECTION
+   CENTERED SPELLS SECTION
 ========================================= */
 .spells-full-section { 
   margin-top: 2rem;
@@ -1446,16 +1451,11 @@ body {
 }
 
 .spell-stat-input {
-  background: var(--bg-input);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  color: #ffffff;
   font-size: 1rem;
   font-weight: 800;
   padding: 0.35rem 0.6rem;
   width: 60px;
   text-align: center;
-  outline: none;
 }
 
 .spell-stat-input.concentration-input {
@@ -1500,8 +1500,9 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
-  background: var(--bg-input);
+  background: linear-gradient(180deg, rgba(9, 14, 23, 0.9) 0%, rgba(6, 10, 17, 0.95) 100%);
   border: 1px solid var(--border-medium);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55);
   border-radius: var(--radius-sm);
   padding: 0.25rem;
   width: 100%;
@@ -1509,12 +1510,12 @@ body {
 
 .slot-input {
   width: 26px;
-  background: transparent;
-  border: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   color: #ffffff;
   font-size: 0.95rem;
   font-weight: 800;
-  outline: none;
   padding: 0;
   text-align: center;
 }
@@ -1536,13 +1537,8 @@ body {
 
 .spell-filter-input {
   width: 100%;
-  background: var(--bg-input);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
   padding: 0.5rem 0.85rem;
-  color: #ffffff;
   font-size: 0.88rem;
-  outline: none;
 }
 
 .btn-text-red {
@@ -1591,14 +1587,9 @@ body {
 }
 
 .spell-custom-title-input {
-  background: var(--bg-input);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  color: #ffffff;
   font-size: 1rem;
   font-weight: 800;
   padding: 0.4rem 0.75rem;
-  outline: none;
   flex: 1;
 }
 
@@ -1621,47 +1612,29 @@ body {
 
 .spell-meta-input {
   width: 100%;
-  background: var(--bg-input);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  color: #ffffff;
   padding: 0.35rem 0.65rem;
   font-size: 0.85rem;
-  outline: none;
 }
 
 .spell-custom-desc-textarea {
   width: 100%;
-  background: var(--bg-input);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  color: var(--text-main);
   font-size: 0.88rem;
   line-height: 1.55;
   padding: 0.75rem;
-  outline: none;
   resize: vertical;
   min-height: 75px;
 }
 
 .block-text {
   width: 100%;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
   padding: 0.85rem 1rem;
   font-size: 0.92rem;
   margin-bottom: 1.5rem;
-  background: var(--bg-input);
-  color: var(--text-main);
-  outline: none;
-}
-
-.block-text:focus {
-  border-color: var(--primary-red);
+  line-height: 1.6;
 }
 
 /* =========================================
-   COLOR CODED TAGS & COMPENDIUM PILLS
+   COMPENDIUM TAGS (COLOR CODED)
 ========================================= */
 .spell-option-item {
   display: flex;
@@ -1670,7 +1643,6 @@ body {
   padding: 0.85rem 0.75rem;
   border-bottom: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  transition: background-color var(--transition-fast);
 }
 
 .spell-option-item:hover { 
@@ -1708,19 +1680,19 @@ body {
   align-items: center;
 }
 
-/* Tier Tags */
+/* Spell Tier Tags */
 .tag-cantrip {
-  background-color: rgba(16, 185, 129, 0.16);
+  background-color: rgba(16, 185, 129, 0.18);
   color: var(--accent-emerald);
   border-color: rgba(16, 185, 129, 0.4);
 }
 .tag-level {
-  background-color: rgba(192, 132, 252, 0.16);
+  background-color: rgba(192, 132, 252, 0.18);
   color: var(--accent-purple);
   border-color: rgba(192, 132, 252, 0.4);
 }
 
-/* Schools of Magic */
+/* School of Magic Tags */
 .school-abjuration { background-color: rgba(56, 189, 248, 0.16); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
 .school-conjuration { background-color: rgba(16, 185, 129, 0.16); color: #34d399; border-color: rgba(16, 185, 129, 0.4); }
 .school-divination { background-color: rgba(6, 182, 212, 0.16); color: #22d3ee; border-color: rgba(6, 182, 212, 0.4); }
@@ -1763,18 +1735,31 @@ body {
   border: none;
 }
 
+/* =========================================
+   SPRING ANIMATED MODALS
+========================================= */
 .modal-backdrop {
-  display: none;
   position: fixed;
   inset: 0;
-  background: rgba(4, 7, 13, 0.85);
+  background: rgba(4, 7, 13, 0.82);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 100000;
+  display: flex;
   align-items: center;
   justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              visibility 0.25s ease;
 }
 
-.modal-backdrop.open { display: flex; }
+.modal-backdrop.open { 
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
 
 .modal-box {
   background: var(--bg-surface);
@@ -1782,11 +1767,17 @@ body {
   max-width: 620px;
   max-height: 82vh;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--border-medium);
+  transform: translateY(20px) scale(0.94);
+  transition: transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.modal-backdrop.open .modal-box {
+  transform: translateY(0) scale(1);
 }
 
 .modal-header {
@@ -1819,12 +1810,8 @@ body {
 .modal-search-bar input {
   width: 100%;
   padding: 0.6rem 0.95rem;
-  border: 1px solid var(--border-medium);
   border-radius: var(--radius-sm);
   font-size: 0.92rem;
-  outline: none;
-  background: var(--bg-card);
-  color: #ffffff;
 }
 
 .modal-list {
@@ -1868,7 +1855,6 @@ body {
   border: none;
   color: var(--text-dim);
   font-size: 1.4rem;
-  cursor: pointer;
 }
 
 .char-delete-btn:hover { color: var(--primary-red); }
@@ -1889,13 +1875,8 @@ body {
 
 .auth-input {
   width: 100%;
-  background: var(--bg-input);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  color: #ffffff;
   padding: 0.65rem 0.95rem;
   font-size: 0.95rem;
-  outline: none;
 }
 
 .auth-btn-row { display: flex; gap: 0.6rem; }
