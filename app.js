@@ -1,13 +1,5 @@
 "use strict";
 
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyAIKe_hrxyQvn4uebwU5OZrP2qf-FwK0Rg",
   authDomain: "character-sheet-bd250.firebaseapp.com",
@@ -18,14 +10,19 @@ const firebaseConfig = {
   measurementId: "G-E0LD6CXQ2W"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+let auth = null;
+let db = null;
+let analytics = null;
+let currentUser = null;
+
 try {
-  if (typeof firebase !== "undefined" && firebaseConfig.apiKey && firebaseConfig.apiKey !== "AIzaSyAIKe_hrxyQvn4uebwU5OZrP2qf-FwK0Rg") {
+  if (typeof firebase !== "undefined") {
     firebase.initializeApp(firebaseConfig);
     auth = firebase.auth();
     db = firebase.firestore();
+    if (firebase.analytics) {
+      analytics = firebase.analytics();
+    }
   }
 } catch (err) {
   console.warn("Firebase initialization skipped or failed:", err);
@@ -1237,7 +1234,7 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.id === "emailLoginBtn") {
-    if (!auth) return setAuthError("Add your Firebase keys at the top of app.js first.");
+    if (!auth) return setAuthError("Firebase is not initialized.");
     const email = document.getElementById("authEmail")?.value.trim();
     const password = document.getElementById("authPassword")?.value;
     setAuthError("");
@@ -1251,7 +1248,7 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.id === "emailSignUpBtn") {
-    if (!auth) return setAuthError("Add your Firebase keys at the top of app.js first.");
+    if (!auth) return setAuthError("Firebase is not initialized.");
     const email = document.getElementById("authEmail")?.value.trim();
     const password = document.getElementById("authPassword")?.value;
     setAuthError("");
@@ -1265,7 +1262,7 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.id === "googleLoginBtn") {
-    if (!auth) return setAuthError("Add your Firebase keys at the top of app.js first.");
+    if (!auth) return setAuthError("Firebase is not initialized.");
     setAuthError("");
     try {
       const provider = new firebase.auth.GoogleAuthProvider();
