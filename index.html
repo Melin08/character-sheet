@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>D&D 5e Character Sheet</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
-  <link rel="stylesheet" href="style.css?v=12" />
+  <link rel="stylesheet" href="style.css?v=20" />
 </head>
 <body id="top">
 
@@ -16,7 +16,7 @@
     <header class="top-utility-bar">
       <div class="app-brand">
         <span class="app-logo">⚔</span>
-        <span class="app-title">Character Sheet</span>
+        <span class="app-title">D&D 5e Character Sheet</span>
       </div>
 
       <div class="header-right">
@@ -95,7 +95,7 @@
           </button>
         </div>
 
-        <div class="field-pill mini-pill" data-blur-id="level">
+        <div class="field-pill" data-blur-id="level">
           <span class="pill-label">Level</span>
           <input type="number" id="charLevel" class="save-field pill-input center" value="1" min="1" max="20" />
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
@@ -139,10 +139,10 @@
 
         <div class="field-pill hitdice-pill" data-blur-id="hitdice">
           <span class="pill-label">Hit Dice</span>
-          <div class="hitdice-split-box">
-            <input type="text" id="hitDiceCur" class="save-field hitdice-box-input" value="1" placeholder="Cur" />
-            <span class="hitdice-sep">/</span>
-            <input type="text" id="hitDiceMax" class="save-field hitdice-box-input" value="1" placeholder="Max" />
+          <div class="hitdice-box">
+            <input type="text" id="hitDiceCur" class="save-field hitdice-input" value="1" placeholder="Cur" />
+            <span class="hitdice-divider">/</span>
+            <input type="text" id="hitDiceMax" class="save-field hitdice-input" value="1" placeholder="Max" />
           </div>
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -152,18 +152,18 @@
 
       <div class="vitals-hud">
         <div class="vitals-card ac-card">
-          <span class="card-tag">Armor</span>
+          <span class="card-tag">Defense</span>
           <div class="card-main">
             <input type="number" id="ac" class="save-field ac-input" value="10" />
             <div class="card-details">
               <span class="card-title">Armor Class</span>
-              <span class="card-caption">Total AC</span>
+              <span class="card-caption">Base Protection</span>
             </div>
           </div>
         </div>
 
         <div class="vitals-card hp-card">
-          <span class="card-tag">Health</span>
+          <span class="card-tag">Health Pool</span>
           <div class="card-main">
             <div class="hp-gauge-box">
               <input type="number" id="curHp" class="save-field hp-input cur" value="10" title="Current HP" />
@@ -172,13 +172,13 @@
             </div>
             <div class="card-details">
               <span class="card-title">Hit Points</span>
-              <span class="card-caption">Current / Max</span>
+              <span class="card-caption">Current vs Max</span>
             </div>
           </div>
         </div>
 
         <div class="vitals-card death-card">
-          <span class="card-tag">Saves</span>
+          <span class="card-tag">Mortality</span>
           <div class="card-main">
             <div class="death-saves-box">
               <div class="save-track succ">
@@ -192,13 +192,13 @@
             </div>
             <div class="card-details">
               <span class="card-title">Death Saves</span>
-              <span class="card-caption">3 to live / die</span>
+              <span class="card-caption">3 to live or die</span>
             </div>
           </div>
         </div>
 
         <div class="vitals-card resource-card">
-          <span class="card-tag">Points</span>
+          <span class="card-tag">Power</span>
           <div class="card-main">
             <div class="resource-counter-box">
               <input type="number" id="classPtsCur" class="save-field res-input" value="0" title="Current Points" />
@@ -829,6 +829,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>
