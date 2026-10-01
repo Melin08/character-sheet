@@ -1,18 +1,4 @@
-Your original file got saved from a rich text editor like macOS TextEdit, which broke the code by escaping every curly brace and line break with a backslash. In JavaScript, backslashes before braces cause an instant crash with a syntax error, preventing the entire script from executing. It also replaced special symbols like your crossed swords icon, dropdown arrows, and drag handles with raw RTF unicode tags like `\uc0\u9876`.
 
-Beyond the formatting breaks, there were a few real logic bugs in your JavaScript.
-
-First, cloud sync was firing on every single keystroke. When you typed in any text box, it immediately sent an unthrottled write request straight to Firestore. That would exhaust your Firebase free quota fast and lag your typing. We fixed that by adding a debounce timer so it waits one second after you stop typing before syncing to the cloud.
-
-Second, your expertise math was bugged. If you checked the expertise box without checking proficiency, it only added normal proficiency. We adjusted it so expertise always awards double your proficiency bonus as expected in 5e rules.
-
-Third, weapons had two issues. If a character had only one weapon saved, loading the sheet wiped it out because of an overly strict check. On top of that, weapon inputs shared the generic save class, which fired double saves and recalculated all your stats every time you changed a weapon letter. We separated those so weapon edits run cleanly.
-
-Fourth, in your HTML, the app logo had `\uc0\u9876 ` instead of the actual crossed swords emoji `⚔`. In your CSS, all the style blocks had backslashes before the braces (`\{` and `\}`), which can cause style rules to get dropped.
-
-You can paste this completely repaired and cleaned version directly into `app.js`:
-
-```javascript
 "use strict";
 
 const firebaseConfig = {
