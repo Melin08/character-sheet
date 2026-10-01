@@ -1187,6 +1187,45 @@ document.addEventListener("click", async (e) => {
   }
 
   if (e.target.id === "addCustomSpellBtn") {
+   const addWpn = e.target.closest("#addWeaponBtn, .btn-add-weapon, .btn-icon-plus");
+  if (addWpn) {
+    if (!Array.isArray(myCharacterWeapons)) myCharacterWeapons = [];
+    myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+    saveSheet(false);
+    renderWeapons();
+    showStatus("Weapon Added!");
+    return;
+  }
+
+  const addSpell = e.target.closest("#addSpellBtn, .btn-add-spell");
+  if (addSpell) {
+    document.getElementById("spellModal")?.classList.add("open");
+    const input = document.getElementById("spellSearchInput");
+    if (input) input.value = "";
+    loadAllSpells().then((list) => {
+      renderModalSpells(list);
+      enrichSpellList(list).then((changed) => {
+        if (changed && (!input || input.value === "")) {
+          renderModalSpells(allSpellsCache);
+        }
+      });
+    });
+    return;
+  }
+
+  const addTrait = e.target.closest("#addTraitBtn, .btn-add-trait");
+  if (addTrait) {
+    document.getElementById("traitModal")?.classList.add("open");
+    const input = document.getElementById("traitSearchInput");
+    if (input) input.value = "";
+    loadAllTraits().then((list) => {
+      renderModalTraits(list);
+    });
+    return;
+  }
+
+  const addCustSpell = e.target.closest("#addCustomSpellBtn");
+  if (addCustSpell) {
     myCharacterSpells.push({
       name: "New Spell",
       type: "Cantrip",
@@ -1198,8 +1237,22 @@ document.addEventListener("click", async (e) => {
     saveSheet(false);
     renderMySpells();
     closeModal("spellModal");
+    return;
   }
 
+  const addCustTrait = e.target.closest("#addCustomTraitBtn");
+  if (addCustTrait) {
+    myCharacterTraits.push({
+      name: "New Ability",
+      type: "Feature",
+      desc: "",
+      isExpanded: true
+    });
+    saveSheet(false);
+    renderMyTraits();
+    closeModal("traitModal");
+    return;
+  }
   const spellRow = e.target.closest(".spell-pick-row");
   if (spellRow) {
     const name = spellRow.dataset.name;
