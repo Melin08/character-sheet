@@ -2235,3 +2235,74 @@ textarea.block-text,
   .spells-grid-container { grid-template-columns: 1fr; }
   .slots-grid { grid-template-columns: repeat(3, 1fr); }
 }
+/* Smooth expanding animation for trait cards */
+@keyframes cardExpandPop {
+  0% {
+    transform: scale(0.97);
+    box-shadow: 0 0 0 rgba(239, 68, 68, 0);
+  }
+  60% {
+    transform: scale(1.01);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 18px rgba(239, 68, 68, 0.35);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5), 0 0 14px rgba(239, 68, 68, 0.15);
+  }
+}
+
+.trait-card {
+  background: linear-gradient(145deg, #131a26 0%, #0d121c 100%);
+  border: 1px solid var(--border-medium);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              border-color 0.25s ease, 
+              box-shadow 0.25s ease,
+              background 0.25s ease;
+  position: relative;
+}
+
+.trait-card.expanded {
+  grid-column: 1 / -1;
+  border-color: rgba(239, 68, 68, 0.65);
+  background: linear-gradient(145deg, #151d2c 0%, #0c111a 100%);
+  animation: cardExpandPop 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.trait-desc-input {
+  width: 100%;
+  background: #090d14 !important;
+  border: 1px solid var(--border-medium) !important;
+  border-radius: 8px !important;
+  color: #cbd5e1 !important;
+  font-size: 0.88rem !important;
+  line-height: 1.6 !important;
+  padding: 0.75rem 0.85rem !important;
+  resize: vertical !important;
+  min-height: 85px;
+  height: 85px;
+  transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease, 
+              box-shadow 0.2s ease !important;
+}
+
+.trait-card.expanded .trait-desc-input {
+  min-height: 200px;
+  height: 200px;
+}
+
+.trait-expand-icon {
+  display: inline-block;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+.trait-card.expanded .trait-expand-icon {
+  transform: rotate(180deg);
+}
