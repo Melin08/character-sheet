@@ -1248,16 +1248,17 @@ document.addEventListener("click", async (e) => {
     renderMyTraits();
   }
 
-  if (e.target.classList.contains("trait-expand-btn")) {
-    const card = e.target.closest(".trait-card");
+ if (e.target.classList.contains("trait-expand-btn") || e.target.closest(".trait-expand-btn")) {
+    const btn = e.target.closest(".trait-expand-btn");
+    const card = btn.closest(".trait-card");
     const idx = parseInt(card.dataset.index, 10);
     card.classList.toggle("expanded");
     const isExp = card.classList.contains("expanded");
-    e.target.textContent = isExp ? "Collapse" : "Expand";
+    btn.innerHTML = `${isExp ? 'Collapse' : 'Expand'} <span class="trait-expand-icon">▼</span>`;
     if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp;
     saveSheet(true);
   }
-
+  
   if (e.target.classList.contains("spell-card-delete")) {
     myCharacterSpells.splice(parseInt(e.target.dataset.index, 10), 1);
     saveSheet(false);
