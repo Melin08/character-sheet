@@ -35,7 +35,7 @@
 
 body {
   background-color: var(--bg-main);
-  background-image: 
+  background-image:
     radial-gradient(circle at 15% 15%, rgba(239, 68, 68, 0.05) 0%, transparent 40%),
     radial-gradient(circle at 85% 85%, rgba(56, 189, 248, 0.04) 0%, transparent 40%);
   background-attachment: fixed;
@@ -66,24 +66,27 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.45) !important;
 }
 
+/* Scrollbars */
 textarea::-webkit-scrollbar,
 .modal-list::-webkit-scrollbar,
 .dice-history-list::-webkit-scrollbar {
   width: 6px;
 }
+
 textarea::-webkit-scrollbar-thumb,
 .modal-list::-webkit-scrollbar-thumb,
 .dice-history-list::-webkit-scrollbar-thumb {
   background: var(--border-medium);
   border-radius: 999px;
 }
+
 textarea::-webkit-scrollbar-thumb:hover,
 .modal-list::-webkit-scrollbar-thumb:hover,
 .dice-history-list::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
 
-/* Button animations */
+/* Button & interactive animations */
 .btn,
 .main-tab,
 .sub-tab,
@@ -96,8 +99,8 @@ textarea::-webkit-scrollbar-thumb:hover,
 .btn-outline,
 .btn-text-red,
 .file-label {
-  transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), 
-              box-shadow 0.14s ease, 
+  transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.14s ease,
               background-color 0.14s ease,
               border-color 0.14s ease !important;
   cursor: pointer;
@@ -134,6 +137,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   filter: brightness(0.92);
 }
 
+/* Toast banner */
 .toast-banner {
   position: fixed;
   top: -80px;
@@ -170,6 +174,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   backdrop-filter: blur(12px);
 }
 
+/* Header */
 .top-utility-bar {
   display: flex;
   justify-content: space-between;
@@ -258,6 +263,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--border-medium);
 }
 
+/* Nav & Buttons */
 .top-nav {
   display: flex;
   justify-content: flex-start;
@@ -339,6 +345,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   cursor: pointer;
 }
 
+/* Character Name Input */
 .name-box {
   margin-bottom: 1.75rem;
 }
@@ -353,6 +360,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   text-align: center;
 }
 
+/* Tabs */
 .tab-controls {
   display: flex;
   border-bottom: 2px solid var(--border-medium);
@@ -438,7 +446,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   text-align: center !important;
 }
 
-/* 5-column metadata grid */
+/* Metadata Row Grid */
 .meta-row-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -496,7 +504,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   text-align: center;
 }
 
-/* Hit Dice box */
+/* Hit Dice Box */
 .hitdice-pill {
   display: flex;
   align-items: center;
@@ -533,6 +541,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   flex-shrink: 0;
 }
 
+/* Blur button & hidden toggle */
 .blur-toggle-btn {
   background: transparent;
   border: none;
@@ -569,6 +578,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   user-select: none;
 }
 
+/* Dropdown menus */
 .dropdown-pill-wrapper {
   position: relative;
 }
@@ -629,6 +639,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   z-index: 2;
 }
 
+/* Vitals HUD */
 .vitals-hud {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -790,7 +801,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--accent-purple) !important;
 }
 
-/* Two-column main layout */
+/* Two-column layout */
 .two-col-layout {
   display: grid;
   grid-template-columns: 360px 1fr;
@@ -820,6 +831,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   margin-bottom: 0.5rem;
 }
 
+/* Attributes */
 .attributes-group {
   display: flex;
   flex-direction: column;
@@ -958,6 +970,7 @@ textarea::-webkit-scrollbar-thumb:hover,
 .attr-cha .attr-mod-box { background: rgba(234, 179, 8, 0.12); border-color: rgba(234, 179, 8, 0.4); color: #facc15; }
 .attr-cha .hex-die { background-color: #eab308; }
 
+/* Skills */
 .skills-group {
   display: flex;
   flex-direction: column;
@@ -1048,6 +1061,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: #ffffff;
 }
 
+/* Dice Roller & Bar */
 .dice-bar {
   display: flex;
   gap: 0.5rem;
@@ -1140,6 +1154,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   padding: 0.5rem 0;
 }
 
+/* Currency */
 .currency-bar {
   display: flex;
   gap: 1.5rem;
@@ -1164,60 +1179,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   font-weight: 700;
 }
 
-/* Weapons & Attacks table styling */
-.attacks-table-wrapper {
-  width: 100%;
-  margin-bottom: 1.5rem;
-}
-
-.attacks-table {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.attack-headers {
-  display: grid;
-  grid-template-columns: 2fr 1.2fr 1.2fr 2.5fr 34px;
-  gap: 0.65rem;
-  font-weight: 800;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-dim);
-  padding: 0 0.4rem;
-}
-
-.attack-entry {
-  display: grid;
-  grid-template-columns: 2fr 1.2fr 1.2fr 2.5fr 34px;
-  gap: 0.65rem;
-  align-items: center;
-  transition: transform 0.15s ease;
-}
-
-.attack-entry input {
-  width: 100%;
-  height: 42px;
-  background: linear-gradient(180deg, rgba(11, 16, 26, 0.9) 0%, rgba(7, 10, 17, 0.95) 100%) !important;
-  border: 1px solid var(--border-medium) !important;
-  border-radius: var(--radius-sm) !important;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5) !important;
-  color: #ffffff !important;
-  padding: 0.45rem 0.8rem !important;
-  font-size: 0.9rem !important;
-  outline: none !important;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
-}
-
-.attack-entry input:focus {
-  border-color: var(--primary-red) !important;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.4) !important;
-}
-
-/* =========================================
-   MODERN WEAPONS & ATTACKS SECTION
-========================================= */
+/* Weapons & Attacks */
 .btn-add-weapon {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.25) 100%) !important;
   border: 1px solid rgba(239, 68, 68, 0.45) !important;
@@ -1286,8 +1248,8 @@ textarea::-webkit-scrollbar-thumb:hover,
   border-radius: 10px;
   padding: 0.6rem 0.85rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), 
-              border-color 0.2s ease, 
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              border-color 0.2s ease,
               box-shadow 0.2s ease;
   animation: weaponCardPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -1373,12 +1335,14 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: #f87171;
   transform: rotate(90deg) scale(1.1);
 }
+
 .red-divider {
   border: none;
   border-top: 1px solid rgba(239, 68, 68, 0.3);
   margin: 2rem 0 1.75rem 0;
 }
 
+/* Conditions */
 .conditions-container {
   background: var(--bg-card);
   border: 1px solid var(--border-medium);
@@ -1445,7 +1409,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: #fca5a5;
 }
 
-/* Full-width block textareas fix */
+/* Block textareas */
 textarea.block-text,
 #otherProfs,
 #inventory {
@@ -1462,13 +1426,8 @@ textarea.block-text,
   resize: vertical !important;
 }
 
-#otherProfs {
-  min-height: 130px !important;
-}
-
-#inventory {
-  min-height: 160px !important;
-}
+#otherProfs { min-height: 130px !important; }
+#inventory { min-height: 160px !important; }
 
 .journal-box {
   width: 100% !important;
@@ -1478,9 +1437,9 @@ textarea.block-text,
   min-height: 280px !important;
 }
 
-/* Abilities section */
-.abilities-full-section { 
-  margin-top: 2rem; 
+/* Abilities / Traits Section */
+.abilities-full-section {
+  margin-top: 2rem;
 }
 
 .section-header-bar {
@@ -1490,8 +1449,8 @@ textarea.block-text,
   margin-bottom: 1.5rem;
 }
 
-.section-header-bar .section-title { 
-  margin: 0; 
+.section-header-bar .section-title {
+  margin: 0;
 }
 
 .btn-add-trait {
@@ -1524,6 +1483,12 @@ textarea.block-text,
   margin-bottom: 2rem;
 }
 
+@keyframes cardExpandPop {
+  0% { transform: scale(0.97); box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+  60% { transform: scale(1.01); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 18px rgba(239, 68, 68, 0.35); }
+  100% { transform: scale(1); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5), 0 0 14px rgba(239, 68, 68, 0.15); }
+}
+
 .trait-card {
   background: linear-gradient(145deg, #131a26 0%, #0d121c 100%);
   border: 1px solid var(--border-medium);
@@ -1533,22 +1498,24 @@ textarea.block-text,
   flex-direction: column;
   gap: 0.75rem;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), 
-              border-color 0.2s ease, 
-              box-shadow 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              border-color 0.25s ease,
+              box-shadow 0.25s ease,
+              background 0.25s ease;
   position: relative;
-  animation: traitCardPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes traitCardPop {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .trait-card:hover {
   transform: translateY(-3px);
   border-color: rgba(239, 68, 68, 0.5);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5), 0 0 14px rgba(239, 68, 68, 0.15);
+}
+
+.trait-card.expanded {
+  grid-column: 1 / -1;
+  border-color: rgba(239, 68, 68, 0.65);
+  background: linear-gradient(145deg, #151d2c 0%, #0c111a 100%);
+  animation: cardExpandPop 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .trait-card-header {
@@ -1629,32 +1596,33 @@ textarea.block-text,
   padding: 0.75rem 0.85rem !important;
   resize: vertical !important;
   min-height: 85px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+  height: 85px;
+  transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease,
+              box-shadow 0.2s ease !important;
+}
+
+.trait-card.expanded .trait-desc-input {
+  min-height: 200px;
+  height: 200px;
 }
 
 .trait-desc-input::-webkit-scrollbar {
   width: 6px;
 }
+
 .trait-desc-input::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.25);
   border-radius: 4px;
 }
+
 .trait-desc-input::-webkit-scrollbar-thumb {
   background: var(--border-medium);
   border-radius: 4px;
 }
+
 .trait-desc-input::-webkit-scrollbar-thumb:hover {
   background: var(--primary-red);
-}
-
-.trait-card.expanded {
-  grid-column: 1 / -1;
-  border-color: rgba(239, 68, 68, 0.55);
-  background: linear-gradient(145deg, #151d2c 0%, #0d121c 100%);
-}
-
-.trait-card.expanded .trait-desc-input {
-  min-height: 200px;
 }
 
 .trait-card-footer {
@@ -1689,7 +1657,7 @@ textarea.block-text,
 
 .trait-expand-icon {
   display: inline-block;
-  transition: transform 0.22s ease;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   font-size: 0.65rem;
   line-height: 1;
 }
@@ -1698,8 +1666,8 @@ textarea.block-text,
   transform: rotate(180deg);
 }
 
-/* Spells section */
-.spells-full-section { 
+/* Spells Section */
+.spells-full-section {
   margin-top: 2rem;
   display: flex;
   flex-direction: column;
@@ -1900,6 +1868,11 @@ textarea.block-text,
   margin-bottom: 2rem;
 }
 
+@keyframes spellCardPop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .spell-card {
   background: linear-gradient(145deg, #131a26 0%, #0d121c 100%);
   border: 1px solid var(--border-medium);
@@ -1914,11 +1887,6 @@ textarea.block-text,
   animation: spellCardPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: grab;
   user-select: none;
-}
-
-@keyframes spellCardPop {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .spell-card:hover {
@@ -2057,7 +2025,7 @@ textarea.block-text,
   background: var(--primary-red);
 }
 
-/* Color coded tags */
+/* Modals & Option tags */
 .spell-option-item {
   display: flex;
   justify-content: space-between;
@@ -2067,8 +2035,8 @@ textarea.block-text,
   border-radius: var(--radius-sm);
 }
 
-.spell-option-item:hover { 
-  background-color: var(--bg-hover); 
+.spell-option-item:hover {
+  background-color: var(--bg-hover);
 }
 
 .spell-option-details {
@@ -2107,6 +2075,7 @@ textarea.block-text,
   color: var(--accent-emerald);
   border-color: rgba(16, 185, 129, 0.4);
 }
+
 .tag-level {
   background-color: rgba(192, 132, 252, 0.18);
   color: var(--accent-purple);
@@ -2167,11 +2136,10 @@ textarea.block-text,
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
-              visibility 0.25s ease;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s ease;
 }
 
-.modal-backdrop.open { 
+.modal-backdrop.open {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
@@ -2275,7 +2243,9 @@ textarea.block-text,
 
 .char-delete-btn:hover { color: var(--primary-red); }
 
+/* Auth Modal */
 .auth-modal-box { max-width: 440px; }
+
 .auth-modal-content {
   padding: 1.75rem;
   display: flex;
@@ -2324,6 +2294,7 @@ textarea.block-text,
 .auth-logout-btn { width: 100%; }
 .auth-error-msg { color: #f87171; font-size: 0.85rem; text-align: center; min-height: 1.2rem; }
 
+/* Footer */
 .sheet-footer { margin-top: 3.5rem; }
 .footer-divider { border: none; border-top: 1px solid var(--border-medium); margin-bottom: 1.5rem; }
 
@@ -2374,6 +2345,7 @@ textarea.block-text,
   font-weight: 700;
 }
 
+/* Responsiveness */
 @media (max-width: 1024px) {
   .meta-row-grid { grid-template-columns: repeat(2, 1fr); }
   .vitals-hud { grid-template-columns: repeat(2, 1fr); }
@@ -2390,210 +2362,4 @@ textarea.block-text,
   .attacks-table-wrapper { overflow-x: auto; }
   .spells-grid-container { grid-template-columns: 1fr; }
   .slots-grid { grid-template-columns: repeat(3, 1fr); }
-}
-/* Smooth expanding animation for trait cards */
-@keyframes cardExpandPop {
-  0% {
-    transform: scale(0.97);
-    box-shadow: 0 0 0 rgba(239, 68, 68, 0);
-  }
-  60% {
-    transform: scale(1.01);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 18px rgba(239, 68, 68, 0.35);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5), 0 0 14px rgba(239, 68, 68, 0.15);
-  }
-}
-
-.trait-card {
-  background: linear-gradient(145deg, #131a26 0%, #0d121c 100%);
-  border: 1px solid var(--border-medium);
-  border-radius: 12px;
-  padding: 1.1rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), 
-              border-color 0.25s ease, 
-              box-shadow 0.25s ease,
-              background 0.25s ease;
-  position: relative;
-}
-
-.trait-card.expanded {
-  grid-column: 1 / -1;
-  border-color: rgba(239, 68, 68, 0.65);
-  background: linear-gradient(145deg, #151d2c 0%, #0c111a 100%);
-  animation: cardExpandPop 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.trait-desc-input {
-  width: 100%;
-  background: #090d14 !important;
-  border: 1px solid var(--border-medium) !important;
-  border-radius: 8px !important;
-  color: #cbd5e1 !important;
-  font-size: 0.88rem !important;
-  line-height: 1.6 !important;
-  padding: 0.75rem 0.85rem !important;
-  resize: vertical !important;
-  min-height: 85px;
-  height: 85px;
-  transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.2s ease, 
-              box-shadow 0.2s ease !important;
-}
-
-.trait-card.expanded .trait-desc-input {
-  min-height: 200px;
-  height: 200px;
-}
-
-.trait-expand-icon {
-  display: inline-block;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  font-size: 0.65rem;
-  line-height: 1;
-}
-
-.trait-card.expanded .trait-expand-icon {
-  transform: rotate(180deg);
-}
-/* Modern Weapons & Attacks Styling */
-.btn-add-weapon {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.25) 100%) !important;
-  border: 1px solid rgba(239, 68, 68, 0.45) !important;
-  border-radius: 9999px !important;
-  padding: 0.45rem 1.15rem !important;
-  font-size: 0.82rem !important;
-  font-weight: 800 !important;
-  color: #fca5a5 !important;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.btn-add-weapon:hover {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  border-color: #ef4444 !important;
-  color: #ffffff !important;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4) !important;
-}
-
-.attacks-table-wrapper {
-  width: 100%;
-  margin-bottom: 1.75rem;
-}
-
-.attacks-table {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.attack-headers {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 2.5fr 32px;
-  gap: 0.75rem;
-  font-weight: 800;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-dim);
-  padding: 0 0.85rem;
-  margin-bottom: 0.25rem;
-}
-
-.attack-rows-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-.weapon-row-card {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 2.5fr 32px;
-  gap: 0.75rem;
-  align-items: center;
-  background: linear-gradient(145deg, #131a26 0%, #0d121c 100%);
-  border: 1px solid var(--border-medium);
-  border-radius: 10px;
-  padding: 0.6rem 0.85rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.weapon-row-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(239, 68, 68, 0.5);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
-}
-
-.wpn-name-input {
-  font-weight: 700 !important;
-  color: #ffffff !important;
-  height: 38px !important;
-  padding: 0.4rem 0.75rem !important;
-}
-
-.wpn-type-input {
-  background: rgba(56, 189, 248, 0.1) !important;
-  border: 1px solid rgba(56, 189, 248, 0.3) !important;
-  color: var(--accent-blue) !important;
-  font-size: 0.8rem !important;
-  font-weight: 800 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
-  height: 38px !important;
-  border-radius: 6px !important;
-  padding: 0.3rem 0.4rem !important;
-}
-
-.wpn-dmg-input {
-  background: rgba(239, 68, 68, 0.1) !important;
-  border: 1px solid rgba(239, 68, 68, 0.3) !important;
-  color: #fca5a5 !important;
-  font-size: 0.85rem !important;
-  font-weight: 800 !important;
-  height: 38px !important;
-  border-radius: 6px !important;
-  padding: 0.3rem 0.4rem !important;
-}
-
-.wpn-notes-input {
-  height: 38px !important;
-  color: #cbd5e1 !important;
-  padding: 0.4rem 0.75rem !important;
-  font-size: 0.86rem !important;
-}
-
-.weapon-delete-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-dim);
-  font-size: 1.1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  line-height: 1;
-  transition: all 0.2s ease;
-  margin-left: auto;
-}
-
-.weapon-delete-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: var(--primary-red);
-  color: #f87171;
-  transform: rotate(90deg) scale(1.1);
 }
