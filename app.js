@@ -855,6 +855,34 @@ function renderModalTraits(list) {
   }).join("");
 }
 
+  container.innerHTML = list.slice(0, 40).map((t) => {
+    let tagsHtml = "";
+    const classes = Array.isArray(t.classes) ? t.classes : (t.class ? [t.class] : []);
+    const races = Array.isArray(t.races) ? t.races : (t.race ? [t.race] : []);
+
+    classes.forEach((c) => {
+      tagsHtml += `<span class="tag-pill ${getClassCssClass(c)}">${escapeHtml(c)}</span>`;
+    });
+    races.forEach((r) => {
+      tagsHtml += `<span class="tag-pill ${getRaceCssClass(r)}">${escapeHtml(r)}</span>`;
+    });
+
+    if (!tagsHtml) {
+      tagsHtml = `<span class="tag-pill race-generic">${escapeHtml(t.type || 'Feature')}</span>`;
+    }
+
+    return `
+      <div class="spell-option-item trait-pick-row" data-url="${t.url || ''}" data-name="${escapeHtml(t.name)}" data-type="${escapeHtml(t.type || 'Feature')}">
+        <div class="spell-option-details">
+          <div class="spell-option-title">${escapeHtml(t.name)}</div>
+          <div class="spell-meta-tags">${tagsHtml}</div>
+        </div>
+        <button type="button" class="spell-add-badge">+ Add</button>
+      </div>
+    `;
+  }).join("");
+}
+
 function closeModal(modalId) {
   document.getElementById(modalId)?.classList.remove("open");
 }
