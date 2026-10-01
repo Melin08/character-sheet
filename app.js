@@ -1250,12 +1250,15 @@ document.addEventListener("click", async (e) => {
     closeModal("traitModal");
   }
 
-  if (e.target.id === "addWeaponBtn") {
+ const addWpnBtn = e.target.id === "addWeaponBtn" || e.target.closest("#addWeaponBtn") || e.target.closest(".btn-add-weapon") || e.target.closest(".btn-icon-plus");
+  if (addWpnBtn) {
+    if (!Array.isArray(myCharacterWeapons)) myCharacterWeapons = [];
     myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
     saveSheet(false);
     renderWeapons();
+    showStatus("Weapon Added!");
   }
-
+  
   if (e.target.classList.contains("weapon-delete-btn")) {
     const idx = parseInt(e.target.dataset.index, 10);
     myCharacterWeapons.splice(idx, 1);
