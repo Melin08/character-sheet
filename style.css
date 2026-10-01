@@ -69,20 +69,24 @@ textarea:focus {
 /* Scrollbars */
 textarea::-webkit-scrollbar,
 .modal-list::-webkit-scrollbar,
-.dice-history-list::-webkit-scrollbar {
+.dice-history-list::-webkit-scrollbar,
+.attacks-table-wrapper::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 textarea::-webkit-scrollbar-thumb,
 .modal-list::-webkit-scrollbar-thumb,
-.dice-history-list::-webkit-scrollbar-thumb {
+.dice-history-list::-webkit-scrollbar-thumb,
+.attacks-table-wrapper::-webkit-scrollbar-thumb {
   background: var(--border-medium);
   border-radius: 999px;
 }
 
 textarea::-webkit-scrollbar-thumb:hover,
 .modal-list::-webkit-scrollbar-thumb:hover,
-.dice-history-list::-webkit-scrollbar-thumb:hover {
+.dice-history-list::-webkit-scrollbar-thumb:hover,
+.attacks-table-wrapper::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }
 
@@ -804,7 +808,7 @@ textarea::-webkit-scrollbar-thumb:hover,
 /* Two-column layout */
 .two-col-layout {
   display: grid;
-  grid-template-columns: 360px 1fr;
+  grid-template-columns: 360px minmax(0, 1fr);
   gap: 2.5rem;
   margin-top: 1.75rem;
 }
@@ -1179,7 +1183,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   font-weight: 700;
 }
 
-/* Weapons & Attacks */
+/* Weapons & Attacks (Fixed Grid & Width constraints) */
 .btn-add-weapon {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.25) 100%) !important;
   border: 1px solid rgba(239, 68, 68, 0.45) !important;
@@ -1205,6 +1209,8 @@ textarea::-webkit-scrollbar-thumb:hover,
 
 .attacks-table-wrapper {
   width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
   margin-bottom: 1.75rem;
 }
 
@@ -1212,25 +1218,31 @@ textarea::-webkit-scrollbar-thumb:hover,
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .attack-headers {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 2.5fr 32px;
-  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 2.4fr) 30px;
+  gap: 0.5rem;
   font-weight: 800;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-dim);
-  padding: 0 0.85rem;
+  padding: 0 0.75rem;
   margin-bottom: 0.25rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .attack-rows-container {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  width: 100%;
+  min-width: 0;
 }
 
 @keyframes weaponCardPop {
@@ -1240,18 +1252,20 @@ textarea::-webkit-scrollbar-thumb:hover,
 
 .weapon-row-card {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 2.5fr 32px;
-  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 2.4fr) 30px;
+  gap: 0.5rem;
   align-items: center;
   background: linear-gradient(145deg, #131a26 0%, #0d121c 100%);
   border: 1px solid var(--border-medium);
   border-radius: 10px;
-  padding: 0.6rem 0.85rem;
+  padding: 0.55rem 0.75rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
               border-color 0.2s ease,
               box-shadow 0.2s ease;
   animation: weaponCardPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 0;
+  width: 100%;
 }
 
 .weapon-row-card:hover {
@@ -1260,11 +1274,19 @@ textarea::-webkit-scrollbar-thumb:hover,
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45), 0 0 12px rgba(239, 68, 68, 0.12);
 }
 
+.weapon-row-card input,
+.attack-entry input {
+  min-width: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
 .wpn-name-input {
   font-weight: 700 !important;
   color: #ffffff !important;
   height: 38px !important;
-  padding: 0.4rem 0.75rem !important;
+  padding: 0.4rem 0.6rem !important;
+  font-size: 0.88rem !important;
 }
 
 .wpn-name-input:focus {
@@ -1275,13 +1297,13 @@ textarea::-webkit-scrollbar-thumb:hover,
   background: rgba(56, 189, 248, 0.1) !important;
   border: 1px solid rgba(56, 189, 248, 0.3) !important;
   color: var(--accent-blue) !important;
-  font-size: 0.8rem !important;
+  font-size: 0.78rem !important;
   font-weight: 800 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.04em !important;
   height: 38px !important;
   border-radius: 6px !important;
-  padding: 0.3rem 0.4rem !important;
+  padding: 0.3rem 0.35rem !important;
 }
 
 .wpn-type-input:focus {
@@ -1293,11 +1315,11 @@ textarea::-webkit-scrollbar-thumb:hover,
   background: rgba(239, 68, 68, 0.1) !important;
   border: 1px solid rgba(239, 68, 68, 0.3) !important;
   color: #fca5a5 !important;
-  font-size: 0.85rem !important;
+  font-size: 0.82rem !important;
   font-weight: 800 !important;
   height: 38px !important;
   border-radius: 6px !important;
-  padding: 0.3rem 0.4rem !important;
+  padding: 0.3rem 0.35rem !important;
 }
 
 .wpn-dmg-input:focus {
@@ -1308,13 +1330,13 @@ textarea::-webkit-scrollbar-thumb:hover,
 .wpn-notes-input {
   height: 38px !important;
   color: #cbd5e1 !important;
-  padding: 0.4rem 0.75rem !important;
-  font-size: 0.86rem !important;
+  padding: 0.4rem 0.6rem !important;
+  font-size: 0.84rem !important;
 }
 
 .weapon-delete-btn {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-subtle);
@@ -1327,6 +1349,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   line-height: 1;
   transition: all 0.2s ease;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .weapon-delete-btn:hover {
@@ -2358,7 +2381,7 @@ textarea.block-text,
   .sheet-container { padding: 1.25rem 1rem; }
   .meta-row-grid { grid-template-columns: 1fr; }
   .vitals-hud { grid-template-columns: 1fr; }
-  .attacks-table { min-width: 520px; }
+  .attacks-table { min-width: 480px; }
   .attacks-table-wrapper { overflow-x: auto; }
   .spells-grid-container { grid-template-columns: 1fr; }
   .slots-grid { grid-template-columns: repeat(3, 1fr); }
