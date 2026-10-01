@@ -815,14 +815,16 @@
       </div>
       <div class="auth-modal-content">
         <div id="authLoggedOutView">
-          <div class="auth-input-group">
-            <input type="email" id="authEmail" class="auth-input" placeholder="Email address" autocomplete="username" />
-            <input type="password" id="authPassword" class="auth-input" placeholder="Password" autocomplete="current-password" />
-          </div>
-          <div class="auth-btn-row">
-            <button class="btn red" id="emailLoginBtn" type="button">Sign In</button>
-            <button class="btn gray" id="emailSignUpBtn" type="button">Sign Up</button>
-          </div>
+          <form onsubmit="event.preventDefault();">
+            <div class="auth-input-group">
+              <input type="email" id="authEmail" class="auth-input" placeholder="Email address" autocomplete="username" />
+              <input type="password" id="authPassword" class="auth-input" placeholder="Password" autocomplete="current-password" />
+            </div>
+            <div class="auth-btn-row">
+              <button class="btn red" id="emailLoginBtn" type="button">Sign In</button>
+              <button class="btn gray" id="emailSignUpBtn" type="button">Sign Up</button>
+            </div>
+          </form>
           <div class="auth-divider"><span>OR</span></div>
           <button class="btn gray auth-google-btn" id="googleLoginBtn" type="button">Sign in with Google</button>
         </div>
