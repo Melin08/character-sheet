@@ -75,7 +75,66 @@ const DND_RACES_CATALOG = [
 ];
 
 const SRD_SPELL_LEVELS = {
-  "acid-arrow": 2, "acid-splash": 0, "aid": 2, "alarm": 1, "alter-self": 2, "animal-friendship": 1, "animal-messenger": 2, "animal-shapes": 8, "animate-dead": 3, "animate-objects": 5, "antimagic-field": 8, "antipathy-sympathy": 8, "arcane-eye": 4, "arcane-hand": 5, "arcane-lock": 2, "arcane-sword": 7, "arcanists-magic-aura": 2, "astral-projection": 9, "augury": 2, "awaken": 5, "bane": 1, "banishment": 4, "barkskin": 2, "beacon-of-hope": 3, "bestow-curse": 3, "black-tentacles": 4, "blade-barrier": 6, "bless": 1, "blight": 4, "blindness-deafness": 2, "blink": 3, "blur": 2, "branding-smite": 2, "burning-hands": 1, "call-lightning": 3, "calm-emotions": 2, "chain-lightning": 6, "charm-person": 1, "chill-touch": 0, "circle-of-death": 6, "clairvoyance": 3, "clone": 8, "cloudkill": 5, "color-spray": 1, "command": 1, "commune": 5, "commune-with-nature": 5, "comprehend-languages": 1, "cone-of-cold": 5, "confusion": 4, "conjure-animals": 3, "conjure-celestial": 7, "conjure-elemental": 5, "conjure-fey": 6, "conjure-minor-elementals": 4, "conjure-woodland-beings": 4, "contact-other-plane": 5, "contagion": 5, "contingency": 6, "continual-flame": 2, "control-water": 4, "control-weather": 8, "counterspell": 3, "create-food-and-water": 3, "create-or-destroy-water": 1, "create-undead": 6, "creation": 5, "cure-wounds": 1, "darkness": 2, "darkvision": 2, "daylight": 3, "death-ward": 4, "delayed-blast-fireball": 7, "demiplane": 8, "detect-evil-and-good": 1, "detect-magic": 1, "detect-poison-and-disease": 1, "detect-thoughts": 2, "dimension-door": 4, "disguise-self": 1, "disintegrate": 6, "dispel-evil-and-good": 5, "dispel-magic": 3, "divination": 4, "divine-favor": 1, "divine-word": 7, "dominate-beast": 4, "dominate-monster": 8, "dominate-person": 5, "dream": 5, "earthquake": 8, "eldritch-blast": 0, "enhance-ability": 2, "enlarge-reduce": 2, "entangle": 1, "enthrall": 2, "etherealness": 7, "expeditious-retreat": 1, "eyebite": 6, "fabricate": 4, "faerie-fire": 1, "faithful-hound": 4, "false-life": 1, "fear": 3, "feather-fall": 1, "feeblemind": 8, "find-familiar": 1, "find-steed": 2, "find-the-path": 6, "find-traps": 2, "finger-of-death": 7, "fire-shield": 4, "fire-storm": 7, "fireball": 3, "fire-bolt": 0, "flame-blade": 2, "flame-strike": 5, "flaming-sphere": 2, "flesh-to-stone": 6, "fly": 3, "fog-cloud": 1, "forbiddance": 6, "forcecage": 7, "foresight": 9, "freedom-of-movement": 4, "freezing-sphere": 6, "gaseous-form": 3, "gate": 9, "geas": 5, "gentle-repose": 2, "glibness": 8, "globe-of-invulnerability": 6, "glyph-of-warding": 3, "grease": 1, "greater-invisibility": 4, "greater-restoration": 5, "guardian-of-faith": 4, "guards-and-wards": 6, "guidance": 0, "guiding-bolt": 1, "gust-of-wind": 2, "hallow": 5, "hallucinatory-terrain": 4, "harm": 6, "haste": 3, "heal": 6, "healing-word": 1, "heat-metal": 2, "hellish-rebuke": 1, "heroes-feast": 6, "heroism": 1, "hideous-laughter": 1, "hold-monster": 5, "hold-person": 2, "holy-aura": 8, "hunters-mark": 1, "hypnotic-pattern": 3, "ice-storm": 4, "identify": 1, "illusory-script": 1, "imprisonment": 9, "incendiary-cloud": 8, "inflict-wounds": 1, "insect-plague": 5, "instant-summons": 6, "invisibility": 2, "jump": 1, "knock": 2, "legend-lore": 5, "lesser-restoration": 2, "levitate": 2, "light": 0, "lightning-bolt": 3, "locate-animals-or-plants": 2, "locate-creature": 4, "locate-object": 2, "longstrider": 1, "mage-armor": 1, "mage-hand": 0, "magic-circle": 3, "magic-jar": 6, "magic-missile": 1, "magic-mouth": 2, "magic-weapon": 2, "magnificent-mansion": 7, "major-image": 3, "mass-cure-wounds": 5, "mass-heal": 9, "mass-healing-word": 3, "mass-suggestion": 6, "maze": 8, "meld-into-stone": 3, "mending": 0, "message": 0, "meteor-swarm": 9, "mind-blank": 8, "minor-illusion": 0, "mirage-arcane": 7, "mirror-image": 2, "mislead": 5, "misty-step": 2, "modify-memory": 5, "moonbeam": 2, "move-earth": 6, "nondetection": 3, "pass-without-trace": 2, "passwall": 5, "phantasmal-killer": 4, "phantom-steed": 3, "planar-ally": 6, "planar-binding": 5, "plane-shift": 7, "plant-growth": 3, "poison-spray": 0, "polymorph": 4, "power-word-kill": 9, "power-word-stun": 8, "prayer-of-healing": 2, "prestidigitation": 0, "prismatic-spray": 7, "prismatic-wall": 9, "produce-flame": 0, "programmed-illusion": 6, "project-image": 7, "protection-from-energy": 3, "protection-from-evil-and-good": 1, "protection-from-poison": 2, "purify-food-and-drink": 1, "raise-dead": 5, "ray-of-enfeeblement": 2, "ray-of-frost": 0, "regenerate": 7, "reincarnate": 5, "remove-curse": 3, "resilient-sphere": 4, "resistance": 0, "resurrection": 7, "reverse-gravity": 7, "revivify": 3, "rope-trick": 2, "sacred-flame": 0, "sanctuary": 1, "scorching-ray": 2, "scrying": 5, "secret-chest": 4, "see-invisibility": 2, "seeming": 5, "sending": 3, "sequester": 7, "shapechange": 9, "shatter": 2, "shield": 1, "shield-of-faith": 1, "shillelagh": 0, "shocking-grasp": 0, "silence": 2, "silent-image": 1, "simulacrum": 7, "sleep": 1, "sleet-storm": 3, "slow": 3, "speak-with-animals": 1, "speak-with-dead": 3, "speak-with-plants": 3, "spider-climb": 2, "spike-growth": 2, "spirit-guardians": 3, "spiritual-weapon": 2, "stinking-cloud": 3, "stone-shape": 4, "stoneskin": 4, "storm-of-vengeance": 9, "suggestion": 2, "sunbeam": 6, "sunburst": 8, "symbol": 7, "telekinesis": 5, "telepathic-bond": 5, "teleport": 7, "teleportation-circle": 5, "thaumaturgy": 0, "thunderwave": 1, "time-stop": 9, "tiny-hut": 3, "tongues": 3, "transport-via-plants": 6, "tree-stride": 5, "true-polymorph": 9, "true-resurrection": 9, "true-seeing": 6, "true-strike": 0, "unseen-servant": 1, "vampiric-touch": 3, "vicious-mockery": 0, "wall-of-fire": 4, "wall-of-force": 5, "wall-of-ice": 6, "wall-of-stone": 5, "wall-of-thorns": 6, "warding-bond": 2, "water-breathing": 3, "water-walk": 3, "web": 2, "weird": 9, "wind-walk": 6, "wind-wall": 3, "wish": 9, "word-of-recall": 6, "zone-of-truth": 2
+  "acid-arrow": 2, "acid-splash": 0, "aid": 2, "alarm": 1, "alter-self": 2, "animal-friendship": 1,
+  "animal-messenger": 2, "animal-shapes": 8, "animate-dead": 3, "animate-objects": 5, "antimagic-field": 8,
+  "antipathy-sympathy": 8, "arcane-eye": 4, "arcane-hand": 5, "arcane-lock": 2, "arcane-sword": 7,
+  "arcanists-magic-aura": 2, "astral-projection": 9, "augury": 2, "awaken": 5, "bane": 1, "banishment": 4,
+  "barkskin": 2, "beacon-of-hope": 3, "bestow-curse": 3, "black-tentacles": 4, "blade-barrier": 6,
+  "bless": 1, "blight": 4, "blindness-deafness": 2, "blink": 3, "blur": 2, "branding-smite": 2,
+  "burning-hands": 1, "call-lightning": 3, "calm-emotions": 2, "chain-lightning": 6, "charm-person": 1,
+  "chill-touch": 0, "circle-of-death": 6, "clairvoyance": 3, "clone": 8, "cloudkill": 5, "color-spray": 1,
+  "command": 1, "commune": 5, "commune-with-nature": 5, "comprehend-languages": 1, "cone-of-cold": 5,
+  "confusion": 4, "conjure-animals": 3, "conjure-celestial": 7, "conjure-elemental": 5, "conjure-fey": 6,
+  "conjure-minor-elementals": 4, "conjure-woodland-beings": 4, "contact-other-plane": 5, "contagion": 5,
+  "contingency": 6, "continual-flame": 2, "control-water": 4, "control-weather": 8, "counterspell": 3,
+  "create-food-and-water": 3, "create-or-destroy-water": 1, "create-undead": 6, "creation": 5,
+  "cure-wounds": 1, "darkness": 2, "darkvision": 2, "daylight": 3, "death-ward": 4, "delayed-blast-fireball": 7,
+  "demiplane": 8, "detect-evil-and-good": 1, "detect-magic": 1, "detect-poison-and-disease": 1,
+  "detect-thoughts": 2, "dimension-door": 4, "disguise-self": 1, "disintegrate": 6, "dispel-evil-and-good": 5,
+  "dispel-magic": 3, "divination": 4, "divine-favor": 1, "divine-word": 7, "dominate-beast": 4,
+  "dominate-monster": 8, "dominate-person": 5, "dream": 5, "earthquake": 8, "eldritch-blast": 0,
+  "enhance-ability": 2, "enlarge-reduce": 2, "entangle": 1, "enthrall": 2, "etherealness": 7,
+  "expeditious-retreat": 1, "eyebite": 6, "fabricate": 4, "faerie-fire": 1, "faithful-hound": 4,
+  "false-life": 1, "fear": 3, "feather-fall": 1, "feeblemind": 8, "find-familiar": 1, "find-steed": 2,
+  "find-the-path": 6, "find-traps": 2, "finger-of-death": 7, "fire-shield": 4, "fire-storm": 7,
+  "fireball": 3, "fire-bolt": 0, "flame-blade": 2, "flame-strike": 5, "flaming-sphere": 2, "flesh-to-stone": 6,
+  "fly": 3, "fog-cloud": 1, "forbiddance": 6, "forcecage": 7, "foresight": 9, "freedom-of-movement": 4,
+  "freezing-sphere": 6, "gaseous-form": 3, "gate": 9, "geas": 5, "gentle-repose": 2, "glibness": 8,
+  "globe-of-invulnerability": 6, "glyph-of-warding": 3, "grease": 1, "greater-invisibility": 4,
+  "greater-restoration": 5, "guardian-of-faith": 4, "guards-and-wards": 6, "guidance": 0, "guiding-bolt": 1,
+  "gust-of-wind": 2, "hallow": 5, "hallucinatory-terrain": 4, "harm": 6, "haste": 3, "heal": 6,
+  "healing-word": 1, "heat-metal": 2, "hellish-rebuke": 1, "heroes-feast": 6, "heroism": 1, "hideous-laughter": 1,
+  "hold-monster": 5, "hold-person": 2, "holy-aura": 8, "hunters-mark": 1, "hypnotic-pattern": 3,
+  "ice-storm": 4, "identify": 1, "illusory-script": 1, "imprisonment": 9, "incendiary-cloud": 8,
+  "inflict-wounds": 1, "insect-plague": 5, "instant-summons": 6, "invisibility": 2, "jump": 1, "knock": 2,
+  "legend-lore": 5, "lesser-restoration": 2, "levitate": 2, "light": 0, "lightning-bolt": 3,
+  "locate-animals-or-plants": 2, "locate-creature": 4, "locate-object": 2, "longstrider": 1, "mage-armor": 1,
+  "mage-hand": 0, "magic-circle": 3, "magic-jar": 6, "magic-missile": 1, "magic-mouth": 2, "magic-weapon": 2,
+  "magnificent-mansion": 7, "major-image": 3, "mass-cure-wounds": 5, "mass-heal": 9, "mass-healing-word": 3,
+  "mass-suggestion": 6, "maze": 8, "meld-into-stone": 3, "mending": 0, "message": 0, "meteor-swarm": 9,
+  "mind-blank": 8, "minor-illusion": 0, "mirage-arcane": 7, "mirror-image": 2, "mislead": 5, "misty-step": 2,
+  "modify-memory": 5, "moonbeam": 2, "move-earth": 6, "nondetection": 3, "pass-without-trace": 2,
+  "passwall": 5, "phantasmal-killer": 4, "phantom-steed": 3, "planar-ally": 6, "planar-binding": 5,
+  "plane-shift": 7, "plant-growth": 3, "poison-spray": 0, "polymorph": 4, "power-word-kill": 9,
+  "power-word-stun": 8, "prayer-of-healing": 2, "prestidigitation": 0, "prismatic-spray": 7,
+  "prismatic-wall": 9, "produce-flame": 0, "programmed-illusion": 6, "project-image": 7,
+  "protection-from-energy": 3, "protection-from-evil-and-good": 1, "protection-from-poison": 2,
+  "purify-food-and-drink": 1, "raise-dead": 5, "ray-of-enfeeblement": 2, "ray-of-frost": 0,
+  "regenerate": 7, "reincarnate": 5, "remove-curse": 3, "resilient-sphere": 4, "resistance": 0,
+  "resurrection": 7, "reverse-gravity": 7, "revivify": 3, "rope-trick": 2, "sacred-flame": 0,
+  "sanctuary": 1, "scorching-ray": 2, "scrying": 5, "secret-chest": 4, "see-invisibility": 2, "seeming": 5,
+  "sending": 3, "sequester": 7, "shapechange": 9, "shatter": 2, "shield": 1, "shield-of-faith": 1,
+  "shillelagh": 0, "shocking-grasp": 0, "silence": 2, "silent-image": 1, "simulacrum": 7, "sleep": 1,
+  "sleet-storm": 3, "slow": 3, "speak-with-animals": 1, "speak-with-dead": 3, "speak-with-plants": 3,
+  "spider-climb": 2, "spike-growth": 2, "spirit-guardians": 3, "spiritual-weapon": 2, "stinking-cloud": 3,
+  "stone-shape": 4, "stoneskin": 4, "storm-of-vengeance": 9, "suggestion": 2, "sunbeam": 6, "sunburst": 8,
+  "symbol": 7, "telekinesis": 5, "telepathic-bond": 5, "teleport": 7, "teleportation-circle": 5,
+  "thaumaturgy": 0, "thunderwave": 1, "time-stop": 9, "tiny-hut": 3, "tongues": 3, "transport-via-plants": 6,
+  "tree-stride": 5, "true-polymorph": 9, "true-resurrection": 9, "true-seeing": 6, "true-strike": 0,
+  "unseen-servant": 1, "vampiric-touch": 3, "vicious-mockery": 0, "wall-of-fire": 4, "wall-of-force": 5,
+  "wall-of-ice": 6, "wall-of-stone": 5, "wall-of-thorns": 6, "warding-bond": 2, "water-breathing": 3,
+  "water-walk": 3, "web": 2, "weird": 9, "wind-walk": 6, "wind-wall": 3, "wish": 9, "word-of-recall": 6,
+  "zone-of-truth": 2
 };
 
 const BUILTIN_SPELLS = [
@@ -219,28 +278,6 @@ function renderWeapons() {
       <input type="text" class="save-field wpn-field wpn-dmg-input center" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
       <input type="text" class="save-field wpn-field wpn-notes-input" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Range, properties, notes..." />
       <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
-    </div>
-  `).join("");
-}
-
-  container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
-    <div class="attack-entry" data-index="${idx}">
-      <input type="text" class="save-field wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon name" />
-      <input type="text" class="save-field wpn-field center" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="Type" />
-      <input type="text" class="save-field wpn-field center" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="Damage" />
-      <input type="text" class="save-field wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes & properties..." />
-      <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
-    </div>
-  `).join("");
-}
-
-  container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
-    <div class="attack-entry" data-index="${idx}">
-      <input type="text" class="save-field wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
-      <input type="text" class="save-field wpn-field center" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
-      <input type="text" class="save-field wpn-field center" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
-      <input type="text" class="save-field wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes..." />
-      <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete">&times;</button>
     </div>
   `).join("");
 }
@@ -561,7 +598,7 @@ function renderCharList() {
   const keys = Object.keys(roster);
 
   if (keys.length === 0) {
-    container.innerHTML = `<p class="loading-text">No saved characters found.</p>`;
+    container.innerHTML = `<p class="loading-text" style="color: #64748b; font-style: italic;">No saved characters found.</p>`;
     return;
   }
 
@@ -782,7 +819,7 @@ function renderModalSpells(list) {
   if (!container) return;
 
   if (!list || list.length === 0) {
-    container.innerHTML = `<p class="loading-text">No matching spells found.</p>`;
+    container.innerHTML = `<p class="loading-text" style="color: #64748b; font-style: italic;">No matching spells found.</p>`;
     return;
   }
 
@@ -823,37 +860,9 @@ function renderModalTraits(list) {
   if (!container) return;
 
   if (!list || list.length === 0) {
-    container.innerHTML = `<p class="loading-text">No matching abilities found.</p>`;
+    container.innerHTML = `<p class="loading-text" style="color: #64748b; font-style: italic;">No matching abilities found.</p>`;
     return;
   }
-
-  container.innerHTML = list.slice(0, 40).map((t) => {
-    let tagsHtml = "";
-    const classes = Array.isArray(t.classes) ? t.classes : (t.class ? [t.class] : []);
-    const races = Array.isArray(t.races) ? t.races : (t.race ? [t.race] : []);
-
-    classes.forEach((c) => {
-      tagsHtml += `<span class="tag-pill ${getClassCssClass(c)}">${escapeHtml(c)}</span>`;
-    });
-    races.forEach((r) => {
-      tagsHtml += `<span class="tag-pill ${getRaceCssClass(r)}">${escapeHtml(r)}</span>`;
-    });
-
-    if (!tagsHtml) {
-      tagsHtml = `<span class="tag-pill race-generic">${escapeHtml(t.type || 'Feature')}</span>`;
-    }
-
-    return `
-      <div class="spell-option-item trait-pick-row" data-url="${t.url || ''}" data-name="${escapeHtml(t.name)}" data-type="${escapeHtml(t.type || 'Feature')}">
-        <div class="spell-option-details">
-          <div class="spell-option-title">${escapeHtml(t.name)}</div>
-          <div class="spell-meta-tags">${tagsHtml}</div>
-        </div>
-        <button type="button" class="spell-add-badge">+ Add</button>
-      </div>
-    `;
-  }).join("");
-}
 
   container.innerHTML = list.slice(0, 40).map((t) => {
     let tagsHtml = "";
@@ -946,17 +955,19 @@ if (auth) {
   });
 }
 
+// Master Click Event Delegation
 document.addEventListener("click", async (e) => {
+  // Modal Close
   if (e.target.classList.contains("modal-close-btn") || e.target.closest(".modal-close-btn")) {
     e.target.closest(".modal-backdrop")?.classList.remove("open");
     return;
   }
-
   if (e.target.classList.contains("modal-backdrop")) {
     e.target.classList.remove("open");
     return;
   }
 
+  // Blur Toggle
   if (e.target.closest(".blur-toggle-btn")) {
     const pill = e.target.closest(".blur-toggle-btn").closest(".field-pill");
     if (pill) {
@@ -972,10 +983,12 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
+  // Close dropdowns if clicked outside
   if (!e.target.closest(".dropdown-pill-wrapper")) {
     document.querySelectorAll(".dropdown-menu").forEach((d) => d.classList.remove("open"));
   }
 
+  // Dropdown item selection
   if (e.target.classList.contains("select-class-item")) {
     const classInput = document.getElementById("charClass");
     if (classInput) {
@@ -996,6 +1009,7 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
+  // Conditions
   if (e.target.classList.contains("cond-chip")) {
     const cond = e.target.dataset.cond;
     if (myActiveConditions.includes(cond)) {
@@ -1009,15 +1023,24 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  if (e.target.id === "saveBtn") saveSheet(false);
+  // Top nav action buttons
+  if (e.target.id === "saveBtn") {
+    saveSheet(false);
+    return;
+  }
+
   if (e.target.id === "newBtn") {
     if (confirm("Create a new blank character sheet?")) resetSheet();
+    return;
   }
+
   if (e.target.id === "loadBtn") {
     renderCharList();
     document.getElementById("loadModal")?.classList.add("open");
+    return;
   }
 
+  // Auth Modals
   if (e.target.id === "authModalBtn" || e.target.closest("#authModalBtn")) {
     setAuthError("");
     document.getElementById("authModal")?.classList.add("open");
@@ -1041,6 +1064,7 @@ document.addEventListener("click", async (e) => {
     } catch (err) {
       setAuthError(err.message);
     }
+    return;
   }
 
   if (e.target.id === "emailSignUpBtn") {
@@ -1055,6 +1079,7 @@ document.addEventListener("click", async (e) => {
     } catch (err) {
       setAuthError(err.message);
     }
+    return;
   }
 
   if (e.target.id === "googleLoginBtn") {
@@ -1066,6 +1091,7 @@ document.addEventListener("click", async (e) => {
     } catch (err) {
       setAuthError(err.message);
     }
+    return;
   }
 
   if (e.target.id === "logoutBtn") {
@@ -1078,6 +1104,7 @@ document.addEventListener("click", async (e) => {
     resetSheet();
     showStatus("Signed Out");
     document.getElementById("authModal")?.classList.remove("open");
+    return;
   }
 
   if (e.target.id === "deleteBtn") {
@@ -1095,6 +1122,7 @@ document.addEventListener("click", async (e) => {
       }
       renderCharList();
     }
+    return;
   }
 
   if (e.target.id === "backupBtn") {
@@ -1117,14 +1145,18 @@ document.addEventListener("click", async (e) => {
     a.click();
     URL.revokeObjectURL(url);
     showStatus("Backup Downloaded");
+    return;
   }
 
   if (e.target.id === "helpLinkBtn") {
     document.getElementById("helpModal")?.classList.add("open");
+    return;
   }
 
+  // Tabs
   if (e.target.classList.contains("main-tab")) {
     switchMainTab(e.target.dataset.target);
+    return;
   }
 
   if (e.target.classList.contains("sub-tab")) {
@@ -1132,6 +1164,7 @@ document.addEventListener("click", async (e) => {
     document.querySelectorAll(".subtab-page").forEach((p) => p.classList.remove("active"));
     e.target.classList.add("active");
     document.getElementById(e.target.dataset.sub)?.classList.add("active");
+    return;
   }
 
   if (e.target.classList.contains("footer-nav-btn")) {
@@ -1144,20 +1177,24 @@ document.addEventListener("click", async (e) => {
       journal: "#tab-journal"
     };
     document.querySelector(map[e.target.dataset.scroll])?.scrollIntoView({ behavior: "smooth" });
+    return;
   }
 
+  // Dice rolls
   if (e.target.classList.contains("dice-btn")) {
     const sides = parseInt(e.target.dataset.sides, 10);
     const roll = Math.floor(Math.random() * sides) + 1;
     const out = document.getElementById("rollResult");
     if (out) out.textContent = roll;
     addDiceHistory(`1d${sides}`, roll);
+    return;
   }
 
   if (e.target.classList.contains("roll-btn")) {
     const roll = Math.floor(Math.random() * 20) + 1;
     let bonus = 0;
     let label = "Check";
+
     if (e.target.dataset.type === "save") {
       const attr = e.target.dataset.attr;
       bonus = parseInt(document.getElementById(`save_val_${attr}`)?.textContent, 10) || 0;
@@ -1167,13 +1204,26 @@ document.addEventListener("click", async (e) => {
       bonus = parseInt(row?.querySelector(".skill-val")?.textContent, 10) || 0;
       label = row?.querySelector(".skill-label")?.textContent.replace(/\s+[A-Za-z]+$/, "").trim() || "Skill";
     }
+
     const total = roll + bonus;
     const out = document.getElementById("rollResult");
     if (out) out.textContent = total;
     addDiceHistory(`${label} (${roll} ${bonus >= 0 ? `+ ${bonus}` : `- ${Math.abs(bonus)}`})`, total);
+    return;
   }
 
-  if (e.target.id === "addSpellBtn") {
+  // Add Weapon Button
+  if (e.target.id === "addWeaponBtn" || e.target.closest("#addWeaponBtn") || e.target.closest(".btn-add-weapon")) {
+    if (!Array.isArray(myCharacterWeapons)) myCharacterWeapons = [];
+    myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+    saveSheet(false);
+    renderWeapons();
+    showStatus("Weapon Added!");
+    return;
+  }
+
+  // Open Spell Modal
+  if (e.target.id === "addSpellBtn" || e.target.closest("#addSpellBtn") || e.target.closest(".btn-add-spell")) {
     document.getElementById("spellModal")?.classList.add("open");
     const input = document.getElementById("spellSearchInput");
     if (input) input.value = "";
@@ -1184,48 +1234,11 @@ document.addEventListener("click", async (e) => {
         renderModalSpells(allSpellsCache);
       }
     });
-  }
-
-  if (e.target.id === "addCustomSpellBtn") {
-   const addWpn = e.target.closest("#addWeaponBtn, .btn-add-weapon, .btn-icon-plus");
-  if (addWpn) {
-    if (!Array.isArray(myCharacterWeapons)) myCharacterWeapons = [];
-    myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
-    saveSheet(false);
-    renderWeapons();
-    showStatus("Weapon Added!");
     return;
   }
 
-  const addSpell = e.target.closest("#addSpellBtn, .btn-add-spell");
-  if (addSpell) {
-    document.getElementById("spellModal")?.classList.add("open");
-    const input = document.getElementById("spellSearchInput");
-    if (input) input.value = "";
-    loadAllSpells().then((list) => {
-      renderModalSpells(list);
-      enrichSpellList(list).then((changed) => {
-        if (changed && (!input || input.value === "")) {
-          renderModalSpells(allSpellsCache);
-        }
-      });
-    });
-    return;
-  }
-
-  const addTrait = e.target.closest("#addTraitBtn, .btn-add-trait");
-  if (addTrait) {
-    document.getElementById("traitModal")?.classList.add("open");
-    const input = document.getElementById("traitSearchInput");
-    if (input) input.value = "";
-    loadAllTraits().then((list) => {
-      renderModalTraits(list);
-    });
-    return;
-  }
-
-  const addCustSpell = e.target.closest("#addCustomSpellBtn");
-  if (addCustSpell) {
+  // Custom Spell
+  if (e.target.id === "addCustomSpellBtn" || e.target.closest("#addCustomSpellBtn")) {
     myCharacterSpells.push({
       name: "New Spell",
       type: "Cantrip",
@@ -1240,8 +1253,19 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  const addCustTrait = e.target.closest("#addCustomTraitBtn");
-  if (addCustTrait) {
+  // Open Trait Modal
+  if (e.target.id === "addTraitBtn" || e.target.closest("#addTraitBtn") || e.target.closest(".btn-add-trait")) {
+    document.getElementById("traitModal")?.classList.add("open");
+    const input = document.getElementById("traitSearchInput");
+    if (input) input.value = "";
+    loadAllTraits().then((list) => {
+      renderModalTraits(list);
+    });
+    return;
+  }
+
+  // Custom Trait
+  if (e.target.id === "addCustomTraitBtn" || e.target.closest("#addCustomTraitBtn")) {
     myCharacterTraits.push({
       name: "New Ability",
       type: "Feature",
@@ -1253,6 +1277,8 @@ document.addEventListener("click", async (e) => {
     closeModal("traitModal");
     return;
   }
+
+  // Pick Spell from compendium
   const spellRow = e.target.closest(".spell-pick-row");
   if (spellRow) {
     const name = spellRow.dataset.name;
@@ -1285,27 +1311,10 @@ document.addEventListener("click", async (e) => {
     saveSheet(false);
     renderMySpells();
     closeModal("spellModal");
+    return;
   }
 
-  if (e.target.id === "addTraitBtn") {
-    document.getElementById("traitModal")?.classList.add("open");
-    const input = document.getElementById("traitSearchInput");
-    if (input) input.value = "";
-    renderModalTraits(await loadAllTraits());
-  }
-
-  if (e.target.id === "addCustomTraitBtn") {
-    myCharacterTraits.push({
-      name: "New Ability",
-      type: "Feature",
-      desc: "",
-      isExpanded: true
-    });
-    saveSheet(false);
-    renderMyTraits();
-    closeModal("traitModal");
-  }
-
+  // Pick Trait from compendium
   const traitRow = e.target.closest(".trait-pick-row");
   if (traitRow) {
     const name = traitRow.dataset.name;
@@ -1333,32 +1342,31 @@ document.addEventListener("click", async (e) => {
     saveSheet(false);
     renderMyTraits();
     closeModal("traitModal");
+    return;
   }
 
- const addWpnBtn = e.target.id === "addWeaponBtn" || e.target.closest("#addWeaponBtn") || e.target.closest(".btn-add-weapon") || e.target.closest(".btn-icon-plus");
-  if (addWpnBtn) {
-    if (!Array.isArray(myCharacterWeapons)) myCharacterWeapons = [];
-    myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
-    saveSheet(false);
-    renderWeapons();
-    showStatus("Weapon Added!");
-  }
-  
+  // Delete Weapon
   if (e.target.classList.contains("weapon-delete-btn")) {
     const idx = parseInt(e.target.dataset.index, 10);
     myCharacterWeapons.splice(idx, 1);
-    while (myCharacterWeapons.length < 2) myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+    while (myCharacterWeapons.length < 2) {
+      myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+    }
     saveSheet(false);
     renderWeapons();
+    return;
   }
 
+  // Delete Trait
   if (e.target.classList.contains("trait-card-delete")) {
     myCharacterTraits.splice(parseInt(e.target.dataset.index, 10), 1);
     saveSheet(false);
     renderMyTraits();
+    return;
   }
 
- if (e.target.classList.contains("trait-expand-btn") || e.target.closest(".trait-expand-btn")) {
+  // Expand / Collapse Trait
+  if (e.target.classList.contains("trait-expand-btn") || e.target.closest(".trait-expand-btn")) {
     const btn = e.target.closest(".trait-expand-btn");
     const card = btn.closest(".trait-card");
     const idx = parseInt(card.dataset.index, 10);
@@ -1367,14 +1375,18 @@ document.addEventListener("click", async (e) => {
     btn.innerHTML = `${isExp ? 'Collapse' : 'Expand'} <span class="trait-expand-icon">▼</span>`;
     if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp;
     saveSheet(true);
+    return;
   }
-  
+
+  // Delete Spell
   if (e.target.classList.contains("spell-card-delete")) {
     myCharacterSpells.splice(parseInt(e.target.dataset.index, 10), 1);
     saveSheet(false);
     renderMySpells();
+    return;
   }
 
+  // Delete Character from Saved Modal
   if (e.target.classList.contains("char-delete-btn")) {
     const row = e.target.closest(".char-item-row");
     const roster = getRoster();
@@ -1393,16 +1405,22 @@ document.addEventListener("click", async (e) => {
       }
       renderCharList();
     }
-  } else if (e.target.closest(".char-item-name") || e.target.classList.contains("char-select-btn")) {
+    return;
+  }
+
+  // Load Character from Saved Modal
+  if (e.target.closest(".char-item-name") || e.target.classList.contains("char-select-btn")) {
     const row = e.target.closest(".char-item-row");
     activeCharId = row.dataset.id;
     localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
     applyCharacterData(getRoster()[activeCharId]);
     closeModal("loadModal");
     showStatus("Character Loaded");
+    return;
   }
 });
 
+// Dropdown input listeners
 document.getElementById("charClass")?.addEventListener("focus", (e) => {
   renderClassDropdown(e.target.value);
   document.getElementById("classDropdown")?.classList.add("open");
@@ -1423,6 +1441,7 @@ document.getElementById("charRace")?.addEventListener("input", (e) => {
   document.getElementById("raceDropdown")?.classList.add("open");
 });
 
+// Search inputs
 let spellSearchTimeout = null;
 document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
   const query = e.target.value.toLowerCase().trim();
@@ -1460,6 +1479,7 @@ document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
   }, 120);
 });
 
+// Filter spells in spellbook
 document.getElementById("filterSpellbookInput")?.addEventListener("input", (e) => {
   const q = e.target.value.toLowerCase().trim();
   document.querySelectorAll(".spell-card").forEach((card) => {
@@ -1468,6 +1488,7 @@ document.getElementById("filterSpellbookInput")?.addEventListener("input", (e) =
   });
 });
 
+// Dynamic form inputs
 document.addEventListener("change", (e) => {
   if (e.target.type === "checkbox" && e.target.classList.contains("save-field")) {
     recalculateAll();
@@ -1526,10 +1547,12 @@ document.addEventListener("focusout", (e) => {
   }
 });
 
+// Escape key closes modals
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeAllModals();
 });
 
+// File Restore handler
 document.getElementById("restoreFile")?.addEventListener("change", (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
@@ -1562,7 +1585,7 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
   reader.readAsText(file);
 });
 
+// Initialization
 loadSheet();
-renderMyTraits();
 loadAllSpells();
 loadAllTraits();
