@@ -204,6 +204,10 @@ function renderWeapons() {
   const container = document.getElementById("weaponsContainer");
   if (!container) return;
 
+  if (!Array.isArray(myCharacterWeapons)) {
+    myCharacterWeapons = [];
+  }
+
   while (myCharacterWeapons.length < 2) {
     myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
   }
