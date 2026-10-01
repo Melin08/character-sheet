@@ -210,6 +210,17 @@ function renderWeapons() {
 
   container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
     <div class="attack-entry" data-index="${idx}">
+      <input type="text" class="save-field wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon name" />
+      <input type="text" class="save-field wpn-field center" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="Type" />
+      <input type="text" class="save-field wpn-field center" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="Damage" />
+      <input type="text" class="save-field wpn-field" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Notes & properties..." />
+      <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
+    </div>
+  `).join("");
+}
+
+  container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
+    <div class="attack-entry" data-index="${idx}">
       <input type="text" class="save-field wpn-field" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon" />
       <input type="text" class="save-field wpn-field center" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
       <input type="text" class="save-field wpn-field center" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8" />
