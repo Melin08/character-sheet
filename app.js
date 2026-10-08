@@ -51,9 +51,9 @@ const apiCache = {};
 let allSpellsCache = [];
 let allTraitsCache = [];
 
-// DM Real-Time Listener & Inspection State
+// DM & Player Real-Time Listener State
 let dmListenerUnsubscribe = null;
-let playerDocUnsubscribe = null;
+let playerPartyListUnsubscribe = null;
 let activeDMRoomCode = "";
 let currentInspectedMemberId = null;
 let cachedRoomMembers = [];
@@ -157,9 +157,22 @@ const BUILTIN_SPELLS = [
 ];
 
 const BUILTIN_TRAITS = [
-  { name: "Action Surge", classes: ["Fighter"], desc: "Take one additional action on your turn once per short or long rest." },
-  { name: "Sneak Attack", classes: ["Rogue"], desc: "Deal extra damage once per turn with advantage or adjacent ally." },
-  { name: "Rage", classes: ["Barbarian"], desc: "Enter a rage for advantage on Strength checks, weapon damage bonus, and physical resistance." }
+  { name: "Action Surge", classes: ["Fighter"], type: "Class Feature", desc: "Take one additional action on your turn once per short or long rest." },
+  { name: "Second Wind", classes: ["Fighter"], type: "Class Feature", desc: "Regain 1d10 + fighter level hit points as a bonus action once per short or long rest." },
+  { name: "Sneak Attack", classes: ["Rogue"], type: "Class Feature", desc: "Deal extra damage once per turn with advantage or adjacent ally." },
+  { name: "Cunning Action", classes: ["Rogue"], type: "Class Feature", desc: "Take a bonus action on each turn to Dash, Disengage, or Hide." },
+  { name: "Rage", classes: ["Barbarian"], type: "Class Feature", desc: "Enter a rage for advantage on Strength checks, weapon damage bonus, and physical resistance." },
+  { name: "Reckless Attack", classes: ["Barbarian"], type: "Class Feature", desc: "Gain advantage on melee weapon attack rolls using Strength during your turn." },
+  { name: "Divine Smite", classes: ["Paladin"], type: "Class Feature", desc: "Expending a spell slot deals radiant damage to a struck creature." },
+  { name: "Lay on Hands", classes: ["Paladin"], type: "Class Feature", desc: "Pool of healing power replenishing on long rest (5 × paladin level)." },
+  { name: "Wild Shape", classes: ["Druid"], type: "Class Feature", desc: "Magically assume the shape of a beast you have seen before." },
+  { name: "Bardic Inspiration", classes: ["Bard"], type: "Class Feature", desc: "Add an inspiration die to an ability check, attack roll, or saving throw." },
+  { name: "Ki / Flurry of Blows", classes: ["Monk"], type: "Class Feature", desc: "Harness martial energy to make extra unarmed strikes or dodge." },
+  { name: "Font of Magic", classes: ["Sorcerer"], type: "Class Feature", desc: "Metamagic and sorcery points to alter or create spell slots." },
+  { name: "Eldritch Invocations", classes: ["Warlock"], type: "Class Feature", desc: "Occult lore fragments that bestow permanent magical abilities." },
+  { name: "Darkvision", races: ["Elf", "Dwarf", "Tiefling", "Gnome", "Half-Orc"], type: "Racial Trait", desc: "See in dim light within 60 feet as if it were bright light, and in darkness as if dim light." },
+  { name: "Fey Ancestry", races: ["Elf", "Half-Elf"], type: "Racial Trait", desc: "Advantage on saving throws against being charmed, and magic cannot put you to sleep." },
+  { name: "Dwarven Resilience", races: ["Dwarf"], type: "Racial Trait", desc: "Advantage on saving throws against poison, and resistance against poison damage." }
 ];
 
 function escapeHtml(str) {
@@ -228,8 +241,12 @@ function getRaceCssClass(raceName) {
   return "race-generic";
 }
 
+// Themes
 function applyTheme(themeName) {
-  const themes = ["theme-obsidian", "theme-parchment", "theme-eldritch", "theme-celestial", "theme-emerald"];
+  const themes = [
+    "theme-obsidian", "theme-parchment", "theme-eldritch", "theme-celestial", "theme-emerald",
+    "theme-aethertech", "theme-bloodmoon", "theme-glacial", "theme-underdark", "theme-solaris", "theme-cartographer"
+  ];
   themes.forEach((t) => document.body.classList.remove(t));
   const validTheme = themes.includes(themeName) ? themeName : "theme-obsidian";
   document.body.classList.add(validTheme);
@@ -360,7 +377,7 @@ function renderMyTraits() {
         <div class="trait-card-footer">
           <button type="button" class="trait-expand-btn">
             ${isExpanded ? 'Collapse' : 'Expand'}
-            <span class="trait-expand-icon">▼</span>
+            <span class="trait-expand-icon">&blacktriangledown;</span>
           </button>
         </div>
       </div>
@@ -384,7 +401,7 @@ function renderMySpells() {
     return `
       <div class="spell-card" draggable="true" data-index="${idx}">
         <div class="spell-card-header">
-          <span class="spell-drag-handle" title="Drag to reorder">⋮⋮</span>
+          <span class="spell-drag-handle" title="Drag to reorder">&vellip;&vellip;</span>
           <input type="text" class="spell-custom-title-input custom-spell-field" data-prop="name" value="${escapeHtml(spell.name || "")}" placeholder="Spell Name" />
           <button class="spell-card-delete" data-index="${idx}" type="button" title="Delete spell">&times;</button>
         </div>
@@ -565,10 +582,6 @@ function getRoster() {
     return {};
   }
 }
-
-/* ==========================================================================
-   PARTY & DM REAL-TIME SYNC ENGINE (FULL LIVE STAT BROADCAST)
-   ========================================================================== */
 
 function extractFullCharacterPayload(charData) {
   const f = charData.fields || {};
@@ -811,497 +824,24 @@ function resetSheet() {
   showStatus("New Sheet Created!");
 }
 
-/* ==========================================================================
-   PARTY & DM REAL-TIME DASHBOARD (LISTENERS, KICK & INSPECTION)
-   ========================================================================== */
-
-function updatePartyStatusUI() {
-  const box = document.getElementById("partyStatusBox");
-  const leaveBtn = document.getElementById("leaveCampaignBtn");
-  const joinInput = document.getElementById("campaignRoomInput");
-
-  if (!box) return;
-
-  if (connectedCampaignRoom) {
-    box.innerHTML = `<span class="status-dot connected"></span><span>Connected to Campaign: <strong>${escapeHtml(connectedCampaignRoom)}</strong></span>`;
-    if (leaveBtn) leaveBtn.style.display = "inline-flex";
-    if (joinInput) joinInput.value = connectedCampaignRoom;
-  } else {
-    box.innerHTML = `<span class="status-dot disconnected"></span><span>Not connected to any campaign room.</span>`;
-    if (leaveBtn) leaveBtn.style.display = "none";
-  }
+function switchMainTab(targetId) {
+  if (!targetId) return;
+  document.querySelectorAll(".main-tab").forEach((b) => {
+    if (b.dataset.target === targetId) b.classList.add("active");
+    else b.classList.remove("active");
+  });
+  document.querySelectorAll(".tab-page").forEach((p) => {
+    if (p.id === targetId) p.classList.add("active");
+    else p.classList.remove("active");
+  });
 }
 
-async function joinCampaignRoom(roomCode) {
-  if (!roomCode) return;
-  const cleanCode = roomCode.toUpperCase().trim();
-  connectedCampaignRoom = cleanCode;
-  localStorage.setItem(CAMPAIGN_ROOM_KEY, cleanCode);
-  updatePartyStatusUI();
-
-  await ensureAuthenticated();
-
-  const roster = getRoster();
-  if (roster[activeCharId]) {
-    await syncToLiveCampaign(roster[activeCharId]);
-  }
-
-  // Monitor membership
-  if (playerDocUnsubscribe) {
-    playerDocUnsubscribe();
-    playerDocUnsubscribe = null;
-  }
-
-  if (db) {
-    let hasInitialized = false;
-    playerDocUnsubscribe = db.collection("campaigns").doc(cleanCode).collection("members").doc(activeCharId)
-      .onSnapshot((doc) => {
-        if (!hasInitialized) {
-          if (doc.exists) hasInitialized = true;
-          return;
-        }
-        if (!doc.exists && connectedCampaignRoom === cleanCode) {
-          connectedCampaignRoom = "";
-          localStorage.removeItem(CAMPAIGN_ROOM_KEY);
-          updatePartyStatusUI();
-          showStatus("Removed from Campaign Room");
-        }
-      });
-  }
-
-  showStatus(`Joined ${cleanCode}!`);
+function closeModal(modalId) {
+  document.getElementById(modalId)?.classList.remove("open");
 }
 
-async function leaveCampaignRoom() {
-  if (!connectedCampaignRoom) return;
-  if (playerDocUnsubscribe) {
-    playerDocUnsubscribe();
-    playerDocUnsubscribe = null;
-  }
-  if (db && activeCharId) {
-    try {
-      await db.collection("campaigns").doc(connectedCampaignRoom).collection("members").doc(activeCharId).delete();
-    } catch (e) {}
-  }
-  connectedCampaignRoom = "";
-  localStorage.removeItem(CAMPAIGN_ROOM_KEY);
-  updatePartyStatusUI();
-  showStatus("Disconnected from Party");
-}
-
-/* DM Room Creation, Closure & Kicking */
-async function startDMLiveListener(roomCode) {
-  if (!db) {
-    alert("Firebase database is not connected.");
-    return;
-  }
-  await ensureAuthenticated();
-
-  if (dmListenerUnsubscribe) {
-    dmListenerUnsubscribe();
-    dmListenerUnsubscribe = null;
-  }
-
-  activeDMRoomCode = roomCode;
-  const grid = document.getElementById("dmPartyGrid");
-  const counter = document.getElementById("dmMemberCount");
-  const codeEl = document.getElementById("dmActiveRoomCode");
-  const copyBtn = document.getElementById("copyRoomCodeBtn");
-  const closeBtn = document.getElementById("closeCampaignBtn");
-
-  if (codeEl) codeEl.textContent = roomCode;
-  if (copyBtn) copyBtn.style.display = "inline-flex";
-  if (closeBtn) closeBtn.style.display = "inline-flex";
-
-  dmListenerUnsubscribe = db.collection("campaigns").doc(roomCode).collection("members")
-    .onSnapshot((snapshot) => {
-      cachedRoomMembers = [];
-      snapshot.forEach((doc) => cachedRoomMembers.push(doc.data()));
-
-      if (counter) counter.textContent = `${cachedRoomMembers.length} Active`;
-
-      if (cachedRoomMembers.length === 0) {
-        if (grid) grid.innerHTML = `<p class="dm-empty-msg">Room <strong>${escapeHtml(roomCode)}</strong> is open! Waiting for adventurers to connect...</p>`;
-        return;
-      }
-
-      if (grid) {
-        grid.innerHTML = cachedRoomMembers.map((m) => {
-          const curHp = m.hp?.cur ?? 0;
-          const maxHp = m.hp?.max ?? 10;
-          const tempHp = m.hp?.temp ?? 0;
-          const hpPercent = Math.min(100, Math.max(0, (curHp / Math.max(1, maxHp)) * 100));
-          const isDown = curHp <= 0;
-
-          const condsHtml = (m.conditions || []).map(c => `<span class="dm-cond-badge">${escapeHtml(c)}</span>`).join("");
-
-          return `
-            <div class="dm-player-card ${isDown ? 'unconscious' : ''}" data-member-id="${escapeHtml(m.id || '')}">
-              <div class="dm-card-header">
-                ${m.avatar ? `<img src="${m.avatar}" class="dm-player-avatar" alt="Avatar" />` : `<div class="dm-avatar-placeholder">⚔</div>`}
-                <div class="dm-player-info">
-                  <span class="dm-player-name">${escapeHtml(m.name || "Adventurer")}</span>
-                  <span class="dm-player-sub">${escapeHtml(m.charClass || "Class")} (Lvl ${m.level || 1})</span>
-                </div>
-              </div>
-              <div class="dm-health-gauge">
-                <div class="dm-health-labels">
-                  <span class="dm-hp-val">HP: ${curHp} / ${maxHp}</span>
-                  ${tempHp > 0 ? `<span class="dm-temp-val">+${tempHp} Temp</span>` : ""}
-                </div>
-                <div class="dm-health-track">
-                  <div class="dm-health-fill" style="width: ${hpPercent}%;"></div>
-                </div>
-              </div>
-              <div class="dm-stats-strip">
-                <span class="dm-stat-item">AC: <strong>${m.ac ?? 10}</strong></span>
-                <span class="dm-stat-item">Perc: <strong>${m.passivePerception ?? 10}</strong></span>
-                <span class="dm-stat-item">Ins: <strong>${m.passiveInsight ?? 10}</strong></span>
-              </div>
-              ${condsHtml ? `<div class="dm-conditions-list">${condsHtml}</div>` : ""}
-            </div>
-          `;
-        }).join("");
-      }
-
-      if (currentInspectedMemberId) {
-        const inspected = cachedRoomMembers.find(m => m.id === currentInspectedMemberId);
-        if (inspected) renderInspectModalContent(inspected);
-      }
-    }, (err) => {
-      console.error("DM live listener failed:", err);
-    });
-}
-
-function createNewCampaignRoom() {
-  const words = ["DRAGON", "DUNGEON", "TAVERN", "PHANDALIN", "BAROVIA", "SWORD", "ARCANE", "SHADOW", "WIZARD"];
-  const randomWord = words[Math.floor(Math.random() * words.length)];
-  const randomNum = Math.floor(Math.random() * 90) + 10;
-  const newCode = `${randomWord}-${randomNum}`;
-  startDMLiveListener(newCode);
-}
-
-async function closeDMCampaignRoom() {
-  if (!activeDMRoomCode) return;
-  if (!confirm(`Are you sure you want to close and disband room "${activeDMRoomCode}" for all players?`)) return;
-
-  if (dmListenerUnsubscribe) {
-    dmListenerUnsubscribe();
-    dmListenerUnsubscribe = null;
-  }
-
-  try {
-    const snap = await db.collection("campaigns").doc(activeDMRoomCode).collection("members").get();
-    const batch = db.batch();
-    snap.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
-  } catch (err) {
-    console.warn("Disband cleanup warning:", err);
-  }
-
-  activeDMRoomCode = "";
-  cachedRoomMembers = [];
-  closeModal("dmInspectModal");
-
-  const codeEl = document.getElementById("dmActiveRoomCode");
-  const copyBtn = document.getElementById("copyRoomCodeBtn");
-  const closeBtn = document.getElementById("closeCampaignBtn");
-  const grid = document.getElementById("dmPartyGrid");
-  const counter = document.getElementById("dmMemberCount");
-
-  if (codeEl) codeEl.textContent = "NONE";
-  if (copyBtn) copyBtn.style.display = "none";
-  if (closeBtn) closeBtn.style.display = "none";
-  if (counter) counter.textContent = "0 Active";
-  if (grid) grid.innerHTML = `<p class="dm-empty-msg">Room closed. Create or connect to a campaign room to start a live session.</p>`;
-
-  showStatus("Campaign Room Closed");
-}
-
-async function kickPlayerFromRoom(memberId) {
-  if (!activeDMRoomCode || !memberId) return;
-  const member = cachedRoomMembers.find(m => m.id === memberId);
-  const name = member ? member.name : "this player";
-
-  if (!confirm(`Are you sure you want to kick "${name}" from the party?`)) return;
-
-  try {
-    await db.collection("campaigns").doc(activeDMRoomCode).collection("members").doc(memberId).delete();
-    showStatus(`Kicked ${name}`);
-    closeModal("dmInspectModal");
-    currentInspectedMemberId = null;
-  } catch (err) {
-    console.error("Failed to kick player:", err);
-  }
-}
-
-/* ==========================================================================
-   DM DETAILED PLAYER INSPECTION MODAL RENDERER
-   ========================================================================== */
-function openInspectModal(memberId) {
-  const member = cachedRoomMembers.find(m => m.id === memberId);
-  if (!member) return;
-
-  currentInspectedMemberId = memberId;
-  const titleEl = document.getElementById("inspectCharTitle");
-  if (titleEl) titleEl.textContent = `${member.name || "Adventurer"} — Full Codex`;
-
-  renderInspectModalContent(member);
-  document.getElementById("dmInspectModal")?.classList.add("open");
-}
-
-function renderInspectModalContent(m) {
-  const container = document.getElementById("dmInspectContent");
-  if (!container) return;
-
-  const curHp = m.hp?.cur ?? 0;
-  const maxHp = m.hp?.max ?? 10;
-  const tempHp = m.hp?.temp ?? 0;
-  const attrs = m.attributes || {};
-
-  const stats = ["str", "dex", "con", "int", "wis", "cha"];
-  const abilityCells = stats.map((s) => {
-    const a = attrs[s] || { score: 10, mod: 0, save: 0, isSaveProf: false };
-    const modStr = a.mod >= 0 ? `+${a.mod}` : `${a.mod}`;
-    const saveStr = a.save >= 0 ? `+${a.save}` : `${a.save}`;
-    return `
-      <div class="inspect-ability-cell">
-        <span class="inspect-attr-tag">${s.toUpperCase()}</span>
-        <span class="inspect-attr-mod">${modStr}</span>
-        <span class="inspect-attr-score">(${a.score})</span>
-        <span class="inspect-attr-save">${a.isSaveProf ? '🛡 ' : ''}Save: ${saveStr}</span>
-      </div>
-    `;
-  }).join("");
-
-  const weaponsHtml = (m.weapons || []).filter(w => w.name).map((w) => `
-    <div class="inspect-weapon-row">
-      <span class="inspect-wpn-name">${escapeHtml(w.name)}</span>
-      <span class="inspect-wpn-type">${escapeHtml(w.atk || "-")}</span>
-      <span class="inspect-wpn-dmg">${escapeHtml(w.dmg || "-")}</span>
-      <span class="inspect-wpn-notes">${escapeHtml(w.notes || "-")}</span>
-    </div>
-  `).join("") || `<p style="font-size:0.8rem; color:#64748b; font-style:italic;">No weapons equipped.</p>`;
-
-  const slots = m.spellSlots || {};
-  const slotTiles = [];
-  for (let lvl = 1; lvl <= 9; lvl++) {
-    const s = slots[lvl] || { cur: 0, max: 0 };
-    slotTiles.push(`
-      <div class="inspect-slot-tile">
-        <span class="inspect-slot-lvl">${lvl}st</span>
-        <span class="inspect-slot-count">${s.cur} / ${s.max}</span>
-      </div>
-    `);
-  }
-
-  const spellsHtml = (m.spells || []).map((s) => `
-    <div class="inspect-mini-card">
-      <span class="inspect-mini-title">${escapeHtml(s.name)}</span>
-      <span class="inspect-mini-tag">${escapeHtml(s.type || "Spell")} • ${escapeHtml(s.casting_time || "1 Action")}</span>
-      <p class="inspect-mini-desc">${escapeHtml(s.desc || "")}</p>
-    </div>
-  `).join("") || `<p style="font-size:0.8rem; color:#64748b; font-style:italic;">No spells logged.</p>`;
-
-  const traitsHtml = (m.traits || []).map((t) => `
-    <div class="inspect-mini-card">
-      <span class="inspect-mini-title">${escapeHtml(t.name)}</span>
-      <span class="inspect-mini-tag">${escapeHtml(t.type || "Feature")}</span>
-      <p class="inspect-mini-desc">${escapeHtml(t.desc || "")}</p>
-    </div>
-  `).join("") || `<p style="font-size:0.8rem; color:#64748b; font-style:italic;">No features logged.</p>`;
-
-  const condsHtml = (m.conditions || []).map(c => `<span class="dm-cond-badge">${escapeHtml(c)}</span>`).join("") || "None";
-
-  container.innerHTML = `
-    <div class="inspect-char-banner">
-      <div class="inspect-avatar-wrap">
-        ${m.avatar ? `<img src="${m.avatar}" class="inspect-avatar-img" alt="Avatar" />` : `<div class="dm-avatar-placeholder" style="width:100%;height:100%;">⚔</div>`}
-      </div>
-      <div class="inspect-char-info">
-        <span class="inspect-char-name">${escapeHtml(m.name || "Adventurer")}</span>
-        <span class="inspect-char-meta-line">Level ${m.level || 1} • ${escapeHtml(m.charRace || "Race")} • ${escapeHtml(m.charClass || "Class")} (${escapeHtml(m.charBackground || "Background")})</span>
-      </div>
-    </div>
-
-    <div class="inspect-vitals-ribbon">
-      <div class="inspect-stat-card">
-        <span class="inspect-stat-card-label">Hit Points</span>
-        <span class="inspect-stat-card-val" style="color:#f87171;">${curHp} / ${maxHp} ${tempHp > 0 ? `(+${tempHp})` : ""}</span>
-      </div>
-      <div class="inspect-stat-card">
-        <span class="inspect-stat-card-label">Armor Class</span>
-        <span class="inspect-stat-card-val" style="color:#38bdf8;">${m.ac ?? 10}</span>
-      </div>
-      <div class="inspect-stat-card">
-        <span class="inspect-stat-card-label">Speed</span>
-        <span class="inspect-stat-card-val">${m.speed ?? 30} ft</span>
-      </div>
-      <div class="inspect-stat-card">
-        <span class="inspect-stat-card-label">Pass. Perception</span>
-        <span class="inspect-stat-card-val">${m.passivePerception ?? 10}</span>
-      </div>
-      <div class="inspect-stat-card">
-        <span class="inspect-stat-card-label">Pass. Insight</span>
-        <span class="inspect-stat-card-val">${m.passiveInsight ?? 10}</span>
-      </div>
-      <div class="inspect-stat-card">
-        <span class="inspect-stat-card-label">Death Saves</span>
-        <span class="inspect-stat-card-val" style="font-size:0.9rem;">✓${m.deathSaves?.succ ?? 0} | ✗${m.deathSaves?.fail ?? 0}</span>
-      </div>
-    </div>
-
-    <div class="inspect-section">
-      <span class="inspect-section-title">Active Conditions</span>
-      <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">${condsHtml}</div>
-    </div>
-
-    <div class="inspect-section">
-      <span class="inspect-section-title">Ability Scores &amp; Saves</span>
-      <div class="inspect-ability-grid">${abilityCells}</div>
-    </div>
-
-    <div class="inspect-section">
-      <span class="inspect-section-title">Attack Arsenal</span>
-      <div class="inspect-weapons-list">${weaponsHtml}</div>
-    </div>
-
-    <div class="inspect-section">
-      <span class="inspect-section-title">Spell Slots Availability</span>
-      <div class="inspect-slots-matrix">${slotTiles.join("")}</div>
-    </div>
-
-    <div class="inspect-section">
-      <span class="inspect-section-title">Spells &amp; Cantrips (Known Spells)</span>
-      <div class="inspect-grid-blocks">${spellsHtml}</div>
-    </div>
-
-    <div class="inspect-section">
-      <span class="inspect-section-title">Features &amp; Abilities</span>
-      <div class="inspect-grid-blocks">${traitsHtml}</div>
-    </div>
-
-    ${m.otherProfs ? `
-      <div class="inspect-section">
-        <span class="inspect-section-title">Proficiencies &amp; Languages</span>
-        <p style="font-size:0.85rem; color:#cbd5e1; white-space:pre-wrap;">${escapeHtml(m.otherProfs)}</p>
-      </div>
-    ` : ""}
-  `;
-}
-
-/* ==========================================================================
-   REST & HP CALC ENGINES
-   ========================================================================== */
-function applyLongRest() {
-  if (!confirm("Take a Long Rest? This will restore HP to max, refill all spell slots, recover class points, clear death saves, and regain up to half your total Hit Dice.")) return;
-
-  const maxHpEl = document.getElementById("maxHp");
-  const curHpEl = document.getElementById("curHp");
-  const tempHpEl = document.getElementById("tempHp");
-  if (maxHpEl && curHpEl) curHpEl.value = maxHpEl.value;
-  if (tempHpEl) tempHpEl.value = 0;
-
-  for (let lvl = 1; lvl <= 9; lvl++) {
-    const maxVal = parseInt(document.getElementById(`slot${lvl}_max`)?.value, 10) || 0;
-    const curEl = document.getElementById(`slot${lvl}_cur`);
-    if (curEl) curEl.value = maxVal;
-  }
-
-  const hdCurEl = document.getElementById("hitDiceCur");
-  const hdMaxEl = document.getElementById("hitDiceMax");
-  const maxHd = parseInt(hdMaxEl?.value, 10) || 1;
-  const curHd = parseInt(hdCurEl?.value, 10) || 0;
-  const regained = Math.max(1, Math.floor(maxHd / 2));
-  if (hdCurEl) hdCurEl.value = Math.min(maxHd, curHd + regained);
-
-  const succEl = document.getElementById("deathSucc");
-  const failEl = document.getElementById("deathFail");
-  if (succEl) succEl.value = 0;
-  if (failEl) failEl.value = 0;
-
-  const classMaxEl = document.getElementById("classPtsMax");
-  const classCurEl = document.getElementById("classPtsCur");
-  if (classMaxEl && classCurEl) classCurEl.value = classMaxEl.value;
-
-  renderSpellSlotGrid();
-  saveSheet(false);
-  showStatus("Long Rest Complete!");
-}
-
-function applyShortRest() {
-  const hdCurEl = document.getElementById("hitDiceCur");
-  const curHd = parseInt(hdCurEl?.value, 10) || 0;
-  const maxHd = parseInt(document.getElementById("hitDiceMax")?.value, 10) || 1;
-
-  if (curHd <= 0) {
-    alert("You have no Hit Dice left to spend during a Short Rest!");
-    return;
-  }
-
-  const spend = confirm(`Take a Short Rest?\nYou have ${curHd} of ${maxHd} Hit Dice available.\nClick OK to spend 1 Hit Die and recover HP.`);
-  if (spend) {
-    const conMod = parseInt(document.getElementById("mod_con")?.textContent, 10) || 0;
-    const roll = Math.floor(Math.random() * 8) + 1;
-    const healTotal = Math.max(1, roll + conMod);
-
-    hdCurEl.value = Math.max(0, curHd - 1);
-
-    const curHpEl = document.getElementById("curHp");
-    const maxHp = parseInt(document.getElementById("maxHp")?.value, 10) || 10;
-    const curHp = parseInt(curHpEl?.value, 10) || 0;
-    const newHp = Math.min(maxHp, curHp + healTotal);
-    if (curHpEl) curHpEl.value = newHp;
-
-    addDiceHistory(`Short Rest Hit Die (1d8 + ${conMod})`, healTotal);
-    saveSheet(false);
-    showStatus(`Regained ${healTotal} HP!`);
-  }
-}
-
-function applyHpAdjustment(action) {
-  const amountInput = document.getElementById("hpModalAmount");
-  const amt = parseInt(amountInput?.value, 10);
-  if (isNaN(amt) || amt <= 0) {
-    alert("Please enter a valid number greater than 0.");
-    return;
-  }
-
-  const curHpEl = document.getElementById("curHp");
-  const maxHp = parseInt(document.getElementById("maxHp")?.value, 10) || 10;
-  const tempHpEl = document.getElementById("tempHp");
-
-  let curHp = parseInt(curHpEl?.value, 10) || 0;
-  let tempHp = parseInt(tempHpEl?.value, 10) || 0;
-
-  if (action === "damage") {
-    let damageLeft = amt;
-    if (tempHp > 0) {
-      if (tempHp >= damageLeft) {
-        tempHp -= damageLeft;
-        damageLeft = 0;
-      } else {
-        damageLeft -= tempHp;
-        tempHp = 0;
-      }
-    }
-    curHp = Math.max(0, curHp - damageLeft);
-    if (tempHpEl) tempHpEl.value = tempHp;
-    if (curHpEl) curHpEl.value = curHp;
-    showStatus(`Took ${amt} damage!`);
-  } else if (action === "heal") {
-    curHp = Math.min(maxHp, curHp + amt);
-    if (curHpEl) curHpEl.value = curHp;
-    showStatus(`Healed for ${amt} HP!`);
-  } else if (action === "temp") {
-    tempHp = Math.max(tempHp, amt);
-    if (tempHpEl) tempHpEl.value = tempHp;
-    showStatus(`Gained ${amt} Temp HP!`);
-  }
-
-  amountInput.value = "";
-  closeModal("hpModal");
-  saveSheet(false);
+function closeAllModals() {
+  document.querySelectorAll(".modal-backdrop.open").forEach((m) => m.classList.remove("open"));
 }
 
 function renderCharList() {
@@ -1376,250 +916,6 @@ function renderRaceDropdown(filter = "") {
   dropdown.innerHTML = html || `<div class="dropdown-item" style="color:#64748b; cursor:default;">No races match</div>`;
 }
 
-async function fetchAPI(url) {
-  if (apiCache[url]) return apiCache[url];
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (!res.ok) return null;
-    const data = await res.json();
-    apiCache[url] = data;
-    return data;
-  } catch (err) {
-    return null;
-  }
-}
-
-function getSpellLevelTag(s) {
-  if (s.levelTag) return s.levelTag;
-  let lvl = s.level;
-  if (lvl === undefined) {
-    const key = (s.index || s.name || "").toLowerCase().replace(/[^a-z0-9]/g, '-');
-    lvl = SRD_SPELL_LEVELS[key];
-  }
-  if (lvl === 0) return "Cantrip";
-  if (lvl !== undefined && lvl !== null) return `Level ${lvl}`;
-  return "Spell";
-}
-
-async function loadAllSpells() {
-  if (allSpellsCache.length > 0) return allSpellsCache;
-  const res = await fetchAPI("https://www.dnd5eapi.co/api/spells");
-  if (res && res.results && res.results.length > 0) {
-    const combined = [...BUILTIN_SPELLS];
-    res.results.forEach((s) => {
-      if (!combined.some((b) => b.name.toLowerCase() === s.name.toLowerCase())) {
-        combined.push({
-          name: s.name,
-          url: s.url,
-          index: s.index,
-          level: s.level,
-          levelTag: getSpellLevelTag(s)
-        });
-      }
-    });
-    allSpellsCache = combined;
-  } else {
-    allSpellsCache = [...BUILTIN_SPELLS];
-  }
-  return allSpellsCache;
-}
-
-async function enrichSpellList(items) {
-  const topSlice = items.slice(0, 25);
-  let updated = false;
-  await Promise.all(topSlice.map(async (s) => {
-    if (!s.schoolTag && s.url) {
-      const data = await fetchAPI("https://www.dnd5eapi.co" + s.url);
-      if (data) {
-        s.levelTag = data.level === 0 ? "Cantrip" : `Level ${data.level}`;
-        s.schoolTag = data.school?.name || "";
-        s.classesTag = (data.classes || []).map((c) => c.name).join(", ");
-        s.casting_time = data.casting_time || "1 Action";
-        s.range = data.range || "30 ft";
-        s.duration = data.duration || "Instantaneous";
-        s.desc = Array.isArray(data.desc) ? data.desc.join("\n\n") : (data.desc || "");
-        updated = true;
-      }
-    }
-  }));
-  return updated;
-}
-
-async function loadAllTraits() {
-  if (allTraitsCache.length > 0) return allTraitsCache;
-  const combined = [...BUILTIN_TRAITS];
-  const [f, t] = await Promise.all([
-    fetchAPI("https://www.dnd5eapi.co/api/features"),
-    fetchAPI("https://www.dnd5eapi.co/api/traits")
-  ]);
-
-  if (f && f.results) {
-    f.results.forEach((item) => {
-      if (!combined.some((b) => b.name.toLowerCase() === item.name.toLowerCase())) {
-        combined.push({ name: item.name, url: item.url, type: "Class Feature" });
-      }
-    });
-  }
-  if (t && t.results) {
-    t.results.forEach((item) => {
-      if (!combined.some((b) => b.name.toLowerCase() === item.name.toLowerCase())) {
-        combined.push({ name: item.name, url: item.url, type: "Racial Trait" });
-      }
-    });
-  }
-  allTraitsCache = combined;
-  syncClassAndRaceFeatureTags();
-  return allTraitsCache;
-}
-
-async function syncClassAndRaceFeatureTags() {
-  const classes = ["barbarian", "bard", "cleric", "druid", "fighter", "monk", "paladin", "ranger", "rogue", "sorcerer", "warlock", "wizard"];
-  const races = ["dragonborn", "dwarf", "elf", "gnome", "half-elf", "half-orc", "halfling", "human", "tiefling"];
-
-  const classFetches = classes.map((c) => fetchAPI(`https://www.dnd5eapi.co/api/classes/${c}/features`));
-  const raceFetches = races.map((r) => fetchAPI(`https://www.dnd5eapi.co/api/races/${r}/traits`));
-
-  const [classResults, raceResults] = await Promise.all([
-    Promise.all(classFetches),
-    Promise.all(raceFetches)
-  ]);
-
-  classResults.forEach((res, idx) => {
-    if (res && res.results) {
-      const className = classes[idx].charAt(0).toUpperCase() + classes[idx].slice(1);
-      res.results.forEach((feat) => {
-        const match = allTraitsCache.find((t) => t.name.toLowerCase() === feat.name.toLowerCase());
-        if (match) {
-          if (!match.classes) match.classes = [];
-          if (!match.classes.includes(className)) match.classes.push(className);
-        }
-      });
-    }
-  });
-
-  raceResults.forEach((res, idx) => {
-    if (res && res.results) {
-      const raceName = races[idx].split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-');
-      res.results.forEach((trait) => {
-        const match = allTraitsCache.find((t) => t.name.toLowerCase() === trait.name.toLowerCase());
-        if (match) {
-          if (!match.races) match.races = [];
-          if (!match.races.includes(raceName)) match.races.push(raceName);
-        }
-      });
-    }
-  });
-
-  const traitModal = document.getElementById("traitModal");
-  if (traitModal && traitModal.classList.contains("open")) {
-    const query = document.getElementById("traitSearchInput")?.value.toLowerCase().trim() || "";
-    const filtered = allTraitsCache.filter((t) => {
-      const matchName = (t.name || "").toLowerCase().includes(query);
-      const matchType = (t.type || "").toLowerCase().includes(query);
-      const matchClass = (t.classes || []).some(c => c.toLowerCase().includes(query));
-      const matchRace = (t.races || []).some(r => r.toLowerCase().includes(query));
-      return matchName || matchType || matchClass || matchRace;
-    });
-    renderModalTraits(filtered);
-  }
-}
-
-function renderModalSpells(list) {
-  const container = document.getElementById("spellApiList");
-  if (!container) return;
-
-  if (!list || list.length === 0) {
-    container.innerHTML = `<p class="loading-text" style="color: #64748b; font-style: italic;">No matching spells found.</p>`;
-    return;
-  }
-
-  container.innerHTML = list.slice(0, 40).map((s) => {
-    const levelStr = getSpellLevelTag(s);
-    const isCantrip = levelStr.toLowerCase().includes("cantrip");
-    const lvlClass = isCantrip ? "tag-cantrip" : "tag-level";
-
-    let tagsHtml = `<span class="tag-pill ${lvlClass}">${escapeHtml(levelStr)}</span>`;
-
-    if (s.schoolTag) {
-      tagsHtml += `<span class="tag-pill ${getSchoolCssClass(s.schoolTag)}">${escapeHtml(s.schoolTag)}</span>`;
-    }
-
-    if (s.classesTag) {
-      const cList = s.classesTag.split(",").map(c => c.trim()).filter(Boolean);
-      cList.forEach((cls) => {
-        const isRace = ["elf", "dwarf", "tiefling", "dragonborn", "halfling", "half-orc", "gnome", "half-elf", "human", "drow", "genasi", "aasimar", "triton"].some(r => cls.toLowerCase().includes(r));
-        const pillClass = isRace ? getRaceCssClass(cls) : getClassCssClass(cls);
-        tagsHtml += `<span class="tag-pill ${pillClass}">${escapeHtml(cls)}</span>`;
-      });
-    }
-
-    return `
-      <div class="spell-option-item spell-pick-row" data-url="${s.url || ''}" data-name="${escapeHtml(s.name)}">
-        <div class="spell-option-details">
-          <div class="spell-option-title">${escapeHtml(s.name)}</div>
-          <div class="spell-meta-tags">${tagsHtml}</div>
-        </div>
-        <button type="button" class="spell-add-badge">+ Add</button>
-      </div>
-    `;
-  }).join("");
-}
-
-function renderModalTraits(list) {
-  const container = document.getElementById("traitApiList");
-  if (!container) return;
-
-  if (!list || list.length === 0) {
-    container.innerHTML = `<p class="loading-text" style="color: #64748b; font-style: italic;">No matching abilities found.</p>`;
-    return;
-  }
-
-  container.innerHTML = list.slice(0, 40).map((t) => {
-    let tagsHtml = "";
-    const classes = Array.isArray(t.classes) ? t.classes : (t.class ? [t.class] : []);
-    const races = Array.isArray(t.races) ? t.races : (t.race ? [t.race] : []);
-
-    classes.forEach((c) => {
-      tagsHtml += `<span class="tag-pill ${getClassCssClass(c)}">${escapeHtml(c)}</span>`;
-    });
-    races.forEach((r) => {
-      tagsHtml += `<span class="tag-pill ${getRaceCssClass(r)}">${escapeHtml(r)}</span>`;
-    });
-
-    if (!tagsHtml) {
-      tagsHtml = `<span class="tag-pill race-generic">${escapeHtml(t.type || 'Feature')}</span>`;
-    }
-
-    return `
-      <div class="spell-option-item trait-pick-row" data-url="${t.url || ''}" data-name="${escapeHtml(t.name)}" data-type="${escapeHtml(t.type || 'Feature')}">
-        <div class="spell-option-details">
-          <div class="spell-option-title">${escapeHtml(t.name)}</div>
-          <div class="spell-meta-tags">${tagsHtml}</div>
-        </div>
-        <button type="button" class="spell-add-badge">+ Add</button>
-      </div>
-    `;
-  }).join("");
-}
-
-function closeModal(modalId) {
-  document.getElementById(modalId)?.classList.remove("open");
-}
-
-function closeAllModals() {
-  document.querySelectorAll(".modal-backdrop.open").forEach((m) => m.classList.remove("open"));
-}
-
-function switchMainTab(targetId) {
-  document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
-  document.querySelectorAll(".tab-page").forEach((p) => p.classList.remove("active"));
-  document.querySelector(`.main-tab[data-target="${targetId}"]`)?.classList.add("active");
-  document.getElementById(targetId)?.classList.add("active");
-}
-
 function setAuthError(message) {
   const el = document.getElementById("authErrorMsg");
   if (el) el.textContent = message || "";
@@ -1668,28 +964,1065 @@ if (auth) {
   });
 }
 
+/* ==========================================================================
+   API FETCH CACHE & COMPENDIUM LOADERS
+   ========================================================================== */
+
+async function fetchAPI(url) {
+  if (apiCache[url]) return apiCache[url];
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    apiCache[url] = data;
+    return data;
+  } catch (err) {
+    console.warn("API fetch failed:", url, err);
+    return null;
+  }
+}
+
+async function loadAllSpells() {
+  allSpellsCache = [...BUILTIN_SPELLS];
+  try {
+    const data = await fetchAPI("https://www.dnd5eapi.co/api/spells");
+    if (data && Array.isArray(data.results)) {
+      const existing = new Set(allSpellsCache.map(s => s.name.toLowerCase()));
+      data.results.forEach((s) => {
+        if (!existing.has(s.name.toLowerCase())) {
+          const lvl = SRD_SPELL_LEVELS[s.index] !== undefined ? SRD_SPELL_LEVELS[s.index] : 1;
+          allSpellsCache.push({
+            name: s.name,
+            levelTag: lvl === 0 ? "Cantrip" : `Level ${lvl}`,
+            type: lvl === 0 ? "Cantrip" : `Level ${lvl}`,
+            url: s.url,
+            index: s.index
+          });
+        }
+      });
+    }
+  } catch (err) {
+    console.warn("Spells API offline; using built-ins only.", err);
+  }
+}
+
+function filterAndRenderSpells(query = "") {
+  const container = document.getElementById("spellApiList");
+  if (!container) return;
+
+  const q = query.toLowerCase().trim();
+  const filtered = allSpellsCache.filter((s) => {
+    return !q ||
+      s.name.toLowerCase().includes(q) ||
+      (s.levelTag && s.levelTag.toLowerCase().includes(q)) ||
+      (s.schoolTag && s.schoolTag.toLowerCase().includes(q)) ||
+      (s.classesTag && s.classesTag.toLowerCase().includes(q));
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<p class="loading-text">No spells found matching "${escapeHtml(query)}".</p>`;
+    return;
+  }
+
+  container.innerHTML = filtered.slice(0, 100).map((spell) => {
+    const isCantrip = (spell.levelTag || "").toLowerCase().includes("cantrip");
+    return `
+      <div class="spell-option-item spell-pick-row" data-name="${escapeHtml(spell.name)}" data-url="${escapeHtml(spell.url || "")}">
+        <div class="spell-option-details">
+          <span class="spell-option-title">${escapeHtml(spell.name)}</span>
+          <div class="spell-meta-tags">
+            <span class="tag-pill ${isCantrip ? 'tag-cantrip' : 'tag-level'}">${escapeHtml(spell.levelTag || 'Spell')}</span>
+            ${spell.schoolTag ? `<span class="tag-pill ${getSchoolCssClass(spell.schoolTag)}">${escapeHtml(spell.schoolTag)}</span>` : ''}
+            ${spell.classesTag ? `<span class="tag-pill ${getClassCssClass(spell.classesTag)}">${escapeHtml(spell.classesTag)}</span>` : ''}
+          </div>
+        </div>
+        <button type="button" class="spell-add-badge">+ Add</button>
+      </div>
+    `;
+  }).join("");
+}
+
+async function loadAllTraits() {
+  allTraitsCache = [...BUILTIN_TRAITS];
+  try {
+    const data = await fetchAPI("https://www.dnd5eapi.co/api/features");
+    if (data && Array.isArray(data.results)) {
+      const existing = new Set(allTraitsCache.map(t => t.name.toLowerCase()));
+      data.results.forEach((f) => {
+        if (!existing.has(f.name.toLowerCase())) {
+          allTraitsCache.push({
+            name: f.name,
+            type: "Class Feature",
+            url: f.url,
+            index: f.index
+          });
+        }
+      });
+    }
+  } catch (err) {
+    console.warn("Features API offline; using built-ins only.", err);
+  }
+}
+
+function filterAndRenderTraits(query = "") {
+  const container = document.getElementById("traitApiList");
+  if (!container) return;
+
+  const q = query.toLowerCase().trim();
+  const filtered = allTraitsCache.filter((t) => {
+    return !q ||
+      t.name.toLowerCase().includes(q) ||
+      (t.type && t.type.toLowerCase().includes(q)) ||
+      (t.classes && t.classes.some(c => c.toLowerCase().includes(q))) ||
+      (t.races && t.races.some(r => r.toLowerCase().includes(q)));
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<p class="loading-text">No features or traits found matching "${escapeHtml(query)}".</p>`;
+    return;
+  }
+
+  container.innerHTML = filtered.slice(0, 100).map((trait) => {
+    const classTag = trait.classes ? trait.classes.join(", ") : (trait.races ? trait.races.join(", ") : "");
+    return `
+      <div class="spell-option-item trait-pick-row" data-name="${escapeHtml(trait.name)}" data-url="${escapeHtml(trait.url || "")}" data-type="${escapeHtml(trait.type || 'Feature')}">
+        <div class="spell-option-details">
+          <span class="spell-option-title">${escapeHtml(trait.name)}</span>
+          <div class="spell-meta-tags">
+            <span class="tag-pill tag-cantrip">${escapeHtml(trait.type || 'Feature')}</span>
+            ${classTag ? `<span class="tag-pill ${getClassCssClass(classTag)}">${escapeHtml(classTag)}</span>` : ''}
+          </div>
+        </div>
+        <button type="button" class="spell-add-badge">+ Add</button>
+      </div>
+    `;
+  }).join("");
+}
+
+/* ==========================================================================
+   PARTY REALM & DM DASHBOARD (REAL-TIME SYNC)
+   ========================================================================== */
+
+function updatePartyStatusUI() {
+  const statusBox = document.getElementById("partyStatusBox");
+  const statusText = document.getElementById("partyStatusText");
+  const roomInput = document.getElementById("campaignRoomInput");
+  const joinBtn = document.getElementById("joinCampaignBtn");
+  const leaveBtn = document.getElementById("leaveCampaignBtn");
+  const playerSection = document.getElementById("playerPartySection");
+
+  const dot = statusBox?.querySelector(".status-dot");
+
+  if (connectedCampaignRoom) {
+    if (dot) { dot.classList.remove("disconnected"); dot.classList.add("connected"); }
+    if (statusText) statusText.textContent = `Connected to room: ${connectedCampaignRoom}`;
+    if (roomInput) roomInput.value = connectedCampaignRoom;
+    if (joinBtn) joinBtn.style.display = "none";
+    if (leaveBtn) leaveBtn.style.display = "inline-flex";
+    if (playerSection) playerSection.style.display = "block";
+    startPlayerPartyListener();
+  } else {
+    if (dot) { dot.classList.remove("connected"); dot.classList.add("disconnected"); }
+    if (statusText) statusText.textContent = "Not connected to any campaign room.";
+    if (joinBtn) joinBtn.style.display = "inline-flex";
+    if (leaveBtn) leaveBtn.style.display = "none";
+    if (playerSection) playerSection.style.display = "none";
+    if (playerPartyListUnsubscribe) {
+      playerPartyListUnsubscribe();
+      playerPartyListUnsubscribe = null;
+    }
+  }
+
+  const dmCodeText = document.getElementById("dmActiveRoomCode");
+  const copyBtn = document.getElementById("copyRoomCodeBtn");
+  const closeBtn = document.getElementById("closeCampaignBtn");
+
+  if (activeDMRoomCode) {
+    if (dmCodeText) dmCodeText.textContent = activeDMRoomCode;
+    if (copyBtn) copyBtn.style.display = "inline-flex";
+    if (closeBtn) closeBtn.style.display = "inline-flex";
+  } else {
+    if (dmCodeText) dmCodeText.textContent = "NONE";
+    if (copyBtn) copyBtn.style.display = "none";
+    if (closeBtn) closeBtn.style.display = "none";
+  }
+}
+
+async function joinCampaignRoom(roomCode) {
+  if (!db) {
+    alert("Firebase database connection is unavailable.");
+    return;
+  }
+  const cleanCode = roomCode.trim().toUpperCase();
+  if (!cleanCode) return;
+
+  await ensureAuthenticated();
+  connectedCampaignRoom = cleanCode;
+  localStorage.setItem(CAMPAIGN_ROOM_KEY, connectedCampaignRoom);
+  updatePartyStatusUI();
+
+  const roster = getRoster();
+  if (roster[activeCharId]) {
+    await syncToLiveCampaign(roster[activeCharId]);
+  }
+  showStatus(`Joined Room ${cleanCode}!`);
+}
+
+async function leaveCampaignRoom() {
+  if (db && connectedCampaignRoom && activeCharId) {
+    try {
+      await db.collection("campaigns").doc(connectedCampaignRoom).collection("members").doc(activeCharId).delete();
+    } catch (e) {
+      console.warn("Could not remove character doc:", e);
+    }
+  }
+  if (playerPartyListUnsubscribe) {
+    playerPartyListUnsubscribe();
+    playerPartyListUnsubscribe = null;
+  }
+  connectedCampaignRoom = "";
+  localStorage.removeItem(CAMPAIGN_ROOM_KEY);
+  updatePartyStatusUI();
+  showStatus("Left Campaign Room");
+}
+
+function startPlayerPartyListener() {
+  if (!db || !connectedCampaignRoom) return;
+  if (playerPartyListUnsubscribe) playerPartyListUnsubscribe();
+
+  const grid = document.getElementById("playerPartyGrid");
+  const countEl = document.getElementById("playerMemberCount");
+
+  playerPartyListUnsubscribe = db.collection("campaigns").doc(connectedCampaignRoom).collection("members")
+    .onSnapshot((snapshot) => {
+      const members = [];
+      snapshot.forEach(doc => members.push(doc.data()));
+      if (countEl) countEl.textContent = `${members.length} Active`;
+
+      if (!grid) return;
+      if (members.length === 0) {
+        grid.innerHTML = `<p class="dm-empty-msg">No adventurers in this party yet.</p>`;
+        return;
+      }
+
+      grid.innerHTML = members.map((m) => {
+        const hp = m.hp || { cur: 10, max: 10, temp: 0 };
+        const pct = Math.min(100, Math.max(0, Math.round((hp.cur / (hp.max || 1)) * 100)));
+        const conds = (m.conditions || []).join(", ") || "Normal";
+        const isDead = hp.cur <= 0;
+
+        return `
+          <div class="player-party-card ${isDead ? 'unconscious' : ''}">
+            <div class="dm-card-header">
+              ${m.avatar ? `<img src="${m.avatar}" class="dm-player-avatar" alt="Avatar" />` : `<div class="dm-avatar-placeholder">&dagger;</div>`}
+              <div class="dm-player-info">
+                <span class="dm-player-name">${escapeHtml(m.name || 'Unnamed')}</span>
+                <span class="dm-player-sub">${escapeHtml(m.charClass || '')} (Lvl ${m.level || 1})</span>
+              </div>
+            </div>
+            <div class="dm-health-gauge">
+              <div class="dm-health-labels">
+                <span class="dm-hp-val">HP: ${hp.cur}/${hp.max} ${hp.temp > 0 ? `(+${hp.temp})` : ''}</span>
+                <span>${pct}%</span>
+              </div>
+              <div class="dm-health-track">
+                <div class="dm-health-fill" style="width: ${pct}%;"></div>
+              </div>
+            </div>
+            <div style="font-size: 0.72rem; color: #94a3b8;"><strong>Conditions:</strong> ${escapeHtml(conds)}</div>
+          </div>
+        `;
+      }).join("");
+    }, (err) => {
+      console.warn("Party listener error:", err);
+    });
+}
+
+function createNewCampaignRoom() {
+  const code = "REALM-" + Math.floor(1000 + Math.random() * 9000);
+  startDMLiveListener(code);
+}
+
+function startDMLiveListener(roomCode) {
+  if (!db) {
+    alert("Firebase database connection is unavailable.");
+    return;
+  }
+  if (dmListenerUnsubscribe) dmListenerUnsubscribe();
+
+  activeDMRoomCode = roomCode.toUpperCase();
+  updatePartyStatusUI();
+
+  const grid = document.getElementById("dmPartyGrid");
+  const countEl = document.getElementById("dmMemberCount");
+
+  dmListenerUnsubscribe = db.collection("campaigns").doc(activeDMRoomCode).collection("members")
+    .onSnapshot((snapshot) => {
+      cachedRoomMembers = [];
+      snapshot.forEach(doc => cachedRoomMembers.push(doc.data()));
+      if (countEl) countEl.textContent = `${cachedRoomMembers.length} Active`;
+
+      if (!grid) return;
+      if (cachedRoomMembers.length === 0) {
+        grid.innerHTML = `<p class="dm-empty-msg">Waiting for adventurers to join room ${activeDMRoomCode}...</p>`;
+        return;
+      }
+
+      grid.innerHTML = cachedRoomMembers.map((m) => {
+        const hp = m.hp || { cur: 10, max: 10, temp: 0 };
+        const pct = Math.min(100, Math.max(0, Math.round((hp.cur / (hp.max || 1)) * 100)));
+        const isDead = hp.cur <= 0;
+
+        return `
+          <div class="dm-player-card ${isDead ? 'unconscious' : ''}" data-member-id="${escapeHtml(m.id)}">
+            <div class="dm-card-header">
+              ${m.avatar ? `<img src="${m.avatar}" class="dm-player-avatar" alt="Avatar" />` : `<div class="dm-avatar-placeholder">&dagger;</div>`}
+              <div class="dm-player-info">
+                <span class="dm-player-name">${escapeHtml(m.name || 'Unnamed')}</span>
+                <span class="dm-player-sub">${escapeHtml(m.charRace || '')} ${escapeHtml(m.charClass || '')} (Lvl ${m.level || 1})</span>
+              </div>
+            </div>
+            <div class="dm-health-gauge">
+              <div class="dm-health-labels">
+                <span class="dm-hp-val">HP: ${hp.cur} / ${hp.max}</span>
+                ${hp.temp > 0 ? `<span class="dm-temp-val">+${hp.temp} Temp</span>` : ''}
+              </div>
+              <div class="dm-health-track">
+                <div class="dm-health-fill" style="width: ${pct}%;"></div>
+              </div>
+            </div>
+            <div class="dm-stats-strip">
+              <span class="dm-stat-item">AC: <strong>${m.ac || 10}</strong></span>
+              <span class="dm-stat-item">PP: <strong>${m.passivePerception || 10}</strong></span>
+              <span class="dm-stat-item">Speed: <strong>${m.speed || 30}ft</strong></span>
+            </div>
+            <div class="dm-conditions-list">
+              ${(m.conditions || []).map(c => `<span class="dm-cond-badge">${escapeHtml(c)}</span>`).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }, (err) => {
+      console.warn("DM listener error:", err);
+    });
+
+  showStatus(`DM Monitoring Room ${activeDMRoomCode}`);
+}
+
+async function closeDMCampaignRoom() {
+  if (dmListenerUnsubscribe) {
+    dmListenerUnsubscribe();
+    dmListenerUnsubscribe = null;
+  }
+  activeDMRoomCode = "";
+  cachedRoomMembers = [];
+  updatePartyStatusUI();
+  const grid = document.getElementById("dmPartyGrid");
+  if (grid) grid.innerHTML = `<p class="dm-empty-msg">No party active. Create or enter a room code to inspect your players live.</p>`;
+  showStatus("DM Session Closed");
+}
+
+function openInspectModal(memberId) {
+  const member = cachedRoomMembers.find(m => m.id === memberId);
+  if (!member) return;
+  currentInspectedMemberId = memberId;
+
+  const content = document.getElementById("dmInspectContent");
+  const title = document.getElementById("inspectCharTitle");
+  if (title) title.textContent = `Inspection: ${member.name || "Adventurer"}`;
+
+  const attrs = member.attributes || {};
+  const hp = member.hp || { cur: 10, max: 10, temp: 0 };
+
+  if (content) {
+    content.innerHTML = `
+      <div class="inspect-char-banner">
+        ${member.avatar ? `<div class="inspect-avatar-wrap"><img src="${member.avatar}" class="inspect-avatar-img" alt="Avatar" /></div>` : ''}
+        <div class="inspect-char-info">
+          <span class="inspect-char-name">${escapeHtml(member.name || "Unnamed")}</span>
+          <span class="inspect-char-meta-line">${escapeHtml(member.charRace || '')} ${escapeHtml(member.charClass || '')} &bull; Level ${member.level || 1} &bull; ${escapeHtml(member.charAlignment || '')}</span>
+        </div>
+      </div>
+
+      <div class="inspect-vitals-ribbon">
+        <div class="inspect-stat-card"><span class="inspect-stat-card-label">Hit Points</span><span class="inspect-stat-card-val">${hp.cur}/${hp.max} ${hp.temp > 0 ? `(+${hp.temp})` : ''}</span></div>
+        <div class="inspect-stat-card"><span class="inspect-stat-card-label">Armor Class</span><span class="inspect-stat-card-val">${member.ac || 10}</span></div>
+        <div class="inspect-stat-card"><span class="inspect-stat-card-label">Passive Perception</span><span class="inspect-stat-card-val">${member.passivePerception || 10}</span></div>
+        <div class="inspect-stat-card"><span class="inspect-stat-card-label">Passive Insight</span><span class="inspect-stat-card-val">${member.passiveInsight || 10}</span></div>
+        <div class="inspect-stat-card"><span class="inspect-stat-card-label">Speed</span><span class="inspect-stat-card-val">${member.speed || 30} ft</span></div>
+      </div>
+
+      <div class="inspect-section">
+        <h4 class="inspect-section-title">Ability Scores &amp; Saves</h4>
+        <div class="inspect-ability-grid">
+          ${["str", "dex", "con", "int", "wis", "cha"].map((s) => {
+            const a = attrs[s] || { score: 10, mod: 0, save: 0, isSaveProf: false };
+            return `
+              <div class="inspect-ability-cell">
+                <span class="inspect-attr-tag">${s.toUpperCase()}</span>
+                <span class="inspect-attr-mod">${a.mod >= 0 ? `+${a.mod}` : a.mod}</span>
+                <span class="inspect-attr-score">(${a.score})</span>
+                <span class="inspect-attr-save">Save: ${a.save >= 0 ? `+${a.save}` : a.save}</span>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+
+      <div class="inspect-section">
+        <h4 class="inspect-section-title">Weapons &amp; Attacks</h4>
+        <div class="inspect-weapons-list">
+          ${(member.weapons || []).filter(w => w.name).map(w => `
+            <div class="inspect-weapon-row">
+              <span class="inspect-wpn-name">${escapeHtml(w.name)}</span>
+              <span class="inspect-wpn-type">${escapeHtml(w.atk || '-')}</span>
+              <span class="inspect-wpn-dmg">${escapeHtml(w.dmg || '-')}</span>
+              <span class="inspect-wpn-notes">${escapeHtml(w.notes || '')}</span>
+            </div>
+          `).join("") || '<p class="loading-text">No weapons logged.</p>'}
+        </div>
+      </div>
+
+      <div class="inspect-section">
+        <h4 class="inspect-section-title">Abilities &amp; Traits</h4>
+        <div class="inspect-grid-blocks">
+          ${(member.traits || []).map(t => `
+            <div class="inspect-mini-card">
+              <span class="inspect-mini-title">${escapeHtml(t.name)}</span>
+              <span class="inspect-mini-tag">${escapeHtml(t.type || 'Feature')}</span>
+              <p class="inspect-mini-desc">${escapeHtml(t.desc || '')}</p>
+            </div>
+          `).join("") || '<p class="loading-text">No features listed.</p>'}
+        </div>
+      </div>
+    `;
+  }
+
+  document.getElementById("dmInspectModal")?.classList.add("open");
+}
+
+async function kickPlayerFromRoom(memberId) {
+  if (!db || !activeDMRoomCode || !memberId) return;
+  if (!confirm("Are you sure you want to remove this player from the live party?")) return;
+  try {
+    await db.collection("campaigns").doc(activeDMRoomCode).collection("members").doc(memberId).delete();
+    closeModal("dmInspectModal");
+    currentInspectedMemberId = null;
+    showStatus("Player removed from session");
+  } catch (err) {
+    console.error("Kick error:", err);
+  }
+}
+
+/* ==========================================================================
+   HP CALCULATOR & REST ACTIONS
+   ========================================================================== */
+
+function applyHpAdjustment(type) {
+  const amtInput = document.getElementById("hpModalAmount");
+  const amt = parseInt(amtInput?.value, 10);
+  if (!amt || isNaN(amt) || amt <= 0) {
+    alert("Please enter a valid positive number.");
+    return;
+  }
+
+  const curHpEl = document.getElementById("curHp");
+  const maxHpEl = document.getElementById("maxHp");
+  const tempHpEl = document.getElementById("tempHp");
+
+  let curHp = parseInt(curHpEl?.value, 10) || 0;
+  const maxHp = parseInt(maxHpEl?.value, 10) || 10;
+  let tempHp = parseInt(tempHpEl?.value, 10) || 0;
+
+  if (type === "damage") {
+    if (tempHp > 0) {
+      if (amt <= tempHp) {
+        tempHp -= amt;
+      } else {
+        const remaining = amt - tempHp;
+        tempHp = 0;
+        curHp = Math.max(0, curHp - remaining);
+      }
+    } else {
+      curHp = Math.max(0, curHp - amt);
+    }
+    showStatus(`Took ${amt} damage!`);
+  } else if (type === "heal") {
+    curHp = Math.min(maxHp, curHp + amt);
+    showStatus(`Healed for ${amt} HP!`);
+  } else if (type === "temp") {
+    tempHp = Math.max(tempHp, amt);
+    showStatus(`Gained ${amt} Temp HP!`);
+  }
+
+  if (curHpEl) curHpEl.value = curHp;
+  if (tempHpEl) tempHpEl.value = tempHp;
+
+  saveSheet(false);
+  closeModal("hpModal");
+}
+
+function applyShortRest() {
+  const curHDEl = document.getElementById("hitDiceCur");
+  const maxHDEl = document.getElementById("hitDiceMax");
+  const curHpEl = document.getElementById("curHp");
+  const maxHpEl = document.getElementById("maxHp");
+
+  let curHD = parseInt(curHDEl?.value, 10) || 0;
+  let curHp = parseInt(curHpEl?.value, 10) || 0;
+  const maxHp = parseInt(maxHpEl?.value, 10) || 10;
+  const conMod = getModifier(parseInt(document.getElementById("attr_con")?.value, 10) || 10);
+
+  if (curHD <= 0) {
+    alert("You have no Hit Dice left to spend during this Short Rest.");
+    return;
+  }
+
+  const spend = prompt(`Short Rest: You have ${curHD} Hit Dice available.\nHow many would you like to spend to recover HP?`, "1");
+  const count = parseInt(spend, 10);
+  if (!count || isNaN(count) || count <= 0) return;
+
+  const toSpend = Math.min(curHD, count);
+  let totalHealed = 0;
+  for (let i = 0; i < toSpend; i++) {
+    const roll = Math.floor(Math.random() * 8) + 1; // default fallback d8
+    totalHealed += Math.max(1, roll + conMod);
+  }
+
+  curHD -= toSpend;
+  curHp = Math.min(maxHp, curHp + totalHealed);
+
+  if (curHDEl) curHDEl.value = curHD;
+  if (curHpEl) curHpEl.value = curHp;
+
+  // Restore class points (if applicable)
+  const classPtsMax = parseInt(document.getElementById("classPtsMax")?.value, 10) || 0;
+  const curClassPts = document.getElementById("classPtsCur");
+  if (curClassPts && classPtsMax > 0) curClassPts.value = classPtsMax;
+
+  saveSheet(false);
+  showStatus(`Short Rest: Spent ${toSpend} HD, restored ${totalHealed} HP!`);
+}
+
+function applyLongRest() {
+  if (!confirm("Take a Long Rest? This will restore all HP, reset spell slots, restore class points, and recover half your Hit Dice.")) return;
+
+  const maxHp = parseInt(document.getElementById("maxHp")?.value, 10) || 10;
+  const curHpEl = document.getElementById("curHp");
+  if (curHpEl) curHpEl.value = maxHp;
+
+  const tempHpEl = document.getElementById("tempHp");
+  if (tempHpEl) tempHpEl.value = 0;
+
+  // Restore Hit Dice (half max, min 1)
+  const maxHD = parseInt(document.getElementById("hitDiceMax")?.value, 10) || 1;
+  const curHDEl = document.getElementById("hitDiceCur");
+  if (curHDEl) {
+    let curHD = parseInt(curHDEl.value, 10) || 0;
+    curHD = Math.min(maxHD, curHD + Math.max(1, Math.floor(maxHD / 2)));
+    curHDEl.value = curHD;
+  }
+
+  // Restore Spell Slots
+  for (let lvl = 1; lvl <= 9; lvl++) {
+    const maxVal = parseInt(document.getElementById(`slot${lvl}_max`)?.value, 10) || 0;
+    const curEl = document.getElementById(`slot${lvl}_cur`);
+    if (curEl) curEl.value = maxVal;
+    updateSlotPips(lvl);
+  }
+
+  // Reset Death Saves
+  const dSucc = document.getElementById("deathSucc");
+  const dFail = document.getElementById("deathFail");
+  if (dSucc) dSucc.value = 0;
+  if (dFail) dFail.value = 0;
+
+  // Reset Class Points
+  const classPtsMax = parseInt(document.getElementById("classPtsMax")?.value, 10) || 0;
+  const curClassPts = document.getElementById("classPtsCur");
+  if (curClassPts) curClassPts.value = classPtsMax;
+
+  // Decrease Exhaustion by 1
+  const exEl = document.getElementById("exhaustionLevel");
+  if (exEl) {
+    const curEx = parseInt(exEl.value, 10) || 0;
+    if (curEx > 0) exEl.value = curEx - 1;
+  }
+
+  saveSheet(false);
+  showStatus("Long Rest Complete! Vitals & Slots Restored.");
+}
+
+/* ==========================================================================
+   MULTI-PLATFORM IMPORTERS
+   ========================================================================== */
+
+function importFromPconParchment(parsed) {
+  const data = Array.isArray(parsed) ? parsed[0] : (parsed.character || parsed.data || parsed);
+  if (!data) throw new Error("Unrecognized parchment format");
+
+  resetSheet();
+
+  const charName = data.name || data.charName || "Imported Character";
+  document.getElementById("charName").value = charName;
+  if (data.level || data.charLevel) document.getElementById("charLevel").value = data.level || data.charLevel;
+  if (data.race || data.charRace) document.getElementById("charRace").value = data.race || data.charRace;
+  if (data.class || data.charClass) document.getElementById("charClass").value = data.class || data.charClass;
+
+  const stats = ["str", "dex", "con", "int", "wis", "cha"];
+  stats.forEach((s) => {
+    const val = data.stats?.[s] || data.attributes?.[s]?.score || data[`attr_${s}`] || 10;
+    const el = document.getElementById(`attr_${s}`);
+    if (el) el.value = val;
+  });
+
+  if (data.hp || data.maxHp) {
+    const max = data.hp?.max || data.maxHp || 10;
+    const cur = data.hp?.cur || data.curHp || max;
+    document.getElementById("maxHp").value = max;
+    document.getElementById("curHp").value = cur;
+  }
+
+  if (Array.isArray(data.spells)) myCharacterSpells = data.spells;
+  if (Array.isArray(data.traits)) myCharacterTraits = data.traits;
+  if (Array.isArray(data.weapons)) myCharacterWeapons = data.weapons;
+
+  recalculateAll();
+  renderWeapons();
+  renderMySpells();
+  renderMyTraits();
+  saveSheet(false);
+  showStatus("Imported from PC on Parchment!");
+}
+
+function importFromDnDBeyond(parsed) {
+  const d = parsed.data || parsed;
+  if (!d) throw new Error("Invalid D&D Beyond format");
+
+  resetSheet();
+
+  document.getElementById("charName").value = d.name || "D&D Beyond Character";
+
+  // Race
+  if (d.race?.fullName) document.getElementById("charRace").value = d.race.fullName;
+
+  // Class & Level
+  if (Array.isArray(d.classes) && d.classes.length > 0) {
+    const primary = d.classes[0];
+    document.getElementById("charClass").value = primary.definition?.name || "";
+    document.getElementById("charLevel").value = primary.level || 1;
+  }
+
+  // Base Stats
+  const statMap = ["str", "dex", "con", "int", "wis", "cha"];
+  if (Array.isArray(d.stats)) {
+    d.stats.forEach((s, idx) => {
+      const statCode = statMap[idx];
+      const el = document.getElementById(`attr_${statCode}`);
+      if (el) el.value = s.value || 10;
+    });
+  }
+
+  // HP
+  const baseHp = d.baseHitPoints || 10;
+  const bonusHp = d.bonusHitPoints || 0;
+  const totalMax = baseHp + bonusHp;
+  document.getElementById("maxHp").value = totalMax;
+  document.getElementById("curHp").value = totalMax - (d.removedHitPoints || 0);
+
+  // Weapons & Actions
+  if (Array.isArray(d.inventory)) {
+    myCharacterWeapons = [];
+    d.inventory.forEach((item) => {
+      if (item.definition?.filterType === "Weapon" && item.equipped) {
+        myCharacterWeapons.push({
+          name: item.definition.name || "Weapon",
+          atk: item.definition.attackType === 1 ? "Melee" : "Ranged",
+          dmg: item.definition.damage?.diceString || "1d6",
+          notes: item.definition.snippet || ""
+        });
+      }
+    });
+  }
+
+  recalculateAll();
+  renderWeapons();
+  saveSheet(false);
+  showStatus("Imported from D&D Beyond!");
+}
+
+/* ==========================================================================
+   DIRECT MODAL OPEN HANDLERS
+   ========================================================================== */
+
+function openPartyModal() {
+  updatePartyStatusUI();
+  const modal = document.getElementById("partyModal");
+  if (modal) {
+    modal.classList.add("open");
+    modal.querySelectorAll(".party-mode-tabs .sub-tab").forEach((b, i) => {
+      b.classList.toggle("active", i === 0);
+    });
+    document.getElementById("party-join-view")?.classList.add("active");
+    document.getElementById("party-dm-view")?.classList.remove("active");
+  }
+}
+
+function openSpellModal() {
+  const input = document.getElementById("spellSearchInput");
+  if (input) input.value = "";
+  loadAllSpells();
+  filterAndRenderSpells("");
+  document.getElementById("spellModal")?.classList.add("open");
+  setTimeout(() => input?.focus(), 60);
+}
+
+function openTraitModal() {
+  const input = document.getElementById("traitSearchInput");
+  if (input) input.value = "";
+  loadAllTraits();
+  filterAndRenderTraits("");
+  document.getElementById("traitModal")?.classList.add("open");
+  setTimeout(() => input?.focus(), 60);
+}
+
 // Master Click Event Delegation
 document.addEventListener("click", async (e) => {
+  // 1. TOP MAIN WORKSPACE TABS ROUTING
+  const mainTab = e.target.closest(".main-tab");
+  if (mainTab && mainTab.dataset.target) {
+    e.preventDefault();
+    switchMainTab(mainTab.dataset.target);
+    return;
+  }
+
+  // 2. SUBTABS ROUTING (Journal, Party, Importers)
+  const subTab = e.target.closest(".sub-tab");
+  if (subTab && subTab.dataset.sub) {
+    e.preventDefault();
+    const parentContainer = subTab.closest(".subtab-controls");
+    if (parentContainer) {
+      parentContainer.querySelectorAll(".sub-tab").forEach((b) => b.classList.remove("active"));
+      subTab.classList.add("active");
+      const parentScope = parentContainer.parentElement;
+      parentScope.querySelectorAll(".subtab-page").forEach((p) => p.classList.remove("active"));
+      document.getElementById(subTab.dataset.sub)?.classList.add("active");
+    }
+    return;
+  }
+
+  // 3. FOOTER QUICKNAV
+  const footerBtn = e.target.closest(".footer-nav-btn");
+  if (footerBtn && footerBtn.dataset.tab) {
+    e.preventDefault();
+    switchMainTab(footerBtn.dataset.tab);
+    const map = {
+      attr: ".attributes-group",
+      skills: ".skills-attribute-matrix",
+      traits: "#tab-traits",
+      spells: "#tab-spells",
+      journal: "#tab-journal"
+    };
+    if (footerBtn.dataset.scroll && map[footerBtn.dataset.scroll]) {
+      document.querySelector(map[footerBtn.dataset.scroll])?.scrollIntoView({ behavior: "smooth" });
+    }
+    return;
+  }
+
   // Modal Close Buttons
   if (e.target.classList.contains("modal-close-btn") || e.target.closest(".modal-close-btn")) {
+    e.preventDefault();
     e.target.closest(".modal-backdrop")?.classList.remove("open");
     if (e.target.closest("#dmInspectModal")) currentInspectedMemberId = null;
     return;
   }
   if (e.target.classList.contains("modal-backdrop")) {
+    e.preventDefault();
     e.target.classList.remove("open");
     if (e.target.id === "dmInspectModal") currentInspectedMemberId = null;
     return;
   }
 
-  // Open Party / DM Modal
+  // TOP BAR COMMAND BUTTONS
   if (e.target.id === "partyModalBtn" || e.target.closest("#partyModalBtn")) {
-    updatePartyStatusUI();
-    document.getElementById("partyModal")?.classList.add("open");
+    e.preventDefault();
+    openPartyModal();
     return;
   }
 
-  // Connect to Party Room (Player Side)
+  if (e.target.id === "authModalBtn" || e.target.closest("#authModalBtn")) {
+    setAuthError("");
+    document.getElementById("authModal")?.classList.add("open");
+    return;
+  }
+
+  if (e.target.id === "saveBtn" || e.target.closest("#saveBtn")) {
+    saveSheet(false);
+    return;
+  }
+
+  if (e.target.id === "loadBtn" || e.target.closest("#loadBtn")) {
+    renderCharList();
+    document.getElementById("loadModal")?.classList.add("open");
+    return;
+  }
+
+  if (e.target.id === "newBtn" || e.target.closest("#newBtn")) {
+    if (confirm("Create a new blank character sheet?")) resetSheet();
+    return;
+  }
+
+  if (e.target.id === "backupBtn" || e.target.closest("#backupBtn")) {
+    const roster = getRoster();
+    const currentChar = roster[activeCharId] || {
+      id: activeCharId,
+      name: "Character",
+      avatar: myCharacterAvatar,
+      fields: getCurrentSheetData(),
+      spells: myCharacterSpells,
+      traits: myCharacterTraits,
+      weapons: myCharacterWeapons,
+      conditions: myActiveConditions,
+      blurredPills: myBlurredPills
+    };
+    const blob = new Blob([JSON.stringify({ character: currentChar, allRoster: roster }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(currentChar.name || "character").toLowerCase().replace(/\s+/g, "_")}-backup.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showStatus("Backup Downloaded");
+    return;
+  }
+
+  if (e.target.id === "importHubBtn" || e.target.closest("#importHubBtn")) {
+    const pTxt = document.getElementById("parchmentJsonInput");
+    const dTxt = document.getElementById("dndbeyondJsonInput");
+    if (pTxt) pTxt.value = "";
+    if (dTxt) dTxt.value = "";
+    document.getElementById("importHubModal")?.classList.add("open");
+    return;
+  }
+
+  if (e.target.id === "deleteBtn" || e.target.closest("#deleteBtn")) {
+    const roster = getRoster();
+    if (confirm(`Permanently delete "${roster[activeCharId]?.name || "this character"}"?`)) {
+      delete roster[activeCharId];
+      saveRoster(roster);
+      const remaining = Object.keys(roster);
+      if (remaining.length > 0) {
+        activeCharId = remaining[0];
+        localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+        loadSheet();
+      } else {
+        resetSheet();
+      }
+      renderCharList();
+    }
+    return;
+  }
+
+  if (e.target.id === "cancelImportHubBtn" || e.target.closest("#cancelImportHubBtn") || e.target.id === "cancelDnDBeyondBtn") {
+    closeModal("importHubModal");
+    return;
+  }
+
+  if (e.target.id === "parseParchmentBtn") {
+    const txt = document.getElementById("parchmentJsonInput")?.value.trim();
+    if (!txt) {
+      alert("Please paste the character JSON or select a file first.");
+      return;
+    }
+    try {
+      const parsed = JSON.parse(txt);
+      importFromPconParchment(parsed);
+      closeModal("importHubModal");
+    } catch (err) {
+      alert("Invalid JSON format. Please verify the copied text.");
+    }
+    return;
+  }
+
+  if (e.target.id === "parseDnDBeyondBtn") {
+    const txt = document.getElementById("dndbeyondJsonInput")?.value.trim();
+    if (!txt) {
+      alert("Please paste the D&D Beyond character JSON or select a file first.");
+      return;
+    }
+    try {
+      const parsed = JSON.parse(txt);
+      importFromDnDBeyond(parsed);
+      closeModal("importHubModal");
+    } catch (err) {
+      alert("Invalid D&D Beyond JSON format. Please verify the copied text.");
+    }
+    return;
+  }
+
+  if (e.target.id === "addSpellBtn" || e.target.closest("#addSpellBtn") || e.target.closest(".btn-add-spell")) {
+    e.preventDefault();
+    openSpellModal();
+    return;
+  }
+
+  if (e.target.id === "addTraitBtn" || e.target.closest("#addTraitBtn") || e.target.closest(".btn-add-trait")) {
+    e.preventDefault();
+    openTraitModal();
+    return;
+  }
+
+  if (e.target.id === "addCustomSpellBtn" || e.target.closest("#addCustomSpellBtn")) {
+    myCharacterSpells.push({
+      name: "New Spell",
+      type: "Cantrip",
+      casting_time: "1 Action",
+      range: "30 ft",
+      duration: "Instantaneous",
+      desc: ""
+    });
+    saveSheet(false);
+    renderMySpells();
+    closeModal("spellModal");
+    return;
+  }
+
+  if (e.target.id === "addCustomTraitBtn" || e.target.closest("#addCustomTraitBtn")) {
+    myCharacterTraits.push({
+      name: "New Ability",
+      type: "Feature",
+      desc: "",
+      isExpanded: true
+    });
+    saveSheet(false);
+    renderMyTraits();
+    closeModal("traitModal");
+    return;
+  }
+
+  // Pick Spell
+  const spellRow = e.target.closest(".spell-pick-row");
+  if (spellRow) {
+    const name = spellRow.dataset.name;
+    const url = spellRow.dataset.url;
+    let detail = allSpellsCache.find((s) => s.name.toLowerCase() === name.toLowerCase());
+
+    myCharacterSpells.push({
+      name: detail?.name || name,
+      type: detail?.type || detail?.levelTag || "Cantrip",
+      casting_time: detail?.casting_time || "1 Action",
+      range: detail?.range || "30 ft",
+      duration: detail?.duration || "Instantaneous",
+      desc: detail?.desc || ""
+    });
+
+    saveSheet(false);
+    renderMySpells();
+    closeModal("spellModal");
+    showStatus(`Added ${name}!`);
+
+    if (url && (!detail || !detail.desc)) {
+      fetchAPI("https://www.dnd5eapi.co" + url).then((fetched) => {
+        if (fetched && fetched.desc) {
+          const addedSpell = myCharacterSpells[myCharacterSpells.length - 1];
+          if (addedSpell && addedSpell.name.toLowerCase() === name.toLowerCase() && !addedSpell.desc) {
+            addedSpell.desc = Array.isArray(fetched.desc) ? fetched.desc.join("\n\n") : (fetched.desc || "");
+            saveSheet(true);
+            renderMySpells();
+          }
+        }
+      }).catch(() => {});
+    }
+    return;
+  }
+
+  // Pick Trait
+  const traitRow = e.target.closest(".trait-pick-row");
+  if (traitRow) {
+    const name = traitRow.dataset.name;
+    const url = traitRow.dataset.url;
+    let detail = allTraitsCache.find((t) => t.name.toLowerCase() === name.toLowerCase());
+
+    myCharacterTraits.push({
+      name: detail?.name || name,
+      type: detail?.type || traitRow.dataset.type || "Feature",
+      desc: detail?.desc || "",
+      isExpanded: false
+    });
+
+    saveSheet(false);
+    renderMyTraits();
+    closeModal("traitModal");
+    showStatus(`Added ${name}!`);
+
+    if (url && (!detail || !detail.desc)) {
+      fetchAPI("https://www.dnd5eapi.co" + url).then((fetched) => {
+        if (fetched && fetched.desc) {
+          const addedTrait = myCharacterTraits[myCharacterTraits.length - 1];
+          if (addedTrait && addedTrait.name.toLowerCase() === name.toLowerCase() && !addedTrait.desc) {
+            addedTrait.desc = Array.isArray(fetched.desc) ? fetched.desc.join("\n\n") : (fetched.desc || "");
+            saveSheet(true);
+            renderMyTraits();
+          }
+        }
+      }).catch(() => {});
+    }
+    return;
+  }
+
+  // Auth Buttons
+  if (e.target.id === "emailLoginBtn") {
+    if (!auth) return setAuthError("Firebase is not initialized.");
+    const email = document.getElementById("authEmail")?.value.trim();
+    const pass = document.getElementById("authPassword")?.value;
+    if (!email || !pass) return setAuthError("Please enter your email and password.");
+    try {
+      await auth.signInWithEmailAndPassword(email, pass);
+      showStatus("Logged In!");
+      document.getElementById("authModal")?.classList.remove("open");
+    } catch (err) {
+      setAuthError(err.message);
+    }
+    return;
+  }
+
+  if (e.target.id === "emailSignUpBtn") {
+    if (!auth) return setAuthError("Firebase is not initialized.");
+    const email = document.getElementById("authEmail")?.value.trim();
+    const pass = document.getElementById("authPassword")?.value;
+    if (!email || !pass) return setAuthError("Please enter an email and password.");
+    try {
+      await auth.createUserWithEmailAndPassword(email, pass);
+      showStatus("Account Created!");
+      document.getElementById("authModal")?.classList.remove("open");
+    } catch (err) {
+      setAuthError(err.message);
+    }
+    return;
+  }
+
+  if (e.target.id === "googleLoginBtn") {
+    if (!auth) return setAuthError("Firebase is not initialized.");
+    try {
+      await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+      showStatus("Logged In!");
+      document.getElementById("authModal")?.classList.remove("open");
+    } catch (err) {
+      setAuthError(err.message);
+    }
+    return;
+  }
+
+  if (e.target.id === "logoutBtn") {
+    if (!auth) return;
+    await auth.signOut();
+    currentUser = null;
+    showStatus("Signed Out");
+    document.getElementById("authModal")?.classList.remove("open");
+    return;
+  }
+
+  // Party Room Actions
   if (e.target.id === "joinCampaignBtn") {
     const input = document.getElementById("campaignRoomInput");
     if (input && input.value.trim()) {
@@ -1700,19 +2033,16 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Disconnect from Party Room (Player Side)
   if (e.target.id === "leaveCampaignBtn") {
     await leaveCampaignRoom();
     return;
   }
 
-  // Create Campaign Room (DM Side)
   if (e.target.id === "createCampaignBtn") {
     createNewCampaignRoom();
     return;
   }
 
-  // Open Specific Room (DM Side)
   if (e.target.id === "openDMRoomBtn") {
     const input = document.getElementById("dmRoomCodeInput");
     if (input && input.value.trim()) {
@@ -1723,7 +2053,6 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Copy Room Code (DM Side)
   if (e.target.id === "copyRoomCodeBtn") {
     const code = document.getElementById("dmActiveRoomCode")?.textContent;
     if (code && code !== "NONE") {
@@ -1732,13 +2061,11 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Close / Disband Campaign Room (DM Side)
   if (e.target.id === "closeCampaignBtn") {
     await closeDMCampaignRoom();
     return;
   }
 
-  // Click on a Player Card in DM view to inspect
   const dmPlayerCard = e.target.closest(".dm-player-card");
   if (dmPlayerCard) {
     const memberId = dmPlayerCard.dataset.memberId;
@@ -1746,7 +2073,6 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Kick Player from inside the Inspection Modal
   if (e.target.id === "inspectKickBtn") {
     if (currentInspectedMemberId) {
       await kickPlayerFromRoom(currentInspectedMemberId);
@@ -1754,13 +2080,13 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Avatar Click -> Trigger File Picker
+  // Avatar Click
   if (e.target.id === "avatarFrame" || e.target.closest("#avatarFrame")) {
     document.getElementById("avatarFileInput")?.click();
     return;
   }
 
-  // HP Quick Modal Open / Actions
+  // HP Calculator Actions
   if (
     e.target.id === "openHpModalBtn" ||
     e.target.closest("#openHpModalBtn") ||
@@ -1789,7 +2115,7 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Rest Buttons
+  // Rest Actions
   if (e.target.id === "shortRestBtn" || e.target.closest("#shortRestBtn")) {
     applyShortRest();
     return;
@@ -1799,7 +2125,7 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Interactive Spell Slot Pip click (Cast / Recover)
+  // Spell Slot Pip Click
   if (e.target.classList.contains("slot-pip")) {
     const lvl = parseInt(e.target.dataset.slotLvl, 10);
     const pipIdx = parseInt(e.target.dataset.pipIdx, 10);
@@ -1818,7 +2144,7 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Blur Toggle - Stops propagation and dismisses open dropdowns
+  // Blur Toggle
   const blurBtn = e.target.closest(".blur-toggle-btn");
   if (blurBtn) {
     e.preventDefault();
@@ -1838,12 +2164,11 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Close dropdowns if clicked outside
+  // Close dropdowns when clicking outside
   if (!e.target.closest(".dropdown-pill-wrapper")) {
     document.querySelectorAll(".dropdown-menu").forEach((d) => d.classList.remove("open"));
   }
 
-  // Dropdown item selection
   if (e.target.classList.contains("select-class-item")) {
     const classInput = document.getElementById("charClass");
     if (classInput) {
@@ -1864,7 +2189,6 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Conditions Chips
   if (e.target.classList.contains("cond-chip")) {
     const cond = e.target.dataset.cond;
     if (myActiveConditions.includes(cond)) {
@@ -1878,171 +2202,7 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Top nav action buttons
-  if (e.target.id === "saveBtn") {
-    saveSheet(false);
-    return;
-  }
-
-  if (e.target.id === "newBtn") {
-    if (confirm("Create a new blank character sheet?")) resetSheet();
-    return;
-  }
-
-  if (e.target.id === "loadBtn") {
-    renderCharList();
-    document.getElementById("loadModal")?.classList.add("open");
-    return;
-  }
-
-  // Auth Modals
-  if (e.target.id === "authModalBtn" || e.target.closest("#authModalBtn")) {
-    setAuthError("");
-    document.getElementById("authModal")?.classList.add("open");
-    return;
-  }
-
-  if (e.target.id === "closeAuthModal" || e.target.closest("#closeAuthModal")) {
-    document.getElementById("authModal")?.classList.remove("open");
-    return;
-  }
-
-  if (e.target.id === "emailLoginBtn") {
-    if (!auth) return setAuthError("Firebase is not initialized.");
-    try {
-      await auth.signInWithEmailAndPassword(
-        document.getElementById("authEmail")?.value.trim(),
-        document.getElementById("authPassword")?.value
-      );
-      showStatus("Logged In!");
-      document.getElementById("authModal")?.classList.remove("open");
-    } catch (err) {
-      setAuthError(err.message);
-    }
-    return;
-  }
-
-  if (e.target.id === "emailSignUpBtn") {
-    if (!auth) return setAuthError("Firebase is not initialized.");
-    try {
-      await auth.createUserWithEmailAndPassword(
-        document.getElementById("authEmail")?.value.trim(),
-        document.getElementById("authPassword")?.value
-      );
-      showStatus("Account Created!");
-      document.getElementById("authModal")?.classList.remove("open");
-    } catch (err) {
-      setAuthError(err.message);
-    }
-    return;
-  }
-
-  if (e.target.id === "googleLoginBtn") {
-    if (!auth) return setAuthError("Firebase is not initialized.");
-    try {
-      await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-      showStatus("Logged In!");
-      document.getElementById("authModal")?.classList.remove("open");
-    } catch (err) {
-      setAuthError(err.message);
-    }
-    return;
-  }
-
-  if (e.target.id === "logoutBtn") {
-    if (!auth) return;
-    await auth.signOut();
-    currentUser = null;
-    localStorage.removeItem(ROSTER_STORAGE_KEY);
-    localStorage.removeItem(ACTIVE_CHAR_ID_KEY);
-    activeCharId = "default";
-    resetSheet();
-    showStatus("Signed Out");
-    document.getElementById("authModal")?.classList.remove("open");
-    return;
-  }
-
-  if (e.target.id === "deleteBtn") {
-    const roster = getRoster();
-    if (confirm(`Permanently delete "${roster[activeCharId]?.name || "this character"}"?`)) {
-      delete roster[activeCharId];
-      saveRoster(roster);
-      const remaining = Object.keys(roster);
-      if (remaining.length > 0) {
-        activeCharId = remaining[0];
-        localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
-        loadSheet();
-      } else {
-        resetSheet();
-      }
-      renderCharList();
-    }
-    return;
-  }
-
-  if (e.target.id === "backupBtn") {
-    const roster = getRoster();
-    const currentChar = roster[activeCharId] || {
-      id: activeCharId,
-      name: "Character",
-      avatar: myCharacterAvatar,
-      fields: getCurrentSheetData(),
-      spells: myCharacterSpells,
-      traits: myCharacterTraits,
-      weapons: myCharacterWeapons,
-      conditions: myActiveConditions,
-      blurredPills: myBlurredPills
-    };
-    const blob = new Blob([JSON.stringify({ character: currentChar, allRoster: roster }, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(currentChar.name || "character").toLowerCase().replace(/\s+/g, "_")}-backup.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showStatus("Backup Downloaded");
-    return;
-  }
-
-  if (e.target.id === "helpLinkBtn") {
-    document.getElementById("helpModal")?.classList.add("open");
-    return;
-  }
-
-  // Main Tabs Routing
-  if (e.target.classList.contains("main-tab") || e.target.closest(".main-tab")) {
-    const tabBtn = e.target.closest(".main-tab");
-    switchMainTab(tabBtn.dataset.target);
-    return;
-  }
-
-  // Subtabs Routing
-  if (e.target.classList.contains("sub-tab")) {
-    const parentContainer = e.target.closest(".subtab-controls");
-    if (parentContainer) {
-      parentContainer.querySelectorAll(".sub-tab").forEach((b) => b.classList.remove("active"));
-      const parentBlock = parentContainer.parentElement;
-      parentBlock.querySelectorAll(".subtab-page").forEach((p) => p.classList.remove("active"));
-      e.target.classList.add("active");
-      document.getElementById(e.target.dataset.sub)?.classList.add("active");
-    }
-    return;
-  }
-
-  if (e.target.classList.contains("footer-nav-btn")) {
-    switchMainTab(e.target.dataset.tab);
-    const map = {
-      attr: ".attributes-group",
-      skills: ".skills-attribute-matrix",
-      traits: "#tab-traits",
-      spells: "#tab-spells",
-      journal: "#tab-journal"
-    };
-    document.querySelector(map[e.target.dataset.scroll])?.scrollIntoView({ behavior: "smooth" });
-    return;
-  }
-
-  // Dice rolls
+  // Dice Rolls
   if (e.target.classList.contains("dice-btn")) {
     const sides = parseInt(e.target.dataset.sides, 10);
     const roll = Math.floor(Math.random() * sides) + 1;
@@ -2074,7 +2234,6 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Add Weapon Button
   if (e.target.id === "addWeaponBtn" || e.target.closest("#addWeaponBtn") || e.target.closest(".btn-add-weapon")) {
     if (!Array.isArray(myCharacterWeapons)) myCharacterWeapons = [];
     myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
@@ -2084,130 +2243,6 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Open Spell Modal
-  if (e.target.id === "addSpellBtn" || e.target.closest("#addSpellBtn") || e.target.closest(".btn-add-spell")) {
-    document.getElementById("spellModal")?.classList.add("open");
-    const input = document.getElementById("spellSearchInput");
-    if (input) input.value = "";
-    const list = await loadAllSpells();
-    renderModalSpells(list);
-    enrichSpellList(list).then((changed) => {
-      if (changed && (!input || input.value === "")) {
-        renderModalSpells(allSpellsCache);
-      }
-    });
-    return;
-  }
-
-  // Custom Spell
-  if (e.target.id === "addCustomSpellBtn" || e.target.closest("#addCustomSpellBtn")) {
-    myCharacterSpells.push({
-      name: "New Spell",
-      type: "Cantrip",
-      casting_time: "1 Action",
-      range: "30 ft",
-      duration: "Instantaneous",
-      desc: ""
-    });
-    saveSheet(false);
-    renderMySpells();
-    closeModal("spellModal");
-    return;
-  }
-
-  // Open Trait Modal
-  if (e.target.id === "addTraitBtn" || e.target.closest("#addTraitBtn") || e.target.closest(".btn-add-trait")) {
-    document.getElementById("traitModal")?.classList.add("open");
-    const input = document.getElementById("traitSearchInput");
-    if (input) input.value = "";
-    loadAllTraits().then((list) => {
-      renderModalTraits(list);
-    });
-    return;
-  }
-
-  // Custom Trait
-  if (e.target.id === "addCustomTraitBtn" || e.target.closest("#addCustomTraitBtn")) {
-    myCharacterTraits.push({
-      name: "New Ability",
-      type: "Feature",
-      desc: "",
-      isExpanded: true
-    });
-    saveSheet(false);
-    renderMyTraits();
-    closeModal("traitModal");
-    return;
-  }
-
-  // Pick Spell from compendium
-  const spellRow = e.target.closest(".spell-pick-row");
-  if (spellRow) {
-    const name = spellRow.dataset.name;
-    const url = spellRow.dataset.url;
-    let detail = allSpellsCache.find((s) => s.name.toLowerCase() === name.toLowerCase());
-
-    if (url && (!detail || !detail.desc)) {
-      const fetched = await fetchAPI("https://www.dnd5eapi.co" + url);
-      if (fetched) {
-        detail = {
-          name: fetched.name,
-          type: fetched.level === 0 ? "Cantrip" : `Level ${fetched.level}`,
-          casting_time: fetched.casting_time || "1 Action",
-          range: fetched.range || "30 ft",
-          duration: fetched.duration || "Instantaneous",
-          desc: Array.isArray(fetched.desc) ? fetched.desc.join("\n\n") : (fetched.desc || "")
-        };
-      }
-    }
-
-    myCharacterSpells.push({
-      name: detail?.name || name,
-      type: detail?.type || getSpellLevelTag({ name }),
-      casting_time: detail?.casting_time || "1 Action",
-      range: detail?.range || "30 ft",
-      duration: detail?.duration || "Instantaneous",
-      desc: detail?.desc || ""
-    });
-
-    saveSheet(false);
-    renderMySpells();
-    closeModal("spellModal");
-    return;
-  }
-
-  // Pick Trait from compendium
-  const traitRow = e.target.closest(".trait-pick-row");
-  if (traitRow) {
-    const name = traitRow.dataset.name;
-    const url = traitRow.dataset.url;
-    let detail = allTraitsCache.find((t) => t.name.toLowerCase() === name.toLowerCase());
-
-    if (url && (!detail || !detail.desc)) {
-      const fetched = await fetchAPI("https://www.dnd5eapi.co" + url);
-      if (fetched) {
-        detail = {
-          name: fetched.name,
-          type: traitRow.dataset.type || "Feature",
-          desc: Array.isArray(fetched.desc) ? fetched.desc.join("\n\n") : (fetched.desc || "")
-        };
-      }
-    }
-
-    myCharacterTraits.push({
-      name: detail?.name || name,
-      type: detail?.type || "Feature",
-      desc: detail?.desc || "",
-      isExpanded: false
-    });
-
-    saveSheet(false);
-    renderMyTraits();
-    closeModal("traitModal");
-    return;
-  }
-
-  // Delete Weapon
   if (e.target.classList.contains("weapon-delete-btn")) {
     const idx = parseInt(e.target.dataset.index, 10);
     myCharacterWeapons.splice(idx, 1);
@@ -2219,7 +2254,6 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Delete Trait
   if (e.target.classList.contains("trait-card-delete")) {
     myCharacterTraits.splice(parseInt(e.target.dataset.index, 10), 1);
     saveSheet(false);
@@ -2227,20 +2261,18 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Expand / Collapse Trait
   if (e.target.classList.contains("trait-expand-btn") || e.target.closest(".trait-expand-btn")) {
     const btn = e.target.closest(".trait-expand-btn");
     const card = btn.closest(".trait-card");
     const idx = parseInt(card.dataset.index, 10);
     card.classList.toggle("expanded");
     const isExp = card.classList.contains("expanded");
-    btn.innerHTML = `${isExp ? 'Collapse' : 'Expand'} <span class="trait-expand-icon">▼</span>`;
+    btn.innerHTML = `${isExp ? 'Collapse' : 'Expand'} <span class="trait-expand-icon">&blacktriangledown;</span>`;
     if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp;
     saveSheet(true);
     return;
   }
 
-  // Delete Spell
   if (e.target.classList.contains("spell-card-delete")) {
     myCharacterSpells.splice(parseInt(e.target.dataset.index, 10), 1);
     saveSheet(false);
@@ -2248,11 +2280,10 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Delete Character from Saved Modal
   if (e.target.classList.contains("char-delete-btn")) {
     const row = e.target.closest(".char-item-row");
     const roster = getRoster();
-    if (confirm(`Delete "${roster[row.dataset.id]?.name || "character"}"?`)) {
+    if (confirm(`Permanently delete "${roster[row.dataset.id]?.name || "character"}"?`)) {
       delete roster[row.dataset.id];
       saveRoster(roster);
       if (activeCharId === row.dataset.id) {
@@ -2270,7 +2301,6 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  // Load Character from Saved Modal
   if (e.target.closest(".char-item-name") || e.target.classList.contains("char-select-btn")) {
     const row = e.target.closest(".char-item-row");
     activeCharId = row.dataset.id;
@@ -2280,14 +2310,35 @@ document.addEventListener("click", async (e) => {
     showStatus("Character Loaded");
     return;
   }
+
+  if (e.target.id === "helpLinkBtn") {
+    document.getElementById("helpModal")?.classList.add("open");
+    return;
+  }
 });
 
-// Theme Selector Listener
+// Explicit Button Click Attachments
+document.getElementById("partyModalBtn")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  openPartyModal();
+});
+document.getElementById("addSpellBtn")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  openSpellModal();
+});
+document.getElementById("addTraitBtn")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  openTraitModal();
+});
+
+// Input & Change Handlers
 document.getElementById("themeSelect")?.addEventListener("change", (e) => {
   applyTheme(e.target.value);
 });
 
-// Avatar File Picker Change Handler
 document.getElementById("avatarFileInput")?.addEventListener("change", (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
@@ -2302,7 +2353,6 @@ document.getElementById("avatarFileInput")?.addEventListener("change", (e) => {
   reader.readAsDataURL(file);
 });
 
-// Dropdown input listeners
 document.getElementById("charClass")?.addEventListener("focus", (e) => {
   renderClassDropdown(e.target.value);
   document.getElementById("classDropdown")?.classList.add("open");
@@ -2323,45 +2373,14 @@ document.getElementById("charRace")?.addEventListener("input", (e) => {
   document.getElementById("raceDropdown")?.classList.add("open");
 });
 
-// Search inputs
-let spellSearchTimeout = null;
 document.getElementById("spellSearchInput")?.addEventListener("input", (e) => {
-  const query = e.target.value.toLowerCase().trim();
-  clearTimeout(spellSearchTimeout);
-  spellSearchTimeout = setTimeout(() => {
-    const filtered = allSpellsCache.filter((s) => {
-      const matchName = (s.name || "").toLowerCase().includes(query);
-      const matchClass = (s.classesTag || "").toLowerCase().includes(query);
-      const matchSchool = (s.schoolTag || "").toLowerCase().includes(query);
-      const matchLevel = (s.levelTag || "").toLowerCase().includes(query);
-      return matchName || matchClass || matchSchool || matchLevel;
-    });
-    renderModalSpells(filtered);
-    enrichSpellList(filtered).then((changed) => {
-      if (changed && document.getElementById("spellSearchInput")?.value.toLowerCase().trim() === query) {
-        renderModalSpells(filtered);
-      }
-    });
-  }, 120);
+  filterAndRenderSpells(e.target.value);
 });
 
-let traitSearchTimeout = null;
 document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
-  const query = e.target.value.toLowerCase().trim();
-  clearTimeout(traitSearchTimeout);
-  traitSearchTimeout = setTimeout(() => {
-    const filtered = allTraitsCache.filter((t) => {
-      const matchName = (t.name || "").toLowerCase().includes(query);
-      const matchType = (t.type || "").toLowerCase().includes(query);
-      const matchClass = (t.classes || []).some(c => c.toLowerCase().includes(query));
-      const matchRace = (t.races || []).some(r => r.toLowerCase().includes(query));
-      return matchName || matchType || matchClass || matchRace;
-    });
-    renderModalTraits(filtered);
-  }, 120);
+  filterAndRenderTraits(e.target.value);
 });
 
-// Filter spells in spellbook
 document.getElementById("filterSpellbookInput")?.addEventListener("input", (e) => {
   const q = e.target.value.toLowerCase().trim();
   document.querySelectorAll(".spell-card").forEach((card) => {
@@ -2370,7 +2389,6 @@ document.getElementById("filterSpellbookInput")?.addEventListener("input", (e) =
   });
 });
 
-// Dynamic form inputs
 document.addEventListener("change", (e) => {
   if (e.target.type === "checkbox" && e.target.classList.contains("save-field")) {
     recalculateAll();
@@ -2434,7 +2452,6 @@ document.addEventListener("focusout", (e) => {
   }
 });
 
-// Escape key closes modals
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeAllModals();
@@ -2442,7 +2459,6 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// File Restore handler
 document.getElementById("restoreFile")?.addEventListener("change", (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
@@ -2470,6 +2486,40 @@ document.getElementById("restoreFile")?.addEventListener("change", (e) => {
       showStatus("Sheet Restored!");
     } catch (err) {
       alert("Invalid backup file.");
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById("parchmentFileInput")?.addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const parsed = JSON.parse(evt.target.result);
+      importFromPconParchment(parsed);
+      closeModal("importHubModal");
+    } catch (err) {
+      alert("Invalid PC on Parchment JSON file.");
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById("dndbeyondFileInput")?.addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const parsed = JSON.parse(evt.target.result);
+      importFromDnDBeyond(parsed);
+      closeModal("importHubModal");
+    } catch (err) {
+      alert("Invalid D&D Beyond JSON file.");
     }
   };
   reader.readAsText(file);
