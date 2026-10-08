@@ -1,14 +1,15 @@
 /* ==========================================================================
-   1. THEME DEFINITIONS & COLOR PALETTES
+   1. THEME DEFINITIONS & COLOR PALETTES (11 TOTAL THEMES)
    ========================================================================== */
 
-/* Theme 1: Obsidian Dark (Default) */
+/* Theme 1: Obsidian Dark (Default) - Volcanic Crystalline Glass */
 :root, body.theme-obsidian {
   --bg-deep: #050811;
   --bg-surface: #0b1120;
   --bg-card: #111a2e;
   --bg-input: #070c18;
   --bg-hover: #192640;
+  --card-gradient: linear-gradient(145deg, #131d33 0%, #0c1322 100%);
 
   --border-subtle: #1e293b;
   --border-medium: #2a3d5e;
@@ -25,47 +26,51 @@
   --text-muted: #94a3b8;
   --text-dim: #64748b;
 
-  --glow-1: rgba(239, 68, 68, 0.08);
-  --glow-2: rgba(56, 189, 248, 0.08);
+  --glow-1: rgba(239, 68, 68, 0.12);
+  --glow-2: rgba(56, 189, 248, 0.12);
+  --theme-rim: rgba(56, 189, 248, 0.15);
 }
 
-/* Theme 2: Ancient Parchment */
+/* Theme 2: Ancient Parchment - Worn Sepia Fibrous Manuscript */
 body.theme-parchment {
-  --bg-deep: #201a14;
-  --bg-surface: #2c241c;
-  --bg-card: #382e23;
-  --bg-input: #17130e;
-  --bg-hover: #463a2c;
+  --bg-deep: #1c150e;
+  --bg-surface: #261d15;
+  --bg-card: #33271d;
+  --bg-input: #150f09;
+  --bg-hover: #423226;
+  --card-gradient: linear-gradient(145deg, #3a2d21 0%, #281e15 100%);
 
-  --border-subtle: #4c3f30;
-  --border-medium: #675542;
+  --border-subtle: #4a3828;
+  --border-medium: #69503a;
   --border-active: #d97706;
 
   --primary-red: #b45309;
   --primary-red-hover: #92400e;
   --accent-gold: #d97706;
-  --accent-blue: #78716c;
-  --accent-purple: #a8715a;
-  --accent-emerald: #65a30d;
+  --accent-blue: #8c7e6c;
+  --accent-purple: #ab7355;
+  --accent-emerald: #719e1c;
 
-  --text-main: #f5eedb;
-  --text-muted: #d6c7af;
-  --text-dim: #9e8e76;
+  --text-main: #fcf4e4;
+  --text-muted: #dcc8ae;
+  --text-dim: #a69177;
 
-  --glow-1: rgba(217, 119, 6, 0.12);
-  --glow-2: rgba(180, 83, 9, 0.1);
+  --glow-1: rgba(217, 119, 6, 0.15);
+  --glow-2: rgba(180, 83, 9, 0.14);
+  --theme-rim: rgba(217, 119, 6, 0.2);
 }
 
-/* Theme 3: Eldritch Void */
+/* Theme 3: Eldritch Void - Abyssal Cosmic Nebula */
 body.theme-eldritch {
-  --bg-deep: #06020c;
-  --bg-surface: #0e051a;
-  --bg-card: #17092c;
-  --bg-input: #080210;
-  --bg-hover: #260e48;
+  --bg-deep: #05010b;
+  --bg-surface: #0d041c;
+  --bg-card: #16072e;
+  --bg-input: #070110;
+  --bg-hover: #260a4f;
+  --card-gradient: linear-gradient(145deg, #1a0837 0%, #0d031c 100%);
 
-  --border-subtle: #2d1254;
-  --border-medium: #4c1d95;
+  --border-subtle: #2b0e57;
+  --border-medium: #4e1996;
   --border-active: #a855f7;
 
   --primary-red: #a855f7;
@@ -75,24 +80,26 @@ body.theme-eldritch {
   --accent-purple: #c084fc;
   --accent-emerald: #06b6d4;
 
-  --text-main: #f5f3ff;
-  --text-muted: #c4b5fd;
-  --text-dim: #7c3aed;
+  --text-main: #faf5ff;
+  --text-muted: #d8b4fe;
+  --text-dim: #8b5cf6;
 
-  --glow-1: rgba(168, 85, 247, 0.15);
-  --glow-2: rgba(6, 182, 212, 0.12);
+  --glow-1: rgba(168, 85, 247, 0.2);
+  --glow-2: rgba(6, 182, 212, 0.16);
+  --theme-rim: rgba(168, 85, 247, 0.3);
 }
 
-/* Theme 4: Celestial Light */
+/* Theme 4: Celestial Light - Gilded Divine Starlight */
 body.theme-celestial {
-  --bg-deep: #030d18;
-  --bg-surface: #081726;
-  --bg-card: #0f243a;
-  --bg-input: #040d16;
-  --bg-hover: #183756;
+  --bg-deep: #020b16;
+  --bg-surface: #061528;
+  --bg-card: #0b213f;
+  --bg-input: #030d1c;
+  --bg-hover: #13335e;
+  --card-gradient: linear-gradient(145deg, #0e2b52 0%, #081930 100%);
 
-  --border-subtle: #1e3a5f;
-  --border-medium: #2b5484;
+  --border-subtle: #193f72;
+  --border-medium: #25589c;
   --border-active: #fbbf24;
 
   --primary-red: #f59e0b;
@@ -106,20 +113,22 @@ body.theme-celestial {
   --text-muted: #bae6fd;
   --text-dim: #7dd3fc;
 
-  --glow-1: rgba(251, 191, 36, 0.12);
-  --glow-2: rgba(96, 165, 250, 0.14);
+  --glow-1: rgba(251, 191, 36, 0.18);
+  --glow-2: rgba(96, 165, 250, 0.18);
+  --theme-rim: rgba(251, 191, 36, 0.25);
 }
 
-/* Theme 5: Verdant Grove */
+/* Theme 5: Verdant Grove - Bioluminescent Deep Canopy */
 body.theme-emerald {
-  --bg-deep: #030f0a;
-  --bg-surface: #071a12;
-  --bg-card: #0c271c;
-  --bg-input: #030d09;
-  --bg-hover: #133a2a;
+  --bg-deep: #020c07;
+  --bg-surface: #05190f;
+  --bg-card: #092819;
+  --bg-input: #020d08;
+  --bg-hover: #103d27;
+  --card-gradient: linear-gradient(145deg, #0d3522 0%, #061d12 100%);
 
-  --border-subtle: #1b4d37;
-  --border-medium: #276749;
+  --border-subtle: #154e32;
+  --border-medium: #21734b;
   --border-active: #10b981;
 
   --primary-red: #10b981;
@@ -133,8 +142,183 @@ body.theme-emerald {
   --text-muted: #a7f3d0;
   --text-dim: #6ee7b7;
 
-  --glow-1: rgba(16, 185, 129, 0.14);
-  --glow-2: rgba(45, 212, 191, 0.1);
+  --glow-1: rgba(16, 185, 129, 0.18);
+  --glow-2: rgba(45, 212, 191, 0.15);
+  --theme-rim: rgba(16, 185, 129, 0.25);
+}
+
+/* Theme 6: Aethertech Clockwork - Polished Brass & Cyan Conduit */
+body.theme-aethertech {
+  --bg-deep: #060a12;
+  --bg-surface: #0c1424;
+  --bg-card: #131f36;
+  --bg-input: #080d17;
+  --bg-hover: #1d2e4f;
+  --card-gradient: linear-gradient(145deg, #182845 0%, #0f1a2c 100%);
+
+  --border-subtle: #2b3952;
+  --border-medium: #875c36;
+  --border-active: #00f0ff;
+
+  --primary-red: #d97706;
+  --primary-red-hover: #b45309;
+  --accent-gold: #eab308;
+  --accent-blue: #00f0ff;
+  --accent-purple: #38bdf8;
+  --accent-emerald: #10b981;
+
+  --text-main: #f0f7ff;
+  --text-muted: #9bb0ce;
+  --text-dim: #667c9c;
+
+  --glow-1: rgba(0, 240, 255, 0.18);
+  --glow-2: rgba(217, 119, 6, 0.18);
+  --theme-rim: rgba(0, 240, 255, 0.35);
+}
+
+/* Theme 7: Crimson Rite / Blood Moon - Gothic Ash & Arterial Crimson */
+body.theme-bloodmoon {
+  --bg-deep: #090204;
+  --bg-surface: #140409;
+  --bg-card: #200810;
+  --bg-input: #0a0104;
+  --bg-hover: #320d19;
+  --card-gradient: linear-gradient(145deg, #270a14 0%, #150409 100%);
+
+  --border-subtle: #3d1020;
+  --border-medium: #611730;
+  --border-active: #e11d48;
+
+  --primary-red: #e11d48;
+  --primary-red-hover: #be123c;
+  --accent-gold: #fb7185;
+  --accent-blue: #fda4af;
+  --accent-purple: #a21caf;
+  --accent-emerald: #f43f5e;
+
+  --text-main: #fff1f2;
+  --text-muted: #fecdd3;
+  --text-dim: #fb7185;
+
+  --glow-1: rgba(225, 29, 72, 0.25);
+  --glow-2: rgba(162, 28, 175, 0.16);
+  --theme-rim: rgba(225, 29, 72, 0.35);
+}
+
+/* Theme 8: Glacial Frost - Frosted Arctic Glass & Aurora */
+body.theme-glacial {
+  --bg-deep: #020812;
+  --bg-surface: #061324;
+  --bg-card: #0a213d;
+  --bg-input: #030c18;
+  --bg-hover: #10345e;
+  --card-gradient: linear-gradient(145deg, #0f2d52 0%, #07192f 100%);
+
+  --border-subtle: #193d6b;
+  --border-medium: #2f6ea8;
+  --border-active: #38bdf8;
+
+  --primary-red: #38bdf8;
+  --primary-red-hover: #0284c7;
+  --accent-gold: #7dd3fc;
+  --accent-blue: #00f0ff;
+  --accent-purple: #818cf8;
+  --accent-emerald: #2dd4bf;
+
+  --text-main: #f0faff;
+  --text-muted: #bae6fd;
+  --text-dim: #7dd3fc;
+
+  --glow-1: rgba(56, 189, 248, 0.22);
+  --glow-2: rgba(0, 240, 255, 0.18);
+  --theme-rim: rgba(125, 211, 252, 0.35);
+}
+
+/* Theme 9: Bioluminescent Underdark - Cavern Abyss & Toxic Spore */
+body.theme-underdark {
+  --bg-deep: #020409;
+  --bg-surface: #060a14;
+  --bg-card: #0d1424;
+  --bg-input: #03060c;
+  --bg-hover: #16223b;
+  --card-gradient: linear-gradient(145deg, #101a30 0%, #080d19 100%);
+
+  --border-subtle: #1a2742;
+  --border-medium: #2e436e;
+  --border-active: #00ff88;
+
+  --primary-red: #00ff88;
+  --primary-red-hover: #00cc6a;
+  --accent-gold: #f43f5e;
+  --accent-blue: #00f0ff;
+  --accent-purple: #d946ef;
+  --accent-emerald: #00ff88;
+
+  --text-main: #f0fdf4;
+  --text-muted: #bbf7d0;
+  --text-dim: #86efac;
+
+  --glow-1: rgba(0, 255, 136, 0.2);
+  --glow-2: rgba(217, 70, 239, 0.2);
+  --theme-rim: rgba(0, 255, 136, 0.35);
+}
+
+/* Theme 10: Solaris / Radiant Dawn - Alabaster Ivory & Sunburst Gold */
+body.theme-solaris {
+  --bg-deep: #140f07;
+  --bg-surface: #21190c;
+  --bg-card: #2e2311;
+  --bg-input: #110c05;
+  --bg-hover: #403219;
+  --card-gradient: linear-gradient(145deg, #382b15 0%, #241b0b 100%);
+
+  --border-subtle: #4d3a1b;
+  --border-medium: #7a5d2c;
+  --border-active: #f59e0b;
+
+  --primary-red: #f59e0b;
+  --primary-red-hover: #d97706;
+  --accent-gold: #fbbf24;
+  --accent-blue: #fde68a;
+  --accent-purple: #f59e0b;
+  --accent-emerald: #eab308;
+
+  --text-main: #fffbeb;
+  --text-muted: #fef3c7;
+  --text-dim: #fde68a;
+
+  --glow-1: rgba(245, 158, 11, 0.25);
+  --glow-2: rgba(251, 191, 36, 0.22);
+  --theme-rim: rgba(245, 158, 11, 0.35);
+}
+
+/* Theme 11: Cartographer’s Sketchbook - Sepia Draft & Umber Ink */
+body.theme-cartographer {
+  --bg-deep: #17120c;
+  --bg-surface: #241b12;
+  --bg-card: #302419;
+  --bg-input: #120d09;
+  --bg-hover: #403022;
+  --card-gradient: linear-gradient(145deg, #382b1d 0%, #261c13 100%);
+
+  --border-subtle: #473625;
+  --border-medium: #6b5239;
+  --border-active: #c2410c;
+
+  --primary-red: #c2410c;
+  --primary-red-hover: #9a3412;
+  --accent-gold: #ea580c;
+  --accent-blue: #8f7f6f;
+  --accent-purple: #a86b51;
+  --accent-emerald: #65a30d;
+
+  --text-main: #fbf6ec;
+  --text-muted: #ded1c1;
+  --text-dim: #a89885;
+
+  --glow-1: rgba(194, 65, 12, 0.2);
+  --glow-2: rgba(234, 88, 12, 0.15);
+  --theme-rim: rgba(194, 65, 12, 0.3);
 }
 
 /* Common sizing & shadow constants */
@@ -172,7 +356,7 @@ body {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 .ambient-glow {
@@ -183,6 +367,7 @@ body {
   filter: blur(140px);
   pointer-events: none;
   z-index: 0;
+  transition: background 0.35s ease;
 }
 .glow-crimson { top: -100px; left: -100px; background: var(--glow-1); }
 .glow-sapphire { bottom: -100px; right: -100px; background: var(--glow-2); }
@@ -192,7 +377,6 @@ body {
 .hero-name-input,
 .pill-title,
 .card-title,
-.tab-icon,
 .attr-header-abbr,
 .roll-output,
 .inspect-section-title {
@@ -234,7 +418,8 @@ textarea::-webkit-scrollbar,
 .dice-history-list::-webkit-scrollbar,
 .attacks-table-wrapper::-webkit-scrollbar,
 .inspect-modal-content::-webkit-scrollbar,
-.dm-party-cards-grid::-webkit-scrollbar {
+.dm-party-cards-grid::-webkit-scrollbar,
+.player-party-cards-grid::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
@@ -243,7 +428,8 @@ textarea::-webkit-scrollbar-thumb,
 .dice-history-list::-webkit-scrollbar-thumb,
 .attacks-table-wrapper::-webkit-scrollbar-thumb,
 .inspect-modal-content::-webkit-scrollbar-thumb,
-.dm-party-cards-grid::-webkit-scrollbar-thumb {
+.dm-party-cards-grid::-webkit-scrollbar-thumb,
+.player-party-cards-grid::-webkit-scrollbar-thumb {
   background: var(--border-medium);
   border-radius: 999px;
 }
@@ -262,7 +448,8 @@ textarea::-webkit-scrollbar-thumb,
 .hp-corner-btn,
 .avatar-portal,
 .btn-rest-mini,
-.dm-player-card {
+.dm-player-card,
+.player-party-card {
   transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1),
               box-shadow 0.14s ease,
               background-color 0.14s ease,
@@ -335,6 +522,7 @@ textarea::-webkit-scrollbar-thumb,
   backdrop-filter: blur(14px);
   position: relative;
   z-index: 1;
+  transition: background-color 0.35s ease, border-color 0.35s ease;
 }
 
 /* ==========================================================================
@@ -355,10 +543,6 @@ textarea::-webkit-scrollbar-thumb,
   display: flex;
   align-items: center;
   gap: 0.85rem;
-}
-.brand-crest {
-  font-size: 1.5rem;
-  color: var(--primary-red);
 }
 .brand-headings {
   display: flex;
@@ -398,13 +582,19 @@ textarea::-webkit-scrollbar-thumb,
 .theme-selector-wrapper {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
   background: var(--bg-input);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-md);
   padding: 0.25rem 0.65rem;
 }
-.theme-icon { font-size: 0.95rem; }
+.theme-label-text {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
 .theme-select {
   background: transparent !important;
   color: var(--text-main) !important;
@@ -415,7 +605,8 @@ textarea::-webkit-scrollbar-thumb,
   cursor: pointer;
   padding-right: 0.35rem;
 }
-.theme-select option {
+.theme-select option,
+.theme-select optgroup {
   background: var(--bg-card);
   color: var(--text-main);
 }
@@ -499,7 +690,7 @@ textarea::-webkit-scrollbar-thumb,
    4. HERO CODEX BANNER
    ========================================================================== */
 .hero-codex-card {
-  background: linear-gradient(145deg, var(--bg-card) 0%, var(--bg-surface) 100%);
+  background: var(--card-gradient, linear-gradient(145deg, var(--bg-card) 0%, var(--bg-surface) 100%));
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-lg);
   padding: 1.35rem 1.6rem;
@@ -507,6 +698,7 @@ textarea::-webkit-scrollbar-thumb,
   box-shadow: var(--shadow-md);
   position: relative;
   overflow: hidden;
+  transition: all 0.3s ease;
 }
 .hero-codex-card::before {
   content: "";
@@ -541,7 +733,7 @@ textarea::-webkit-scrollbar-thumb,
 }
 .avatar-portal:hover {
   border-color: var(--primary-red);
-  box-shadow: 0 0 16px rgba(239, 68, 68, 0.45);
+  box-shadow: 0 0 16px var(--theme-rim, rgba(239, 68, 68, 0.45));
 }
 .avatar-pulse-ring {
   position: absolute;
@@ -597,7 +789,6 @@ textarea::-webkit-scrollbar-thumb,
   align-items: flex-start;
 }
 
-/* Freely Expandable Character Info Pills */
 .codex-field-pill {
   position: relative;
   display: inline-flex;
@@ -616,7 +807,6 @@ textarea::-webkit-scrollbar-thumb,
   box-sizing: border-box;
 }
 
-/* Ensure dropdown menu floats out unclipped when opened */
 .codex-field-pill:has(.dropdown-menu.open) {
   overflow: visible !important;
 }
@@ -750,7 +940,6 @@ textarea::-webkit-scrollbar-thumb,
   border-radius: var(--radius-sm);
   padding: 0.3rem 0.65rem;
 }
-.insp-spark { font-size: 0.9rem; }
 .insp-title { font-size: 0.7rem; font-weight: 800; color: var(--text-dim); text-transform: uppercase; }
 .insp-input {
   width: 65px;
@@ -765,13 +954,14 @@ textarea::-webkit-scrollbar-thumb,
   font-size: 0.78rem;
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.55rem;
   margin-left: auto;
 }
 .codex-external-links a {
   color: var(--primary-red);
   text-decoration: none;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 .codex-external-links a:hover { text-decoration: underline; }
 .codex-external-links .sep { color: var(--text-dim); }
@@ -841,7 +1031,6 @@ textarea::-webkit-scrollbar-thumb,
   color: #ffffff;
   border-color: var(--primary-red);
 }
-.tab-icon { font-size: 0.95rem; }
 
 .tab-page { display: none; }
 .tab-page.active {
@@ -892,7 +1081,7 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 .vitals-card {
-  background: var(--bg-card);
+  background: var(--card-gradient, var(--bg-card));
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-lg);
   padding: 1.15rem 1.25rem;
@@ -1058,7 +1247,6 @@ textarea::-webkit-scrollbar-thumb,
   font-size: 0.8rem;
   color: var(--text-muted);
 }
-.rest-hd-glyph { font-size: 0.95rem; }
 .rest-hd-text { font-weight: 700; color: var(--text-dim); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.04em; }
 .rest-hd-indicator .hitdice-input {
   width: 28px !important;
@@ -1105,7 +1293,7 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 /* ==========================================================================
-   7. COMBAT ARENA: ATTRIBUTES & WEAPONS
+   7. COMBAT ARENA: PERMANENT FIXED-COLOR ATTRIBUTES & WEAPONS
    ========================================================================== */
 .two-col-layout {
   display: grid;
@@ -1229,35 +1417,36 @@ textarea::-webkit-scrollbar-thumb,
   cursor: pointer;
 }
 
-.attr-str { border-left: 4px solid var(--primary-red); }
-.attr-str .attr-abbr { color: #f87171; }
-.attr-str .attr-mod-box { background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.4); color: #f87171; }
-.attr-str .hex-die { background-color: var(--primary-red); }
+/* --- PERMANENT ABILITY COLOR IDENTITIES (IMMUNE TO THEME OVERRIDES) --- */
+.attr-str { border-left: 4px solid #ef4444 !important; }
+.attr-str .attr-abbr { color: #f87171 !important; }
+.attr-str .attr-mod-box { background: rgba(239, 68, 68, 0.14) !important; border-color: rgba(239, 68, 68, 0.45) !important; color: #f87171 !important; }
+.attr-str .hex-die { background-color: #ef4444 !important; }
 
-.attr-dex { border-left: 4px solid var(--accent-emerald); }
-.attr-dex .attr-abbr { color: #34d399; }
-.attr-dex .attr-mod-box { background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.4); color: #34d399; }
-.attr-dex .hex-die { background-color: var(--accent-emerald); }
+.attr-dex { border-left: 4px solid #10b981 !important; }
+.attr-dex .attr-abbr { color: #34d399 !important; }
+.attr-dex .attr-mod-box { background: rgba(16, 185, 129, 0.14) !important; border-color: rgba(16, 185, 129, 0.45) !important; color: #34d399 !important; }
+.attr-dex .hex-die { background-color: #10b981 !important; }
 
-.attr-con { border-left: 4px solid #f97316; }
-.attr-con .attr-abbr { color: #fb923c; }
-.attr-con .attr-mod-box { background: rgba(249, 115, 22, 0.12); border-color: rgba(249, 115, 22, 0.4); color: #fb923c; }
-.attr-con .hex-die { background-color: #f97316; }
+.attr-con { border-left: 4px solid #f97316 !important; }
+.attr-con .attr-abbr { color: #fb923c !important; }
+.attr-con .attr-mod-box { background: rgba(249, 115, 22, 0.14) !important; border-color: rgba(249, 115, 22, 0.45) !important; color: #fb923c !important; }
+.attr-con .hex-die { background-color: #f97316 !important; }
 
-.attr-int { border-left: 4px solid #3b82f6; }
-.attr-int .attr-abbr { color: #60a5fa; }
-.attr-int .attr-mod-box { background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.4); color: #60a5fa; }
-.attr-int .hex-die { background-color: #3b82f6; }
+.attr-int { border-left: 4px solid #3b82f6 !important; }
+.attr-int .attr-abbr { color: #60a5fa !important; }
+.attr-int .attr-mod-box { background: rgba(59, 130, 246, 0.14) !important; border-color: rgba(59, 130, 246, 0.45) !important; color: #60a5fa !important; }
+.attr-int .hex-die { background-color: #3b82f6 !important; }
 
-.attr-wis { border-left: 4px solid var(--accent-purple); }
-.attr-wis .attr-abbr { color: var(--accent-purple); }
-.attr-wis .attr-mod-box { background: rgba(192, 132, 252, 0.12); border-color: rgba(192, 132, 252, 0.4); color: var(--accent-purple); }
-.attr-wis .hex-die { background-color: var(--accent-purple); }
+.attr-wis { border-left: 4px solid #c084fc !important; }
+.attr-wis .attr-abbr { color: #c084fc !important; }
+.attr-wis .attr-mod-box { background: rgba(192, 132, 252, 0.14) !important; border-color: rgba(192, 132, 252, 0.45) !important; color: #c084fc !important; }
+.attr-wis .hex-die { background-color: #c084fc !important; }
 
-.attr-cha { border-left: 4px solid #eab308; }
-.attr-cha .attr-abbr { color: #facc15; }
-.attr-cha .attr-mod-box { background: rgba(234, 179, 8, 0.12); border-color: rgba(234, 179, 8, 0.4); color: #facc15; }
-.attr-cha .hex-die { background-color: #eab308; }
+.attr-cha { border-left: 4px solid #eab308 !important; }
+.attr-cha .attr-abbr { color: #facc15 !important; }
+.attr-cha .attr-mod-box { background: rgba(234, 179, 8, 0.14) !important; border-color: rgba(234, 179, 8, 0.45) !important; color: #facc15 !important; }
+.attr-cha .hex-die { background-color: #eab308 !important; }
 
 .passive-senses-bar {
   display: grid;
@@ -1435,7 +1624,6 @@ textarea::-webkit-scrollbar-thumb,
   align-items: center;
   gap: 0.4rem;
 }
-.tactical-glyph { color: var(--accent-gold); font-size: 1rem; }
 .tactical-title {
   font-size: 0.85rem;
   font-weight: 800;
@@ -1482,7 +1670,7 @@ textarea::-webkit-scrollbar-thumb,
 }
 
 /* ==========================================================================
-   8. HORIZONTAL SKILLS ATTRIBUTE MATRIX
+   8. HORIZONTAL SKILLS ATTRIBUTE MATRIX (PERMANENT FIXED-COLOR COLUMNS)
    ========================================================================== */
 .horizontal-skills-section {
   margin-top: 2.5rem;
@@ -1503,11 +1691,27 @@ textarea::-webkit-scrollbar-thumb,
   flex-direction: column;
   gap: 0.5rem;
 }
-.col-str { border-top: 3px solid var(--primary-red); }
-.col-dex { border-top: 3px solid var(--accent-emerald); }
-.col-int { border-top: 3px solid var(--accent-blue); }
-.col-wis { border-top: 3px solid var(--accent-purple); }
-.col-cha { border-top: 3px solid var(--accent-gold); }
+
+/* Locked Skill Column Colors */
+.col-str { border-top: 3px solid #ef4444 !important; }
+.col-str .attr-header-abbr { color: #f87171 !important; }
+.col-str .hex-die { background-color: #ef4444 !important; }
+
+.col-dex { border-top: 3px solid #10b981 !important; }
+.col-dex .attr-header-abbr { color: #34d399 !important; }
+.col-dex .hex-die { background-color: #10b981 !important; }
+
+.col-int { border-top: 3px solid #3b82f6 !important; }
+.col-int .attr-header-abbr { color: #60a5fa !important; }
+.col-int .hex-die { background-color: #3b82f6 !important; }
+
+.col-wis { border-top: 3px solid #c084fc !important; }
+.col-wis .attr-header-abbr { color: #c084fc !important; }
+.col-wis .hex-die { background-color: #c084fc !important; }
+
+.col-cha { border-top: 3px solid #eab308 !important; }
+.col-cha .attr-header-abbr { color: #facc15 !important; }
+.col-cha .hex-die { background-color: #eab308 !important; }
 
 .attr-column-header {
   display: flex;
@@ -1520,14 +1724,7 @@ textarea::-webkit-scrollbar-thumb,
 .attr-header-abbr {
   font-size: 0.95rem;
   font-weight: 900;
-  color: #ffffff;
 }
-.col-str .attr-header-abbr { color: #f87171; }
-.col-dex .attr-header-abbr { color: #34d399; }
-.col-int .attr-header-abbr { color: #60a5fa; }
-.col-wis .attr-header-abbr { color: var(--accent-purple); }
-.col-cha .attr-header-abbr { color: #facc15; }
-
 .attr-header-title {
   font-size: 0.65rem;
   font-weight: 700;
@@ -1574,15 +1771,17 @@ textarea::-webkit-scrollbar-thumb,
   border-radius: 50%;
   transition: all var(--transition-fast);
 }
+
+/* Locked Proficiency and Expertise Bubble Colors */
 .prof-cb:checked + .bubble {
-  background-color: var(--primary-red);
-  border-color: var(--primary-red);
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6) !important;
 }
 .exp-cb:checked + .bubble {
-  background-color: var(--accent-purple);
-  border-color: var(--accent-purple);
-  box-shadow: 0 0 6px rgba(192, 132, 252, 0.6);
+  background-color: #c084fc !important;
+  border-color: #c084fc !important;
+  box-shadow: 0 0 6px rgba(192, 132, 252, 0.6) !important;
 }
 
 .skill-label {
@@ -1604,13 +1803,7 @@ textarea::-webkit-scrollbar-thumb,
   width: 14px;
   height: 16px;
   margin-left: 0.25rem;
-  background-color: #475569;
 }
-.col-str .hex-die { background-color: var(--primary-red); }
-.col-dex .hex-die { background-color: var(--accent-emerald); }
-.col-int .hex-die { background-color: var(--accent-blue); }
-.col-wis .hex-die { background-color: var(--accent-purple); }
-.col-cha .hex-die { background-color: var(--accent-gold); }
 
 /* ==========================================================================
    9. DEDICATED FEATURES & TRAITS TAB
@@ -1774,7 +1967,7 @@ textarea::-webkit-scrollbar-thumb,
 .trait-card.expanded .trait-expand-icon { transform: rotate(180deg); }
 
 /* ==========================================================================
-   10. GRIMOIRE & SPELLS
+   10. SPELLS & CANTRIPS
    ========================================================================== */
 .spell-basics {
   display: flex;
@@ -2244,7 +2437,7 @@ textarea.block-text {
 }
 
 /* ==========================================================================
-   14. MODALS & PARTY/DM LIVE DASHBOARD
+   14. MODALS & GENERAL LIST STYLES
    ========================================================================== */
 .modal-backdrop {
   position: fixed;
@@ -2295,6 +2488,179 @@ textarea.block-text {
   border: none;
   color: #ffffff;
   font-size: 1.6rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal-list {
+  padding: 1rem 1.35rem;
+  overflow-y: auto;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+/* ==========================================================================
+   15. 5E SPELL & ABILITY COMPENDIUM BROWSERS
+   ========================================================================== */
+.modal-search-bar {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.35rem 0.5rem 1.35rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  align-items: center;
+}
+.modal-search-bar input[type="text"] {
+  flex: 1;
+  padding: 0.6rem 0.9rem !important;
+  font-size: 0.9rem !important;
+}
+.custom-spell-btn {
+  white-space: nowrap;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.78rem;
+}
+
+.spell-option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+  cursor: pointer;
+}
+.spell-option-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary-red);
+  background: var(--bg-hover);
+}
+
+.spell-option-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1;
+}
+.spell-option-title {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.spell-meta-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.tag-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-dim);
+}
+
+/* Badge category colors */
+.tag-cantrip {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: var(--accent-blue);
+}
+.tag-level {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: var(--accent-gold);
+}
+
+/* Schools of Magic */
+.school-abjuration { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border-color: rgba(56, 189, 248, 0.35); }
+.school-conjuration { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border-color: rgba(245, 158, 11, 0.35); }
+.school-divination { background: rgba(251, 191, 36, 0.12); color: #fbbf24; border-color: rgba(251, 191, 36, 0.35); }
+.school-enchantment { background: rgba(236, 72, 153, 0.12); color: #ec4899; border-color: rgba(236, 72, 153, 0.35); }
+.school-evocation { background: rgba(239, 68, 68, 0.12); color: #ef4444; border-color: rgba(239, 68, 68, 0.35); }
+.school-illusion { background: rgba(168, 85, 247, 0.12); color: #a855f7; border-color: rgba(168, 85, 247, 0.35); }
+.school-necromancy { background: rgba(148, 163, 184, 0.12); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.35); }
+.school-transmutation { background: rgba(16, 185, 129, 0.12); color: #10b981; border-color: rgba(16, 185, 129, 0.35); }
+
+/* Classes & Races Badges */
+.class-barbarian, .class-fighter, .class-bloodhunter { background: rgba(239, 68, 68, 0.12); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+.class-druid, .class-ranger { background: rgba(16, 185, 129, 0.12); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+.class-wizard, .class-artificer { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }
+.class-sorcerer, .class-warlock { background: rgba(192, 132, 252, 0.12); color: #c084fc; border-color: rgba(192, 132, 252, 0.3); }
+.class-cleric, .class-paladin { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+.class-bard, .class-rogue { background: rgba(244, 63, 94, 0.12); color: #fb7185; border-color: rgba(244, 63, 94, 0.3); }
+.class-monk { background: rgba(45, 212, 191, 0.12); color: #2dd4bf; border-color: rgba(45, 212, 191, 0.3); }
+
+.race-generic, .race-elf, .race-dwarf, .race-tiefling, .race-dragonborn {
+  background: rgba(100, 116, 139, 0.12);
+  color: #94a3b8;
+  border-color: rgba(100, 116, 139, 0.35);
+}
+
+.spell-add-badge {
+  background: var(--primary-red);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.spell-add-badge:hover {
+  background: var(--primary-red-hover);
+  transform: translateY(-1px);
+}
+
+.loading-text {
+  text-align: center;
+  color: var(--text-dim);
+  font-style: italic;
+  padding: 2rem 0;
+  font-size: 0.9rem;
+}
+
+/* ==========================================================================
+   16. UNIVERSAL IMPORTER & GUIDE STYLES
+   ========================================================================== */
+.import-guide-accordion {
+  transition: all 0.2s ease;
+}
+.import-guide-accordion[open] {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+.import-guide-accordion summary {
+  list-style: none;
+}
+.import-guide-accordion summary::-webkit-details-marker {
+  display: none;
+}
+kbd {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  background: var(--bg-card);
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+  color: #fff;
 }
 
 /* Party / DM Dashboard Modal */
@@ -2355,6 +2721,31 @@ textarea.block-text {
 .status-dot.disconnected { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
 .status-dot.connected { background: #10b981; box-shadow: 0 0 8px #10b981; }
 
+/* Player Live Party View Grid (HP & Conditions only) */
+.player-party-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.85rem;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 0.25rem;
+}
+.player-party-card {
+  background: linear-gradient(145deg, #131a26 0%, #0d121c 100%);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.player-party-card.unconscious {
+  border-color: #ef4444;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.45);
+}
+
 /* DM View */
 .dm-command-strip {
   display: flex;
@@ -2389,7 +2780,8 @@ textarea.block-text {
   gap: 0.45rem;
 }
 
-.dm-party-section {
+.dm-party-section,
+.player-party-section {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -2553,7 +2945,7 @@ textarea.block-text {
 }
 
 /* ==========================================================================
-   15. DM LIVE PLAYER INSPECTOR MODAL
+   17. DM LIVE PLAYER INSPECTOR MODAL
    ========================================================================== */
 .dm-inspect-box {
   max-width: 920px;
@@ -2575,7 +2967,6 @@ textarea.block-text {
   gap: 1.25rem;
 }
 
-/* Character Summary Banner inside Inspection */
 .inspect-char-banner {
   display: flex;
   align-items: center;
@@ -2710,35 +3101,6 @@ textarea.block-text {
   font-weight: 800;
   color: var(--accent-blue);
   margin-top: 0.2rem;
-}
-
-/* Skills Flow in Inspection */
-.inspect-skills-flow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.inspect-skill-chip {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xs);
-  padding: 0.25rem 0.55rem;
-  font-size: 0.78rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-.inspect-skill-chip.proficient {
-  border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.1);
-}
-.inspect-skill-chip.expert {
-  border-color: rgba(192, 132, 252, 0.4);
-  background: rgba(192, 132, 252, 0.12);
-}
-.inspect-skill-chip strong {
-  color: #ffffff;
 }
 
 /* Weapons List in Inspection */
@@ -2967,7 +3329,7 @@ textarea.block-text {
 }
 
 /* ==========================================================================
-   16. RESPONSIVENESS
+   18. RESPONSIVENESS
    ========================================================================== */
 @media (max-width: 1024px) {
   .vitals-hud { grid-template-columns: repeat(2, 1fr); }
