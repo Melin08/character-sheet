@@ -84,6 +84,7 @@ let allTraitsCache = [];
 // DM & Player Real-Time Listener State
 let dmListenerUnsubscribe = null;
 let playerPartyListUnsubscribe = null;
+let playerRoomDocUnsubscribe = null;
 let activeDMRoomCode = "";
 let currentInspectedMemberId = null;
 let cachedRoomMembers = [];
@@ -1774,6 +1775,13 @@ function addCreatedRoom(code) {
   localStorage.setItem(CREATED_ROOMS_KEY, JSON.stringify(list));
 }
 
+function removeCreatedRoom(code) {
+  if (!code) return;
+  const clean = code.trim().toUpperCase();
+  const list = getCreatedRooms().filter((r) => r !== clean);
+  localStorage.setItem(CREATED_ROOMS_KEY, JSON.stringify(list));
+}
+
 function isLocalRoomCreator(code) {
   if (!code) return false;
   return getCreatedRooms().includes(code.trim().toUpperCase());
@@ -1793,6 +1801,14 @@ function addRecentRoom(code) {
   let list = getRecentRooms().filter((r) => r !== clean);
   list.unshift(clean);
   if (list.length > 6) list = list.slice(0, 6);
+  localStorage.setItem(RECENT_ROOMS_KEY, JSON.stringify(list));
+  renderRecentRoomsBar();
+}
+
+function removeRecentRoom(code) {
+  if (!code) return;
+  const clean = code.trim().toUpperCase();
+  const list = getRecentRooms().filter((r) => r !== clean);
   localStorage.setItem(RECENT_ROOMS_KEY, JSON.stringify(list));
   renderRecentRoomsBar();
 }
@@ -1949,6 +1965,10 @@ function updatePartyStatusUI() {
       playerPartyListUnsubscribe();
       playerPartyListUnsubscribe = null;
     }
+    if (playerRoomDocUnsubscribe) {
+      playerRoomDocUnsubscribe();
+      playerRoomDocUnsubscribe = null;
+    }
     if (!activeDMRoomCode) renderLivePartyDock([]);
   }
 
@@ -1988,6 +2008,31 @@ function updatePartyStatusUI() {
   }
 }
 
+function handlePlayerKicked(reason = "The DM closed the room. You have been disconnected.") {
+  if (!connectedCampaignRoom) return;
+  const closedRoom = connectedCampaignRoom;
+  connectedCampaignRoom = "";
+  localStorage.removeItem(CAMPAIGN_ROOM_KEY);
+  removeRecentRoom(closedRoom);
+
+  if (playerPartyListUnsubscribe) {
+    playerPartyListUnsubscribe();
+    playerPartyListUnsubscribe = null;
+  }
+  if (playerRoomDocUnsubscribe) {
+    playerRoomDocUnsubscribe();
+    playerRoomDocUnsubscribe = null;
+  }
+  stopPartyChatListener();
+  stopPartyHandoutsListener();
+  cachedRoomMembers = [];
+  renderLivePartyDock([]);
+  updatePartyStatusUI();
+  closeModal("dmInspectModal");
+  showStatus(reason);
+  alert(reason);
+}
+
 async function joinCampaignRoom(roomCode) {
   if (!db) {
     alert("Firebase database connection is unavailable.");
@@ -1997,6 +2042,18 @@ async function joinCampaignRoom(roomCode) {
   if (!cleanCode) return;
 
   await ensureAuthenticated();
+
+  // Verify that the campaign room exists before attempting to join
+  try {
+    const roomSnap = await db.collection("campaigns").doc(cleanCode).get();
+    if (!roomSnap.exists) {
+      alert(`Campaign room "${cleanCode}" does not exist or has been closed by the DM.`);
+      return;
+    }
+  } catch (err) {
+    console.warn("Could not check room existence before joining:", err);
+  }
+
   connectedCampaignRoom = cleanCode;
   localStorage.setItem(CAMPAIGN_ROOM_KEY, connectedCampaignRoom);
   addRecentRoom(cleanCode);
@@ -2013,41 +2070,86 @@ async function joinCampaignRoom(roomCode) {
 }
 
 async function leaveCampaignRoom() {
-  if (db && connectedCampaignRoom && activeCharId) {
-    try {
-      await db.collection("campaigns").doc(connectedCampaignRoom).collection("members").doc(activeCharId).delete();
-    } catch (e) {
-      console.warn("Could not remove character doc:", e);
-    }
-  }
+  const roomToLeave = connectedCampaignRoom;
   if (playerPartyListUnsubscribe) {
     playerPartyListUnsubscribe();
     playerPartyListUnsubscribe = null;
+  }
+  if (playerRoomDocUnsubscribe) {
+    playerRoomDocUnsubscribe();
+    playerRoomDocUnsubscribe = null;
   }
   stopPartyChatListener();
   stopPartyHandoutsListener();
   connectedCampaignRoom = "";
   localStorage.removeItem(CAMPAIGN_ROOM_KEY);
+  cachedRoomMembers = [];
+  renderLivePartyDock([]);
   updatePartyStatusUI();
+
+  if (db && roomToLeave && activeCharId) {
+    try {
+      await db.collection("campaigns").doc(roomToLeave).collection("members").doc(activeCharId).delete();
+    } catch (e) {
+      console.warn("Could not remove character doc:", e);
+    }
+  }
   showStatus("Left Campaign Room");
 }
 
+let lastPartyActiveCharId = null;
+let playerHasRegisteredSelf = false;
+
 function startPlayerPartyListener() {
   if (!db || !connectedCampaignRoom) return;
-  if (playerPartyListUnsubscribe) playerPartyListUnsubscribe();
+  if (playerPartyListUnsubscribe) {
+    playerPartyListUnsubscribe();
+    playerPartyListUnsubscribe = null;
+  }
+  if (playerRoomDocUnsubscribe) {
+    playerRoomDocUnsubscribe();
+    playerRoomDocUnsubscribe = null;
+  }
 
-  startPartyChatListener(connectedCampaignRoom);
-  startPartyHandoutsListener(connectedCampaignRoom);
+  const roomListeningTo = connectedCampaignRoom;
+  playerHasRegisteredSelf = false;
+  lastPartyActiveCharId = activeCharId;
+
+  startPartyChatListener(roomListeningTo);
+  startPartyHandoutsListener(roomListeningTo);
 
   const grid = document.getElementById("playerPartyGrid");
   const countEl = document.getElementById("playerMemberCount");
 
-  playerPartyListUnsubscribe = db.collection("campaigns").doc(connectedCampaignRoom).collection("members")
+  // Real-time listener on the campaign room document itself:
+  // If DM closes/deletes the room, trigger auto-kick for all players immediately
+  playerRoomDocUnsubscribe = db.collection("campaigns").doc(roomListeningTo)
+    .onSnapshot((docSnap) => {
+      if (!docSnap.exists) {
+        handlePlayerKicked(`Party room "${roomListeningTo}" was closed by the DM. You have been disconnected.`);
+      }
+    }, (err) => {
+      console.warn("Room doc listener error:", err);
+    });
+
+  // Real-time listener on the members subcollection
+  playerPartyListUnsubscribe = db.collection("campaigns").doc(roomListeningTo).collection("members")
     .onSnapshot((snapshot) => {
+      // If character was switched locally, reset registration check
+      if (lastPartyActiveCharId !== activeCharId) {
+        lastPartyActiveCharId = activeCharId;
+        playerHasRegisteredSelf = false;
+      }
+
       const members = [];
+      let foundSelf = false;
+
       snapshot.forEach((doc) => {
         const data = doc.data();
         members.push(data);
+        if (data.id === activeCharId) {
+          foundSelf = true;
+        }
 
         // Apply remote DM adjustments to our own character if any
         if (data.id === activeCharId && data.dmAdjustedAt && data.dmAdjustedAt > (window._lastAppliedDmAdjust || 0)) {
@@ -2064,6 +2166,14 @@ function startPlayerPartyListener() {
           saveSheet(true);
         }
       });
+
+      if (foundSelf) {
+        playerHasRegisteredSelf = true;
+      } else if (playerHasRegisteredSelf && connectedCampaignRoom === roomListeningTo) {
+        // Player was registered, but character doc is no longer in members collection
+        handlePlayerKicked(`You were removed from party room "${roomListeningTo}" by the DM.`);
+        return;
+      }
 
       cachedRoomMembers = members;
       renderLivePartyDock(members);
@@ -2301,21 +2411,63 @@ async function dmQuickAdjustPlayer(memberId, actionType, delta = 0) {
 }
 
 async function closeDMCampaignRoom() {
+  const roomToClose = activeDMRoomCode;
+  if (!roomToClose) return;
+
+  if (!confirm(`Are you sure you want to close room "${roomToClose}"? All connected players will be automatically kicked.`)) {
+    return;
+  }
+
+  showStatus(`Closing room ${roomToClose}...`);
+
+  try {
+    await ensureAuthenticated();
+
+    // 1. Delete all member documents so real-time listeners for all connected players fire immediately
+    const membersSnap = await db.collection("campaigns").doc(roomToClose).collection("members").get();
+    if (!membersSnap.empty) {
+      const deletePromises = membersSnap.docs.map((doc) => doc.ref.delete().catch((e) => console.warn("Member delete err:", e)));
+      await Promise.all(deletePromises);
+    }
+
+    // 2. Delete the campaign room document itself
+    await db.collection("campaigns").doc(roomToClose).delete().catch((e) => console.warn("Campaign doc delete err:", e));
+  } catch (err) {
+    console.error("Error closing campaign room in Firestore:", err);
+  }
+
+  // 3. Detach DM listener
   if (dmListenerUnsubscribe) {
     dmListenerUnsubscribe();
     dmListenerUnsubscribe = null;
   }
   activeDMRoomCode = "";
-  if (!connectedCampaignRoom) {
-    cachedRoomMembers = [];
-    stopPartyChatListener();
-    stopPartyHandoutsListener();
+  removeCreatedRoom(roomToClose);
+  removeRecentRoom(roomToClose);
+
+  // 4. If DM client was also joined as a player to this same room, disconnect player side too
+  if (connectedCampaignRoom === roomToClose) {
+    if (playerPartyListUnsubscribe) {
+      playerPartyListUnsubscribe();
+      playerPartyListUnsubscribe = null;
+    }
+    if (playerRoomDocUnsubscribe) {
+      playerRoomDocUnsubscribe();
+      playerRoomDocUnsubscribe = null;
+    }
+    connectedCampaignRoom = "";
+    localStorage.removeItem(CAMPAIGN_ROOM_KEY);
   }
+
+  cachedRoomMembers = [];
+  stopPartyChatListener();
+  stopPartyHandoutsListener();
+  renderLivePartyDock([]);
   updatePartyStatusUI();
-  if (connectedCampaignRoom) renderLivePartyDock(cachedRoomMembers);
+
   const grid = document.getElementById("dmPartyGrid");
   if (grid) grid.innerHTML = `<p class="dm-empty-msg">No DM session active. Click "+ New Room" or reopen a room you created to inspect your players live.</p>`;
-  showStatus("DM Session Closed");
+  showStatus(`DM Room ${roomToClose} closed. All players have been kicked.`);
 }
 
 function openInspectModal(memberId) {
