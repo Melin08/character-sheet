@@ -1587,13 +1587,25 @@ body.theme-amber .main-tab.active .tab-counter-pill {
   color: var(--accent-blue);
   margin-right: 4.5rem;
 }
+input[type="number"].temp-hp-inline-input,
 .temp-hp-inline-input {
   width: 26px !important;
   font-size: 0.72rem !important;
   font-weight: 800 !important;
   background: transparent !important;
+  background-color: transparent !important;
   border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
   padding: 0 !important;
+}
+input[type="number"].temp-hp-inline-input:focus,
+.temp-hp-inline-input:focus {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .hp-corner-controls {
@@ -1645,15 +1657,17 @@ body.theme-amber .main-tab.active .tab-counter-pill {
 }
 
 .ac-shield-box {
-  width: 50px;
+  width: 52px;
   height: 48px;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--bg-input);
   border: 2px solid var(--accent-gold);
-  border-radius: 6px 6px 18px 18px;
+  border-radius: 8px 8px 18px 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(212, 175, 55, 0.2);
+  overflow: hidden;
+  position: relative;
   transition: all 0.2s ease;
 }
 .ac-shield-box:hover {
@@ -1661,17 +1675,38 @@ body.theme-amber .main-tab.active .tab-counter-pill {
   box-shadow: 0 0 16px rgba(212, 175, 55, 0.45);
   transform: scale(1.04);
 }
+.ac-shield-box:focus-within {
+  border-color: #ffd700;
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.6), inset 0 0 12px rgba(212, 175, 55, 0.25);
+  transform: scale(1.03);
+}
+input[type="number"].ac-input,
 .ac-input {
-  width: 100%;
-  height: 100%;
-  font-size: 1.35rem;
-  font-weight: 800;
-  text-align: center;
+  width: 100% !important;
+  height: 100% !important;
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+  text-align: center !important;
   padding: 0 !important;
+  margin: 0 !important;
   background: transparent !important;
+  background-color: transparent !important;
   border: none !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
-  color: #ffffff !important;
+  color: var(--text-main) !important;
+  outline: none !important;
+}
+input[type="number"].ac-input:hover,
+input[type="number"].ac-input:focus,
+body.theme-parchment input[type="number"].ac-input,
+body.theme-parchment input[type="number"].ac-input:focus {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .hp-gauge-box,
@@ -1684,14 +1719,27 @@ body.theme-amber .main-tab.active .tab-counter-pill {
   border-radius: var(--radius-sm);
   padding: 0.28rem 0.5rem;
 }
+input[type="number"].hp-input,
+input[type="number"].res-input,
 .hp-input,
 .res-input {
   width: 38px;
   background: transparent !important;
+  background-color: transparent !important;
   border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
   text-align: center;
   font-size: 1.15rem;
   font-weight: 800;
+}
+input[type="number"].hp-input:focus,
+input[type="number"].res-input:focus {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 .hp-input.cur { color: #34d399 !important; }
 .hp-input.max { color: var(--text-main) !important; }
@@ -1931,6 +1979,7 @@ body.theme-amber .main-tab.active .tab-counter-pill {
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
   transition: all var(--transition-fast);
 }
+input[type="number"].attr-input,
 .attr-input {
   width: 100%;
   height: 100%;
@@ -1938,11 +1987,21 @@ body.theme-amber .main-tab.active .tab-counter-pill {
   font-weight: 800 !important;
   text-align: center;
   background: transparent !important;
+  background-color: transparent !important;
   border: none !important;
   outline: none !important;
+  box-shadow: none !important;
   color: inherit !important;
   padding: 0 !important;
   cursor: text;
+}
+input[type="number"].attr-input:focus,
+.attr-input:focus {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 .attr-input::-webkit-outer-spin-button,
 .attr-input::-webkit-inner-spin-button {
