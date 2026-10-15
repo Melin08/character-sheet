@@ -1443,7 +1443,6 @@
         <div class="subtab-controls party-mode-tabs">
           <button type="button" class="sub-tab active" data-sub="party-join-view">Player: Party View</button>
           <button type="button" class="sub-tab" data-sub="party-dm-view">DM: Live Dashboard</button>
-          <button type="button" class="sub-tab" data-sub="party-chat-view">Party Chat <span class="tab-counter-pill" id="partyModalChatBadge" style="display:none;">0</span></button>
         </div>
 
         <!-- VIEW 1: Player Join & Party View -->
@@ -1503,23 +1502,6 @@
             <div class="dm-party-cards-grid" id="dmPartyGrid">
               <p class="dm-empty-msg">No DM session active. Create a party above to inspect your players live.</p>
             </div>
-          </div>
-        </div>
-
-        <!-- VIEW 3: Real-Time Party Chat -->
-        <div id="party-chat-view" class="subtab-page">
-          <p class="party-modal-desc">
-            Live real-time messaging with your party and DM. Messages and dice rolls are broadcast instantly to all connected members.
-          </p>
-          <div class="modal-chat-container">
-            <div class="modal-chat-messages" id="partyModalChatMessages">
-              <div class="chat-empty-hint">Waiting for messages... Type below to start chatting!</div>
-            </div>
-            <form class="modal-chat-form" id="partyModalChatForm">
-              <input type="text" id="partyModalChatInput" class="party-chat-input-field" placeholder="Type a message to party... (Enter to send)" maxlength="300" autocomplete="off" />
-              <button type="button" class="btn btn-ghost btn-sm" id="partyModalShareRollBtn" title="Share Last Dice Roll to Chat">🎲 Share Roll</button>
-              <button type="submit" class="btn btn-primary btn-sm" id="partyModalChatSendBtn">Send</button>
-            </form>
           </div>
         </div>
       </div>
@@ -1662,8 +1644,8 @@
     </div>
   </div>
 
-  <!-- FLOATING LIVE PARTY CHAT & ROLLS WIDGET -->
-  <div id="floatingPartyChat" class="floating-party-chat" style="display: none;">
+  <!-- FLOATING LIVE PARTY CHAT & ROLLS WIDGET (BOTTOM-LEFT DOCKED) -->
+  <div id="floatingPartyChat" class="floating-party-chat bottom-left-chat" style="display: none;">
     <div class="floating-chat-header">
       <div class="floating-chat-title-group">
         <span class="chat-live-pulse"></span>
@@ -1671,24 +1653,79 @@
         <span class="chat-room-badge" id="floatingChatRoomBadge">ROOM</span>
       </div>
       <div class="floating-chat-controls">
+        <button type="button" class="btn btn-ghost btn-xs" id="chatCreateChannelBtn" title="Create New Private Chat Channel">+ New Chat</button>
         <button type="button" class="btn btn-ghost btn-xs" id="floatingChatShareRollBtn" title="Share Last Dice Roll to Chat">🎲 Roll</button>
-        <button type="button" class="btn btn-ghost btn-xs" id="floatingChatMinimizeBtn" title="Minimize Chat">&minus;</button>
         <button type="button" class="btn btn-ghost btn-xs" id="floatingChatCloseBtn" title="Close Chat">&times;</button>
       </div>
     </div>
+
+    <!-- Multi-Channel Selector Strip -->
+    <div class="chat-channels-strip" id="chatChannelsBar">
+      <div class="chat-channels-list" id="chatChannelsList">
+        <!-- Dynamically rendered channel pills (#general, #whispers, etc.) -->
+      </div>
+    </div>
+
+    <!-- Active Channel Details & Invitee Meta -->
+    <div class="chat-active-channel-info" id="chatActiveChannelInfo">
+      <span class="channel-info-name" id="chatCurrentChannelTag"># general</span>
+      <span class="channel-info-privacy" id="chatCurrentChannelPrivacy">👥 All Party</span>
+    </div>
+
+    <!-- Chat Message Log -->
     <div class="floating-chat-body" id="floatingChatMessages">
       <div class="chat-empty-hint">Join a party room to chat with your DM and allies.</div>
     </div>
+
+    <!-- Message Input Bar -->
     <form class="floating-chat-footer" id="floatingChatForm">
-      <input type="text" id="floatingChatInput" class="floating-chat-input" placeholder="Message party... (Enter to send)" maxlength="300" autocomplete="off" />
+      <input type="text" id="floatingChatInput" class="floating-chat-input" placeholder="Message #general... (Enter to send)" maxlength="400" autocomplete="off" />
       <button type="submit" class="btn btn-primary btn-xs" id="floatingChatSendBtn">Send</button>
     </form>
   </div>
 
-  <button type="button" id="floatingChatBubbleBtn" class="floating-chat-bubble" style="display: none;" title="Open Party Chat">
-    <span class="bubble-icon">💬</span>
-    <span class="bubble-unread-badge" id="floatingChatUnreadBadge" style="display: none;">0</span>
+  <!-- BOTTOM-LEFT PARTY CHAT TRIGGER BUTTON (Only visible when connected to party) -->
+  <button type="button" id="bottomLeftPartyChatBtn" class="bottom-left-chat-trigger" style="display: none;" title="Open Live Party Chat">
+    <span class="chat-trigger-icon">💬</span>
+    <span class="chat-trigger-label">Party Chat</span>
+    <span class="chat-trigger-room" id="bottomChatRoomBadge">ROOM</span>
+    <span class="chat-trigger-badge" id="bottomChatUnreadBadge" style="display: none;">0</span>
   </button>
+
+  <!-- CREATE PRIVATE CHAT CHANNEL MODAL -->
+  <div id="createChatModal" class="modal-backdrop" role="dialog" aria-modal="true" style="display: none;">
+    <div class="modal-box create-chat-modal-box">
+      <div class="modal-header">
+        <div class="create-chat-title-group" style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.25rem;">🔒</span>
+          <h3 style="margin: 0; font-size: 1.1rem;">Create New Chat Channel</h3>
+        </div>
+        <button id="closeCreateChatModalBtn" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem;">
+        <p class="modal-desc" style="font-size: 0.82rem; color: var(--text-dim); margin-top: 0; margin-bottom: 1rem; line-height: 1.45;">
+          Create a private or group chat. Only the players and DM you select below will be invited and able to view or send messages in this chat.
+        </p>
+
+        <div class="field-group" style="margin-bottom: 1.25rem;">
+          <label for="newChannelNameInput" class="field-label" style="display: block; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Chat Name</label>
+          <input type="text" id="newChannelNameInput" class="input-text" placeholder="e.g. rogues-guild, secret-plan, dm-whisper" maxlength="30" autocomplete="off" style="width: 100%;" />
+          <small class="field-hint" style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.35rem;">Letters, numbers, and dashes only.</small>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" style="display: block; font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Invite Members (Select who can access)</label>
+          <div class="channel-invite-list" id="newChannelInviteList" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.45rem; background: var(--bg-card); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+            <!-- Dynamically populated with connected party members & DM -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0.85rem 1.25rem; border-top: 1px solid var(--border-subtle); background: var(--bg-card);">
+        <button type="button" class="btn btn-ghost" id="cancelCreateChatBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmCreateChatBtn">Create Chat</button>
+      </div>
+    </div>
+  </div>
 
   <!-- DISCORD STATBLOCK & AVRAE EXPORTER MODAL -->
   <div id="discordModal" class="modal-backdrop" role="dialog" aria-modal="true">

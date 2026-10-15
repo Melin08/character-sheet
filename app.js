@@ -69,6 +69,11 @@ let partyHandoutsUnsubscribe = null;
 let cachedChatMessages = [];
 let isFloatingChatOpen = false;
 let unreadChatCount = 0;
+let partyChannels = [
+  { id: "general", name: "general", isDefault: true, allowedMembers: [] }
+];
+let activePartyChannelId = "general";
+let unreadPerChannel = {};
 
 let draggedSpellIndex = null;
 const apiCache = {};
@@ -1965,6 +1970,20 @@ function updatePartyStatusUI() {
     if (copyDMInviteBtn) copyDMInviteBtn.style.display = "none";
     if (closeBtn) closeBtn.style.display = "none";
   }
+
+  // Update Bottom-Left Party Chat Trigger Button Visibility
+  const activeRoom = connectedCampaignRoom || activeDMRoomCode;
+  const bottomChatBtn = document.getElementById("bottomLeftPartyChatBtn");
+  const bottomRoomBadge = document.getElementById("bottomChatRoomBadge");
+  if (bottomChatBtn) {
+    bottomChatBtn.style.display = activeRoom ? "inline-flex" : "none";
+    if (bottomRoomBadge && activeRoom) {
+      bottomRoomBadge.textContent = activeRoom;
+    }
+  }
+  if (!activeRoom) {
+    toggleFloatingPartyChat(false);
+  }
 }
 
 async function joinCampaignRoom(roomCode) {
@@ -3629,20 +3648,29 @@ document.addEventListener("click", async (e) => {
   }
 
   // Live Party Chat Controls
-  if (e.target.id === "dockChatToggleBtn" || e.target.closest("#dockChatToggleBtn") || e.target.id === "floatingChatBubbleBtn" || e.target.closest("#floatingChatBubbleBtn")) {
+  if (e.target.id === "bottomLeftPartyChatBtn" || e.target.closest("#bottomLeftPartyChatBtn") || e.target.id === "dockChatToggleBtn" || e.target.closest("#dockChatToggleBtn")) {
     toggleFloatingPartyChat();
     return;
   }
-  if (e.target.id === "floatingChatMinimizeBtn") {
+  if (e.target.id === "floatingChatCloseBtn" || e.target.closest("#floatingChatCloseBtn")) {
     toggleFloatingPartyChat(false);
     return;
   }
-  if (e.target.id === "floatingChatCloseBtn") {
-    const panel = document.getElementById("floatingPartyChat");
-    const bubble = document.getElementById("floatingChatBubbleBtn");
-    if (panel) panel.style.display = "none";
-    if (bubble) bubble.style.display = "none";
-    isFloatingChatOpen = false;
+  if (e.target.id === "chatCreateChannelBtn" || e.target.closest("#chatCreateChannelBtn")) {
+    openCreateChannelModal();
+    return;
+  }
+  if (e.target.id === "closeCreateChatModalBtn" || e.target.closest("#closeCreateChatModalBtn") || e.target.id === "cancelCreateChatBtn" || e.target.closest("#cancelCreateChatBtn")) {
+    closeCreateChannelModal();
+    return;
+  }
+  if (e.target.id === "confirmCreateChatBtn" || e.target.closest("#confirmCreateChatBtn")) {
+    confirmCreateChannel();
+    return;
+  }
+  const clickedChanPill = e.target.closest(".chat-chan-pill");
+  if (clickedChanPill && clickedChanPill.dataset.chanId) {
+    switchPartyChannel(clickedChanPill.dataset.chanId);
     return;
   }
   if (e.target.id === "floatingChatShareRollBtn" || e.target.id === "partyModalShareRollBtn") {
@@ -4595,35 +4623,92 @@ function playChatNotificationSound() {
   } catch (e) {}
 }
 
+function isUserAllowedInChannel(chan) {
+  if (!chan || chan.id === "general" || chan.isDefault) return true;
+  const myCharId = activeCharId;
+  const myUid = auth?.currentUser?.uid;
+  const myName = (document.getElementById("charName")?.value || "").trim().toLowerCase();
+  const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === (connectedCampaignRoom || activeDMRoomCode));
+
+  if (chan.creatorId === myCharId || chan.creatorId === myUid) return true;
+  if (isDM && Array.isArray(chan.allowedMembers) && chan.allowedMembers.includes("DM")) return true;
+
+  if (Array.isArray(chan.allowedMembers)) {
+    return chan.allowedMembers.some((m) => {
+      if (m === myCharId || m === myUid) return true;
+      if (myName && String(m).toLowerCase() === myName) return true;
+      return false;
+    });
+  }
+  return false;
+}
+
 function startPartyChatListener(roomCode) {
   if (!db || !roomCode) return;
   if (partyChatUnsubscribe) partyChatUnsubscribe();
 
   const titleEl = document.getElementById("floatingChatRoomTitle");
   const badgeEl = document.getElementById("floatingChatRoomBadge");
+  const bottomBadge = document.getElementById("bottomChatRoomBadge");
   if (titleEl) titleEl.textContent = `Party: ${roomCode}`;
   if (badgeEl) badgeEl.textContent = roomCode;
+  if (bottomBadge) bottomBadge.textContent = roomCode;
 
   partyChatUnsubscribe = db.collection("campaigns").doc(roomCode).collection("chat")
     .orderBy("timestamp", "asc")
-    .limitToLast(60)
+    .limitToLast(120)
     .onSnapshot((snapshot) => {
       const messages = [];
+      const discoveredChannels = {
+        general: { id: "general", name: "general", isDefault: true, allowedMembers: [] }
+      };
 
       snapshot.forEach((doc) => {
         const data = doc.data();
-        messages.push({ id: doc.id, ...data });
+        const msg = { id: doc.id, ...data };
+        messages.push(msg);
+
+        // Detect dynamic custom channel definitions
+        if (msg.type === "system" && msg.payload && msg.payload.action === "create_channel" && msg.payload.channel) {
+          const ch = msg.payload.channel;
+          if (ch && ch.id) {
+            discoveredChannels[ch.id] = ch;
+          }
+        }
       });
 
+      // Filter channels so each player/DM only sees channels they were invited to
+      const visibleChannels = [];
+      Object.values(discoveredChannels).forEach((chan) => {
+        if (isUserAllowedInChannel(chan)) {
+          visibleChannels.push(chan);
+        }
+      });
+      partyChannels = visibleChannels;
+
+      // Keep active channel valid
+      if (!partyChannels.some((c) => c.id === activePartyChannelId)) {
+        activePartyChannelId = "general";
+      }
+
+      // Check for incoming unread messages
       if (messages.length > cachedChatMessages.length && cachedChatMessages.length > 0) {
         const newest = messages[messages.length - 1];
-        if (newest.senderId !== activeCharId && !isFloatingChatOpen) {
-          unreadChatCount++;
-          playChatNotificationSound();
+        const msgChan = newest.channelId || newest.payload?.channelId || "general";
+        const currentChannelObj = partyChannels.find((c) => c.id === msgChan);
+
+        // Only notify if message is in a channel this user has access to and didn't send themselves
+        if (currentChannelObj && newest.senderId !== activeCharId) {
+          if (!isFloatingChatOpen || activePartyChannelId !== msgChan) {
+            unreadChatCount++;
+            unreadPerChannel[msgChan] = (unreadPerChannel[msgChan] || 0) + 1;
+            playChatNotificationSound();
+          }
         }
       }
 
       cachedChatMessages = messages;
+      renderChatChannelsBar();
       renderPartyChatMessages();
       updateChatUnreadBadges();
     }, (err) => {
@@ -4637,8 +4722,169 @@ function stopPartyChatListener() {
     partyChatUnsubscribe = null;
   }
   cachedChatMessages = [];
+  partyChannels = [{ id: "general", name: "general", isDefault: true, allowedMembers: [] }];
+  activePartyChannelId = "general";
+  unreadPerChannel = {};
+  renderChatChannelsBar();
   renderPartyChatMessages();
   updateChatUnreadBadges();
+}
+
+function switchPartyChannel(chanId) {
+  if (!partyChannels.some((c) => c.id === chanId)) return;
+  activePartyChannelId = chanId;
+  unreadPerChannel[chanId] = 0;
+
+  renderChatChannelsBar();
+  renderPartyChatMessages();
+  updateChatUnreadBadges();
+
+  const input = document.getElementById("floatingChatInput");
+  const current = partyChannels.find((c) => c.id === chanId) || partyChannels[0];
+  if (input) {
+    input.placeholder = `Message #${current.name}... (Enter to send)`;
+    input.focus();
+  }
+}
+
+function renderChatChannelsBar() {
+  const list = document.getElementById("chatChannelsList");
+  const infoTag = document.getElementById("chatCurrentChannelTag");
+  const infoPrivacy = document.getElementById("chatCurrentChannelPrivacy");
+  if (!list) return;
+
+  list.innerHTML = partyChannels.map((chan) => {
+    const isActive = chan.id === activePartyChannelId;
+    const isPrivate = !chan.isDefault && chan.id !== "general";
+    const unread = unreadPerChannel[chan.id] || 0;
+    return `
+      <button type="button" class="chat-chan-pill ${isActive ? 'active' : ''}" data-chan-id="${escapeHtml(chan.id)}" title="${escapeHtml(chan.name)}">
+        <span># ${escapeHtml(chan.name)} ${isPrivate ? '🔒' : ''}</span>
+        ${unread > 0 && !isActive ? `<span class="chan-unread-dot"></span>` : ''}
+      </button>
+    `;
+  }).join("");
+
+  const current = partyChannels.find((c) => c.id === activePartyChannelId) || partyChannels[0];
+  if (infoTag) infoTag.textContent = `# ${current.name} ${current.isDefault ? '' : '🔒'}`;
+  if (infoPrivacy) {
+    if (current.isDefault || current.id === "general") {
+      infoPrivacy.textContent = "👥 All Party";
+    } else {
+      const count = current.allowedMembers ? current.allowedMembers.length : 1;
+      infoPrivacy.textContent = `🔒 Private (${count} invited)`;
+    }
+  }
+}
+
+function openCreateChannelModal() {
+  const modal = document.getElementById("createChatModal");
+  const list = document.getElementById("newChannelInviteList");
+  const nameInput = document.getElementById("newChannelNameInput");
+  if (!modal || !list) return;
+
+  if (nameInput) nameInput.value = "";
+
+  const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === (connectedCampaignRoom || activeDMRoomCode));
+  const myCharId = activeCharId;
+
+  // Build members list to invite
+  let membersHtml = "";
+
+  // 1. The DM option
+  membersHtml += `
+    <label class="invitee-checkbox-row">
+      <div class="invitee-info">
+        <div class="invitee-avatar" style="background:var(--primary-red); color:#fff; font-weight:800;">DM</div>
+        <div>
+          <div class="invitee-name">Dungeon Master ${isDM ? "(You)" : ""}</div>
+          <div class="invitee-role">Campaign Host</div>
+        </div>
+      </div>
+      <input type="checkbox" name="channelInvitee" value="DM" ${isDM ? "checked disabled" : ""} />
+    </label>
+  `;
+
+  // 2. All active room members
+  (cachedRoomMembers || []).forEach((m) => {
+    const isMe = m.id === myCharId;
+    membersHtml += `
+      <label class="invitee-checkbox-row">
+        <div class="invitee-info">
+          ${m.avatar ? `<img src="${escapeHtml(m.avatar)}" class="invitee-avatar" />` : `<div class="invitee-avatar">⚔️</div>`}
+          <div>
+            <div class="invitee-name">${escapeHtml(m.name || "Adventurer")} ${isMe ? "(You)" : ""}</div>
+            <div class="invitee-role">Lvl ${m.level || 1} ${escapeHtml(m.charClass || "Hero")}</div>
+          </div>
+        </div>
+        <input type="checkbox" name="channelInvitee" value="${escapeHtml(m.id)}" data-name="${escapeHtml(m.name || '')}" ${isMe ? "checked disabled" : ""} />
+      </label>
+    `;
+  });
+
+  list.innerHTML = membersHtml;
+  modal.style.display = "flex";
+  modal.classList.add("open");
+  if (nameInput) setTimeout(() => nameInput.focus(), 50);
+}
+
+function closeCreateChannelModal() {
+  const modal = document.getElementById("createChatModal");
+  if (modal) {
+    modal.style.display = "none";
+    modal.classList.remove("open");
+  }
+}
+
+async function confirmCreateChannel() {
+  const nameInput = document.getElementById("newChannelNameInput");
+  const rawName = nameInput?.value?.trim() || "";
+  const cleanName = rawName.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+
+  if (!cleanName || cleanName.length < 2) {
+    alert("Please enter a valid chat name (at least 2 letters, numbers, or dashes).");
+    return;
+  }
+
+  const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === (connectedCampaignRoom || activeDMRoomCode));
+  const myId = activeCharId || auth?.currentUser?.uid || "anon";
+  const myName = isDM ? "Dungeon Master" : (document.getElementById("charName")?.value?.trim() || "Adventurer");
+
+  const selectedMembers = [myId];
+  if (isDM && !selectedMembers.includes("DM")) selectedMembers.push("DM");
+
+  document.querySelectorAll('input[name="channelInvitee"]:checked').forEach((cb) => {
+    const val = cb.value;
+    if (val && !selectedMembers.includes(val)) {
+      selectedMembers.push(val);
+    }
+    const charNameVal = cb.getAttribute("data-name");
+    if (charNameVal && !selectedMembers.includes(charNameVal)) {
+      selectedMembers.push(charNameVal);
+    }
+  });
+
+  const channelId = "chan_" + Date.now();
+  const channelObj = {
+    id: channelId,
+    name: cleanName,
+    creatorId: myId,
+    creatorName: myName,
+    allowedMembers: selectedMembers,
+    createdAt: Date.now()
+  };
+
+  closeCreateChannelModal();
+
+  // Send channel creation event via system message (compliant with Firestore security rules)
+  await sendPartyChatMessage(
+    `🔒 Created private chat #${cleanName}`,
+    "system",
+    { action: "create_channel", channel: channelObj, channelId: channelId }
+  );
+
+  activePartyChannelId = channelId;
+  showStatus(`Created chat #${cleanName}!`);
 }
 
 async function sendPartyChatMessage(text, type = "chat", payload = null) {
@@ -4655,13 +4901,19 @@ async function sendPartyChatMessage(text, type = "chat", payload = null) {
   const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === activeRoom);
   const senderName = isDM ? "Dungeon Master" : (document.getElementById("charName")?.value?.trim() || "Adventurer");
 
+  const targetChannelId = (payload && payload.channelId) || activePartyChannelId || "general";
+
   const messageDoc = {
     senderId: activeCharId || auth?.currentUser?.uid || "anon",
     senderName: senderName,
     isDM: isDM,
     type: type,
     text: cleanText,
-    payload: payload,
+    channelId: targetChannelId,
+    payload: {
+      ...(payload || {}),
+      channelId: targetChannelId
+    },
     timestamp: Date.now()
   };
 
@@ -4675,16 +4927,28 @@ async function sendPartyChatMessage(text, type = "chat", payload = null) {
 
 function renderPartyChatMessages() {
   const floatContainer = document.getElementById("floatingChatMessages");
-  const modalContainer = document.getElementById("partyModalChatMessages");
+  if (!floatContainer) return;
 
-  if (!cachedChatMessages || cachedChatMessages.length === 0) {
-    const emptyHtml = `<div class="chat-empty-hint">Waiting for messages... Type below to start chatting!</div>`;
-    if (floatContainer) floatContainer.innerHTML = emptyHtml;
-    if (modalContainer) modalContainer.innerHTML = emptyHtml;
+  // Filter messages belonging to the currently selected channel
+  const currentChan = partyChannels.find((c) => c.id === activePartyChannelId) || partyChannels[0];
+  const channelMsgs = cachedChatMessages.filter((msg) => {
+    const msgChan = msg.channelId || msg.payload?.channelId || "general";
+    if (activePartyChannelId === "general") {
+      return msgChan === "general" || !msg.channelId;
+    }
+    return msgChan === activePartyChannelId;
+  });
+
+  if (!channelMsgs || channelMsgs.length === 0) {
+    let emptyHint = "Waiting for messages... Type below to start chatting!";
+    if (currentChan && currentChan.id !== "general") {
+      emptyHint = `🔒 This is the start of #${currentChan.name}. Only invited members can read or send messages here.`;
+    }
+    floatContainer.innerHTML = `<div class="chat-empty-hint">${escapeHtml(emptyHint)}</div>`;
     return;
   }
 
-  const html = cachedChatMessages.map((msg) => {
+  const html = channelMsgs.map((msg) => {
     const isMe = msg.senderId === activeCharId;
     const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
     let contentHtml = `<div class="chat-msg-text">${escapeHtml(msg.text)}</div>`;
@@ -4719,22 +4983,15 @@ function renderPartyChatMessages() {
     `;
   }).join("");
 
-  if (floatContainer) {
-    floatContainer.innerHTML = html;
-    floatContainer.scrollTop = floatContainer.scrollHeight;
-  }
-  if (modalContainer) {
-    modalContainer.innerHTML = html;
-    modalContainer.scrollTop = modalContainer.scrollHeight;
-  }
+  floatContainer.innerHTML = html;
+  floatContainer.scrollTop = floatContainer.scrollHeight;
 }
 
 function updateChatUnreadBadges() {
+  const bottomBadge = document.getElementById("bottomChatUnreadBadge");
   const dockBadge = document.getElementById("dockChatBadge");
-  const modalBadge = document.getElementById("partyModalChatBadge");
-  const floatBadge = document.getElementById("floatingChatUnreadBadge");
 
-  [dockBadge, modalBadge, floatBadge].forEach((b) => {
+  [bottomBadge, dockBadge].forEach((b) => {
     if (b) {
       if (unreadChatCount > 0) {
         b.textContent = unreadChatCount;
@@ -4744,11 +5001,13 @@ function updateChatUnreadBadges() {
       }
     }
   });
+
+  // Re-render channel pills so dots reflect unread count
+  renderChatChannelsBar();
 }
 
 function toggleFloatingPartyChat(forceOpen = null) {
   const panel = document.getElementById("floatingPartyChat");
-  const bubble = document.getElementById("floatingChatBubbleBtn");
   if (!panel) return;
 
   const activeRoom = connectedCampaignRoom || activeDMRoomCode;
@@ -4762,14 +5021,13 @@ function toggleFloatingPartyChat(forceOpen = null) {
 
   if (isFloatingChatOpen) {
     panel.style.display = "flex";
-    if (bubble) bubble.style.display = "none";
     unreadChatCount = 0;
+    unreadPerChannel[activePartyChannelId] = 0;
     updateChatUnreadBadges();
     const input = document.getElementById("floatingChatInput");
     if (input) setTimeout(() => input.focus(), 50);
   } else {
     panel.style.display = "none";
-    if (bubble) bubble.style.display = "flex";
   }
 }
 
@@ -4780,7 +5038,7 @@ function shareLastRollToPartyChat() {
   }
   const text = `Rolled ${lastBroadcastRoll.desc} = ${lastBroadcastRoll.total}`;
   sendPartyChatMessage(text, "roll", lastBroadcastRoll);
-  showStatus("Shared roll to party chat!");
+  showStatus("Shared roll to chat!");
 }
 
 /* ==========================================================================
