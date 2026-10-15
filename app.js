@@ -1982,7 +1982,9 @@ function updatePartyStatusUI() {
     }
   }
   if (!activeRoom) {
-    toggleFloatingPartyChat(false);
+    const chatPanel = document.getElementById("floatingPartyChat");
+    if (chatPanel) chatPanel.style.display = "none";
+    isFloatingChatOpen = false;
   }
 }
 
@@ -5009,6 +5011,12 @@ function updateChatUnreadBadges() {
 function toggleFloatingPartyChat(forceOpen = null) {
   const panel = document.getElementById("floatingPartyChat");
   if (!panel) return;
+
+  if (forceOpen === false) {
+    panel.style.display = "none";
+    isFloatingChatOpen = false;
+    return;
+  }
 
   const activeRoom = connectedCampaignRoom || activeDMRoomCode;
   if (!activeRoom) {
