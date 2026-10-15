@@ -60,6 +60,7 @@ let lastBroadcastRoll = null;
 
 // UI Filter & Dice States
 let currentDiceMode = "norm"; // "norm" | "adv" | "dis"
+let isDiceRollerOpen = false;
 let activeTraitCategoryFilter = "all";
 let activeSpellLevelFilter = "all";
 let isPartyDockCollapsed = false;
@@ -961,6 +962,32 @@ function updateDiceBadgeDisplay(total, captionText = "Result", isCritSuccess = f
     badge.classList.add("dice-pop-anim");
     if (isCritSuccess) badge.classList.add("crit-success");
     else if (isCritFail) badge.classList.add("crit-fail");
+  }
+}
+
+function toggleDiceRoller(forceState) {
+  const bar = document.getElementById("diceStationBar");
+  const btn = document.getElementById("floatingD20RollerBtn");
+  if (!bar) return;
+
+  if (typeof forceState === "boolean") {
+    isDiceRollerOpen = forceState;
+  } else {
+    isDiceRollerOpen = !isDiceRollerOpen;
+  }
+
+  if (isDiceRollerOpen) {
+    bar.classList.add("open");
+    if (btn) {
+      btn.classList.add("active");
+      btn.setAttribute("aria-expanded", "true");
+    }
+  } else {
+    bar.classList.remove("open");
+    if (btn) {
+      btn.classList.remove("active");
+      btn.setAttribute("aria-expanded", "false");
+    }
   }
 }
 
@@ -3904,6 +3931,18 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
+  // Floating D20 Dice Roller Toggle
+  if (e.target.id === "floatingD20RollerBtn" || e.target.closest("#floatingD20RollerBtn")) {
+    toggleDiceRoller();
+    return;
+  }
+
+  // Close Dice Station Button
+  if (e.target.id === "closeDiceStationBtn" || e.target.closest("#closeDiceStationBtn")) {
+    toggleDiceRoller(false);
+    return;
+  }
+
   // Dice Mode Toggle (ADV / NORM / DIS)
   const modeBtn = e.target.closest(".dice-mode-btn");
   if (modeBtn) {
@@ -4358,6 +4397,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeAllModals();
     currentInspectedMemberId = null;
+    if (isDiceRollerOpen) toggleDiceRoller(false);
   }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
     e.preventDefault();

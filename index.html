@@ -1300,6 +1300,8 @@
           <span class="dice-history-empty">No rolls logged yet.</span>
         </div>
       </div>
+
+      <button type="button" class="dice-station-close-btn" id="closeDiceStationBtn" title="Close Dice Roller (Esc)" aria-label="Close Dice Roller">&times;</button>
     </section>
 
     <!-- ================================================================= -->
@@ -1690,6 +1692,11 @@
     <span class="chat-trigger-label">Party Chat</span>
     <span class="chat-trigger-room" id="bottomChatRoomBadge">ROOM</span>
     <span class="chat-trigger-badge" id="bottomChatUnreadBadge" style="display: none;">0</span>
+  </button>
+
+  <!-- FLOATING D20 DICE ROLLER TRIGGER BUTTON -->
+  <button type="button" id="floatingD20RollerBtn" class="floating-d20-trigger" title="Toggle Dice Roller" aria-label="Toggle Dice Roller" aria-expanded="false">
+    <img src="icon.svg" class="d20-trigger-img" alt="d20 die" width="34" height="34" />
   </button>
 
   <!-- CREATE PRIVATE CHAT CHANNEL MODAL -->
