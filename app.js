@@ -5225,6 +5225,8 @@ function toggleFloatingPartyChat(forceOpen = null) {
   if (forceOpen === false) {
     panel.style.display = "none";
     isFloatingChatOpen = false;
+    const bottomChatBtn = document.getElementById("bottomLeftPartyChatBtn");
+    if (bottomChatBtn) bottomChatBtn.classList.remove("active");
     return;
   }
 
@@ -5246,6 +5248,11 @@ function toggleFloatingPartyChat(forceOpen = null) {
     if (input) setTimeout(() => input.focus(), 50);
   } else {
     panel.style.display = "none";
+  }
+
+  const bottomChatBtn = document.getElementById("bottomLeftPartyChatBtn");
+  if (bottomChatBtn) {
+    bottomChatBtn.classList.toggle("active", isFloatingChatOpen);
   }
 }
 
