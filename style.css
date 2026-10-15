@@ -97,7 +97,6 @@ body.theme-midnight {
   --glow-1: rgba(56, 189, 248, 0.16);
   --glow-2: rgba(37, 99, 235, 0.14);
   --theme-rim: rgba(56, 189, 248, 0.4);
-  --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
 /* Linear Studio 3: Mint Matrix (Emerald Studio) */
@@ -129,7 +128,6 @@ body.theme-emerald {
   --glow-1: rgba(16, 185, 129, 0.16);
   --glow-2: rgba(6, 182, 212, 0.12);
   --theme-rim: rgba(16, 185, 129, 0.4);
-  --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
 /* Linear Studio 4: Crimson Syndicate (Velvet Rose) */
@@ -161,7 +159,6 @@ body.theme-crimson {
   --glow-1: rgba(244, 63, 94, 0.18);
   --glow-2: rgba(225, 29, 72, 0.14);
   --theme-rim: rgba(244, 63, 94, 0.4);
-  --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
 /* Linear Studio 5: Solar Forge (Warm Amber / Gold) */
@@ -193,7 +190,6 @@ body.theme-amber {
   --glow-1: rgba(245, 158, 11, 0.18);
   --glow-2: rgba(251, 191, 36, 0.12);
   --theme-rim: rgba(245, 158, 11, 0.4);
-  --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
 /* Linear Studio 6: Nebula (Ultraviolet Raycast) */
@@ -225,7 +221,6 @@ body.theme-violet {
   --glow-1: rgba(168, 85, 247, 0.2);
   --glow-2: rgba(192, 132, 252, 0.14);
   --theme-rim: rgba(168, 85, 247, 0.4);
-  --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
 /* Linear Studio 7: Monolith (OLED Titanium Minimal) */
@@ -257,7 +252,6 @@ body.theme-monolith {
   --glow-1: rgba(255, 255, 255, 0.06);
   --glow-2: rgba(255, 255, 255, 0.04);
   --theme-rim: rgba(255, 255, 255, 0.35);
-  --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
 /* Linear Studio 8: Sunset (Neon Synthwave Dusk) */
@@ -289,7 +283,6 @@ body.theme-cyberpunk {
   --glow-1: rgba(236, 72, 153, 0.18);
   --glow-2: rgba(6, 182, 212, 0.15);
   --theme-rim: rgba(236, 72, 153, 0.4);
-  --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
 }
 
 :root {
@@ -651,6 +644,13 @@ input[type="number"] {
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
+}
+
+.command-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: nowrap;
 }
 
 .command-brand {
@@ -1359,17 +1359,20 @@ body.theme-amber .main-tab.active .tab-counter-pill {
   background: linear-gradient(145deg, rgba(22, 17, 30, 0.75) 0%, rgba(12, 9, 17, 0.88) 100%);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-md);
-  padding: 0.45rem 0.8rem;
-  min-width: 76px;
+  padding: 0.5rem 0.65rem;
+  width: 84px;
+  min-width: 84px;
+  height: 68px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   box-shadow: 
     0 4px 12px rgba(0, 0, 0, 0.4),
     inset 0 0 0 1px rgba(212, 175, 55, 0.14),
     inset 0 1px 0 rgba(255, 215, 0, 0.18);
   transition: all 0.18s ease;
+  box-sizing: border-box;
 }
 .hero-stat-orb:hover {
   border-color: var(--accent-gold);
@@ -1387,51 +1390,111 @@ body.theme-amber .main-tab.active .tab-counter-pill {
   border-color: var(--accent-blue);
   background: rgba(56, 189, 248, 0.08);
 }
-.init-orb-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.25rem;
-}
-.init-misc-input {
-  width: 28px !important;
-  height: 18px !important;
-  font-size: 0.62rem !important;
-  padding: 0 !important;
-  color: var(--text-dim) !important;
-  background: transparent !important;
-  border: 1px dashed var(--border-subtle) !important;
-}
 .orb-caption {
   font-family: var(--font-display) !important;
-  font-size: 0.6rem;
+  font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--accent-gold);
   letter-spacing: 0.08em;
+  text-align: center;
+  margin: 0;
+  line-height: 1.1;
+  white-space: nowrap;
 }
+input[type="number"].orb-number,
+input.orb-number,
 .orb-number {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: #ffffff;
-  width: 40px;
+  font-family: var(--font-body) !important;
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  width: 100% !important;
+  max-width: 48px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  text-align: center !important;
   background: transparent !important;
+  background-color: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+}
+input[type="number"].orb-number:hover,
+input[type="number"].orb-number:focus,
+input.orb-number:hover,
+input.orb-number:focus {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: #ffffff !important;
 }
 .orb-val {
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: var(--accent-blue);
+  height: 32px;
+  line-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
+.init-orb-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  height: 32px;
+}
+.init-orb-row .orb-val {
+  height: 32px;
+  line-height: 32px;
+}
+input[type="number"].init-misc-input,
+.init-misc-input {
+  width: 22px !important;
+  height: 20px !important;
+  font-size: 0.64rem !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: var(--text-muted) !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  border: 1px dashed var(--border-medium) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+input[type="number"].init-misc-input:focus,
+.init-misc-input:focus {
+  background: rgba(0, 0, 0, 0.6) !important;
+  border-color: var(--accent-gold) !important;
+  color: #ffffff !important;
 }
 .orb-unit-wrap {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
+  gap: 0.15rem;
+  height: 32px;
+}
+.orb-unit-wrap input[type="number"].orb-number {
+  width: 32px !important;
+  max-width: 32px !important;
 }
 .orb-unit {
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   font-weight: 700;
   color: var(--text-dim);
+  line-height: 1;
 }
 
 /* Razor-Thin Sleek Health Bar */
@@ -1547,17 +1610,21 @@ body.theme-amber .main-tab.active .tab-counter-pill {
 
 /* Privacy Blur Toggle */
 .blur-toggle-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-dim);
-  padding: 0.1rem;
-  display: inline-flex;
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-dim) !important;
+  padding: 2px !important;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
   opacity: 0;
   pointer-events: none;
-  margin-left: auto;
+  margin: 0 !important;
   cursor: pointer;
+  z-index: 2;
 }
 [data-blur-id]:hover .blur-toggle-btn,
 [data-blur-id].blurred .blur-toggle-btn {
@@ -4321,12 +4388,131 @@ kbd {
   padding-top: 1rem;
 }
 
+.parchment-claim-box {
+  background: rgba(43, 29, 12, 0.08);
+  border: 1.5px dashed rgba(139, 90, 43, 0.45);
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.claim-info-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.claim-info-title {
+  font-family: var(--font-display) !important;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #451a03;
+}
+.claim-info-sub {
+  font-size: 0.82rem;
+  color: #78350f;
+  font-family: 'Inter', Georgia, serif;
+}
+.claim-handout-btn {
+  font-family: var(--font-display) !important;
+  font-size: 0.8rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em;
+  padding: 0.5rem 1rem !important;
+  border-radius: var(--radius-sm) !important;
+}
+.claimed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #065f46;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  text-transform: uppercase;
+}
+
 /* Handout Editor Form */
 .handout-editor-form {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
 }
+.handout-subform-box {
+  background: var(--bg-input);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.handout-subform-title {
+  font-family: var(--font-display) !important;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  letter-spacing: 0.05em;
+}
+.handout-coins-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+}
+.coin-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--font-display) !important;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.coin-entry.cp { color: #f97316; }
+.coin-entry.sp { color: #cbd5e1; }
+.coin-entry.ep { color: #38bdf8; }
+.coin-entry.gp { color: #fbbf24; }
+.coin-entry.pp { color: #c084fc; }
+.coin-entry input {
+  font-weight: 800 !important;
+}
+
+.handout-coins-pills {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+.coin-pill {
+  font-family: var(--font-display) !important;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  background: rgba(0, 0, 0, 0.08);
+}
+.coin-pill.cp { color: #b45309; }
+.coin-pill.sp { color: #475569; }
+.coin-pill.ep { color: #0284c7; }
+.coin-pill.gp { color: #b45309; background: rgba(234, 179, 8, 0.15); border-color: #d97706; }
+.coin-pill.pp { color: #7e22ce; }
+
+.handout-card-claim {
+  margin-top: 0.35rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border-subtle);
+  display: flex;
+  justify-content: flex-end;
+}
+
 .handout-form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

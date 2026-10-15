@@ -49,70 +49,72 @@
           </div>
         </div>
 
-        <!-- Center: Segmented Workspace Navigation Dock -->
-        <nav class="codex-navigation-dock" id="mainNavDock" aria-label="Character Sheet Sections">
-          <button class="main-tab active" data-target="tab-stats" type="button">
-            <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
-              <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
-              <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
-              <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
-              <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
-            </svg>
-            <span>Combat &amp; Core</span>
-          </button>
+        <!-- Center: Segmented Workspace Navigation Dock & Quick Action Trigger -->
+        <div class="command-nav-group">
+          <nav class="codex-navigation-dock" id="mainNavDock" aria-label="Character Sheet Sections">
+            <button class="main-tab active" data-target="tab-stats" type="button">
+              <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+              </svg>
+              <span>Combat &amp; Core</span>
+            </button>
 
-          <button class="main-tab" data-target="tab-traits" type="button">
-            <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-            </svg>
-            <span>Features &amp; Traits</span>
-            <span class="tab-counter-pill" id="traitsCountBadge">0</span>
-          </button>
+            <button class="main-tab" data-target="tab-traits" type="button">
+              <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+              <span>Features &amp; Traits</span>
+              <span class="tab-counter-pill" id="traitsCountBadge">0</span>
+            </button>
 
-          <button class="main-tab" data-target="tab-spells" type="button">
-            <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
-              <path d="M12 2L15 9L22 12L15 15L12 22L9 15L2 12L9 9L12 2Z"></path>
-            </svg>
-            <span>Spells &amp; Grimoire</span>
-            <span class="tab-counter-pill" id="spellsCountBadge">0</span>
-          </button>
+            <button class="main-tab" data-target="tab-spells" type="button">
+              <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M12 2L15 9L22 12L15 15L12 22L9 15L2 12L9 9L12 2Z"></path>
+              </svg>
+              <span>Spells &amp; Grimoire</span>
+              <span class="tab-counter-pill" id="spellsCountBadge">0</span>
+            </button>
 
-          <button class="main-tab" data-target="tab-inventory" type="button">
-            <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <path d="M16 10a4 4 0 0 1-8 0"></path>
-            </svg>
-            <span>Inventory &amp; Vault</span>
-          </button>
+            <button class="main-tab" data-target="tab-inventory" type="button">
+              <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+              </svg>
+              <span>Inventory &amp; Vault</span>
+            </button>
 
-          <button class="main-tab" data-target="tab-companions" type="button">
-            <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
-              <circle cx="12" cy="12" r="9"></circle>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-            <span>Companions &amp; Creatures</span>
-          </button>
+            <button class="main-tab" data-target="tab-companions" type="button">
+              <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="12" cy="12" r="9"></circle>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <span>Companions &amp; Creatures</span>
+            </button>
 
-          <button class="main-tab" data-target="tab-journal" type="button">
-            <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-            <span>Notes &amp; Quests</span>
-          </button>
-        </nav>
+            <button class="main-tab" data-target="tab-journal" type="button">
+              <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+              <span>Notes &amp; Quests</span>
+            </button>
+          </nav>
 
-        <!-- Right: Quick Action Command Trigger -->
-        <div class="command-top-right">
-          <button class="btn btn-ghost cmd-palette-trigger" id="commandPaletteBtn" type="button" title="Quick Roll &amp; Search">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <span>Quick Action</span>
-            <kbd class="cmd-kbd" id="quickActionShortcutKbd">Ctrl+K</kbd>
-          </button>
+          <!-- Right: Quick Action Command Trigger -->
+          <div class="command-top-right">
+            <button class="btn btn-ghost cmd-palette-trigger" id="commandPaletteBtn" type="button" title="Quick Roll &amp; Search">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <span>Quick Action</span>
+              <kbd class="cmd-kbd" id="quickActionShortcutKbd">Ctrl+K</kbd>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1231,7 +1233,7 @@
       <!-- =============================================================== -->
       <div id="tab-journal" class="tab-page">
         <div class="subtab-controls">
-          <button class="sub-tab active" data-sub="sub-notes" type="button">Session Chronicle</button>
+          <button class="sub-tab active" data-sub="sub-notes" type="button">Campaign Log</button>
           <button class="sub-tab" data-sub="sub-quests" type="button">Quest Log</button>
           <button class="sub-tab" data-sub="sub-personality" type="button">Personality &amp; Backstory</button>
           <button class="sub-tab" data-sub="sub-npcs" type="button">NPCs &amp; Factions</button>
@@ -1286,8 +1288,8 @@
         <div id="sub-handouts" class="subtab-page">
           <div class="handouts-header-bar">
             <div>
-              <h2 class="section-title">Party Handouts, Letters &amp; Clues</h2>
-              <p class="section-desc">Create styled letters, bounties, maps, or secret clues and share them directly with connected party members in real time.</p>
+              <h2 class="section-title">Party Handouts &amp; Rewards</h2>
+              <p class="section-desc">Create items, coins, letters, maps, or secret clues and share them directly with connected party members in real time.</p>
             </div>
             <div class="handouts-actions">
               <button type="button" class="btn btn-primary btn-sm" id="createHandoutBtn">+ New Handout</button>
@@ -1295,11 +1297,11 @@
           </div>
           <div class="handout-filter-bar">
             <button type="button" class="handout-filter-chip active" data-filter="all">All Handouts</button>
-            <button type="button" class="handout-filter-chip" data-filter="letter">📜 Letters</button>
-            <button type="button" class="handout-filter-chip" data-filter="bounty">💰 Bounties</button>
-            <button type="button" class="handout-filter-chip" data-filter="clue">🔍 Clues</button>
+            <button type="button" class="handout-filter-chip" data-filter="item">🗡️ Items</button>
+            <button type="button" class="handout-filter-chip" data-filter="coin">💰 Coins</button>
+            <button type="button" class="handout-filter-chip" data-filter="letter">📜 Letters &amp; Notes</button>
             <button type="button" class="handout-filter-chip" data-filter="map">🗺️ Maps</button>
-            <button type="button" class="handout-filter-chip" data-filter="contract">🖋️ Contracts</button>
+            <button type="button" class="handout-filter-chip" data-filter="clue">🔍 Clues &amp; Bounties</button>
           </div>
           <div class="handouts-cards-grid" id="handoutsGrid">
             <!-- Populated dynamically by app.js -->
@@ -1540,6 +1542,7 @@
             <div class="dm-action-btns">
               <input type="text" id="dmRoomCodeInput" class="party-room-input center" placeholder="Custom Code (optional)" maxlength="20" autocomplete="off" style="width: 195px; font-size: 0.85rem; padding: 0.4rem 0.6rem;" />
               <button type="button" class="btn btn-primary" id="createCampaignBtn">Create Party</button>
+              <button type="button" class="btn btn-outline" id="dmQuickHandoutBtn" style="display: none;" title="Award items, coins, or clues to players">🎁 Handout Loot</button>
               <button type="button" class="btn btn-ghost" id="copyRoomCodeBtn" style="display: none;">Copy Code</button>
               <button type="button" class="btn btn-ghost" id="copyDMInviteLinkBtn" style="display: none;">Invite Link</button>
               <button type="button" class="btn btn-danger-ghost" id="closeCampaignBtn" style="display: none;">Close</button>
@@ -1828,23 +1831,30 @@
         <!-- MODE 1: Parchment View Mode -->
         <div id="handoutViewMode" class="handout-parchment-sheet">
           <div class="parchment-wax-seal">
-            <span class="parchment-seal-symbol">⚔️</span>
+            <span class="parchment-seal-symbol" id="parchmentSealIcon">📜</span>
           </div>
           <div class="parchment-header">
             <h2 id="parchmentTitle" class="parchment-title">Ancient Parchment</h2>
             <div class="parchment-meta-row">
-              <span id="parchmentTypeBadge" class="parchment-badge">Letter</span>
+              <span id="parchmentTypeBadge" class="parchment-badge">LETTER</span>
               <span id="parchmentOrigin" class="parchment-origin">Author: Unknown</span>
               <span id="parchmentDate" class="parchment-date">Date: 1492 DR</span>
             </div>
           </div>
+
+          <!-- Interactive Claim Box for Items and Coins -->
+          <div id="parchmentClaimBox" class="parchment-claim-box" style="display: none;">
+            <div class="claim-info-wrap" id="parchmentClaimInfo"></div>
+            <button type="button" class="btn btn-primary claim-handout-btn" id="parchmentClaimBtn">🎒 Claim Item</button>
+          </div>
+
           <div id="parchmentImageWrap" class="parchment-image-wrap" style="display: none;">
             <img id="parchmentImage" src="" alt="Handout attachment" />
           </div>
           <div id="parchmentContent" class="parchment-body-text"></div>
           <div class="parchment-footer-bar">
-            <button type="button" class="btn btn-outline btn-xs" id="editCurrentHandoutBtn">Edit Handout</button>
-            <button type="button" class="btn btn-primary btn-xs" id="shareCurrentHandoutBtn">Share to Party Room</button>
+            <button type="button" class="btn btn-outline btn-xs" id="editCurrentHandoutBtn">Edit</button>
+            <button type="button" class="btn btn-primary btn-xs" id="shareCurrentHandoutBtn">Share to Party</button>
             <button type="button" class="btn btn-ghost btn-xs" id="copyHandoutTextBtn">Copy Text</button>
           </div>
         </div>
@@ -1852,44 +1862,109 @@
         <!-- MODE 2: Edit / Create Mode -->
         <div id="handoutEditMode" style="display: none;" class="handout-editor-form">
           <input type="hidden" id="editingHandoutId" value="" />
+
+          <!-- Category and Recipient -->
           <div class="handout-form-row">
             <label class="handout-form-label">
-              <span>Title</span>
-              <input type="text" id="handoutFormTitle" class="handout-form-input" placeholder="e.g. Bounty Notice: The Red Fang" required />
+              <span>Category / Type</span>
+              <select id="handoutFormType" class="handout-form-input">
+                <option value="item">🗡️ Item / Equipment / Loot</option>
+                <option value="coin">💰 Coins / Treasure</option>
+                <option value="letter" selected>📜 Letter / Manuscript</option>
+                <option value="map">🗺️ Map / Diagram</option>
+                <option value="clue">🔍 Clue / Bounty / Intel</option>
+                <option value="note">📝 Quick Note</option>
+              </select>
             </label>
             <label class="handout-form-label">
-              <span>Category</span>
-              <select id="handoutFormType" class="handout-form-input">
-                <option value="letter">📜 Letter / Manuscript</option>
-                <option value="bounty">💰 Bounty / Notice</option>
-                <option value="clue">🔍 Clue / Evidence</option>
-                <option value="map">🗺️ Map / Diagram</option>
-                <option value="contract">🖋️ Contract / Deed</option>
-                <option value="note">📝 Field Note</option>
+              <span>Recipient</span>
+              <select id="handoutFormRecipient" class="handout-form-input">
+                <option value="all">👥 Everyone in Party</option>
               </select>
             </label>
           </div>
-          <div class="handout-form-row">
+
+          <!-- Item Specific Subform -->
+          <div id="handoutItemFields" class="handout-subform-box" style="display: none;">
+            <span class="handout-subform-title">Loot Item Specifications</span>
+            <div class="handout-form-row">
+              <label class="handout-form-label" style="grid-column: span 2;">
+                <span>Item Name</span>
+                <input type="text" id="handoutItemName" class="handout-form-input" placeholder="e.g. Potion of Greater Healing, Sun Blade" />
+              </label>
+            </div>
+            <div class="handout-form-row">
+              <label class="handout-form-label">
+                <span>Quantity</span>
+                <input type="number" id="handoutItemQty" class="handout-form-input center" value="1" min="1" />
+              </label>
+              <label class="handout-form-label">
+                <span>Weight (lbs each)</span>
+                <input type="number" id="handoutItemWeight" class="handout-form-input center" value="0" min="0" step="0.1" />
+              </label>
+            </div>
+          </div>
+
+          <!-- Coins Specific Subform -->
+          <div id="handoutCoinFields" class="handout-subform-box" style="display: none;">
+            <span class="handout-subform-title">Treasure Coin Distribution</span>
+            <div class="handout-coins-grid">
+              <label class="coin-entry cp">
+                <span>Copper (CP)</span>
+                <input type="number" id="handoutCoinCP" class="handout-form-input center" value="0" min="0" />
+              </label>
+              <label class="coin-entry sp">
+                <span>Silver (SP)</span>
+                <input type="number" id="handoutCoinSP" class="handout-form-input center" value="0" min="0" />
+              </label>
+              <label class="coin-entry ep">
+                <span>Electrum (EP)</span>
+                <input type="number" id="handoutCoinEP" class="handout-form-input center" value="0" min="0" />
+              </label>
+              <label class="coin-entry gp">
+                <span>Gold (GP)</span>
+                <input type="number" id="handoutCoinGP" class="handout-form-input center" value="0" min="0" />
+              </label>
+              <label class="coin-entry pp">
+                <span>Platinum (PP)</span>
+                <input type="number" id="handoutCoinPP" class="handout-form-input center" value="0" min="0" />
+              </label>
+            </div>
+          </div>
+
+          <!-- Standard Document Details (for Letters, Maps, Clues, Notes) -->
+          <div id="handoutStandardFields">
+            <div class="handout-form-row">
+              <label class="handout-form-label" style="grid-column: span 2;">
+                <span>Title / Header</span>
+                <input type="text" id="handoutFormTitle" class="handout-form-input" placeholder="e.g. Royal Decree of Waterdeep, Wave Echo Cave Map" />
+              </label>
+            </div>
+            <div class="handout-form-row">
+              <label class="handout-form-label">
+                <span>Author / Origin (Optional)</span>
+                <input type="text" id="handoutFormAuthor" class="handout-form-input" placeholder="e.g. Lord Neverember, Guildmaster" />
+              </label>
+              <label class="handout-form-label">
+                <span>Date / Era / Location (Optional)</span>
+                <input type="text" id="handoutFormDate" class="handout-form-input" placeholder="e.g. Ches 14, 1492 DR" />
+              </label>
+            </div>
             <label class="handout-form-label">
-              <span>Author / Origin</span>
-              <input type="text" id="handoutFormAuthor" class="handout-form-input" placeholder="e.g. Lord Neverember, Captain of the Guard" />
-            </label>
-            <label class="handout-form-label">
-              <span>Date / Era / Location</span>
-              <input type="text" id="handoutFormDate" class="handout-form-input" placeholder="e.g. Ches 14, 1492 DR / Waterdeep" />
+              <span>Image / Map URL (Optional)</span>
+              <input type="url" id="handoutFormImageUrl" class="handout-form-input" placeholder="https://... image, map, or portrait URL" />
             </label>
           </div>
+
+          <!-- Handout Content / Notes (All Types) -->
           <label class="handout-form-label">
-            <span>Attachment Image URL (Optional)</span>
-            <input type="url" id="handoutFormImageUrl" class="handout-form-input" placeholder="https://... image or map URL" />
+            <span id="handoutContentLabel">Content &amp; Notes</span>
+            <textarea id="handoutFormContent" class="handout-form-textarea" rows="6" placeholder="Write or paste letter text, item lore/properties, or notes for the party..."></textarea>
           </label>
-          <label class="handout-form-label">
-            <span>Handout Content</span>
-            <textarea id="handoutFormContent" class="handout-form-textarea" rows="8" placeholder="Write or paste the letter, clue, contract or message here..."></textarea>
-          </label>
+
           <div class="handout-editor-actions">
             <button type="button" class="btn btn-ghost" id="cancelHandoutEditBtn">Cancel</button>
-            <button type="button" class="btn btn-primary" id="saveHandoutBtn">Save Handout</button>
+            <button type="button" class="btn btn-primary" id="saveHandoutBtn">Save &amp; Send Handout</button>
           </div>
         </div>
       </div>
