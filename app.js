@@ -303,10 +303,10 @@ function getClassCssClass(className) {
   return "class-fighter";
 }
 
-// Themes: Linear Studio Aesthetic Suite
+// Themes: Fantasy RPG Aesthetic Suite
 function applyTheme(themeName) {
   const themes = [
-    "theme-nexus", "theme-midnight", "theme-emerald", "theme-crimson",
+    "theme-nexus", "theme-parchment", "theme-midnight", "theme-emerald", "theme-crimson",
     "theme-amber", "theme-violet", "theme-monolith", "theme-cyberpunk"
   ];
   themes.forEach((t) => document.body.classList.remove(t));
