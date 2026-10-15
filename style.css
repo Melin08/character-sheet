@@ -1049,6 +1049,103 @@ body.theme-amber .main-tab.active .tab-counter-pill {
   cursor: pointer;
 }
 
+/* Export Dropdown Menu */
+.export-dropdown-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+.export-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.dropdown-caret {
+  font-size: 0.65rem;
+  opacity: 0.75;
+  transition: transform 0.18s ease;
+}
+.export-trigger-btn[aria-expanded="true"] .dropdown-caret {
+  transform: rotate(180deg);
+}
+.export-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 250px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(212, 175, 55, 0.15);
+  padding: 0.4rem;
+  display: none;
+  flex-direction: column;
+  gap: 0.15rem;
+  z-index: 1050;
+  backdrop-filter: blur(12px);
+  animation: modalFadeIn 0.15s ease-out;
+}
+.export-dropdown-menu.open {
+  display: flex;
+}
+.export-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-xs);
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+.export-menu-item:hover {
+  background: var(--bg-hover);
+  color: var(--accent-gold);
+  transform: translateX(2px);
+}
+.export-menu-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  flex-shrink: 0;
+}
+.export-menu-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.export-menu-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: inherit;
+}
+.export-menu-desc {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+.export-menu-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 0.2rem 0.3rem;
+}
+.export-menu-section-header {
+  font-family: var(--font-display) !important;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.25rem 0.6rem 0.1rem;
+}
+
 /* ==========================================================================
    4. MODERN BENTO PROFILE & TELEMETRY HEADER
    ========================================================================== */
