@@ -1152,7 +1152,7 @@ async function ensureAuthenticated() {
     try {
       await auth.signInAnonymously();
     } catch (e) {
-      console.warn("Auto-authentication note:", e);
+      // Unauthenticated access to campaign rooms and party features is fully supported
     }
   }
 }

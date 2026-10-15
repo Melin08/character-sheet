@@ -96,11 +96,10 @@ service cloud.firestore {
     }
 
     function isRoomCreator(roomCode) {
-      return isAuthenticated() &&
-        exists(/databases/$(database)/documents/campaigns/$(roomCode)) &&
+      return exists(/databases/$(database)/documents/campaigns/$(roomCode)) &&
         (
-          get(/databases/$(database)/documents/campaigns/$(roomCode)).data.creatorUid == request.auth.uid ||
-          get(/databases/$(database)/documents/campaigns/$(roomCode)).data.creatorUid == 'local'
+          get(/databases/$(database)/documents/campaigns/$(roomCode)).data.creatorUid == 'local' ||
+          (isAuthenticated() && get(/databases/$(database)/documents/campaigns/$(roomCode)).data.creatorUid == request.auth.uid)
         );
     }
 
@@ -165,6 +164,8 @@ service cloud.firestore {
         data.type in ['chat', 'dice', 'handout', 'system'] &&
         data.text is string &&
         data.text.size() <= 2000 &&
+        (!('channelId' in data) || (data.channelId is string && data.channelId.size() <= 64)) &&
+        (!('payload' in data) || data.payload is map || data.payload is list || data.payload == null) &&
         data.timestamp is number;
     }
 
@@ -195,59 +196,60 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
 
-    // 2. Campaign rooms: public discoverability by room code, strict creator rights
+    // 2. Campaign rooms: open discoverability by room code so any player can join without email login
     match /campaigns/{roomCode} {
-      // Room lookup allowed for authenticated players joining or DM checking availability
-      allow read: if isAuthenticated();
+      // Room lookup allowed for any player joining or DM checking availability
+      allow read: if true;
 
-      // Creating a room: creatorUid must match caller or be local marker
-      allow create: if isAuthenticated() &&
-        isValidCampaign(request.resource.data) &&
-        (request.resource.data.creatorUid == request.auth.uid || request.resource.data.creatorUid == 'local');
+      // Creating a room: creatorUid must match caller or be 'local'
+      allow create: if isValidCampaign(request.resource.data) &&
+        (
+          request.resource.data.creatorUid == 'local' ||
+          (isAuthenticated() && request.resource.data.creatorUid == request.auth.uid)
+        );
 
       // Modifying room metadata: only original creator
-      allow update: if isAuthenticated() &&
-        (resource.data.creatorUid == request.auth.uid || resource.data.creatorUid == 'local') &&
-        isValidCampaign(request.resource.data) &&
-        request.resource.data.creatorUid == resource.data.creatorUid;
+      allow update: if isValidCampaign(request.resource.data) &&
+        request.resource.data.creatorUid == resource.data.creatorUid &&
+        (
+          resource.data.creatorUid == 'local' ||
+          (isAuthenticated() && resource.data.creatorUid == request.auth.uid)
+        );
 
       // Deleting room: only original creator
-      allow delete: if isAuthenticated() &&
-        (resource.data.creatorUid == request.auth.uid || resource.data.creatorUid == 'local');
+      allow delete: if resource.data.creatorUid == 'local' ||
+        (isAuthenticated() && resource.data.creatorUid == request.auth.uid);
 
       // 3. Live party members subcollection
       match /members/{memberId} {
-        // All authenticated users in the campaign can view party members
-        allow read: if isAuthenticated();
+        // Any player in the campaign can view party members without email login
+        allow read: if true;
 
-        // Players can create/register their character into the room
-        allow create: if isAuthenticated() && isValidMemberData(request.resource.data);
+        // Players can create/register their character into the room without email login
+        allow create: if isValidMemberData(request.resource.data);
 
         // Updates allowed if data passes validation:
         // - Players syncing vitals/rolls/character sheet
         // - DMs adjusting HP or inspiration
-        allow update: if isAuthenticated() && (
-          isValidMemberData(request.resource.data) ||
-          isRoomCreator(roomCode)
-        );
+        allow update: if isValidMemberData(request.resource.data) || isRoomCreator(roomCode);
 
         // Deleting member:
         // - DM can kick any player
         // - Player can remove their own character when leaving
-        allow delete: if isAuthenticated() && (
-          isRoomCreator(roomCode) ||
-          resource.data.ownerUid == request.auth.uid ||
-          !('ownerUid' in resource.data)
-        );
+        // - Guest/unauthenticated players can remove their character doc
+        allow delete: if isRoomCreator(roomCode) ||
+          !('ownerUid' in resource.data) ||
+          resource.data.ownerUid == 'anon' ||
+          (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
       }
 
       // 4. Live party chat subcollection
       match /chat/{messageId} {
-        // Authenticated users in the campaign can read chat messages
-        allow read: if isAuthenticated();
+        // Anyone in the campaign can read chat messages without email login
+        allow read: if true;
 
-        // Any authenticated member/DM can append a message that adheres to limits
-        allow create: if isAuthenticated() && isValidChatMessage(request.resource.data);
+        // Any member/DM can append a message that adheres to limits without email login
+        allow create: if isValidChatMessage(request.resource.data);
 
         // Chat messages are append-only to prevent tampering
         allow update: if false;
@@ -258,11 +260,11 @@ service cloud.firestore {
 
       // 5. Shared party handouts subcollection
       match /handouts/{handoutId} {
-        // Any authenticated campaign participant can view shared handouts
-        allow read: if isAuthenticated();
+        // Any campaign participant can view shared handouts without email login
+        allow read: if true;
 
-        // Any participant can share/update a handout
-        allow create, update: if isAuthenticated() && isValidHandout(request.resource.data);
+        // Any participant can share/update a handout without email login
+        allow create, update: if isValidHandout(request.resource.data);
 
         // Only DM can remove shared handouts from the party repository
         allow delete: if isRoomCreator(roomCode);
