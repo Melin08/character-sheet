@@ -32,9 +32,11 @@ const THEME_STORAGE_KEY = "badman_active_theme_v2";
 const CAMPAIGN_ROOM_KEY = "badman_active_campaign_room";
 const RECENT_ROOMS_KEY = "badman_recent_rooms_v1";
 const CREATED_ROOMS_KEY = "badman_created_dm_rooms_v1";
+const DM_ROOM_KEY = "badman_active_dm_room";
 
 let activeCharId = localStorage.getItem(ACTIVE_CHAR_ID_KEY) || "default";
 let connectedCampaignRoom = localStorage.getItem(CAMPAIGN_ROOM_KEY) || "";
+let activeDMRoomCode = localStorage.getItem(DM_ROOM_KEY) || "";
 
 let myCharacterAvatar = "";
 let myCharacterSpells = [];
@@ -85,7 +87,6 @@ let allTraitsCache = [];
 let dmListenerUnsubscribe = null;
 let playerPartyListUnsubscribe = null;
 let playerRoomDocUnsubscribe = null;
-let activeDMRoomCode = "";
 let currentInspectedMemberId = null;
 let cachedRoomMembers = [];
 
@@ -1952,10 +1953,13 @@ function updatePartyStatusUI() {
     if (playerSection) playerSection.style.display = "block";
     startPlayerPartyListener();
   } else {
-    if (dot) { dot.classList.remove("connected"); dot.classList.add("disconnected"); }
+    if (dot) {
+      dot.classList.toggle("connected", !!activeDMRoomCode);
+      dot.classList.toggle("disconnected", !activeDMRoomCode);
+    }
     if (headerDot) headerDot.classList.toggle("connected", !!activeDMRoomCode);
     if (headerBtnText) headerBtnText.textContent = activeDMRoomCode ? `DM: ${activeDMRoomCode}` : "Party";
-    if (statusText) statusText.textContent = "Not connected to any campaign room.";
+    if (statusText) statusText.textContent = activeDMRoomCode ? `Hosting as DM: ${activeDMRoomCode}` : "Not connected to any campaign room.";
     if (joinBtn) joinBtn.style.display = "inline-flex";
     if (copyPlayerCodeBtn) copyPlayerCodeBtn.style.display = "none";
     if (copyInviteBtn) copyInviteBtn.style.display = "none";
@@ -2289,6 +2293,12 @@ async function startDMLiveListener(roomCode, isNewlyCreated = false) {
     let isAuthorized = isLocalRoomCreator(cleanCode);
     try {
       const roomDoc = await db.collection("campaigns").doc(cleanCode).get();
+      if (!roomDoc.exists) {
+        activeDMRoomCode = "";
+        localStorage.removeItem(DM_ROOM_KEY);
+        updatePartyStatusUI();
+        return;
+      }
       if (roomDoc.exists && roomDoc.data()?.creatorUid) {
         if (auth?.currentUser?.uid && roomDoc.data().creatorUid === auth.currentUser.uid) {
           isAuthorized = true;
@@ -2300,6 +2310,9 @@ async function startDMLiveListener(roomCode, isNewlyCreated = false) {
     }
 
     if (!isAuthorized) {
+      activeDMRoomCode = "";
+      localStorage.removeItem(DM_ROOM_KEY);
+      updatePartyStatusUI();
       alert("Access Denied: Only the DM who created this room can open the DM Live Dashboard and inspect full player character sheets.");
       return;
     }
@@ -2308,6 +2321,7 @@ async function startDMLiveListener(roomCode, isNewlyCreated = false) {
   if (dmListenerUnsubscribe) dmListenerUnsubscribe();
 
   activeDMRoomCode = cleanCode;
+  localStorage.setItem(DM_ROOM_KEY, activeDMRoomCode);
   addRecentRoom(activeDMRoomCode);
   updatePartyStatusUI();
   startPartyChatListener(activeDMRoomCode);
@@ -2442,6 +2456,7 @@ async function closeDMCampaignRoom() {
     dmListenerUnsubscribe = null;
   }
   activeDMRoomCode = "";
+  localStorage.removeItem(DM_ROOM_KEY);
   removeCreatedRoom(roomToClose);
   removeRecentRoom(roomToClose);
 
@@ -2909,6 +2924,9 @@ function openPartyModal() {
   updatePartyStatusUI();
   const modal = document.getElementById("partyModal");
   if (modal) {
+    if (activeDMRoomCode && !connectedCampaignRoom) {
+      modal.querySelector('.party-mode-tabs .sub-tab[data-sub="party-dm-view"]')?.click();
+    }
     modal.classList.add("open");
   }
 }
@@ -5521,7 +5539,13 @@ const invitedRoom = urlParams.get("room");
 if (invitedRoom && invitedRoom.trim()) {
   const cleanInvite = invitedRoom.trim().toUpperCase();
   window.history.replaceState({}, document.title, window.location.pathname);
+  if (activeDMRoomCode && activeDMRoomCode === cleanInvite) {
+    startDMLiveListener(activeDMRoomCode);
+  }
   joinCampaignRoom(cleanInvite);
 } else {
+  if (activeDMRoomCode) {
+    startDMLiveListener(activeDMRoomCode);
+  }
   updatePartyStatusUI();
 }
