@@ -1,0 +1,277 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model & Architecture
+    // ===============================================================
+    //
+    // Collection: /users/{userId}
+    //   Document ID: Firebase Auth UID
+    //   Fields:
+    //     - roster: map (character roster records mapped by character ID)
+    //     - updatedAt: number (POSIX timestamp in milliseconds)
+    //
+    // Collection: /campaigns/{roomCode}
+    //   Document ID: Campaign room code string (e.g. "REALM-4821", alphanumeric)
+    //   Fields:
+    //     - creatorUid: string (Firebase Auth UID of the DM who opened the room, or 'local')
+    //     - createdAt: number (POSIX timestamp in milliseconds)
+    //
+    // Subcollection: /campaigns/{roomCode}/members/{memberId}
+    //   Document ID: Active character identifier (e.g. "char_1729000000000" or "default")
+    //   Fields:
+    //     - id: string (character id, max 128 chars)
+    //     - ownerUid: optional string (Firebase Auth UID of the player, max 128 chars)
+    //     - name: string (character name, max 100 chars)
+    //     - charClass: optional string (max 100 chars)
+    //     - charSubclass: optional string (max 100 chars)
+    //     - charRace: optional string (max 100 chars)
+    //     - charBackground: optional string (max 100 chars)
+    //     - charAlignment: optional string (max 100 chars)
+    //     - level: number (1 - 30)
+    //     - avatar: optional string (URL or base64 data URL, max 500,000 chars)
+    //     - hp: map with 'cur', 'max', 'temp' numbers
+    //     - ac: number (0 - 100)
+    //     - speed: number (0 - 500)
+    //     - deathSaves: optional map with 'succ' and 'fail' numbers
+    //     - classPoints: optional map with 'cur' and 'max' numbers
+    //     - hitDice: optional map with 'cur' and 'max' strings/numbers
+    //     - attributes: optional map of ability scores
+    //     - spellSlots: optional map of spell slot levels
+    //     - spells: optional list of spells (max 300 items)
+    //     - traits: optional list of traits (max 300 items)
+    //     - weapons: optional list of weapons (max 60 items)
+    //     - customResources: optional list of tracked resources (max 60 items)
+    //     - structuredInventory: optional list of inventory items (max 300 items)
+    //     - companions: optional list of sidekicks/familiars (max 30 items)
+    //     - conditions: optional list of active condition strings (max 30 items)
+    //     - concentration: optional string (max 150 chars)
+    //     - otherProfs: optional string (max 5000 chars)
+    //     - passivePerception: optional number
+    //     - passiveInsight: optional number
+    //     - passiveInvestigation: optional number
+    //     - inspiration: optional string (max 100 chars)
+    //     - heroicInspiration: optional bool
+    //     - lastRoll: optional map with dice roll broadcast details
+    //     - dmAdjustedAt: optional number
+    //     - updatedAt: number (POSIX timestamp in milliseconds)
+    //
+    // Subcollection: /campaigns/{roomCode}/chat/{messageId}
+    //   Document ID: Auto-generated document ID
+    //   Fields:
+    //     - senderId: string (character ID or Auth UID, max 128 chars)
+    //     - senderName: string (character or DM name, max 64 chars)
+    //     - isDM: bool
+    //     - type: string ('chat', 'dice', 'handout', or 'system')
+    //     - text: string (message text, max 2000 chars)
+    //     - payload: optional map, list, or null
+    //     - timestamp: number (POSIX timestamp in milliseconds)
+    //
+    // Subcollection: /campaigns/{roomCode}/handouts/{handoutId}
+    //   Document ID: Handout unique ID (max 128 chars)
+    //   Fields:
+    //     - id: string (max 128 chars)
+    //     - title: string (handout title, max 150 chars)
+    //     - type: string ('letter', 'bounty', 'clue', 'lore', etc., max 32 chars)
+    //     - author: optional string (max 100 chars)
+    //     - date: optional string (max 100 chars)
+    //     - imageUrl: optional string (max 500,000 chars)
+    //     - content: optional string (max 50,000 chars)
+    //     - isShared: bool
+    //     - updatedAt: number (POSIX timestamp in milliseconds)
+    //
+    // ===============================================================
+
+    // ---------------------------------------------------------------
+    // Core Security & Auth Helpers
+    // ---------------------------------------------------------------
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isRoomCreator(roomCode) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/campaigns/$(roomCode)) &&
+        (
+          get(/databases/$(database)/documents/campaigns/$(roomCode)).data.creatorUid == request.auth.uid ||
+          get(/databases/$(database)/documents/campaigns/$(roomCode)).data.creatorUid == 'local'
+        );
+    }
+
+    // ---------------------------------------------------------------
+    // Data Validation Helpers
+    // ---------------------------------------------------------------
+
+    function isValidUserData(data) {
+      return data.keys().hasOnly(['roster', 'updatedAt']) &&
+        data.roster is map &&
+        data.updatedAt is number;
+    }
+
+    function isValidCampaign(data) {
+      return data.keys().hasOnly(['creatorUid', 'createdAt']) &&
+        data.creatorUid is string &&
+        data.creatorUid.size() > 0 &&
+        data.creatorUid.size() <= 128 &&
+        data.createdAt is number;
+    }
+
+    function isValidMemberData(data) {
+      return data.id is string &&
+        data.id.size() > 0 &&
+        data.id.size() <= 128 &&
+        data.name is string &&
+        data.name.size() > 0 &&
+        data.name.size() <= 100 &&
+        (!('charClass' in data) || (data.charClass is string && data.charClass.size() <= 100)) &&
+        (!('charSubclass' in data) || (data.charSubclass is string && data.charSubclass.size() <= 100)) &&
+        (!('charRace' in data) || (data.charRace is string && data.charRace.size() <= 100)) &&
+        (!('charBackground' in data) || (data.charBackground is string && data.charBackground.size() <= 100)) &&
+        (!('charAlignment' in data) || (data.charAlignment is string && data.charAlignment.size() <= 100)) &&
+        (!('level' in data) || (data.level is number && data.level >= 1 && data.level <= 30)) &&
+        (!('avatar' in data) || (data.avatar is string && data.avatar.size() <= 500000)) &&
+        (!('hp' in data) || (data.hp is map && data.hp.cur is number && data.hp.max is number && data.hp.temp is number)) &&
+        (!('ac' in data) || (data.ac is number && data.ac >= 0 && data.ac <= 100)) &&
+        (!('speed' in data) || (data.speed is number && data.speed >= 0 && data.speed <= 500)) &&
+        (!('spells' in data) || (data.spells is list && data.spells.size() <= 300)) &&
+        (!('traits' in data) || (data.traits is list && data.traits.size() <= 300)) &&
+        (!('weapons' in data) || (data.weapons is list && data.weapons.size() <= 60)) &&
+        (!('customResources' in data) || (data.customResources is list && data.customResources.size() <= 60)) &&
+        (!('structuredInventory' in data) || (data.structuredInventory is list && data.structuredInventory.size() <= 300)) &&
+        (!('companions' in data) || (data.companions is list && data.companions.size() <= 30)) &&
+        (!('conditions' in data) || (data.conditions is list && data.conditions.size() <= 30)) &&
+        (!('concentration' in data) || (data.concentration is string && data.concentration.size() <= 150)) &&
+        (!('otherProfs' in data) || (data.otherProfs is string && data.otherProfs.size() <= 5000)) &&
+        (!('inspiration' in data) || (data.inspiration is string && data.inspiration.size() <= 100)) &&
+        (!('heroicInspiration' in data) || data.heroicInspiration is bool) &&
+        (!('ownerUid' in data) || (data.ownerUid is string && data.ownerUid.size() <= 128)) &&
+        data.updatedAt is number;
+    }
+
+    function isValidChatMessage(data) {
+      return data.senderId is string &&
+        data.senderId.size() > 0 &&
+        data.senderId.size() <= 128 &&
+        data.senderName is string &&
+        data.senderName.size() > 0 &&
+        data.senderName.size() <= 64 &&
+        data.isDM is bool &&
+        data.type in ['chat', 'dice', 'handout', 'system'] &&
+        data.text is string &&
+        data.text.size() <= 2000 &&
+        data.timestamp is number;
+    }
+
+    function isValidHandout(data) {
+      return data.id is string &&
+        data.id.size() > 0 &&
+        data.id.size() <= 128 &&
+        data.title is string &&
+        data.title.size() > 0 &&
+        data.title.size() <= 150 &&
+        (!('type' in data) || (data.type is string && data.type.size() <= 32)) &&
+        (!('author' in data) || (data.author is string && data.author.size() <= 100)) &&
+        (!('date' in data) || (data.date is string && data.date.size() <= 100)) &&
+        (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 500000)) &&
+        (!('content' in data) || (data.content is string && data.content.size() <= 50000)) &&
+        data.isShared is bool &&
+        data.updatedAt is number;
+    }
+
+    // ===============================================================
+    // Collection Security Rules
+    // ===============================================================
+
+    // 1. User private data: strictly isolated to document owner
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidUserData(request.resource.data);
+      allow delete: if isOwner(userId);
+    }
+
+    // 2. Campaign rooms: public discoverability by room code, strict creator rights
+    match /campaigns/{roomCode} {
+      // Room lookup allowed for authenticated players joining or DM checking availability
+      allow read: if isAuthenticated();
+
+      // Creating a room: creatorUid must match caller or be local marker
+      allow create: if isAuthenticated() &&
+        isValidCampaign(request.resource.data) &&
+        (request.resource.data.creatorUid == request.auth.uid || request.resource.data.creatorUid == 'local');
+
+      // Modifying room metadata: only original creator
+      allow update: if isAuthenticated() &&
+        (resource.data.creatorUid == request.auth.uid || resource.data.creatorUid == 'local') &&
+        isValidCampaign(request.resource.data) &&
+        request.resource.data.creatorUid == resource.data.creatorUid;
+
+      // Deleting room: only original creator
+      allow delete: if isAuthenticated() &&
+        (resource.data.creatorUid == request.auth.uid || resource.data.creatorUid == 'local');
+
+      // 3. Live party members subcollection
+      match /members/{memberId} {
+        // All authenticated users in the campaign can view party members
+        allow read: if isAuthenticated();
+
+        // Players can create/register their character into the room
+        allow create: if isAuthenticated() && isValidMemberData(request.resource.data);
+
+        // Updates allowed if data passes validation:
+        // - Players syncing vitals/rolls/character sheet
+        // - DMs adjusting HP or inspiration
+        allow update: if isAuthenticated() && (
+          isValidMemberData(request.resource.data) ||
+          isRoomCreator(roomCode)
+        );
+
+        // Deleting member:
+        // - DM can kick any player
+        // - Player can remove their own character when leaving
+        allow delete: if isAuthenticated() && (
+          isRoomCreator(roomCode) ||
+          resource.data.ownerUid == request.auth.uid ||
+          !('ownerUid' in resource.data)
+        );
+      }
+
+      // 4. Live party chat subcollection
+      match /chat/{messageId} {
+        // Authenticated users in the campaign can read chat messages
+        allow read: if isAuthenticated();
+
+        // Any authenticated member/DM can append a message that adheres to limits
+        allow create: if isAuthenticated() && isValidChatMessage(request.resource.data);
+
+        // Chat messages are append-only to prevent tampering
+        allow update: if false;
+
+        // DMs have moderation privilege to delete offensive/obsolete messages
+        allow delete: if isRoomCreator(roomCode);
+      }
+
+      // 5. Shared party handouts subcollection
+      match /handouts/{handoutId} {
+        // Any authenticated campaign participant can view shared handouts
+        allow read: if isAuthenticated();
+
+        // Any participant can share/update a handout
+        allow create, update: if isAuthenticated() && isValidHandout(request.resource.data);
+
+        // Only DM can remove shared handouts from the party repository
+        allow delete: if isRoomCreator(roomCode);
+      }
+    }
+
+    // Default deny for all other unspecified paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
