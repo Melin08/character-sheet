@@ -226,39 +226,6 @@
   <div class="sheet-container" id="sheetContainer">
 
     <!-- ================================================================= -->
-    <!-- ON-SCREEN LIVE PARTY DOCK (SHOWS ONLY HP, AC, CONDS & CONC)       -->
-    <!-- ================================================================= -->
-    <section id="livePartyDock" class="live-party-dock" style="display: none;">
-      <div class="live-party-dock-header">
-        <div class="live-party-dock-title">
-          <span class="status-dot connected"></span>
-          <span class="dock-room-label">Room</span>
-          <strong id="dockRoomCodeText" class="dock-room-code">NONE</strong>
-          <span id="dockRoleBadge" class="dock-role-badge">Player</span>
-          <button type="button" class="btn btn-ghost btn-xs" id="dockCopyCodeBtn">Copy Code</button>
-          <button type="button" class="btn btn-ghost btn-xs" id="dockCopyLinkBtn">Invite Link</button>
-        </div>
-
-        <div class="live-party-roll-ticker" id="livePartyRollTicker">
-          <span class="ticker-label">Latest Roll</span>
-          <span id="livePartyLastRollText" class="ticker-val">Waiting for rolls...</span>
-        </div>
-
-        <div class="live-party-dock-actions">
-          <button type="button" class="btn btn-outline btn-xs dock-chat-btn" id="dockChatToggleBtn" title="Toggle Live Party Chat">
-            <span>💬 Chat</span>
-            <span class="dock-chat-badge" id="dockChatBadge" style="display: none;">0</span>
-          </button>
-          <button type="button" class="btn btn-outline btn-xs" id="dockOpenFullPartyBtn">Party &amp; DM Dashboard</button>
-          <button type="button" class="btn btn-ghost btn-xs" id="dockToggleCollapseBtn" title="Collapse/Expand">&#9650;</button>
-          <button type="button" class="btn btn-danger-ghost btn-xs" id="dockLeaveRoomBtn">Leave</button>
-        </div>
-      </div>
-
-      <div id="livePartyDockBody" class="live-party-dock-strip"></div>
-    </section>
-
-    <!-- ================================================================= -->
     <!-- MODERN BENTO PROFILE & TELEMETRY HEADER                           -->
     <!-- ================================================================= -->
     <section class="hero-codex-card" id="heroCodexBanner">
@@ -302,8 +269,8 @@
             </div>
 
             <div class="codex-field-pill dropdown-pill-wrapper" data-blur-id="race">
-              <span class="pill-title">Species</span>
-              <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="Species..." />
+              <span class="pill-title">Race</span>
+              <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="Race..." />
               <div id="raceDropdown" class="dropdown-menu"></div>
               <button type="button" class="blur-toggle-btn" title="Toggle privacy blur">
                 <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -407,6 +374,43 @@
           <a href="https://5e.tools/" target="_blank" rel="noopener noreferrer">5ETOOLS</a>
         </div>
       </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- ON-SCREEN LIVE PARTY DOCK (SHOWS ONLY HP, AC, CONDS & CONC)       -->
+    <!-- Positioned directly beneath the Character Info Box                -->
+    <!-- ================================================================= -->
+    <section id="livePartyDock" class="live-party-dock" style="display: none;">
+      <div class="live-party-dock-header">
+        <div class="live-party-dock-title">
+          <span class="status-dot connected"></span>
+          <span class="dock-room-label">Room</span>
+          <strong id="dockRoomCodeText" class="dock-room-code">NONE</strong>
+          <span id="dockRoleBadge" class="dock-role-badge">Player</span>
+          <button type="button" class="btn btn-ghost btn-xs" id="dockCopyCodeBtn">Copy Code</button>
+          <button type="button" class="btn btn-ghost btn-xs" id="dockCopyLinkBtn">Invite Link</button>
+        </div>
+
+        <div class="live-party-roll-ticker" id="livePartyRollTicker">
+          <span class="ticker-label">Latest Roll</span>
+          <span id="livePartyLastRollText" class="ticker-val">Waiting for rolls...</span>
+        </div>
+
+        <div class="live-party-dock-actions">
+          <button type="button" class="btn btn-outline btn-xs dock-chat-btn" id="dockChatToggleBtn" title="Toggle Live Party Chat">
+            <span>💬 Chat</span>
+            <span class="dock-chat-badge" id="dockChatBadge" style="display: none;">0</span>
+          </button>
+          <button type="button" class="btn btn-primary btn-xs dock-handout-btn" id="dockDmHandoutBtn" style="display: none;" title="Create &amp; Award Loot Handouts to Party">
+            <span>🎁 Handout Loot</span>
+          </button>
+          <button type="button" class="btn btn-outline btn-xs" id="dockOpenFullPartyBtn">Party &amp; DM Dashboard</button>
+          <button type="button" class="btn btn-ghost btn-xs" id="dockToggleCollapseBtn" title="Collapse/Expand">&#9650;</button>
+          <button type="button" class="btn btn-danger-ghost btn-xs" id="dockLeaveRoomBtn">Leave</button>
+        </div>
+      </div>
+
+      <div id="livePartyDockBody" class="live-party-dock-strip"></div>
     </section>
 
     <!-- ================================================================= -->
@@ -1366,7 +1370,6 @@
         <ol class="footer-links">
           <li><button type="button" id="helpLinkBtn" class="footer-link-action">Help &amp; Shortcuts</button></li>
           <li>Created by Melin08</li>
-          <li><a href="https://github.com/Melin08" target="_blank" rel="noopener noreferrer" class="footer-url-link">GitHub</a></li>
         </ol>
       </div>
       <div class="bottom-quicknav">

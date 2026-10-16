@@ -114,11 +114,13 @@ service cloud.firestore {
     }
 
     function isValidCampaign(data) {
-      return data.keys().hasOnly(['creatorUid', 'createdAt']) &&
+      return data.keys().hasOnly(['creatorUid', 'createdAt', 'creatorOnline', 'lastActiveAt']) &&
         data.creatorUid is string &&
         data.creatorUid.size() > 0 &&
         data.creatorUid.size() <= 128 &&
-        data.createdAt is number;
+        data.createdAt is number &&
+        (!('creatorOnline' in data) || data.creatorOnline is bool) &&
+        (!('lastActiveAt' in data) || data.lastActiveAt is number);
     }
 
     function isValidMemberData(data) {
@@ -181,6 +183,13 @@ service cloud.firestore {
         (!('date' in data) || (data.date is string && data.date.size() <= 100)) &&
         (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 500000)) &&
         (!('content' in data) || (data.content is string && data.content.size() <= 50000)) &&
+        (!('recipient' in data) || (data.recipient is string && data.recipient.size() <= 100)) &&
+        (!('recipientId' in data) || (data.recipientId is string && data.recipientId.size() <= 128)) &&
+        (!('claimedBy' in data) || (data.claimedBy is list && data.claimedBy.size() <= 100)) &&
+        (!('claimedCount' in data) || (data.claimedCount is number && data.claimedCount >= 0)) &&
+        (!('maxClaims' in data) || (data.maxClaims is number && data.maxClaims >= 1)) &&
+        (!('item' in data) || data.item is map || data.item == null) &&
+        (!('coins' in data) || data.coins is map || data.coins == null) &&
         data.isShared is bool &&
         data.updatedAt is number;
     }
@@ -251,11 +260,11 @@ service cloud.firestore {
         // Any member/DM can append a message that adheres to limits without email login
         allow create: if isValidChatMessage(request.resource.data);
 
-        // Chat messages are append-only to prevent tampering
-        allow update: if false;
+        // Chat messages are append-only except handouts which can sync claim status
+        allow update: if isRoomCreator(roomCode) || (resource.data.type == 'handout' && isValidChatMessage(request.resource.data));
 
-        // DMs have moderation privilege to delete offensive/obsolete messages
-        allow delete: if isRoomCreator(roomCode);
+        // DMs have moderation privilege; handout messages can be removed when fully claimed
+        allow delete: if isRoomCreator(roomCode) || resource.data.type == 'handout';
       }
 
       // 5. Shared party handouts subcollection
