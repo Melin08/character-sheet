@@ -1372,12 +1372,12 @@ body.theme-amber .main-tab.active .tab-counter-pill {
 }
 
 .codex-field-pill[data-blur-id="alignment"] {
-  min-width: 150px;
-  max-width: 260px;
+  min-width: 180px;
+  max-width: 290px;
   flex: 1 1 auto;
 }
 .codex-field-pill[data-blur-id="alignment"] .pill-input {
-  min-width: 85px;
+  min-width: 95px;
   width: 100%;
 }
 
