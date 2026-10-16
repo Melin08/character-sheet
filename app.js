@@ -1886,7 +1886,7 @@ function navigateToSearchedThing(item) {
   }
   if (item.action === "open-chat") {
     toggleFloatingPartyChat(true);
-    const chat = document.getElementById("floatingPartyChatContainer");
+    const chat = document.getElementById("floatingPartyChat") || document.getElementById("floatingPartyChatContainer");
     if (chat) pulseHighlightElement(chat);
     return;
   }
@@ -1959,7 +1959,7 @@ function navigateToSearchedThing(item) {
     const tf = document.getElementById("filterTraitsInput");
     if (tf && tf.value) tf.value = "";
     activeTraitCategoryFilter = "all";
-    document.querySelectorAll(".trait-filter-btn").forEach((b) => b.classList.toggle("active", b.dataset.cat === "all"));
+    document.querySelectorAll("#traitCategoryFilterBar .cat-pill").forEach((b) => b.classList.toggle("active", b.dataset.filter === "all"));
     if (myCharacterTraits[item.traitIndex]) {
       myCharacterTraits[item.traitIndex].isExpanded = true;
     }
@@ -1970,7 +1970,7 @@ function navigateToSearchedThing(item) {
     const sf = document.getElementById("filterSpellbookInput");
     if (sf && sf.value) sf.value = "";
     activeSpellLevelFilter = "all";
-    document.querySelectorAll(".spell-filter-btn").forEach((b) => b.classList.toggle("active", b.dataset.level === "all"));
+    document.querySelectorAll("#spellLevelFilterBar .cat-pill").forEach((b) => b.classList.toggle("active", b.dataset.lvl === "all"));
     if (myCharacterSpells[item.spellIndex]) {
       myCharacterSpells[item.spellIndex].isExpanded = true;
     }
@@ -1979,7 +1979,7 @@ function navigateToSearchedThing(item) {
 
   if (item.handoutId) {
     activeHandoutFilter = "all";
-    document.querySelectorAll(".handout-filter-btn").forEach((b) => b.classList.toggle("active", b.dataset.filter === "all"));
+    document.querySelectorAll(".handout-filter-chip").forEach((b) => b.classList.toggle("active", b.dataset.filter === "all"));
     renderHandoutsGrid();
   }
 
@@ -2081,7 +2081,7 @@ function buildQuickSearchIndex(query = "") {
     { title: `Background: ${cBg || "Background"}`, sub: "Character origin & background proficiencies", tag: "Identity", selector: "#charBackground", keywords: `background folk hero soldier noble criminal acolyte sage ${cBg}` },
     { title: `Alignment: ${cAlign || "Neutral"}`, sub: "Ethical and moral compass", tag: "Identity", selector: "#charAlignment", keywords: `alignment lawful good neutral chaotic evil ${cAlign}` },
     { title: `Experience Points: ${cXp || 0} XP`, sub: "Character XP progression", tag: "Identity", selector: "#charExp", keywords: `xp exp experience points level ${cXp}` },
-    { title: "Character Portrait / Avatar", sub: "Custom token image or character art URL", tag: "Identity", selector: "#charAvatar", keywords: "avatar portrait image art token picture photo" }
+    { title: "Character Portrait / Avatar", sub: "Custom token image or character art URL", tag: "Identity", selector: "#avatarFrame", keywords: "avatar portrait image art token picture photo" }
   );
 
   // 3. CORE COMBAT VITALS
@@ -2089,33 +2089,33 @@ function buildQuickSearchIndex(query = "") {
   const maxHpVal = document.getElementById("maxHp")?.value || "0";
   const tempHpVal = document.getElementById("tempHp")?.value || "0";
   const acVal = document.getElementById("ac")?.value || "10";
-  const initVal = document.getElementById("initiative")?.value || "+0";
-  const spdVal = document.querySelector('[data-blur-id="speed"]')?.value || "30 ft.";
-  const profVal = document.querySelector('[data-blur-id="prof"]')?.value || "+2";
-  const lvlVal = document.querySelector('[data-blur-id="level"]')?.value || "1";
+  const initVal = document.getElementById("initiativeDisplay")?.textContent || document.getElementById("initiative")?.value || "+0";
+  const spdVal = document.getElementById("charSpeed")?.value ? `${document.getElementById("charSpeed").value} ft.` : "30 ft.";
+  const profVal = document.getElementById("profBonusDisplay")?.textContent || "+2";
+  const lvlVal = document.getElementById("charLevel")?.value || "1";
   const hdCurVal = document.getElementById("hitDiceCur")?.value || "1";
   const hdMaxVal = document.getElementById("hitDiceMax")?.value || "1";
-  const classResLabel = document.getElementById("classPtsLabel")?.value || "Class Resource";
+  const classResLabel = document.getElementById("classResourceName")?.value || document.getElementById("classPtsLabel")?.value || "Class Resource";
   const classResCur = document.getElementById("classPtsCur")?.value || "0";
   const classResMax = document.getElementById("classPtsMax")?.value || "0";
-  const defVal = document.getElementById("resistancesSummary")?.value || "";
+  const defVal = document.getElementById("charResistances")?.value || document.getElementById("resistancesSummary")?.value || "";
 
   items.push(
     { title: `Armor Class (AC: ${acVal})`, sub: "Base AC, shield & armor protection", tag: "Vitality", tab: "tab-stats", selector: "#ac", keywords: `ac armor class shield defense protection ${acVal}` },
     { title: `Hit Points (HP: ${curHpVal} / ${maxHpVal})`, sub: "Current and maximum vitality", tag: "Vitality", tab: "tab-stats", selector: "#curHp", keywords: `hp hit points health wound damage heal curhp maxhp vitality ${curHpVal}` },
     { title: `Temporary Hit Points (${tempHpVal} Temp HP)`, sub: "Damage buffer before taking real HP loss", tag: "Vitality", tab: "tab-stats", selector: "#tempHp", keywords: `temp hp temporary hit points shield buffer ${tempHpVal}` },
     { title: `Roll Initiative (${initVal})`, sub: "Combat turn order roll", tag: "Combat", tab: "tab-stats", selector: "#rollInitiativeOrb", action: "roll-init", keywords: `initiative init roll turn order speed reaction d20 ${initVal}` },
-    { title: `Speed: ${spdVal}`, sub: "Base walking speed per round", tag: "Vitality", tab: "tab-stats", selector: '[data-blur-id="speed"]', keywords: `speed movement move fly swim climb feet ft ${spdVal}` },
-    { title: `Proficiency Bonus (${profVal})`, sub: "Added to proficient skills, attacks & saves", tag: "Vitality", tab: "tab-stats", selector: '[data-blur-id="prof"]', keywords: `proficiency bonus prof pb ${profVal}` },
-    { title: `Character Level: ${lvlVal}`, sub: "Overall character level and tier", tag: "Vitality", tab: "tab-stats", selector: '[data-blur-id="level"]', keywords: `level progression tier lvl ${lvlVal}` },
+    { title: `Speed: ${spdVal}`, sub: "Base walking speed per round", tag: "Vitality", tab: "tab-stats", selector: "#charSpeed", keywords: `speed movement move fly swim climb feet ft ${spdVal}` },
+    { title: `Proficiency Bonus (${profVal})`, sub: "Added to proficient skills, attacks & saves", tag: "Vitality", tab: "tab-stats", selector: "#profBonusDisplay", keywords: `proficiency bonus prof pb ${profVal}` },
+    { title: `Character Level: ${lvlVal}`, sub: "Overall character level and tier", tag: "Vitality", tab: "tab-stats", selector: "#charLevel", keywords: `level progression tier lvl ${lvlVal}` },
     { title: `Hit Dice (${hdCurVal} / ${hdMaxVal})`, sub: "Short rest healing dice pool", tag: "Recovery", tab: "tab-stats", selector: "#hitDiceCur", keywords: `hit dice hd rest recovery healing ${hdCurVal}` },
     { title: "Roll Death Saving Throw", sub: "Life or death saving throw (3 saves / 3 fails)", tag: "Combat", tab: "tab-stats", selector: "#rollDeathSaveBtn", action: "roll-death", keywords: "death saves saving throws dying unconscious stabilize d20" },
     { title: `${classResLabel} (${classResCur} / ${classResMax})`, sub: "Ki, Sorcery Points, Superiority Dice, Rages", tag: "Resource", tab: "tab-stats", selector: "#classPtsCur", keywords: `class resource pool ki sorcery points rages superiority bardic ${classResLabel}` },
     { title: "Turn Action Economy", sub: "Action, Bonus Action, Reaction status indicators", tag: "Combat", tab: "tab-stats", selector: ".action-economy-strip", keywords: "action bonus action reaction turn economy economy strip" },
     { title: "Exhaustion Track", sub: "Track exhaustion levels 1 through 6", tag: "Vitality", tab: "tab-stats", selector: ".exhaustion-meter", keywords: "exhaustion levels tired fatigue debuff penalties" },
     { title: "Passive Senses (Perception, Investigation, Insight)", sub: "Passive awareness scores", tag: "Core", tab: "tab-stats", selector: ".passive-senses-bar", keywords: "passive senses perception investigation insight awareness" },
-    { title: "Defenses & Resistances", sub: defVal || "Resistances, immunities, vulnerabilities", tag: "Vitality", tab: "tab-stats", selector: "#resistancesSummary", keywords: `defenses resistances immunities vulnerabilities damage types ${defVal}` },
-    { title: "Conditions & Status Effects", sub: "Track Blinded, Charmed, Poisoned, Prone, Stunned", tag: "Vitality", tab: "tab-stats", selector: ".conditions-ribbon", keywords: "conditions status effects blinded charmed deafened poisoned prone stunned" }
+    { title: "Defenses & Resistances", sub: defVal || "Resistances, immunities, vulnerabilities", tag: "Vitality", tab: "tab-stats", selector: "#charResistances", keywords: `defenses resistances immunities vulnerabilities damage types ${defVal}` },
+    { title: "Conditions & Status Effects", sub: "Track Blinded, Charmed, Poisoned, Prone, Stunned", tag: "Vitality", tab: "tab-stats", selector: "#conditionChips", keywords: "conditions status effects blinded charmed deafened poisoned prone stunned" }
   );
 
   // 4. ABILITY SCORES & SAVING THROWS
@@ -2365,7 +2365,7 @@ function buildQuickSearchIndex(query = "") {
     { title: "Character Bonds", sub: bnRole ? bnRole.slice(0, 60) + "..." : "Ties to people, places and events", tag: "Roleplay", tab: "tab-journal", subtab: "sub-personality", selector: "#bonds", keywords: `bonds connections family loyalty oath tie ${bnRole}` },
     { title: "Character Flaws", sub: flRole ? flRole.slice(0, 60) + "..." : "Weaknesses, vices and fears", tag: "Roleplay", tab: "tab-journal", subtab: "sub-personality", selector: "#flaws", keywords: `flaws weaknesses vices fears secrets ${flRole}` },
     { title: "Character Backstory", sub: bkRole ? bkRole.slice(0, 60) + "..." : "Origin story and past history", tag: "Roleplay", tab: "tab-journal", subtab: "sub-personality", selector: "#backstory", keywords: `backstory history origin lore childhood past ${bkRole}` },
-    { title: "Add NPC / Faction Entry", sub: "Add a notable contact, rival or faction to your chronicle", tag: "NPCs", tab: "tab-journal", subtab: "sub-npcs", selector: "#addNpcBtn", keywords: "add npc faction character person entry contact" },
+    { title: "NPCs & Factions Journal", sub: "Notable contacts, rivals and factions in your chronicle", tag: "NPCs", tab: "tab-journal", subtab: "sub-npcs", selector: "#npcList", keywords: "npc faction character person entry contact rivals allies factions journal" },
     { title: "Create Handout (Item, Coins, Letter, Map, Clue)", sub: "Award loot, maps, letters, or clues to the party", tag: "Handout", tab: "tab-journal", subtab: "sub-handouts", selector: "#createHandoutBtn", keywords: "create handout award loot item coins letter map clue" }
   );
 
@@ -5751,7 +5751,7 @@ function generateAvraeMacros(c) {
 function generateCompactDiscordCard(c) {
   const hp = c.hp || { cur: 10, max: 10, temp: 0 };
   const conds = (myActiveConditions || []).join(", ") || "None";
-  const conc = (document.getElementById("concentrationSpellInput")?.value || "").trim() || "None";
+  const conc = (document.getElementById("spellConcentration")?.value || document.getElementById("concentrationSpellInput")?.value || "").trim() || "None";
   return `> **${c.name || "Adventurer"}** (Lvl ${c.level || 1} ${c.class || "Hero"}) — HP: **${hp.cur}/${hp.max}**${hp.temp > 0 ? ` (+${hp.temp})` : ""} | AC: **${c.ac || 10}** | Conc: *${conc}* | Status: [${conds}]`;
 }
 
