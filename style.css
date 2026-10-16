@@ -4611,6 +4611,26 @@ kbd {
   border-radius: 4px;
   color: var(--accent-gold);
 }
+.handout-type-badge.badge-weapon {
+  color: #c084fc;
+  border-color: rgba(192, 132, 252, 0.4);
+  background: rgba(147, 51, 234, 0.12);
+}
+.handout-type-badge.badge-item {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(16, 185, 129, 0.12);
+}
+.handout-type-badge.badge-coin {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(245, 158, 11, 0.12);
+}
+.handout-type-badge.badge-lore {
+  color: #fb923c;
+  border-color: rgba(251, 146, 60, 0.4);
+  background: rgba(234, 88, 12, 0.12);
+}
 .handout-card-title {
   font-size: 0.95rem;
   font-weight: 800;
@@ -4626,6 +4646,20 @@ kbd {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.handout-weapon-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.5rem;
+  background: rgba(147, 51, 234, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  border-radius: 4px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #d8b4fe;
+  font-family: var(--font-mono, monospace);
+  margin-top: 0.2rem;
+}
 .handout-card-meta {
   display: flex;
   justify-content: space-between;
@@ -4639,6 +4673,7 @@ kbd {
 .handout-card-actions {
   display: flex;
   gap: 0.35rem;
+  align-items: center;
 }
 
 /* Handout Viewer & Parchment Sheet Modal */
@@ -4776,6 +4811,39 @@ kbd {
   border-radius: 999px;
   padding: 0.25rem 0.65rem;
   text-transform: uppercase;
+}
+.claim-weapon-btn {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+  border-color: #8b5cf6 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+}
+.claim-weapon-btn:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.55);
+}
+.claim-item-btn {
+  background: linear-gradient(135deg, #059669, #0d9488) !important;
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+.claim-item-btn:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.55);
+}
+.claim-coins-btn {
+  background: linear-gradient(135deg, #d97706, #b45309) !important;
+  border-color: #f59e0b !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
+}
+.claim-coins-btn:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.55);
 }
 
 /* Handout Editor Form */

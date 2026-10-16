@@ -1301,11 +1301,10 @@
           </div>
           <div class="handout-filter-bar">
             <button type="button" class="handout-filter-chip active" data-filter="all">All Handouts</button>
-            <button type="button" class="handout-filter-chip" data-filter="item">🗡️ Items</button>
+            <button type="button" class="handout-filter-chip" data-filter="weapon">⚔️ Weapons</button>
+            <button type="button" class="handout-filter-chip" data-filter="item">🎒 Items</button>
             <button type="button" class="handout-filter-chip" data-filter="coin">💰 Coins</button>
-            <button type="button" class="handout-filter-chip" data-filter="letter">📜 Letters &amp; Notes</button>
-            <button type="button" class="handout-filter-chip" data-filter="map">🗺️ Maps</button>
-            <button type="button" class="handout-filter-chip" data-filter="clue">🔍 Clues &amp; Bounties</button>
+            <button type="button" class="handout-filter-chip" data-filter="letter">📜 Lore &amp; Notes</button>
           </div>
           <div class="handouts-cards-grid" id="handoutsGrid">
             <!-- Populated dynamically by app.js -->
@@ -1866,17 +1865,15 @@
         <div id="handoutEditMode" style="display: none;" class="handout-editor-form">
           <input type="hidden" id="editingHandoutId" value="" />
 
-          <!-- Category and Recipient -->
+          <!-- Category and Recipient Selection -->
           <div class="handout-form-row">
             <label class="handout-form-label">
               <span>Category / Type</span>
               <select id="handoutFormType" class="handout-form-input">
-                <option value="item">🗡️ Item / Equipment / Loot</option>
-                <option value="coin">💰 Coins / Treasure</option>
-                <option value="letter" selected>📜 Letter / Manuscript</option>
-                <option value="map">🗺️ Map / Diagram</option>
-                <option value="clue">🔍 Clue / Bounty / Intel</option>
-                <option value="note">📝 Quick Note</option>
+                <option value="weapon" selected>⚔️ Weapon (Direct to Weapons Arsenal)</option>
+                <option value="item">🎒 Item / Gear (Direct to Inventory)</option>
+                <option value="coin">💰 Coins / Treasure (Direct to Vault)</option>
+                <option value="letter">📜 Lore, Letter, Map &amp; Clues</option>
               </select>
             </label>
             <label class="handout-form-label">
@@ -1887,13 +1884,44 @@
             </label>
           </div>
 
-          <!-- Item Specific Subform -->
+          <!-- 1. Weapon Specific Subform (Direct to Weapons Arsenal) -->
+          <div id="handoutWeaponFields" class="handout-subform-box">
+            <span class="handout-subform-title">⚔️ Weapon Specifications (Goes to Player's Arsenal)</span>
+            <div class="handout-form-row">
+              <label class="handout-form-label" style="grid-column: span 2;">
+                <span>Weapon Name</span>
+                <input type="text" id="handoutWpnName" class="handout-form-input" placeholder="e.g. Flame Tongue Greatsword, Sun Blade +2, Moonbow" />
+              </label>
+            </div>
+            <div class="handout-form-row">
+              <label class="handout-form-label">
+                <span>Attack Bonus</span>
+                <input type="text" id="handoutWpnAtk" class="handout-form-input" placeholder="e.g. +7 or +1 + DEX" />
+              </label>
+              <label class="handout-form-label">
+                <span>Damage &amp; Type</span>
+                <input type="text" id="handoutWpnDmg" class="handout-form-input" placeholder="e.g. 2d6+4 slashing + 2d6 fire" />
+              </label>
+            </div>
+            <div class="handout-form-row">
+              <label class="handout-form-label">
+                <span>Properties / Masteries</span>
+                <input type="text" id="handoutWpnNotes" class="handout-form-input" placeholder="e.g. Versatile, Finesse, Light, Graze" />
+              </label>
+              <label class="handout-form-label">
+                <span>Weight (lbs)</span>
+                <input type="number" id="handoutWpnWeight" class="handout-form-input center" value="3" min="0" step="0.1" />
+              </label>
+            </div>
+          </div>
+
+          <!-- 2. Item Specific Subform -->
           <div id="handoutItemFields" class="handout-subform-box" style="display: none;">
-            <span class="handout-subform-title">Loot Item Specifications</span>
+            <span class="handout-subform-title">🎒 Item Specifications (Goes to Player's Inventory)</span>
             <div class="handout-form-row">
               <label class="handout-form-label" style="grid-column: span 2;">
                 <span>Item Name</span>
-                <input type="text" id="handoutItemName" class="handout-form-input" placeholder="e.g. Potion of Greater Healing, Sun Blade" />
+                <input type="text" id="handoutItemName" class="handout-form-input" placeholder="e.g. Potion of Greater Healing, Cloak of Elvenkind" />
               </label>
             </div>
             <div class="handout-form-row">
@@ -1908,9 +1936,9 @@
             </div>
           </div>
 
-          <!-- Coins Specific Subform -->
+          <!-- 3. Coins Specific Subform -->
           <div id="handoutCoinFields" class="handout-subform-box" style="display: none;">
-            <span class="handout-subform-title">Treasure Coin Distribution</span>
+            <span class="handout-subform-title">💰 Treasure Coin Distribution</span>
             <div class="handout-coins-grid">
               <label class="coin-entry cp">
                 <span>Copper (CP)</span>
@@ -1935,34 +1963,30 @@
             </div>
           </div>
 
-          <!-- Standard Document Details (for Letters, Maps, Clues, Notes) -->
-          <div id="handoutStandardFields">
+          <!-- 4. Lore/Document Specific Subform -->
+          <div id="handoutStandardFields" style="display: none;">
             <div class="handout-form-row">
               <label class="handout-form-label" style="grid-column: span 2;">
                 <span>Title / Header</span>
-                <input type="text" id="handoutFormTitle" class="handout-form-input" placeholder="e.g. Royal Decree of Waterdeep, Wave Echo Cave Map" />
+                <input type="text" id="handoutFormTitle" class="handout-form-input" placeholder="e.g. Royal Decree, Dungeon Map, Secret Clue" />
               </label>
             </div>
             <div class="handout-form-row">
               <label class="handout-form-label">
                 <span>Author / Origin (Optional)</span>
-                <input type="text" id="handoutFormAuthor" class="handout-form-input" placeholder="e.g. Lord Neverember, Guildmaster" />
+                <input type="text" id="handoutFormAuthor" class="handout-form-input" placeholder="e.g. Lord Neverember" />
               </label>
               <label class="handout-form-label">
-                <span>Date / Era / Location (Optional)</span>
-                <input type="text" id="handoutFormDate" class="handout-form-input" placeholder="e.g. Ches 14, 1492 DR" />
+                <span>Image / Map URL (Optional)</span>
+                <input type="url" id="handoutFormImageUrl" class="handout-form-input" placeholder="https://... image link" />
               </label>
             </div>
-            <label class="handout-form-label">
-              <span>Image / Map URL (Optional)</span>
-              <input type="url" id="handoutFormImageUrl" class="handout-form-input" placeholder="https://... image, map, or portrait URL" />
-            </label>
           </div>
 
           <!-- Handout Content / Notes (All Types) -->
           <label class="handout-form-label">
-            <span id="handoutContentLabel">Content &amp; Notes</span>
-            <textarea id="handoutFormContent" class="handout-form-textarea" rows="6" placeholder="Write or paste letter text, item lore/properties, or notes for the party..."></textarea>
+            <span id="handoutContentLabel">Description &amp; Lore Notes</span>
+            <textarea id="handoutFormContent" class="handout-form-textarea" rows="4" placeholder="Description, magical properties, or notes for the players..."></textarea>
           </label>
 
           <div class="handout-editor-actions">

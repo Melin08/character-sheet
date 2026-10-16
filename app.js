@@ -4787,6 +4787,11 @@ function exportCharacterJson() {
     renderHandoutsGrid();
     return;
   }
+  const claimWeaponBtn = e.target.closest(".claim-weapon-btn");
+  if (claimWeaponBtn && claimWeaponBtn.dataset.id) {
+    claimHandoutWeapon(claimWeaponBtn.dataset.id);
+    return;
+  }
   const claimItemBtn = e.target.closest(".claim-item-btn");
   if (claimItemBtn && claimItemBtn.dataset.id) {
     claimHandoutItem(claimItemBtn.dataset.id);
@@ -4800,7 +4805,8 @@ function exportCharacterJson() {
   if (e.target.id === "parchmentClaimBtn") {
     const id = e.target.dataset.id;
     const type = e.target.dataset.type;
-    if (type === "item") claimHandoutItem(id);
+    if (type === "weapon") claimHandoutWeapon(id);
+    else if (type === "item") claimHandoutItem(id);
     else if (type === "coin") claimHandoutCoins(id);
     return;
   }
@@ -6134,8 +6140,15 @@ function renderPartyChatMessages() {
       const isClaimed = myClaimedHandoutIds.includes(h.id);
       const canClaim = canIClaimHandout(h);
 
-      if (h.type === "item") {
-        badge = "🗡️";
+      if (h.type === "weapon") {
+        badge = "⚔️";
+        if (isClaimed) {
+          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">✓ In Arsenal</span>`;
+        } else if (canClaim) {
+          claimBtn = `<button type="button" class="btn btn-xs btn-primary claim-weapon-btn" data-id="${escapeHtml(h.id || '')}" style="margin-left: auto;">⚔️ Claim Weapon</button>`;
+        }
+      } else if (h.type === "item") {
+        badge = "🎒";
         if (isClaimed) {
           claimBtn = `<span class="claimed-badge" style="margin-left: auto;">✓ Claimed</span>`;
         } else if (canClaim) {
@@ -6332,11 +6345,10 @@ function renderHandoutsGrid() {
     ? visibleHandouts
     : visibleHandouts.filter((h) => {
         const t = (h.type || "letter").toLowerCase();
+        if (activeHandoutFilter === "weapon") return t === "weapon";
         if (activeHandoutFilter === "item") return t === "item";
         if (activeHandoutFilter === "coin") return t === "coin";
-        if (activeHandoutFilter === "letter") return t === "letter" || t === "note" || t === "contract";
-        if (activeHandoutFilter === "map") return t === "map";
-        if (activeHandoutFilter === "clue") return t === "clue" || t === "bounty";
+        if (activeHandoutFilter === "letter") return t === "letter" || t === "note" || t === "contract" || t === "map" || t === "clue" || t === "bounty";
         return t === activeHandoutFilter;
       });
 
@@ -6344,16 +6356,17 @@ function renderHandoutsGrid() {
     grid.innerHTML = `
       <div style="grid-column: 1 / -1; padding: 2.5rem 1rem; text-align: center; color: var(--text-dim); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-subtle);">
         <p style="font-size: 0.95rem; margin-bottom: 0.5rem; color: #ffffff;">No handouts found in this category.</p>
-        <p style="font-size: 0.78rem; margin: 0;">Click <strong>+ New Handout</strong> above to award items, coins, letters, or secret clues to your party.</p>
+        <p style="font-size: 0.78rem; margin: 0;">Click <strong>+ New Handout</strong> above to award weapons, items, coins, or lore notes to your party.</p>
       </div>
     `;
     return;
   }
 
   const typeIcons = {
-    item: "🗡️ Item Loot",
+    weapon: "⚔️ Weapon",
+    item: "🎒 Item Loot",
     coin: "💰 Coins",
-    letter: "📜 Letter",
+    letter: "📜 Lore & Notes",
     bounty: "📜 Bounty",
     clue: "🔍 Clue",
     map: "🗺️ Map",
@@ -6371,8 +6384,24 @@ function renderHandoutsGrid() {
     const canClaim = canIClaimHandout(h);
     const canManage = canIEditOrDeleteHandout(h);
 
+    let badgeClass = "badge-lore";
+    if (h.type === "weapon") badgeClass = "badge-weapon";
+    else if (h.type === "item") badgeClass = "badge-item";
+    else if (h.type === "coin") badgeClass = "badge-coin";
+
     let snippet = h.content || "";
-    if (h.type === "item" && h.item) {
+    let weaponStatHtml = "";
+    if (h.type === "weapon" && (h.item || h.weapon)) {
+      const w = h.weapon || h.item;
+      const parts = [];
+      if (w.atk) parts.push(`Atk: ${w.atk}`);
+      if (w.dmg) parts.push(`Dmg: ${w.dmg}`);
+      if (parts.length > 0) {
+        weaponStatHtml = `<div class="handout-weapon-stat-pill">⚔️ ${escapeHtml(parts.join(" • "))}</div>`;
+      }
+      snippet = [w.notes, h.content, (w.weight ? `Weight: ${w.weight} lbs` : "")].filter(Boolean).join(" — ");
+      if (!snippet) snippet = "Arsenal Weapon";
+    } else if (h.type === "item" && h.item) {
       snippet = `Item: ${h.item.name} (x${h.item.qty || 1}${h.item.weight ? `, ${h.item.weight} lbs` : ""}) ${h.content ? `— ${h.content}` : ""}`;
     } else if (h.type === "coin" && h.coins) {
       const parts = [];
@@ -6385,7 +6414,15 @@ function renderHandoutsGrid() {
     }
 
     let claimActionHtml = "";
-    if (h.type === "item" || h.type === "coin") {
+    if (h.type === "weapon") {
+      if (isClaimed) {
+        claimActionHtml = `<span class="claimed-badge">✓ In Arsenal</span>`;
+      } else if (canClaim) {
+        claimActionHtml = `<button type="button" class="btn btn-xs btn-primary claim-weapon-btn" data-id="${escapeHtml(h.id)}">⚔️ Claim Weapon</button>`;
+      } else if (fullyClaimed) {
+        claimActionHtml = `<span class="claimed-badge" style="opacity: 0.65;">Claimed</span>`;
+      }
+    } else if (h.type === "item" || h.type === "coin") {
       const btnClass = h.type === "item" ? "claim-item-btn" : "claim-coins-btn";
       const btnText = h.type === "item" ? "Claim Item" : "Claim Coins";
       if (isClaimed) {
@@ -6411,12 +6448,13 @@ function renderHandoutsGrid() {
     return `
       <div class="handout-card" data-id="${escapeHtml(h.id)}">
         <div class="handout-card-top">
-          <span class="handout-type-badge">${typeLabel}</span>
+          <span class="handout-type-badge ${badgeClass}">${typeLabel}</span>
           ${recipientBadge}
           ${qtyBadge}
           ${isShared ? `<span class="tag-pill" style="color:#34d399; border-color: rgba(16,185,129,0.3);">Shared</span>` : ''}
         </div>
         <div class="handout-card-title">${escapeHtml(h.title || "Untitled Handout")}</div>
+        ${weaponStatHtml}
         <div class="handout-card-snippet">${escapeHtml(snippet || "No details provided...")}</div>
         <div class="handout-card-meta">
           <span>${authorStr} • ${dateStr}</span>
@@ -6455,7 +6493,8 @@ function openHandoutViewer(handoutId) {
   // Seal Icon
   const sealEl = document.getElementById("parchmentSealIcon");
   if (sealEl) {
-    if (h.type === "item") sealEl.textContent = "🗡️";
+    if (h.type === "weapon") sealEl.textContent = "⚔️";
+    else if (h.type === "item") sealEl.textContent = "🎒";
     else if (h.type === "coin") sealEl.textContent = "💰";
     else if (h.type === "map") sealEl.textContent = "🗺️";
     else sealEl.textContent = "📜";
@@ -6470,14 +6509,45 @@ function openHandoutViewer(handoutId) {
   const fullyClaimed = isHandoutFullyClaimed(h);
 
   if (claimBox && claimInfo && claimBtn) {
-    if (h.type === "item" && h.item) {
+    if (h.type === "weapon" && (h.item || h.weapon)) {
+      const w = h.weapon || h.item;
+      claimBox.style.display = "flex";
+      const statParts = [];
+      if (w.atk) statParts.push(`Atk: ${w.atk}`);
+      if (w.dmg) statParts.push(`Dmg: ${w.dmg}`);
+      if (w.weight) statParts.push(`Weight: ${w.weight} lbs`);
+      const statDesc = statParts.length > 0 ? statParts.join(" • ") : "Arsenal Weapon";
+      const notesDesc = w.notes ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${escapeHtml(w.notes)}</div>` : "";
+
+      claimInfo.innerHTML = `
+        <span class="claim-info-title">⚔️ ${escapeHtml(w.name || h.title)}</span>
+        <span class="claim-info-sub">${escapeHtml(statDesc)}</span>
+        ${notesDesc}
+      `;
+      if (isClaimed) {
+        claimBtn.style.display = "none";
+        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem;">✓ In Weapons Arsenal</span>';
+      } else if (canClaim) {
+        claimBtn.style.display = "inline-flex";
+        claimBtn.textContent = "⚔️ Claim to Weapons Arsenal";
+        claimBtn.className = "btn btn-primary claim-weapon-btn";
+        claimBtn.dataset.id = h.id;
+        claimBtn.dataset.type = "weapon";
+      } else if (fullyClaimed) {
+        claimBtn.style.display = "none";
+        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem; opacity:0.65;">Already claimed</span>';
+      } else {
+        claimBtn.style.display = "none";
+        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem; opacity:0.65;">Not claimable</span>';
+      }
+    } else if (h.type === "item" && h.item) {
       claimBox.style.display = "flex";
       let countNote = "";
       if (h.maxClaims && h.maxClaims > 1) {
         countNote = ` • Available: ${Math.max(0, h.maxClaims - (h.claimedCount || 0))}/${h.maxClaims}`;
       }
       claimInfo.innerHTML = `
-        <span class="claim-info-title">🗡️ ${escapeHtml(h.item.name || h.title)} (x${h.item.qty || 1}${countNote})</span>
+        <span class="claim-info-title">🎒 ${escapeHtml(h.item.name || h.title)} (x${h.item.qty || 1}${countNote})</span>
         <span class="claim-info-sub">Weight: ${h.item.weight || 0} lbs each</span>
       `;
       if (isClaimed) {
@@ -6486,6 +6556,7 @@ function openHandoutViewer(handoutId) {
       } else if (canClaim) {
         claimBtn.style.display = "inline-flex";
         claimBtn.textContent = "🎒 Claim & Add to Inventory";
+        claimBtn.className = "btn btn-primary claim-item-btn";
         claimBtn.dataset.id = h.id;
         claimBtn.dataset.type = "item";
       } else if (fullyClaimed) {
@@ -6513,6 +6584,7 @@ function openHandoutViewer(handoutId) {
       } else if (canClaim) {
         claimBtn.style.display = "inline-flex";
         claimBtn.textContent = "🪙 Claim & Add to Vault";
+        claimBtn.className = "btn btn-primary claim-coins-btn";
         claimBtn.dataset.id = h.id;
         claimBtn.dataset.type = "coin";
       } else if (fullyClaimed) {
@@ -6560,26 +6632,31 @@ function openHandoutViewer(handoutId) {
 
 function updateHandoutFormVisibility() {
   const typeSelect = document.getElementById("handoutFormType");
-  const val = typeSelect?.value || "letter";
+  const val = typeSelect?.value || "weapon";
+  const wpnBox = document.getElementById("handoutWeaponFields");
   const itemBox = document.getElementById("handoutItemFields");
   const coinBox = document.getElementById("handoutCoinFields");
   const stdBox = document.getElementById("handoutStandardFields");
   const label = document.getElementById("handoutContentLabel");
   const content = document.getElementById("handoutFormContent");
 
+  if (wpnBox) wpnBox.style.display = (val === "weapon") ? "block" : "none";
   if (itemBox) itemBox.style.display = (val === "item") ? "block" : "none";
   if (coinBox) coinBox.style.display = (val === "coin") ? "block" : "none";
-  if (stdBox) stdBox.style.display = (val === "item" || val === "coin") ? "none" : "block";
+  if (stdBox) stdBox.style.display = (val === "weapon" || val === "item" || val === "coin") ? "none" : "block";
 
   if (label && content) {
-    if (val === "item") {
+    if (val === "weapon") {
+      label.textContent = "Weapon Lore & Special Effects";
+      content.placeholder = "e.g. Forged by dwarven smiths of Mithral Hall. On a critical hit, deals extra fire damage...";
+    } else if (val === "item") {
       label.textContent = "Item Description & Properties";
-      content.placeholder = "e.g. Requires attunement. While holding this weapon, you gain a +1 bonus to attack...";
+      content.placeholder = "e.g. Requires attunement. While holding this magical item, you gain...";
     } else if (val === "coin") {
       label.textContent = "Treasure Message / Notes";
       content.placeholder = "e.g. Loot retrieved from the necromancer's chest in the crypt...";
     } else {
-      label.textContent = "Content & Notes";
+      label.textContent = "Description & Lore Notes";
       content.placeholder = "Write or paste the letter, clue, contract or message here...";
     }
   }
@@ -6607,6 +6684,12 @@ function openHandoutEditor(handoutId = null) {
   const dateInput = document.getElementById("handoutFormDate");
   const imageInput = document.getElementById("handoutFormImageUrl");
   const contentInput = document.getElementById("handoutFormContent");
+
+  const wpnNameInput = document.getElementById("handoutWpnName");
+  const wpnAtkInput = document.getElementById("handoutWpnAtk");
+  const wpnDmgInput = document.getElementById("handoutWpnDmg");
+  const wpnNotesInput = document.getElementById("handoutWpnNotes");
+  const wpnWeightInput = document.getElementById("handoutWpnWeight");
 
   const itemNameInput = document.getElementById("handoutItemName");
   const itemQtyInput = document.getElementById("handoutItemQty");
@@ -6646,7 +6729,7 @@ function openHandoutEditor(handoutId = null) {
   if (existingHandout) {
     const h = existingHandout;
     if (hiddenId) hiddenId.value = h.id;
-    if (typeSelect) typeSelect.value = h.type || "letter";
+    if (typeSelect) typeSelect.value = h.type || "weapon";
     if (recipientSelect) recipientSelect.value = h.recipient || "all";
     if (titleInput) titleInput.value = h.title || "";
     if (authorInput) authorInput.value = h.author || "";
@@ -6654,7 +6737,22 @@ function openHandoutEditor(handoutId = null) {
     if (imageInput) imageInput.value = h.imageUrl || "";
     if (contentInput) contentInput.value = h.content || "";
 
-    if (h.item) {
+    if (h.type === "weapon" || h.item?.isWeapon) {
+      const w = h.weapon || h.item || {};
+      if (wpnNameInput) wpnNameInput.value = w.name || h.title || "";
+      if (wpnAtkInput) wpnAtkInput.value = w.atk || "";
+      if (wpnDmgInput) wpnDmgInput.value = w.dmg || "";
+      if (wpnNotesInput) wpnNotesInput.value = w.notes || "";
+      if (wpnWeightInput) wpnWeightInput.value = (w.weight !== undefined) ? w.weight : 3;
+    } else {
+      if (wpnNameInput) wpnNameInput.value = "";
+      if (wpnAtkInput) wpnAtkInput.value = "";
+      if (wpnDmgInput) wpnDmgInput.value = "";
+      if (wpnNotesInput) wpnNotesInput.value = "";
+      if (wpnWeightInput) wpnWeightInput.value = 3;
+    }
+
+    if (h.item && !h.item?.isWeapon) {
       if (itemNameInput) itemNameInput.value = h.item.name || h.title || "";
       if (itemQtyInput) itemQtyInput.value = h.item.qty || 1;
       if (itemWeightInput) itemWeightInput.value = h.item.weight || 0;
@@ -6669,13 +6767,19 @@ function openHandoutEditor(handoutId = null) {
     document.getElementById("handoutModalTitle").textContent = "Edit Handout";
   } else {
     if (hiddenId) hiddenId.value = "";
-    if (typeSelect) typeSelect.value = "item";
+    if (typeSelect) typeSelect.value = "weapon";
     if (recipientSelect) recipientSelect.value = "all";
     if (titleInput) titleInput.value = "";
     if (authorInput) authorInput.value = "";
     if (dateInput) dateInput.value = "";
     if (imageInput) imageInput.value = "";
     if (contentInput) contentInput.value = "";
+
+    if (wpnNameInput) wpnNameInput.value = "";
+    if (wpnAtkInput) wpnAtkInput.value = "";
+    if (wpnDmgInput) wpnDmgInput.value = "";
+    if (wpnNotesInput) wpnNotesInput.value = "";
+    if (wpnWeightInput) wpnWeightInput.value = 3;
 
     if (itemNameInput) itemNameInput.value = "";
     if (itemQtyInput) itemQtyInput.value = 1;
@@ -6698,7 +6802,7 @@ function openHandoutEditor(handoutId = null) {
 
 function saveHandoutFromForm() {
   const id = document.getElementById("editingHandoutId")?.value || ("handout_" + Date.now());
-  const type = document.getElementById("handoutFormType")?.value || "letter";
+  const type = document.getElementById("handoutFormType")?.value || "weapon";
   const recipientSelect = document.getElementById("handoutFormRecipient");
   const recipient = recipientSelect?.value || "all";
   const recipientId = recipientSelect?.selectedOptions?.[0]?.dataset?.memberId || "";
@@ -6712,7 +6816,24 @@ function saveHandoutFromForm() {
   let coinData = null;
   let maxClaims = 1;
 
-  if (type === "item") {
+  if (type === "weapon") {
+    const wpnName = document.getElementById("handoutWpnName")?.value.trim() || "Mystic Weapon";
+    const wpnAtk = document.getElementById("handoutWpnAtk")?.value.trim() || "";
+    const wpnDmg = document.getElementById("handoutWpnDmg")?.value.trim() || "";
+    const wpnNotes = document.getElementById("handoutWpnNotes")?.value.trim() || "";
+    const wpnWeight = parseFloat(document.getElementById("handoutWpnWeight")?.value) || 0;
+    title = wpnName;
+    itemData = {
+      name: wpnName,
+      atk: wpnAtk,
+      dmg: wpnDmg,
+      notes: wpnNotes,
+      weight: wpnWeight,
+      qty: 1,
+      isWeapon: true
+    };
+    maxClaims = 1;
+  } else if (type === "item") {
     const itemName = document.getElementById("handoutItemName")?.value.trim() || "Mysterious Item";
     const itemQty = parseInt(document.getElementById("handoutItemQty")?.value, 10) || 1;
     const itemWeight = parseFloat(document.getElementById("handoutItemWeight")?.value) || 0;
@@ -6720,7 +6841,8 @@ function saveHandoutFromForm() {
     itemData = {
       name: itemName,
       qty: itemQty,
-      weight: itemWeight
+      weight: itemWeight,
+      isWeapon: false
     };
     // If distributed to everyone in party, each member can claim 1 up to itemQty total claims
     maxClaims = (recipient === "all") ? itemQty : 1;
@@ -6786,6 +6908,115 @@ function saveHandoutFromForm() {
   } else {
     showStatus(`Handout "${title}" saved!`);
   }
+}
+
+async function claimHandoutWeapon(handoutId) {
+  const combined = [...myHandouts, ...partyRoomHandouts];
+  const h = combined.find((item) => item.id === handoutId);
+  if (!h) return;
+  const w = h.weapon || h.item;
+  if (!w) return;
+
+  if (!canIClaimHandout(h)) {
+    if (isHandoutFullyClaimed(h)) {
+      showStatus("This weapon has already been claimed!");
+    } else if (myClaimedHandoutIds.includes(handoutId)) {
+      showStatus("You already have this weapon in your Arsenal!");
+    } else {
+      showStatus("This handout is not assigned to you.");
+    }
+    return;
+  }
+
+  const weaponName = w.name || h.title || "Weapon";
+  const weaponAtk = w.atk || "";
+  const weaponDmg = w.dmg || "";
+  const weaponNotes = w.notes || h.content || "";
+  const weaponWeight = parseFloat(w.weight) || 0;
+
+  // 1. Add directly to Weapons Arsenal (myCharacterWeapons on Combat tab)
+  if (!Array.isArray(myCharacterWeapons)) myCharacterWeapons = [];
+
+  // Search for an empty row to fill first
+  const emptyIndex = myCharacterWeapons.findIndex(
+    (wpn) => !wpn.name && !wpn.atk && !wpn.dmg && !wpn.notes
+  );
+
+  const newWeapon = {
+    name: weaponName,
+    atk: weaponAtk,
+    dmg: weaponDmg,
+    notes: weaponNotes
+  };
+
+  if (emptyIndex !== -1) {
+    myCharacterWeapons[emptyIndex] = newWeapon;
+  } else {
+    myCharacterWeapons.push(newWeapon);
+  }
+
+  // 2. Also record in structured inventory (so weight & encumbrance are tracked)
+  if (!Array.isArray(myStructuredInventory)) myStructuredInventory = [];
+  const inventoryNotes = [weaponDmg, weaponNotes].filter(Boolean).join(" • ");
+  myStructuredInventory.push({
+    equipped: true,
+    name: weaponName,
+    qty: 1,
+    weight: weaponWeight,
+    notes: inventoryNotes
+  });
+
+  // 3. Mark as claimed locally
+  myClaimedHandoutIds.push(handoutId);
+
+  // 4. Update claim counts on shared handout in Firestore
+  const activeRoom = connectedCampaignRoom || activeDMRoomCode;
+  const myIdentifier = activeCharId || document.getElementById("charName")?.value?.trim() || "Adventurer";
+  const nextClaimedBy = Array.isArray(h.claimedBy) ? [...h.claimedBy] : [];
+  if (!nextClaimedBy.includes(myIdentifier)) nextClaimedBy.push(myIdentifier);
+  const nextClaimedCount = (parseInt(h.claimedCount, 10) || 0) + 1;
+  const isNowMax = nextClaimedCount >= (parseInt(h.maxClaims, 10) || 1);
+
+  h.claimedBy = nextClaimedBy;
+  h.claimedCount = nextClaimedCount;
+
+  if (db && activeRoom) {
+    try {
+      await db.collection("campaigns").doc(activeRoom).collection("handouts").doc(handoutId).set({
+        claimedBy: nextClaimedBy,
+        claimedCount: nextClaimedCount,
+        updatedAt: Date.now()
+      }, { merge: true });
+
+      // If max amount is claimed, remove chat announcement
+      if (isNowMax) {
+        const chatSnaps = await db.collection("campaigns").doc(activeRoom).collection("chat")
+          .where("type", "==", "handout")
+          .get();
+        chatSnaps.forEach((doc) => {
+          const d = doc.data();
+          if (d.payload && d.payload.id === handoutId) {
+            doc.ref.delete().catch((e) => console.warn("Could not delete claimed weapon chat message:", e));
+          }
+        });
+      }
+    } catch (e) {
+      console.warn("Could not sync weapon claim to Firestore:", e);
+    }
+  }
+
+  renderWeapons();
+  renderStructuredInventory();
+  updateWealthAndEncumbrance();
+  renderHandoutsGrid();
+  renderPartyChatMessages();
+  saveSheet(true);
+
+  if (document.getElementById("handoutModal")?.classList.contains("open")) {
+    openHandoutViewer(handoutId);
+  }
+
+  showStatus(`⚔️ "${weaponName}" claimed! Added directly to your Weapons Arsenal.`);
 }
 
 async function claimHandoutItem(handoutId) {
@@ -6998,10 +7229,14 @@ async function shareHandoutToParty(handoutId) {
     await db.collection("campaigns").doc(activeRoom).collection("handouts").doc(h.id).set(h, { merge: true });
 
     let chatText = `📜 Shared a new handout: "${h.title}"`;
-    if (h.type === "item") {
+    if (h.type === "weapon") {
       chatText = h.recipient && h.recipient !== "all"
-        ? `🗡️ Handed out loot for ${h.recipient}: "${h.title}"`
-        : `🗡️ Handed out loot: "${h.title}"`;
+        ? `⚔️ Awarded weapon to ${h.recipient}: "${h.title}"`
+        : `⚔️ Awarded weapon: "${h.title}"`;
+    } else if (h.type === "item") {
+      chatText = h.recipient && h.recipient !== "all"
+        ? `🎒 Handed out loot for ${h.recipient}: "${h.title}"`
+        : `🎒 Handed out loot: "${h.title}"`;
     } else if (h.type === "coin") {
       chatText = h.recipient && h.recipient !== "all"
         ? `💰 Distributed treasure to ${h.recipient}: ${h.title}`
