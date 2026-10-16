@@ -2845,24 +2845,38 @@ async function joinCampaignRoom(roomCode) {
 
     const roomData = roomSnap.data() || {};
     const now = Date.now();
-    // Creator is active if creatorOnline flag is true and pinged within last 45 seconds
-    const isCreatorActive = roomData.creatorOnline === true && (now - (roomData.lastActiveAt || 0) < 45000);
+    // 1. If created within the last 5 minutes, it is active
+    const isRecentlyCreated = (now - (roomData.createdAt || 0)) < 300000;
+    // 2. If the user on this browser is the DM of this room, allow immediate join
+    const isMyOwnCreatedRoom = isLocalRoomCreator(cleanCode) || activeDMRoomCode === cleanCode;
 
-    // Check if there are any active members currently in the room (synced within last 2 minutes)
+    let isCreatorActive = isRecentlyCreated || isMyOwnCreatedRoom;
     let hasActiveMembers = false;
+
     try {
       const membersSnap = await db.collection("campaigns").doc(cleanCode).collection("members").get();
       if (!membersSnap.empty) {
-        hasActiveMembers = membersSnap.docs.some((doc) => {
+        membersSnap.docs.forEach((doc) => {
           const mData = doc.data() || {};
-          return (now - (mData.updatedAt || 0)) < 120000;
+          const isRecent = (now - (mData.updatedAt || 0)) < 180000;
+          if (doc.id === "dm_presence" || mData.id === "dm_presence") {
+            if (isRecent) isCreatorActive = true;
+          } else if (doc.id !== activeCharId) {
+            if (isRecent) hasActiveMembers = true;
+          }
         });
       }
     } catch (e) {
       console.warn("Could not check active members count:", e);
     }
 
-    if (!isCreatorActive && !hasActiveMembers) {
+    // Fallback if room document has creatorOnline flag
+    if (roomData.creatorOnline === true && (now - (roomData.lastActiveAt || 0)) < 60000) {
+      isCreatorActive = true;
+    }
+
+    // Block join ONLY if creator is absent AND no players are active AND room is not newly created
+    if (!isCreatorActive && !hasActiveMembers && !isRecentlyCreated) {
       alert(`Cannot join room "${cleanCode}": The room is empty and the creator/DM is not currently present.`);
       return;
     }
@@ -2961,7 +2975,9 @@ function startPlayerPartyListener() {
       let foundSelf = false;
 
       snapshot.forEach((doc) => {
+        if (doc.id === "dm_presence") return;
         const data = doc.data();
+        if (data.id === "dm_presence") return;
         members.push(data);
         if (data.id === activeCharId) {
           foundSelf = true;
@@ -3083,9 +3099,7 @@ async function createNewCampaignRoom() {
   try {
     await db.collection("campaigns").doc(code).set({
       creatorUid: auth?.currentUser?.uid || "local",
-      createdAt: Date.now(),
-      creatorOnline: true,
-      lastActiveAt: Date.now()
+      createdAt: Date.now()
     }, { merge: true });
   } catch (err) {
     console.warn("Could not write room creator metadata:", err);
@@ -3139,21 +3153,29 @@ async function startDMLiveListener(roomCode, isNewlyCreated = false) {
     dmHeartbeatTimer = null;
   }
 
-  // Immediately mark DM creator as active and online in the campaign room document
+  // Record DM presence document in the members subcollection
   try {
-    db.collection("campaigns").doc(cleanCode).set({
-      creatorOnline: true,
-      lastActiveAt: Date.now()
-    }, { merge: true }).catch((e) => console.warn("Creator status sync note:", e));
-  } catch (e) {}
+    await db.collection("campaigns").doc(cleanCode).collection("members").doc("dm_presence").set({
+      id: "dm_presence",
+      name: "Dungeon Master",
+      charClass: "DM",
+      ownerUid: auth?.currentUser?.uid || "local",
+      updatedAt: Date.now()
+    }, { merge: true });
+  } catch (e) {
+    console.warn("Creator DM presence note:", e);
+  }
 
   // Maintain periodic heartbeat every 15 seconds while DM dashboard is active
   dmHeartbeatTimer = setInterval(async () => {
     if (db && activeDMRoomCode) {
       try {
-        await db.collection("campaigns").doc(activeDMRoomCode).set({
-          creatorOnline: true,
-          lastActiveAt: Date.now()
+        await db.collection("campaigns").doc(activeDMRoomCode).collection("members").doc("dm_presence").set({
+          id: "dm_presence",
+          name: "Dungeon Master",
+          charClass: "DM",
+          ownerUid: auth?.currentUser?.uid || "local",
+          updatedAt: Date.now()
         }, { merge: true });
       } catch (err) {
         console.warn("DM presence heartbeat note:", err);
@@ -3176,7 +3198,12 @@ async function startDMLiveListener(roomCode, isNewlyCreated = false) {
   dmListenerUnsubscribe = db.collection("campaigns").doc(activeDMRoomCode).collection("members")
     .onSnapshot((snapshot) => {
       cachedRoomMembers = [];
-      snapshot.forEach((doc) => cachedRoomMembers.push(doc.data()));
+      snapshot.forEach((doc) => {
+        if (doc.id === "dm_presence") return;
+        const d = doc.data();
+        if (d.id === "dm_presence") return;
+        cachedRoomMembers.push(d);
+      });
       if (countEl) countEl.textContent = `${cachedRoomMembers.length} Active`;
 
       renderLivePartyDock(cachedRoomMembers);
@@ -3300,10 +3327,7 @@ async function closeDMCampaignRoom() {
   }
   if (db && roomToClose) {
     try {
-      db.collection("campaigns").doc(roomToClose).set({
-        creatorOnline: false,
-        lastActiveAt: Date.now()
-      }, { merge: true }).catch(() => {});
+      db.collection("campaigns").doc(roomToClose).collection("members").doc("dm_presence").delete().catch(() => {});
     } catch (e) {}
   }
   if (dmListenerUnsubscribe) {
@@ -3343,10 +3367,7 @@ async function closeDMCampaignRoom() {
 window.addEventListener("beforeunload", () => {
   if (db && activeDMRoomCode) {
     try {
-      db.collection("campaigns").doc(activeDMRoomCode).set({
-        creatorOnline: false,
-        lastActiveAt: Date.now()
-      }, { merge: true }).catch(() => {});
+      db.collection("campaigns").doc(activeDMRoomCode).collection("members").doc("dm_presence").delete().catch(() => {});
     } catch (e) {}
   }
 });
