@@ -382,7 +382,7 @@ function detectOSAndSetShortcut() {
   const shortcutText = isMac ? "⌘K" : "Ctrl+K";
 
   kbdEl.textContent = shortcutText;
-  if (btnEl) btnEl.title = `Quick Roll & Search (${shortcutText})`;
+  if (btnEl) btnEl.title = `Quick Search (${shortcutText})`;
 }
 
 function escapeHtml(str) {
@@ -1833,8 +1833,204 @@ function filterAndRenderTraits(query = "") {
 }
 
 /* ==========================================================================
-   QUICK COMMAND PALETTE (CTRL+K / CMD+K)
+   QUICK SEARCH SYSTEM (CTRL+K / CMD+K)
    ========================================================================== */
+
+let currentQuickSearchResults = [];
+let quickSearchSelectedIndex = 0;
+
+function pulseHighlightElement(el) {
+  if (!el) return;
+  // If target is inside a vital pod, card or row, prefer pulsing the whole container card
+  const container = el.closest(
+    ".vital-pod, .ac-card, .hp-card, .resource-card, .death-card, .attr-pod, .skill-row, .attack-entry, .trait-card, .spell-card, .inv-item-row, .companion-card, .handout-card, .currency-vault-card, .attunement-card, .encumbrance-card, .passive-senses-bar, .action-economy-strip, .exhaustion-meter, .defenses-summary-card"
+  ) || el;
+
+  container.classList.remove("quick-search-pulse-highlight");
+  void container.offsetWidth; // Force CSS reflow
+  container.classList.add("quick-search-pulse-highlight");
+  setTimeout(() => {
+    container.classList.remove("quick-search-pulse-highlight");
+  }, 1200);
+}
+
+function updateQuickSearchSelectionHighlight() {
+  const items = document.querySelectorAll("#commandPaletteResults .cmd-palette-item");
+  items.forEach((item, idx) => {
+    const isSelected = idx === quickSearchSelectedIndex;
+    item.classList.toggle("selected", isSelected);
+    if (isSelected) {
+      item.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  });
+}
+
+function navigateToSearchedThing(item) {
+  if (!item) return;
+
+  closeModal("commandPaletteModal");
+
+  // Standalone actions
+  if (item.action === "set-theme") {
+    applyTheme(item.targetTheme);
+    showStatus(`Theme set to ${item.title.replace(/^Theme:\s*/, "")}`);
+    return;
+  }
+  if (item.action === "open-party") {
+    openPartyModal();
+    return;
+  }
+  if (item.action === "open-chat") {
+    toggleFloatingPartyChat(true);
+    const chat = document.getElementById("floatingPartyChatContainer");
+    if (chat) pulseHighlightElement(chat);
+    return;
+  }
+  if (item.action === "export-json") {
+    exportCharacterJson();
+    return;
+  }
+  if (item.action === "open-discord") {
+    openDiscordExportModal();
+    return;
+  }
+  if (item.action === "open-cond-rules") {
+    openConditionExplainer(item.conditionId || "blinded");
+    return;
+  }
+  if (item.action === "dice-roller") {
+    if (typeof toggleDiceRoller === "function") toggleDiceRoller(true);
+    const diceBar = document.getElementById("diceStationBar") || document.getElementById("floatingDiceBtn");
+    if (diceBar) {
+      diceBar.scrollIntoView({ behavior: "smooth", block: "center" });
+      pulseHighlightElement(diceBar);
+    }
+    return;
+  }
+  if (item.action === "open-spell-compendium") {
+    openSpellModal();
+    const sInput = document.getElementById("spellSearchInput");
+    if (sInput) {
+      sInput.value = item.spellName;
+      filterAndRenderSpells(item.spellName);
+      setTimeout(() => {
+        const firstOpt = document.querySelector("#spellSearchResults .spell-browser-card, #spellSearchResults .spell-option-item");
+        if (firstOpt) {
+          firstOpt.scrollIntoView({ behavior: "smooth", block: "center" });
+          pulseHighlightElement(firstOpt);
+        }
+      }, 180);
+    }
+    return;
+  }
+  if (item.action === "open-trait-browser") {
+    openTraitModal();
+    const tInput = document.getElementById("traitSearchInput");
+    if (tInput && item.traitName) {
+      tInput.value = item.traitName;
+      filterAndRenderTraits(item.traitName);
+      setTimeout(() => {
+        const firstOpt = document.querySelector("#traitApiList .trait-pick-row");
+        if (firstOpt) {
+          firstOpt.scrollIntoView({ behavior: "smooth", block: "center" });
+          pulseHighlightElement(firstOpt);
+        }
+      }, 180);
+    }
+    return;
+  }
+
+  // 1. Switch main tab if specified
+  if (item.tab) {
+    switchMainTab(item.tab);
+  }
+
+  // 2. Switch subtab if specified
+  if (item.subtab) {
+    document.querySelector(`.sub-tab[data-sub="${item.subtab}"]`)?.click();
+  }
+
+  // 3. Clear category/text filters in the active view so the item is guaranteed visible
+  if (item.traitIndex !== undefined) {
+    const tf = document.getElementById("filterTraitsInput");
+    if (tf && tf.value) tf.value = "";
+    activeTraitCategoryFilter = "all";
+    document.querySelectorAll(".trait-filter-btn").forEach((b) => b.classList.toggle("active", b.dataset.cat === "all"));
+    if (myCharacterTraits[item.traitIndex]) {
+      myCharacterTraits[item.traitIndex].isExpanded = true;
+    }
+    renderMyTraits();
+  }
+
+  if (item.spellIndex !== undefined) {
+    const sf = document.getElementById("filterSpellbookInput");
+    if (sf && sf.value) sf.value = "";
+    activeSpellLevelFilter = "all";
+    document.querySelectorAll(".spell-filter-btn").forEach((b) => b.classList.toggle("active", b.dataset.level === "all"));
+    if (myCharacterSpells[item.spellIndex]) {
+      myCharacterSpells[item.spellIndex].isExpanded = true;
+    }
+    renderMySpells();
+  }
+
+  if (item.handoutId) {
+    activeHandoutFilter = "all";
+    document.querySelectorAll(".handout-filter-btn").forEach((b) => b.classList.toggle("active", b.dataset.filter === "all"));
+    renderHandoutsGrid();
+  }
+
+  // 4. In a small timeout to let tab transition & DOM render complete:
+  setTimeout(() => {
+    let targetEl = null;
+    if (item.selector) {
+      targetEl = document.querySelector(item.selector);
+    }
+
+    if (targetEl) {
+      // Scroll smoothly into view
+      targetEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+
+      // Apply 1-second pulsing highlight
+      pulseHighlightElement(targetEl);
+
+      // Focus if it's an input or textarea
+      const focusTarget = targetEl.matches("input, textarea, select")
+        ? targetEl
+        : targetEl.querySelector("input:not([type=hidden]), textarea");
+      if (focusTarget) {
+        try { focusTarget.focus({ preventScroll: true }); } catch (err) {}
+      }
+
+      // Execute associated action if requested
+      if (item.action === "roll-skill") {
+        targetEl.querySelector(".roll-btn")?.click();
+      } else if (item.action === "roll-save") {
+        targetEl.querySelector(`.roll-btn[data-type="save"]`)?.click();
+      } else if (item.action === "roll-init") {
+        document.getElementById("rollInitiativeOrb")?.click();
+      } else if (item.action === "roll-death") {
+        document.getElementById("rollDeathSaveBtn")?.click();
+      } else if (item.action === "short-rest") {
+        applyShortRest();
+      } else if (item.action === "long-rest") {
+        applyLongRest();
+      } else if (item.action === "open-hp") {
+        document.getElementById("openHpModalBtn")?.click();
+      } else if (item.action === "reset-turn") {
+        document.getElementById("resetTurnEconomyBtn")?.click();
+      } else if (item.action === "focus-spell") {
+        const concEl = document.getElementById("spellConcentration");
+        if (concEl && item.spellName) {
+          concEl.value = item.spellName;
+          updateConcentrationBanner();
+          renderMySpells();
+          saveSheet(false);
+          showStatus(`Concentrating on ${item.spellName}`);
+        }
+      }
+    }
+  }, 120);
+}
 
 function openCommandPalette() {
   const modal = document.getElementById("commandPaletteModal");
@@ -1846,92 +2042,497 @@ function openCommandPalette() {
   setTimeout(() => input.focus(), 50);
 }
 
+function buildQuickSearchIndex(query = "") {
+  const q = query.toLowerCase().trim();
+  const items = [];
+
+  // 1. MAIN NAVIGATION TABS
+  items.push(
+    { title: "Combat & Core Tab", sub: "Vitals, Ability Scores, Skills & Weapon Attacks", tag: "Navigation", tab: "tab-stats", selector: "#tab-stats", keywords: "combat core vitals hp ac stats sheet" },
+    { title: "Features & Traits Tab", sub: "Class Features, Feats & Racial Traits", tag: "Navigation", tab: "tab-traits", selector: "#tab-traits", keywords: "features traits abilities feats class" },
+    { title: "Spells & Grimoire Tab", sub: "Prepared Spells, Cantrips, Spell Slots & DC", tag: "Navigation", tab: "tab-spells", selector: "#tab-spells", keywords: "spells grimoire cantrips slots magic casting" },
+    { title: "Inventory & Vault Tab", sub: "Currency, Attunement, Items & Encumbrance", tag: "Navigation", tab: "tab-inventory", selector: "#tab-inventory", keywords: "inventory vault coins gold bag gear equipment weight" },
+    { title: "Companions & Creatures Tab", sub: "Familiars, Mounts, Summons & Pets", tag: "Navigation", tab: "tab-companions", selector: "#tab-companions", keywords: "companions creatures familiars pets mounts summons" },
+    { title: "Notes & Quests Tab", sub: "Campaign Log, Quests, NPCs & Handouts", tag: "Navigation", tab: "tab-journal", selector: "#tab-journal", keywords: "notes quests journal campaign handouts npcs" },
+    { title: "Campaign Log (Session Chronicle)", sub: "Session notes and campaign narrative", tag: "Journal", tab: "tab-journal", subtab: "sub-notes", selector: "#campaignNotes", keywords: "campaign log session notes chronicle journal story recap" },
+    { title: "Active & Completed Quests", sub: "Quest tracker, goals and rewards", tag: "Quests", tab: "tab-journal", subtab: "sub-quests", selector: "#activeQuestsNotes", keywords: "quests active completed tracker missions goals bounties" },
+    { title: "Personality, Ideals, Bonds & Flaws", sub: "Roleplay traits and character backstory", tag: "Roleplay", tab: "tab-journal", subtab: "sub-personality", selector: "#traits", keywords: "personality ideals bonds flaws backstory roleplay character" },
+    { title: "NPCs & Factions Directory", sub: "Dramatis personae and faction relations", tag: "NPCs", tab: "tab-journal", subtab: "sub-npcs", selector: "#npcList", keywords: "npcs factions people characters allies enemies dramatis personae" },
+    { title: "Party Handouts, Letters & Clues", sub: "Letters, maps, contracts, coin and item handouts", tag: "Handouts", tab: "tab-journal", subtab: "sub-handouts", selector: "#handoutsGrid", keywords: "handouts letters clues maps coins items contracts" }
+  );
+
+  // 2. CHARACTER HEADER IDENTITY
+  const cName = document.getElementById("charName")?.value || "";
+  const cClass = document.getElementById("charClass")?.value || "";
+  const cSub = document.getElementById("charSubclass")?.value || "";
+  const cRace = document.getElementById("charRace")?.value || "";
+  const cBg = document.getElementById("charBackground")?.value || "";
+  const cAlign = document.getElementById("charAlignment")?.value || "";
+  const cXp = document.getElementById("charExp")?.value || "";
+
+  items.push(
+    { title: `Character Name: ${cName || "Unnamed Hero"}`, sub: "Header character name", tag: "Identity", selector: "#charName", keywords: `character name hero ${cName}` },
+    { title: `Class: ${cClass || "Class"}`, sub: cSub ? `Subclass: ${cSub}` : "Class progression", tag: "Identity", selector: "#charClass", keywords: `class fighter wizard rogue cleric paladin bard monk ranger sorcerer druid warlock barbarian ${cClass} ${cSub}` },
+    { title: `Race / Ancestry: ${cRace || "Ancestry"}`, sub: "Character species or lineage", tag: "Identity", selector: "#charRace", keywords: `race ancestry species human elf dwarf dragonborn tiefling halfling gnome ${cRace}` },
+    { title: `Background: ${cBg || "Background"}`, sub: "Character origin & background proficiencies", tag: "Identity", selector: "#charBackground", keywords: `background folk hero soldier noble criminal acolyte sage ${cBg}` },
+    { title: `Alignment: ${cAlign || "Neutral"}`, sub: "Ethical and moral compass", tag: "Identity", selector: "#charAlignment", keywords: `alignment lawful good neutral chaotic evil ${cAlign}` },
+    { title: `Experience Points: ${cXp || 0} XP`, sub: "Character XP progression", tag: "Identity", selector: "#charExp", keywords: `xp exp experience points level ${cXp}` },
+    { title: "Character Portrait / Avatar", sub: "Custom token image or character art URL", tag: "Identity", selector: "#charAvatar", keywords: "avatar portrait image art token picture photo" }
+  );
+
+  // 3. CORE COMBAT VITALS
+  const curHpVal = document.getElementById("curHp")?.value || "0";
+  const maxHpVal = document.getElementById("maxHp")?.value || "0";
+  const tempHpVal = document.getElementById("tempHp")?.value || "0";
+  const acVal = document.getElementById("ac")?.value || "10";
+  const initVal = document.getElementById("initiative")?.value || "+0";
+  const spdVal = document.querySelector('[data-blur-id="speed"]')?.value || "30 ft.";
+  const profVal = document.querySelector('[data-blur-id="prof"]')?.value || "+2";
+  const lvlVal = document.querySelector('[data-blur-id="level"]')?.value || "1";
+  const hdCurVal = document.getElementById("hitDiceCur")?.value || "1";
+  const hdMaxVal = document.getElementById("hitDiceMax")?.value || "1";
+  const classResLabel = document.getElementById("classPtsLabel")?.value || "Class Resource";
+  const classResCur = document.getElementById("classPtsCur")?.value || "0";
+  const classResMax = document.getElementById("classPtsMax")?.value || "0";
+  const defVal = document.getElementById("resistancesSummary")?.value || "";
+
+  items.push(
+    { title: `Armor Class (AC: ${acVal})`, sub: "Base AC, shield & armor protection", tag: "Vitality", tab: "tab-stats", selector: "#ac", keywords: `ac armor class shield defense protection ${acVal}` },
+    { title: `Hit Points (HP: ${curHpVal} / ${maxHpVal})`, sub: "Current and maximum vitality", tag: "Vitality", tab: "tab-stats", selector: "#curHp", keywords: `hp hit points health wound damage heal curhp maxhp vitality ${curHpVal}` },
+    { title: `Temporary Hit Points (${tempHpVal} Temp HP)`, sub: "Damage buffer before taking real HP loss", tag: "Vitality", tab: "tab-stats", selector: "#tempHp", keywords: `temp hp temporary hit points shield buffer ${tempHpVal}` },
+    { title: `Roll Initiative (${initVal})`, sub: "Combat turn order roll", tag: "Combat", tab: "tab-stats", selector: "#rollInitiativeOrb", action: "roll-init", keywords: `initiative init roll turn order speed reaction d20 ${initVal}` },
+    { title: `Speed: ${spdVal}`, sub: "Base walking speed per round", tag: "Vitality", tab: "tab-stats", selector: '[data-blur-id="speed"]', keywords: `speed movement move fly swim climb feet ft ${spdVal}` },
+    { title: `Proficiency Bonus (${profVal})`, sub: "Added to proficient skills, attacks & saves", tag: "Vitality", tab: "tab-stats", selector: '[data-blur-id="prof"]', keywords: `proficiency bonus prof pb ${profVal}` },
+    { title: `Character Level: ${lvlVal}`, sub: "Overall character level and tier", tag: "Vitality", tab: "tab-stats", selector: '[data-blur-id="level"]', keywords: `level progression tier lvl ${lvlVal}` },
+    { title: `Hit Dice (${hdCurVal} / ${hdMaxVal})`, sub: "Short rest healing dice pool", tag: "Recovery", tab: "tab-stats", selector: "#hitDiceCur", keywords: `hit dice hd rest recovery healing ${hdCurVal}` },
+    { title: "Roll Death Saving Throw", sub: "Life or death saving throw (3 saves / 3 fails)", tag: "Combat", tab: "tab-stats", selector: "#rollDeathSaveBtn", action: "roll-death", keywords: "death saves saving throws dying unconscious stabilize d20" },
+    { title: `${classResLabel} (${classResCur} / ${classResMax})`, sub: "Ki, Sorcery Points, Superiority Dice, Rages", tag: "Resource", tab: "tab-stats", selector: "#classPtsCur", keywords: `class resource pool ki sorcery points rages superiority bardic ${classResLabel}` },
+    { title: "Turn Action Economy", sub: "Action, Bonus Action, Reaction status indicators", tag: "Combat", tab: "tab-stats", selector: ".action-economy-strip", keywords: "action bonus action reaction turn economy economy strip" },
+    { title: "Exhaustion Track", sub: "Track exhaustion levels 1 through 6", tag: "Vitality", tab: "tab-stats", selector: ".exhaustion-meter", keywords: "exhaustion levels tired fatigue debuff penalties" },
+    { title: "Passive Senses (Perception, Investigation, Insight)", sub: "Passive awareness scores", tag: "Core", tab: "tab-stats", selector: ".passive-senses-bar", keywords: "passive senses perception investigation insight awareness" },
+    { title: "Defenses & Resistances", sub: defVal || "Resistances, immunities, vulnerabilities", tag: "Vitality", tab: "tab-stats", selector: "#resistancesSummary", keywords: `defenses resistances immunities vulnerabilities damage types ${defVal}` },
+    { title: "Conditions & Status Effects", sub: "Track Blinded, Charmed, Poisoned, Prone, Stunned", tag: "Vitality", tab: "tab-stats", selector: ".conditions-ribbon", keywords: "conditions status effects blinded charmed deafened poisoned prone stunned" }
+  );
+
+  // 4. ABILITY SCORES & SAVING THROWS
+  const attrNames = {
+    str: "Strength",
+    dex: "Dexterity",
+    con: "Constitution",
+    int: "Intelligence",
+    wis: "Wisdom",
+    cha: "Charisma"
+  };
+
+  ["str", "dex", "con", "int", "wis", "cha"].forEach((attr) => {
+    const scoreVal = document.getElementById(attr)?.value || "10";
+    const modVal = document.getElementById(`mod_${attr}`)?.textContent || "+0";
+    const saveVal = document.getElementById(`save_val_${attr}`)?.textContent || "+0";
+    const fullName = attrNames[attr] || attr.toUpperCase();
+
+    // Ability Score Pod
+    items.push({
+      title: `${fullName} Score (${scoreVal} / ${modVal})`,
+      sub: `${fullName} ability score & modifier`,
+      tag: "Ability",
+      tab: "tab-stats",
+      selector: `.attr-${attr}`,
+      keywords: `${attr} ${fullName} ability score modifier ${scoreVal} ${modVal}`
+    });
+
+    // Saving Throw
+    items.push({
+      title: `Roll ${fullName} Saving Throw (${saveVal})`,
+      sub: `Saving throw with ${saveVal} modifier`,
+      tag: "Saving Throw",
+      tab: "tab-stats",
+      selector: `.attr-${attr}`,
+      action: "roll-save",
+      attr: attr,
+      keywords: `save saving throw ${attr} ${fullName} roll d20 ${saveVal}`
+    });
+  });
+
+  // 5. 18 SKILLS
+  document.querySelectorAll(".skill-row").forEach((row) => {
+    const label = row.querySelector(".skill-label")?.textContent?.trim() || "Skill";
+    const val = row.querySelector(".skill-val")?.textContent?.trim() || "+0";
+    const attrTag = row.querySelector(".skill-attr")?.textContent?.trim() || "";
+    items.push({
+      title: `Roll ${label} Check (${val})`,
+      sub: `${attrTag ? attrTag + " skill check • " : ""}Click to jump and roll`,
+      tag: "Skill Check",
+      tab: "tab-stats",
+      selector: `#${row.id}`,
+      action: "roll-skill",
+      rowId: row.id,
+      keywords: `${label} skill check ${attrTag} roll d20 proficiency ${val}`
+    });
+  });
+
+  // 6. WEAPONS & ATTACK ARSENAL
+  myCharacterWeapons.forEach((wpn, idx) => {
+    if (wpn && (wpn.name || wpn.atk || wpn.dmg)) {
+      const wName = wpn.name || `Weapon #${idx + 1}`;
+      const atkText = wpn.atk ? `Atk: ${wpn.atk}` : "";
+      const dmgText = wpn.dmg ? `Dmg: ${wpn.dmg}` : "";
+      const subParts = [atkText, dmgText, wpn.notes].filter(Boolean).join(" | ");
+      items.push({
+        title: `Weapon: ${wName}`,
+        sub: subParts || "Weapon attack entry",
+        tag: "Weapon",
+        tab: "tab-stats",
+        selector: `.attack-entry[data-index="${idx}"]`,
+        wpnIndex: idx,
+        keywords: `weapon attack ${wName} ${wpn.dmg || ""} ${wpn.atk || ""} ${wpn.notes || ""}`
+      });
+    }
+  });
+
+  items.push({
+    title: "Add New Weapon / Attack",
+    sub: "Create a new weapon card in your combat arsenal",
+    tag: "Weapon",
+    tab: "tab-stats",
+    selector: "#addWeaponBtn",
+    keywords: "add weapon attack arsenal create dagger sword bow"
+  });
+
+  // 7. CUSTOM TRACKERS
+  myCustomResources.forEach((res, idx) => {
+    if (res && res.name) {
+      items.push({
+        title: `Tracker: ${res.name} (${res.cur ?? 0} / ${res.max ?? 0})`,
+        sub: "Custom counter tracker",
+        tag: "Tracker",
+        tab: "tab-stats",
+        selector: `.custom-res-card[data-index="${idx}"]`,
+        resIndex: idx,
+        keywords: `tracker counter resource charges pool ${res.name}`
+      });
+    }
+  });
+
+  items.push({
+    title: "Add Custom Resource Counter",
+    sub: "Create a new counter for arrows, inspiration, or charges",
+    tag: "Tracker",
+    tab: "tab-stats",
+    selector: "#addCustomResourceBtn",
+    keywords: "add custom resource counter charges pool arrows luck"
+  });
+
+  // 8. FEATURES & TRAITS
+  myCharacterTraits.forEach((tr, idx) => {
+    if (tr && (tr.name || tr.desc)) {
+      const tName = tr.name || `Ability #${idx + 1}`;
+      const tType = tr.type || "Feature";
+      items.push({
+        title: `Feature: ${tName}`,
+        sub: `${tType}${tr.desc ? ` • ${tr.desc.slice(0, 60)}...` : ""}`,
+        tag: "Trait / Feature",
+        tab: "tab-traits",
+        selector: `.trait-card[data-index="${idx}"]`,
+        traitIndex: idx,
+        keywords: `trait feature ability feat passive ${tName} ${tType} ${tr.desc || ""}`
+      });
+    }
+  });
+
+  items.push({
+    title: "Add Feature / Trait (+ Compendium Browser)",
+    sub: "Browse class features, feats and racial abilities",
+    tag: "Trait / Feature",
+    tab: "tab-traits",
+    selector: "#addTraitBtn",
+    keywords: "add feature trait ability feat compendium browser"
+  });
+
+  // 9. SPELLS & GRIMOIRE
+  myCharacterSpells.forEach((sp, idx) => {
+    if (sp && sp.name) {
+      const typeTag = sp.type || sp.levelTag || "Spell";
+      const metaParts = [typeTag, sp.casting_time, sp.range, sp.duration].filter(Boolean).join(" • ");
+      items.push({
+        title: `Spell: ${sp.name}`,
+        sub: metaParts || "Grimoire Spell",
+        tag: "Spell",
+        tab: "tab-spells",
+        selector: `.spell-card[data-index="${idx}"]`,
+        spellIndex: idx,
+        spellName: sp.name,
+        keywords: `spell grimoire magic ${sp.name} ${typeTag} ${sp.casting_time || ""} ${sp.range || ""} cast concentrate`
+      });
+    }
+  });
+
+  const spAbility = document.getElementById("spellAbility")?.value || "INT";
+  const spDc = document.getElementById("spellDc")?.value || "13";
+  const spAtk = document.getElementById("spellAtkBonus")?.value || "+5";
+  const spConc = document.getElementById("spellConcentration")?.value || "None";
+
+  items.push(
+    { title: `Spell Save DC: ${spDc}`, sub: "Difficulty class for enemies resisting your spells", tag: "Magic", tab: "tab-spells", selector: "#spellDc", keywords: `spell save dc difficulty class magic dc ${spDc}` },
+    { title: `Spell Attack Bonus (${spAtk})`, sub: "Bonus added to ranged/melee spell attack rolls", tag: "Magic", tab: "tab-spells", selector: "#spellAtkBonus", keywords: `spell attack bonus atk magic roll ${spAtk}` },
+    { title: `Spellcasting Ability: ${spAbility}`, sub: "Primary spellcasting attribute", tag: "Magic", tab: "tab-spells", selector: "#spellAbility", keywords: `spellcasting ability int wis cha magic ${spAbility}` },
+    { title: "Spell Slots Grid (Levels 1–9 & Pact Magic)", sub: "Track spell slots and pact magic", tag: "Magic", tab: "tab-spells", selector: "#slotsGridContainer", keywords: "spell slots grid level 1 2 3 4 5 6 7 8 9 pact magic slots" },
+    { title: `Active Concentration: ${spConc}`, sub: "Currently maintained concentration spell", tag: "Magic", tab: "tab-spells", selector: "#spellConcentration", keywords: `active concentration spell focus maintaining ${spConc}` },
+    { title: "Add Spell (+ Compendium Browser)", sub: "Search 5e spell compendium and add to grimoire", tag: "Magic", tab: "tab-spells", selector: "#addSpellBtn", keywords: "add spell browse compendium grimoire learn spell" }
+  );
+
+  // 10. INVENTORY & VAULT
+  const cpVal = document.getElementById("coin_cp")?.value || "0";
+  const spVal = document.getElementById("coin_sp")?.value || "0";
+  const epVal = document.getElementById("coin_ep")?.value || "0";
+  const gpVal = document.getElementById("coin_gp")?.value || "0";
+  const ppVal = document.getElementById("coin_pp")?.value || "0";
+
+  items.push(
+    { title: `Treasury / Currency Vault (${gpVal} GP)`, sub: `Coins: ${cpVal} CP, ${spVal} SP, ${epVal} EP, ${gpVal} GP, ${ppVal} PP`, tag: "Treasury", tab: "tab-inventory", selector: ".currency-vault-card", keywords: `treasury currency coins gold gp silver sp copper cp electrum ep platinum pp money wealth ${gpVal}` },
+    { title: "Magic Item Attunement Slots (3 Max)", sub: "Track attuned magic items", tag: "Inventory", tab: "tab-inventory", selector: ".attunement-card", keywords: "attunement slots magic items attuned" },
+    { title: "Encumbrance & Carrying Capacity", sub: "Weight calculation vs carrying capacity", tag: "Inventory", tab: "tab-inventory", selector: ".encumbrance-card", keywords: "encumbrance weight capacity lbs heavy carry" },
+    { title: "Additional Equipment & Gear", sub: "Free-form equipment notes and backpack gear", tag: "Inventory", tab: "tab-inventory", selector: "#inventory", keywords: "additional equipment gear inventory backpack items notes" },
+    { title: "Other Proficiencies & Spoken Languages", sub: "Armor, weapons, tools and spoken languages", tag: "Proficiencies", tab: "tab-inventory", selector: "#otherProfs", keywords: "proficiencies languages armor weapons tools spoken otherprofs" }
+  );
+
+  myStructuredInventory.forEach((item, idx) => {
+    if (item && item.name) {
+      const qtyStr = item.qty !== undefined ? `Qty: ${item.qty}` : "";
+      const wtStr = item.weight !== undefined ? `Weight: ${item.weight} lbs` : "";
+      const eqStr = item.equipped ? "Equipped" : "";
+      const subParts = [qtyStr, wtStr, eqStr].filter(Boolean).join(" • ");
+      items.push({
+        title: `Item: ${item.name}`,
+        sub: subParts || "Inventory item",
+        tag: "Inventory",
+        tab: "tab-inventory",
+        selector: `.inv-item-row[data-index="${idx}"]`,
+        invIndex: idx,
+        keywords: `item inventory equipment gear ${item.name} weight lbs`
+      });
+    }
+  });
+
+  items.push({
+    title: "Add Tracked Inventory Item",
+    sub: "Add item with weight and quantity to calculate encumbrance",
+    tag: "Inventory",
+    tab: "tab-inventory",
+    selector: "#addInventoryItemBtn",
+    keywords: "add item tracked inventory gear weight"
+  });
+
+  // 11. COMPANIONS & CREATURES
+  myCompanions.forEach((comp, idx) => {
+    if (comp && comp.name) {
+      const cType = comp.type || "Creature";
+      const stats = `AC ${comp.ac ?? 12} • HP ${comp.hp || "10/10"} • Speed ${comp.speed || "30 ft."}`;
+      items.push({
+        title: `Companion: ${comp.name}`,
+        sub: `${cType} • ${stats}`,
+        tag: "Companion",
+        tab: "tab-companions",
+        selector: `.companion-card[data-index="${idx}"]`,
+        companionIndex: idx,
+        keywords: `companion creature pet mount familiar summon ${comp.name} ${cType} ${comp.notes || ""}`
+      });
+    }
+  });
+
+  items.push({
+    title: "Add Companion / Creature (+ Statblock)",
+    sub: "Create a statblock for a pet, familiar, mount or summon",
+    tag: "Companion",
+    tab: "tab-companions",
+    selector: "#addCompanionBtn",
+    keywords: "add companion creature pet mount familiar summon statblock"
+  });
+
+  // 12. NOTES, QUESTS, PERSONALITY & HANDOUTS
+  const trRole = document.getElementById("traits")?.value || "";
+  const idRole = document.getElementById("ideals")?.value || "";
+  const bnRole = document.getElementById("bonds")?.value || "";
+  const flRole = document.getElementById("flaws")?.value || "";
+  const bkRole = document.getElementById("backstory")?.value || "";
+
+  items.push(
+    { title: "Personality Traits", sub: trRole ? trRole.slice(0, 60) + "..." : "Roleplay mannerisms & quirks", tag: "Roleplay", tab: "tab-journal", subtab: "sub-personality", selector: "#traits", keywords: `personality traits mannerisms roleplay habits ${trRole}` },
+    { title: "Character Ideals", sub: idRole ? idRole.slice(0, 60) + "..." : "Beliefs, morality and principles", tag: "Roleplay", tab: "tab-journal", subtab: "sub-personality", selector: "#ideals", keywords: `ideals beliefs morality principles values ${idRole}` },
+    { title: "Character Bonds", sub: bnRole ? bnRole.slice(0, 60) + "..." : "Ties to people, places and events", tag: "Roleplay", tab: "tab-journal", subtab: "sub-personality", selector: "#bonds", keywords: `bonds connections family loyalty oath tie ${bnRole}` },
+    { title: "Character Flaws", sub: flRole ? flRole.slice(0, 60) + "..." : "Weaknesses, vices and fears", tag: "Roleplay", tab: "tab-journal", subtab: "sub-personality", selector: "#flaws", keywords: `flaws weaknesses vices fears secrets ${flRole}` },
+    { title: "Character Backstory", sub: bkRole ? bkRole.slice(0, 60) + "..." : "Origin story and past history", tag: "Roleplay", tab: "tab-journal", subtab: "sub-personality", selector: "#backstory", keywords: `backstory history origin lore childhood past ${bkRole}` },
+    { title: "Add NPC / Faction Entry", sub: "Add a notable contact, rival or faction to your chronicle", tag: "NPCs", tab: "tab-journal", subtab: "sub-npcs", selector: "#addNpcBtn", keywords: "add npc faction character person entry contact" },
+    { title: "Create Handout (Item, Coins, Letter, Map, Clue)", sub: "Award loot, maps, letters, or clues to the party", tag: "Handout", tab: "tab-journal", subtab: "sub-handouts", selector: "#createHandoutBtn", keywords: "create handout award loot item coins letter map clue" }
+  );
+
+  myHandouts.forEach((h) => {
+    if (h && (h.title || h.content)) {
+      const hTitle = h.title || "Untitled Handout";
+      const hType = (h.type || "letter").toUpperCase();
+      let extra = "";
+      if (h.type === "item" && h.item) {
+        extra = `Item: ${h.item.name}`;
+      } else if (h.type === "coin" && h.coins) {
+        extra = `Coins: ${h.coins.gp || 0} GP`;
+      } else if (h.content) {
+        extra = h.content.slice(0, 50) + "...";
+      }
+      items.push({
+        title: `Handout: ${hTitle}`,
+        sub: `${hType} • ${h.author ? `By ${h.author} • ` : ""}${extra}`,
+        tag: "Handout",
+        tab: "tab-journal",
+        subtab: "sub-handouts",
+        selector: `.handout-card[data-id="${h.id}"]`,
+        handoutId: h.id,
+        keywords: `handout loot letter clue map coins item ${hTitle} ${h.type || ""} ${h.content || ""}`
+      });
+    }
+  });
+
+  // 13. UTILITIES, ACTIONS & REST
+  items.push(
+    { title: "Dice Roller Dock", sub: "Interactive 3D/dock dice roller (d4, d6, d8, d10, d12, d20, d100)", tag: "Dice", action: "dice-roller", keywords: "dice roller dice roll d20 d6 d8 d12 formula roll" },
+    { title: "Take a Short Rest", sub: "Spend Hit Dice to recover hit points", tag: "Recovery", action: "short-rest", keywords: "short rest hit dice recovery heal" },
+    { title: "Take a Long Rest", sub: "Full heal, reset spell slots, recover half hit dice", tag: "Recovery", action: "long-rest", keywords: "long rest full recovery spell slots reset hit dice" },
+    { title: "HP Calculator (Damage / Healing)", sub: "Apply damage, healing, or temp HP calculation", tag: "Vitality", action: "open-hp", keywords: "hp calculator damage healing heal hurt wounds math" },
+    { title: "Party Hub & DM Room", sub: "Connect with party members, sync HP, shared handouts", tag: "Party", action: "open-party", keywords: "party dm room multiplayer join campaign connect sync" },
+    { title: "Party Chat Window", sub: "Open floating group chat for party communication", tag: "Chat", action: "open-chat", keywords: "party chat message messages floating group chat communication" },
+    { title: "Export Character Sheet as JSON", sub: "Download backup JSON file of your character", tag: "Export", action: "export-json", keywords: "export json backup download save file" },
+    { title: "Export Statblock (Discord, Avrae, Text)", sub: "Format statblock for Discord markdown, Avrae, or print", tag: "Export", action: "open-discord", keywords: "export statblock discord avrae text card format" },
+    { title: "5e Conditions Explainer", sub: "Rules reference for all standard 5e condition effects", tag: "Rules", action: "open-cond-rules", keywords: "conditions rules reference blinded charmed deafened poisoned prone stunned" },
+    { title: "Reset Turn Economy (New Turn)", sub: "Refresh Action, Bonus Action, Reaction for next round", tag: "Combat", action: "reset-turn", keywords: "reset turn economy round action bonus reaction new turn" }
+  );
+
+  // 14. VISUAL THEMES
+  items.push(
+    { title: "Theme: Ancient Parchment (Fantasy Grimoire)", sub: "Ornate fantasy parchment with rich aged tones", tag: "Theme", action: "set-theme", targetTheme: "theme-parchment", keywords: "theme parchment ancient fantasy grimoire style visual" },
+    { title: "Theme: Linear Indigo (Studio)", sub: "Modern dark studio theme with indigo glow", tag: "Theme", action: "set-theme", targetTheme: "theme-nexus", keywords: "theme linear indigo studio nexus dark" },
+    { title: "Theme: Linear Cyber Sapphire", sub: "Deep navy and sapphire blue neon glow", tag: "Theme", action: "set-theme", targetTheme: "theme-midnight", keywords: "theme cyber sapphire blue midnight neon" },
+    { title: "Theme: Linear Mint Matrix", sub: "Cyberpunk emerald and matrix mint green", tag: "Theme", action: "set-theme", targetTheme: "theme-emerald", keywords: "theme mint matrix emerald green" },
+    { title: "Theme: Linear Crimson Syndicate", sub: "Vampiric blood crimson and dark slate", tag: "Theme", action: "set-theme", targetTheme: "theme-crimson", keywords: "theme crimson syndicate red blood vampiric" },
+    { title: "Theme: Linear Solar Forge", sub: "Molten gold and amber forge glow", tag: "Theme", action: "set-theme", targetTheme: "theme-amber", keywords: "theme solar forge amber gold molten" },
+    { title: "Theme: Linear Nebula Ultraviolet", sub: "Deep purple and cosmic ultraviolet glow", tag: "Theme", action: "set-theme", targetTheme: "theme-violet", keywords: "theme nebula ultraviolet purple violet cosmic" },
+    { title: "Theme: Linear Monolith (OLED Minimal)", sub: "True black OLED high-contrast dark theme", tag: "Theme", action: "set-theme", targetTheme: "theme-monolith", keywords: "theme monolith oled minimal true black" },
+    { title: "Theme: Linear Sunset (Neon Dusk)", sub: "Synthwave sunset pink, magenta and neon orange", tag: "Theme", action: "set-theme", targetTheme: "theme-cyberpunk", keywords: "theme sunset neon dusk synthwave magenta pink cyberpunk" }
+  );
+
+  // 15. COMPENDIUM SPELLS (Matches for spells not already on character sheet)
+  if (q.length >= 2 && Array.isArray(allSpellsCache) && allSpellsCache.length > 0) {
+    const existingSpellNames = new Set(myCharacterSpells.map((s) => (s?.name || "").toLowerCase()));
+    allSpellsCache.forEach((sp) => {
+      if (sp && sp.name && !existingSpellNames.has(sp.name.toLowerCase())) {
+        const sLower = sp.name.toLowerCase();
+        if (sLower.includes(q) || (sp.type && sp.type.toLowerCase().includes(q))) {
+          items.push({
+            title: `Compendium Spell: ${sp.name}`,
+            sub: `${sp.type || sp.levelTag || "5e Spell"} • Compendium (Click to browse & add)`,
+            tag: "Compendium",
+            action: "open-spell-compendium",
+            spellName: sp.name,
+            keywords: `compendium spell ${sp.name} ${sp.type || ""}`
+          });
+        }
+      }
+    });
+  }
+
+  // 16. COMPENDIUM FEATURES & TRAITS
+  if (q.length >= 2 && Array.isArray(allTraitsCache) && allTraitsCache.length > 0) {
+    const existingTraitNames = new Set(myCharacterTraits.map((t) => (t?.name || "").toLowerCase()));
+    allTraitsCache.forEach((tr) => {
+      if (tr && tr.name && !existingTraitNames.has(tr.name.toLowerCase())) {
+        const tLower = tr.name.toLowerCase();
+        if (tLower.includes(q)) {
+          items.push({
+            title: `Compendium Feature: ${tr.name}`,
+            sub: `${tr.type || "5e Feature"} • Compendium (Click to browse & add)`,
+            tag: "Compendium",
+            action: "open-trait-browser",
+            traitName: tr.name,
+            keywords: `compendium feature trait ${tr.name} ${tr.type || ""}`
+          });
+        }
+      }
+    });
+  }
+
+  return items;
+}
+
 function renderCommandPaletteResults(query = "") {
   const container = document.getElementById("commandPaletteResults");
   if (!container) return;
   const q = query.toLowerCase().trim();
 
-  const actions = [
-    { title: "Switch Theme: Linear Indigo (Studio)", tag: "Theme", action: "set-theme", target: "theme-nexus" },
-    { title: "Switch Theme: Linear Cyber Sapphire", tag: "Theme", action: "set-theme", target: "theme-midnight" },
-    { title: "Switch Theme: Linear Mint Matrix", tag: "Theme", action: "set-theme", target: "theme-emerald" },
-    { title: "Switch Theme: Linear Crimson Syndicate", tag: "Theme", action: "set-theme", target: "theme-crimson" },
-    { title: "Switch Theme: Linear Solar Forge", tag: "Theme", action: "set-theme", target: "theme-amber" },
-    { title: "Switch Theme: Linear Nebula Ultraviolet", tag: "Theme", action: "set-theme", target: "theme-violet" },
-    { title: "Switch Theme: Linear Monolith (OLED Minimal)", tag: "Theme", action: "set-theme", target: "theme-monolith" },
-    { title: "Switch Theme: Linear Sunset (Neon Dusk)", tag: "Theme", action: "set-theme", target: "theme-cyberpunk" },
-    { title: "Roll Initiative", tag: "Combat", action: "roll-init" },
-    { title: "Roll Death Saving Throw", tag: "Combat", action: "roll-death" },
-    { title: "Take a Short Rest", tag: "Recovery", action: "short-rest" },
-    { title: "Take a Long Rest", tag: "Recovery", action: "long-rest" },
-    { title: "Open HP Damage / Heal Calculator", tag: "Vitality", action: "open-hp" },
-    { title: "Open Party & DM Dashboard", tag: "Party", action: "open-party" },
-    { title: "Export Character Sheet as JSON", tag: "Export", action: "export-json" },
-    { title: "Export Statblock (Discord, Avrae, Mini Card)", tag: "Export", action: "open-discord" },
-    { title: "Open Party Handouts, Letters & Clues", tag: "Journal", action: "open-handouts" },
-    { title: "View 5e Conditions Explainer", tag: "Rules", action: "open-cond-rules" },
-    { title: "Reset Turn Economy (New Turn)", tag: "Combat", action: "reset-turn" },
-    { title: "Go to Combat & Core Tab", tag: "Navigation", action: "tab", target: "tab-stats" },
-    { title: "Go to Features & Traits Tab", tag: "Navigation", action: "tab", target: "tab-traits" },
-    { title: "Go to Spells & Grimoire Tab", tag: "Navigation", action: "tab", target: "tab-spells" },
-    { title: "Go to Inventory & Vault Tab", tag: "Navigation", action: "tab", target: "tab-inventory" },
-    { title: "Go to Companions & Creatures Tab", tag: "Navigation", action: "tab", target: "tab-companions" },
-    { title: "Go to Notes & Quests Tab", tag: "Navigation", action: "tab", target: "tab-journal" }
-  ];
+  const allItems = buildQuickSearchIndex(q);
 
-  // Add all 18 skills
-  document.querySelectorAll(".skill-row").forEach((row) => {
-    const label = row.querySelector(".skill-label")?.textContent?.trim() || "Skill";
-    const val = row.querySelector(".skill-val")?.textContent?.trim() || "+0";
-    actions.push({
-      title: `Roll ${label} (${val})`,
-      tag: "Skill Check",
-      action: "roll-skill",
-      rowId: row.id
+  let filtered = [];
+
+  if (!q) {
+    // Curated starter list when search input is empty
+    filtered = allItems.filter((item) => {
+      return (
+        item.tag === "Navigation" ||
+        item.tag === "Dice" ||
+        item.action === "roll-init" ||
+        item.action === "roll-death" ||
+        item.action === "short-rest" ||
+        item.action === "long-rest" ||
+        item.action === "open-party" ||
+        item.action === "open-chat" ||
+        item.action === "export-json" ||
+        item.action === "open-discord"
+      );
     });
-  });
+  } else {
+    const tokens = q.split(/\s+/).filter(Boolean);
 
-  // Add 6 Saving Throws
-  ["str", "dex", "con", "int", "wis", "cha"].forEach((s) => {
-    const val = document.getElementById(`save_val_${s}`)?.textContent || "+0";
-    actions.push({
-      title: `Roll ${s.toUpperCase()} Saving Throw (${val})`,
-      tag: "Saving Throw",
-      action: "roll-save",
-      attr: s
-    });
-  });
+    const scored = [];
+    allItems.forEach((item) => {
+      const titleLower = item.title.toLowerCase();
+      const subLower = (item.sub || "").toLowerCase();
+      const tagLower = (item.tag || "").toLowerCase();
+      const kwLower = (item.keywords || "").toLowerCase();
+      const combined = `${titleLower} ${subLower} ${tagLower} ${kwLower}`;
 
-  // Add Character Spells
-  myCharacterSpells.forEach((sp) => {
-    if (sp && sp.name) {
-      actions.push({
-        title: `Concentrate / View Spell: ${sp.name}`,
-        tag: sp.type || "Spell",
-        action: "focus-spell",
-        spellName: sp.name
+      const matchesAll = tokens.every((tok) => combined.includes(tok));
+      if (!matchesAll) return;
+
+      let score = 0;
+      if (titleLower === q) score += 1000;
+      else if (titleLower.startsWith(q)) score += 500;
+      else if (titleLower.includes(q)) score += 200;
+
+      tokens.forEach((tok) => {
+        if (titleLower.includes(tok)) score += 80;
+        if (subLower.includes(tok)) score += 30;
+        if (tagLower.includes(tok)) score += 20;
+        if (kwLower.includes(tok)) score += 15;
       });
-    }
-  });
 
-  const filtered = actions.filter((a) => !q || a.title.toLowerCase().includes(q) || a.tag.toLowerCase().includes(q));
+      scored.push({ item, score });
+    });
 
-  if (filtered.length === 0) {
-    container.innerHTML = `<p class="loading-text">No matching commands or rolls found.</p>`;
+    scored.sort((a, b) => b.score - a.score);
+    filtered = scored.map((s) => s.item);
+  }
+
+  currentQuickSearchResults = filtered.slice(0, 30);
+  quickSearchSelectedIndex = 0;
+
+  if (currentQuickSearchResults.length === 0) {
+    container.innerHTML = `<p class="loading-text">No matching stats, spells, items, features, or notes found for "${escapeHtml(query)}".</p>`;
     return;
   }
 
-  container.innerHTML = filtered.slice(0, 20).map((item, idx) => `
-    <div class="spell-option-item cmd-palette-item" data-idx="${idx}"
-         data-action="${escapeHtml(item.action)}"
-         data-target="${escapeHtml(item.target || "")}"
-         data-row-id="${escapeHtml(item.rowId || "")}"
-         data-attr="${escapeHtml(item.attr || "")}"
-         data-spell-name="${escapeHtml(item.spellName || "")}">
+  container.innerHTML = currentQuickSearchResults.map((item, idx) => `
+    <div class="spell-option-item cmd-palette-item ${idx === 0 ? "selected" : ""}" data-idx="${idx}">
       <div class="spell-option-details">
         <span class="spell-option-title">${escapeHtml(item.title)}</span>
+        ${item.sub ? `<span class="cmd-palette-sub">${escapeHtml(item.sub)}</span>` : ""}
       </div>
-      <span class="tag-pill tag-cantrip">${escapeHtml(item.tag)}</span>
+      <span class="tag-pill">${escapeHtml(item.tag)}</span>
     </div>
   `).join("");
 }
@@ -3226,40 +3827,9 @@ document.addEventListener("click", async (e) => {
 
   const cmdItem = e.target.closest(".cmd-palette-item");
   if (cmdItem) {
-    const act = cmdItem.dataset.action;
-    closeModal("commandPaletteModal");
-    if (act === "tab") switchMainTab(cmdItem.dataset.target);
-    else if (act === "set-theme") applyTheme(cmdItem.dataset.target);
-    else if (act === "roll-init") document.getElementById("rollInitiativeOrb")?.click();
-    else if (act === "roll-death") document.getElementById("rollDeathSaveBtn")?.click();
-    else if (act === "short-rest") applyShortRest();
-    else if (act === "long-rest") applyLongRest();
-    else if (act === "open-hp") document.getElementById("openHpModalBtn")?.click();
-    else if (act === "open-party") openPartyModal();
-    else if (act === "open-chat") toggleFloatingPartyChat(true);
-    else if (act === "export-json") exportCharacterJson();
-    else if (act === "open-discord") openDiscordExportModal();
-    else if (act === "open-handouts") {
-      switchMainTab("tab-journal");
-      document.querySelector('.sub-tab[data-sub="sub-handouts"]')?.click();
-    }
-    else if (act === "open-cond-rules") openConditionExplainer("blinded");
-    else if (act === "reset-turn") document.getElementById("resetTurnEconomyBtn")?.click();
-    else if (act === "roll-skill") {
-      const row = document.getElementById(cmdItem.dataset.rowId);
-      row?.querySelector(".roll-btn")?.click();
-    } else if (act === "roll-save") {
-      document.querySelector(`.roll-btn[data-type="save"][data-attr="${cmdItem.dataset.attr}"]`)?.click();
-    } else if (act === "focus-spell") {
-      switchMainTab("tab-spells");
-      const concEl = document.getElementById("spellConcentration");
-      if (concEl) {
-        concEl.value = cmdItem.dataset.spellName;
-        updateConcentrationBanner();
-        renderMySpells();
-        saveSheet(false);
-        showStatus(`Concentrating on ${cmdItem.dataset.spellName}`);
-      }
+    const idx = parseInt(cmdItem.dataset.idx, 10);
+    if (!isNaN(idx) && currentQuickSearchResults[idx]) {
+      navigateToSearchedThing(currentQuickSearchResults[idx]);
     }
     return;
   }
@@ -4461,6 +5031,27 @@ document.getElementById("traitSearchInput")?.addEventListener("input", (e) => {
 
 document.getElementById("commandPaletteInput")?.addEventListener("input", (e) => {
   renderCommandPaletteResults(e.target.value);
+});
+
+document.getElementById("commandPaletteInput")?.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    if (currentQuickSearchResults.length > 0) {
+      quickSearchSelectedIndex = (quickSearchSelectedIndex + 1) % currentQuickSearchResults.length;
+      updateQuickSearchSelectionHighlight();
+    }
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    if (currentQuickSearchResults.length > 0) {
+      quickSearchSelectedIndex = (quickSearchSelectedIndex - 1 + currentQuickSearchResults.length) % currentQuickSearchResults.length;
+      updateQuickSearchSelectionHighlight();
+    }
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    if (currentQuickSearchResults.length > 0 && currentQuickSearchResults[quickSearchSelectedIndex]) {
+      navigateToSearchedThing(currentQuickSearchResults[quickSearchSelectedIndex]);
+    }
+  }
 });
 
 document.getElementById("filterSpellbookInput")?.addEventListener("input", () => {
