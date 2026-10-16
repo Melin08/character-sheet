@@ -2853,7 +2853,7 @@ async function joinCampaignRoom(roomCode) {
 
   await ensureAuthenticated();
 
-  // Verify that the campaign room exists and is active before attempting to join
+  // Verify that the campaign room exists before attempting to join
   try {
     const roomSnap = await db.collection("campaigns").doc(cleanCode).get();
     if (!roomSnap.exists) {
@@ -2868,45 +2868,17 @@ async function joinCampaignRoom(roomCode) {
       return;
     }
 
-    const roomData = roomSnap.data() || {};
-    const now = Date.now();
-    // 1. If created within the last 10 minutes, it is active
-    const isRecentlyCreated = (now - (roomData.createdAt || 0)) < 600000;
-    // 2. If the user on this browser created the room locally
-    const isMyOwnCreatedRoom = isLocalRoomCreator(cleanCode);
-    // 3. Fallback if room document has creatorOnline flag
-    const isCreatorOnline = roomData.creatorOnline === true && (now - (roomData.lastActiveAt || 0)) < 60000;
-
-    let isCreatorActive = isRecentlyCreated || isMyOwnCreatedRoom || isCreatorOnline;
-    let hasActiveMembers = false;
-
+    // Purge any lingering legacy dm_presence document if present
     try {
-      const membersSnap = await db.collection("campaigns").doc(cleanCode).collection("members").get();
-      if (!membersSnap.empty) {
-        membersSnap.docs.forEach((doc) => {
-          const docId = String(doc.id || "");
-          const mData = doc.data() || {};
-          const isRecent = (now - (mData.updatedAt || 0)) < 180000;
-          if (docId === "dm_presence" || docId.startsWith("dm_") || mData.id === "dm_presence" || mData.name === "Dungeon Master" || mData.charClass === "DM" || mData.isDM) {
-            // Purge lingering legacy dm_presence document if found
-            doc.ref.delete().catch(() => {});
-            if (isRecent) isCreatorActive = true;
-          } else if (doc.id !== activeCharId) {
-            if (isRecent) hasActiveMembers = true;
-          }
-        });
+      const dmDoc = await db.collection("campaigns").doc(cleanCode).collection("members").doc("dm_presence").get();
+      if (dmDoc.exists) {
+        dmDoc.ref.delete().catch(() => {});
       }
-    } catch (e) {
-      console.warn("Could not check active members count:", e);
-    }
-
-    // Block join ONLY if creator is absent AND no players are active AND room is not newly created
-    if (!isCreatorActive && !hasActiveMembers && !isRecentlyCreated) {
-      alert(`Cannot join room "${cleanCode}": The room is empty and the creator/DM is not currently present.`);
-      return;
-    }
+    } catch (e) {}
   } catch (err) {
-    console.warn("Could not check room existence before joining:", err);
+    console.error("Could not check room existence before joining:", err);
+    alert(`Could not connect to room "${cleanCode}": ${err.message || "Network error"}`);
+    return;
   }
 
   connectedCampaignRoom = cleanCode;
@@ -3103,52 +3075,68 @@ async function createNewCampaignRoom() {
   const rawCode = dmInput?.value?.trim() || "";
   let code = "";
 
-  if (rawCode) {
-    code = rawCode.toUpperCase().replace(/[^A-Z0-9_-]/g, "");
-    if (code.length < 3) {
-      alert("Custom room code must be at least 3 characters long (letters, numbers, dashes).");
-      return;
-    }
-  } else {
-    code = "REALM-" + Math.floor(1000 + Math.random() * 9000);
-  }
+  const createBtn = document.getElementById("createCampaignBtn");
+  if (createBtn) createBtn.disabled = true;
 
-  await ensureAuthenticated();
-
-  // Check if room already exists
   try {
-    const existingDoc = await db.collection("campaigns").doc(code).get();
-    if (existingDoc.exists) {
-      const data = existingDoc.data();
-      const currentUid = auth?.currentUser?.uid || "local";
-      if (data?.creatorUid && data.creatorUid !== currentUid && !isLocalRoomCreator(code)) {
-        alert(`Room code "${code}" is already in use by another DM. Please choose a different code.`);
+    if (rawCode) {
+      code = rawCode.toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+      if (code.length < 3) {
+        alert("Custom room code must be at least 3 characters long (letters, numbers, dashes).");
         return;
       }
+
+      // Check if room code already exists in Firestore — multiple parties CANNOT use the same code!
+      const existingDoc = await db.collection("campaigns").doc(code).get();
+      if (existingDoc.exists) {
+        alert(`Party code "${code}" is already in use by an active party. Multiple parties cannot use the same code. Please choose a different room code.`);
+        return;
+      }
+    } else {
+      // Generate a unique random code that does not exist in Firestore
+      let foundUnique = false;
+      let attempts = 0;
+      while (attempts < 20) {
+        code = "REALM-" + Math.floor(1000 + Math.random() * 9000);
+        try {
+          const checkDoc = await db.collection("campaigns").doc(code).get();
+          if (!checkDoc.exists) {
+            foundUnique = true;
+            break;
+          }
+        } catch (e) {
+          foundUnique = true;
+          break;
+        }
+        attempts++;
+      }
+      if (!foundUnique) {
+        code = "REALM-" + Math.floor(10000 + Math.random() * 90000);
+      }
     }
-  } catch (err) {
-    console.warn("Room check note:", err);
-  }
 
-  // If client was previously connected as a player in any room, disconnect player side first
-  if (connectedCampaignRoom) {
-    await leaveCampaignRoom();
-  }
+    // If client was previously connected as a player in any room, disconnect player side first
+    if (connectedCampaignRoom) {
+      await leaveCampaignRoom();
+    }
 
-  addCreatedRoom(code);
+    addCreatedRoom(code);
 
-  try {
+    // Strictly write ONLY creatorUid and createdAt to adhere to production Firestore rules
     await db.collection("campaigns").doc(code).set({
       creatorUid: auth?.currentUser?.uid || "local",
-      createdAt: Date.now(),
-      creatorOnline: true,
-      lastActiveAt: Date.now()
-    }, { merge: true });
-  } catch (err) {
-    console.warn("Could not write room creator metadata:", err);
-  }
+      createdAt: Date.now()
+    });
 
-  await startDMLiveListener(code, true);
+    if (dmInput) dmInput.value = "";
+    await startDMLiveListener(code, true);
+    showStatus(`Created party room ${code}!`);
+  } catch (err) {
+    console.error("Could not create campaign room:", err);
+    alert(`Could not create party room "${code}": ${err.message || "Database permission denied"}`);
+  } finally {
+    if (createBtn) createBtn.disabled = false;
+  }
 }
 
 async function startDMLiveListener(roomCode, isNewlyCreated = false) {
@@ -3196,30 +3184,10 @@ async function startDMLiveListener(roomCode, isNewlyCreated = false) {
     dmHeartbeatTimer = null;
   }
 
-  // Mark DM creator as online in campaign room doc, and delete any legacy dm_presence document in members
+  // Delete any legacy dm_presence document in members subcollection
   try {
-    await db.collection("campaigns").doc(cleanCode).set({
-      creatorOnline: true,
-      lastActiveAt: Date.now()
-    }, { merge: true });
     db.collection("campaigns").doc(cleanCode).collection("members").doc("dm_presence").delete().catch(() => {});
-  } catch (e) {
-    console.warn("Creator DM presence note:", e);
-  }
-
-  // Maintain periodic heartbeat on campaign document every 15 seconds while DM dashboard is active
-  dmHeartbeatTimer = setInterval(async () => {
-    if (db && activeDMRoomCode) {
-      try {
-        await db.collection("campaigns").doc(activeDMRoomCode).set({
-          creatorOnline: true,
-          lastActiveAt: Date.now()
-        }, { merge: true });
-      } catch (err) {
-        console.warn("DM presence heartbeat note:", err);
-      }
-    }
-  }, 15000);
+  } catch (e) {}
 
   if (dmListenerUnsubscribe) dmListenerUnsubscribe();
 
@@ -3375,10 +3343,6 @@ async function closeDMCampaignRoom() {
   }
   if (db && roomToClose) {
     try {
-      db.collection("campaigns").doc(roomToClose).set({
-        creatorOnline: false,
-        lastActiveAt: Date.now()
-      }, { merge: true }).catch(() => {});
       db.collection("campaigns").doc(roomToClose).collection("members").doc("dm_presence").delete().catch(() => {});
     } catch (e) {}
   }
@@ -3419,10 +3383,6 @@ async function closeDMCampaignRoom() {
 window.addEventListener("beforeunload", () => {
   if (db && activeDMRoomCode) {
     try {
-      db.collection("campaigns").doc(activeDMRoomCode).set({
-        creatorOnline: false,
-        lastActiveAt: Date.now()
-      }, { merge: true }).catch(() => {});
       db.collection("campaigns").doc(activeDMRoomCode).collection("members").doc("dm_presence").delete().catch(() => {});
     } catch (e) {}
   }

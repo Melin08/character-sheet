@@ -114,13 +114,11 @@ service cloud.firestore {
     }
 
     function isValidCampaign(data) {
-      return data.keys().hasOnly(['creatorUid', 'createdAt', 'creatorOnline', 'lastActiveAt']) &&
+      return data.keys().hasOnly(['creatorUid', 'createdAt']) &&
         data.creatorUid is string &&
         data.creatorUid.size() > 0 &&
         data.creatorUid.size() <= 128 &&
-        data.createdAt is number &&
-        (!('creatorOnline' in data) || data.creatorOnline is bool) &&
-        (!('lastActiveAt' in data) || data.lastActiveAt is number);
+        data.createdAt is number;
     }
 
     function isValidMemberData(data) {
