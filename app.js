@@ -4839,12 +4839,76 @@ function exportCharacterJson() {
     });
     return;
   }
+  // Category visual nav tab click
+  const catBtn = e.target.closest(".handout-cat-btn");
+  if (catBtn && catBtn.dataset.type) {
+    const typeSelect = document.getElementById("handoutFormType");
+    if (typeSelect) {
+      typeSelect.value = catBtn.dataset.type;
+      updateHandoutFormVisibility();
+    }
+    return;
+  }
+
+  // Quick preset template chip click
+  const presetChip = e.target.closest(".handout-preset-chip");
+  if (presetChip && presetChip.dataset.presetType) {
+    const pType = presetChip.dataset.presetType;
+    const pIdx = parseInt(presetChip.dataset.presetIndex, 10);
+    applyLootPreset(pType, pIdx);
+    return;
+  }
+
+  // Recipient chip click
+  const recipChip = e.target.closest(".recipient-chip");
+  if (recipChip) {
+    document.querySelectorAll(".recipient-chip").forEach((c) => c.classList.remove("active"));
+    recipChip.classList.add("active");
+    const rVal = recipChip.dataset.recipient || "all";
+    const sel = document.getElementById("handoutFormRecipient");
+    if (sel) {
+      sel.value = rVal;
+    }
+    return;
+  }
+
+  // Coin quick add buttons
+  const coinQuickBtn = e.target.closest(".coin-quick-btn");
+  if (coinQuickBtn && coinQuickBtn.dataset.addGp) {
+    const add = parseInt(coinQuickBtn.dataset.addGp, 10) || 0;
+    const gpInput = document.getElementById("handoutCoinGP");
+    if (gpInput) {
+      gpInput.value = (parseInt(gpInput.value, 10) || 0) + add;
+      updateHandoutCoinSplit();
+    }
+    return;
+  }
+
+  if (e.target.id === "clearHandoutCoinsBtn") {
+    ["handoutCoinCP", "handoutCoinSP", "handoutCoinEP", "handoutCoinGP", "handoutCoinPP"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = 0;
+    });
+    updateHandoutCoinSplit();
+    return;
+  }
+
+  if (e.target.id === "handoutGiftFromSheetBtn") {
+    openHandoutGiftPicker();
+    return;
+  }
+
+  if (e.target.id === "saveDraftHandoutBtn") {
+    saveHandoutFromForm(true);
+    return;
+  }
+
   if (e.target.id === "cancelHandoutEditBtn") {
     closeModal("handoutModal");
     return;
   }
   if (e.target.id === "saveHandoutBtn") {
-    saveHandoutFromForm();
+    saveHandoutFromForm(false);
     return;
   }
 
@@ -5314,6 +5378,13 @@ document.addEventListener("input", (e) => {
         saveSheet(true);
       }
     }
+  }
+
+  if (e.target.id && e.target.id.startsWith("handoutCoin")) {
+    updateHandoutCoinSplit();
+  }
+  if (e.target.id === "handoutSearchInput") {
+    renderHandoutsGrid();
   }
 });
 
@@ -6338,7 +6409,10 @@ function renderHandoutsGrid() {
 
   if (countBadge) countBadge.textContent = visibleHandouts.length;
 
-  const filtered = activeHandoutFilter === "all"
+  const searchInput = document.getElementById("handoutSearchInput");
+  const searchQ = (searchInput?.value || "").trim().toLowerCase();
+
+  let filtered = activeHandoutFilter === "all"
     ? visibleHandouts
     : visibleHandouts.filter((h) => {
         const t = (h.type || "letter").toLowerCase();
@@ -6349,11 +6423,35 @@ function renderHandoutsGrid() {
         return t === activeHandoutFilter;
       });
 
+  if (searchQ) {
+    filtered = filtered.filter((h) => {
+      const title = (h.title || "").toLowerCase();
+      const content = (h.content || "").toLowerCase();
+      const author = (h.author || "").toLowerCase();
+      const wpn = h.weapon || h.item || {};
+      const wpnName = (wpn.name || "").toLowerCase();
+      const wpnDmg = (wpn.dmg || "").toLowerCase();
+      const wpnType = (wpn.type || "").toLowerCase();
+      const wpnNotes = (wpn.notes || "").toLowerCase();
+      return title.includes(searchQ) || content.includes(searchQ) || author.includes(searchQ) ||
+             wpnName.includes(searchQ) || wpnDmg.includes(searchQ) || wpnType.includes(searchQ) || wpnNotes.includes(searchQ);
+    });
+  }
+
   if (filtered.length === 0) {
+    const isSearch = Boolean(searchQ);
     grid.innerHTML = `
-      <div style="grid-column: 1 / -1; padding: 2.5rem 1rem; text-align: center; color: var(--text-dim); background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-subtle);">
-        <p style="font-size: 0.95rem; margin-bottom: 0.5rem; color: #ffffff;">No handouts found in this category.</p>
-        <p style="font-size: 0.78rem; margin: 0;">Click <strong>+ New Handout</strong> above to award weapons, items, coins, or lore notes to your party.</p>
+      <div class="handout-empty-state">
+        <div class="handout-empty-icon">${isSearch ? "🔍" : "🎁"}</div>
+        <div class="handout-empty-title">${isSearch ? `No handouts match "${escapeHtml(searchQ)}"` : "No handouts yet in this category"}</div>
+        <div class="handout-empty-desc">${isSearch ? "Try adjusting your search terms or clearing the search bar." : "Award weapons, magic items, treasure coins, or secret clues directly to your adventuring party."}</div>
+        ${!isSearch ? `
+          <div class="handout-empty-actions">
+            <button type="button" class="btn btn-primary btn-xs" onclick="openHandoutEditor('weapon')">⚔️ Add Weapon</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="openHandoutEditor('item')">🎒 Add Item</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="openHandoutEditor('coin')">💰 Distribute Coins</button>
+          </div>
+        ` : `<button type="button" class="btn btn-outline btn-xs" onclick="document.getElementById('handoutSearchInput').value=''; renderHandoutsGrid();">Clear Search</button>`}
       </div>
     `;
     return;
@@ -6626,6 +6724,239 @@ function openHandoutViewer(handoutId) {
   modal.classList.add("open");
 }
 
+/* ==========================================================================
+   PARTY HANDOUTS & LOOT SYSTEM (ENHANCED PRESETS & WORKFLOWS)
+   ========================================================================== */
+
+const LOOT_PRESETS = {
+  weapon: [
+    { label: "⚔️ Longsword", name: "Longsword", dmg: "1d8", type: "Slashing", notes: "Versatile (1d10)" },
+    { label: "🏹 Shortbow", name: "Shortbow", dmg: "1d6", type: "Piercing", notes: "Range 80/320, Two-Handed" },
+    { label: "🗡️ Dagger", name: "Dagger", dmg: "1d4", type: "Piercing", notes: "Finesse, Light, Thrown (20/60)" },
+    { label: "⚔️ Greatsword", name: "Greatsword", dmg: "2d6", type: "Slashing", notes: "Heavy, Two-Handed" },
+    { label: "🗡️ Rapier", name: "Rapier", dmg: "1d8", type: "Piercing", notes: "Finesse" },
+    { label: "🪓 Battleaxe", name: "Battleaxe", dmg: "1d8", type: "Slashing", notes: "Versatile (1d10)" },
+    { label: "🏹 Heavy Crossbow", name: "Heavy Crossbow", dmg: "1d10", type: "Piercing", notes: "Heavy, Loading, Range 100/400" },
+    { label: "🔥 Flame Tongue", name: "Flame Tongue Longsword", dmg: "1d8+2d6 fire", type: "Slashing / Fire", notes: "Commands flames, sheds bright light 40 ft" },
+    { label: "🌙 Moonblade", name: "Moonblade +1", dmg: "1d8+1", type: "Radiant", notes: "Finesse, Versatile (1d10), glows near foes" },
+    { label: "⚡ Javelin of Lightning", name: "Javelin of Lightning", dmg: "1d6+4d6", type: "Lightning", notes: "Transforms into a 120-ft bolt of lightning" }
+  ],
+  item: [
+    { label: "🧪 Potion of Healing", name: "Potion of Healing", qty: 1, weight: 0.5, content: "Regains 2d4+2 hit points when consumed as an action or bonus action." },
+    { label: "🧪 Greater Healing", name: "Potion of Greater Healing", qty: 1, weight: 0.5, content: "Regains 4d4+4 hit points when consumed." },
+    { label: "🧪 Superior Healing", name: "Potion of Superior Healing", qty: 1, weight: 0.5, content: "Regains 8d4+8 hit points when consumed." },
+    { label: "✨ Bag of Holding", name: "Bag of Holding", qty: 1, weight: 15, content: "Holds up to 500 lbs and 64 cubic feet while always weighing 15 lbs." },
+    { label: "🪢 Rope of Climbing", name: "Rope of Climbing", qty: 1, weight: 3, content: "60-foot silk rope that can knot, unknot, and anchor itself on command." },
+    { label: "🧥 Cloak of Elvenkind", name: "Cloak of Elvenkind", qty: 1, weight: 1, content: "While wearing this cloak with hood up, Stealth checks are made with advantage." },
+    { label: "💍 Ring of Protection", name: "Ring of Protection +1", qty: 1, weight: 0.1, content: "Requires attunement. You gain a +1 bonus to AC and saving throws." },
+    { label: "🪶 Boots of Elvenkind", name: "Boots of Elvenkind", qty: 1, weight: 0.5, content: "Your steps make no sound. Advantage on Stealth checks relying on sound." }
+  ],
+  coin: [
+    { label: "🪙 Small Pouch (25 GP)", gp: 25, sp: 20, cp: 50, ep: 0, pp: 0, desc: "A bandit's pouch snatched from the hideout." },
+    { label: "💰 Adventurer's Bounty (100 GP)", gp: 100, sp: 150, cp: 0, ep: 0, pp: 0, desc: "Quest reward from the town council." },
+    { label: "👑 Noble's Purse (500 GP)", gp: 500, sp: 0, cp: 0, ep: 0, pp: 25, desc: "Heavy velvet coin purse of a merchant lord." },
+    { label: "🐉 Dragon's Hoard (2,500 GP)", gp: 2500, sp: 1000, cp: 0, ep: 0, pp: 150, desc: "Gleaming treasure trove uncovered in ancient ruins." }
+  ],
+  letter: [
+    { label: "📜 Bounty Notice", title: "Bounty Notice: Wanted Dead or Alive", author: "City Guard Captain", content: "A reward of 200 gold pieces is offered for the capture or demise of the bandit ringleader spotted in the Whispering Woods." },
+    { label: "🗺️ Dungeon Map", title: "Parchment Map: Forgotten Crypt", author: "Fallen Explorer", content: "Detailed floor plan showing the entrance, a hidden lever behind the altar, and warning notes about pressure plates in the main hall." },
+    { label: "✉️ Sealed Letter", title: "Sealed Letter with Raven Wax", author: "Unknown Patron", content: "Meet me at the Sign of the Gilded Tankard when bells toll midnight. Come alone, and speak only the counter-phrase: 'Night falls early.'" },
+    { label: "🍺 Tavern Rumor", title: "Tavern Rumor: The Sunken Ruins", author: "Old Sailor", content: "They say when the tide is low during the blood moon, the spire of the ancient elven temple breaks the surface of the bay." }
+  ]
+};
+
+function renderHandoutPresets(type) {
+  const bar = document.getElementById("handoutPresetsBar");
+  if (!bar) return;
+  const list = LOOT_PRESETS[type] || [];
+  if (list.length === 0) {
+    bar.innerHTML = `<span style="font-size:0.72rem; color:var(--text-dim); font-style:italic;">No quick presets available.</span>`;
+    return;
+  }
+  bar.innerHTML = list.map((p, idx) => `
+    <button type="button" class="handout-preset-chip" data-preset-type="${type}" data-preset-index="${idx}">
+      ${p.label}
+    </button>
+  `).join("");
+}
+
+function applyLootPreset(type, index) {
+  const list = LOOT_PRESETS[type] || [];
+  const p = list[index];
+  if (!p) return;
+
+  if (type === "weapon") {
+    const nameEl = document.getElementById("handoutWpnName");
+    const dmgEl = document.getElementById("handoutWpnDmg");
+    const typeEl = document.getElementById("handoutWpnType");
+    const notesEl = document.getElementById("handoutWpnNotes");
+    if (nameEl) nameEl.value = p.name || "";
+    if (dmgEl) dmgEl.value = p.dmg || "";
+    if (typeEl) typeEl.value = p.type || "";
+    if (notesEl) notesEl.value = p.notes || "";
+    showStatus(`Applied template: ${p.name}`);
+  } else if (type === "item") {
+    const nameEl = document.getElementById("handoutItemName");
+    const qtyEl = document.getElementById("handoutItemQty");
+    const weightEl = document.getElementById("handoutItemWeight");
+    const contentEl = document.getElementById("handoutFormContent");
+    if (nameEl) nameEl.value = p.name || "";
+    if (qtyEl) qtyEl.value = p.qty || 1;
+    if (weightEl) weightEl.value = p.weight || 0;
+    if (contentEl) contentEl.value = p.content || "";
+    showStatus(`Applied template: ${p.name}`);
+  } else if (type === "coin") {
+    const cpEl = document.getElementById("handoutCoinCP");
+    const spEl = document.getElementById("handoutCoinSP");
+    const epEl = document.getElementById("handoutCoinEP");
+    const gpEl = document.getElementById("handoutCoinGP");
+    const ppEl = document.getElementById("handoutCoinPP");
+    const contentEl = document.getElementById("handoutFormContent");
+    if (cpEl) cpEl.value = p.cp || 0;
+    if (spEl) spEl.value = p.sp || 0;
+    if (epEl) epEl.value = p.ep || 0;
+    if (gpEl) gpEl.value = p.gp || 0;
+    if (ppEl) ppEl.value = p.pp || 0;
+    if (contentEl && p.desc) contentEl.value = p.desc;
+    updateHandoutCoinSplit();
+    showStatus(`Applied template: ${p.label}`);
+  } else if (type === "letter") {
+    const titleEl = document.getElementById("handoutFormTitle");
+    const authorEl = document.getElementById("handoutFormAuthor");
+    const contentEl = document.getElementById("handoutFormContent");
+    if (titleEl) titleEl.value = p.title || "";
+    if (authorEl) authorEl.value = p.author || "";
+    if (contentEl) contentEl.value = p.content || "";
+    showStatus(`Applied template: ${p.title}`);
+  }
+}
+
+function updateHandoutCoinSplit() {
+  const cp = parseInt(document.getElementById("handoutCoinCP")?.value, 10) || 0;
+  const sp = parseInt(document.getElementById("handoutCoinSP")?.value, 10) || 0;
+  const ep = parseInt(document.getElementById("handoutCoinEP")?.value, 10) || 0;
+  const gp = parseInt(document.getElementById("handoutCoinGP")?.value, 10) || 0;
+  const pp = parseInt(document.getElementById("handoutCoinPP")?.value, 10) || 0;
+
+  const totalGP = (pp * 10) + gp + (ep * 0.5) + (sp * 0.1) + (cp * 0.01);
+  const partyCount = (Array.isArray(cachedRoomMembers) && cachedRoomMembers.length > 0)
+    ? Math.max(1, cachedRoomMembers.filter(m => m && !m.isDM && m.name !== "Dungeon Master" && m.id !== "dm_presence").length)
+    : 4;
+
+  const splitVal = (totalGP / partyCount).toFixed(1);
+  const splitEl = document.getElementById("coinSplitText");
+  if (splitEl) {
+    splitEl.innerHTML = `🪙 Total Value: <strong>~${Math.round(totalGP)} GP</strong> • Split: <strong>~${splitVal} GP</strong> per adventurer (${partyCount} in party)`;
+  }
+}
+
+function playLootClaimSound(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    if (type === "coin") {
+      [1046.5, 1318.5, 1567.98].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+        gain.gain.setValueAtTime(0.06, now + idx * 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.18);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.06);
+        osc.stop(now + idx * 0.06 + 0.2);
+      });
+    } else if (type === "weapon") {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(330, now);
+      osc.frequency.exponentialRampToValueAtTime(660, now + 0.08);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.16);
+      gain.gain.setValueAtTime(0.09, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } else {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.12);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+  } catch (e) {}
+}
+
+function openHandoutGiftPicker() {
+  const options = [];
+  if (Array.isArray(myCharacterWeapons)) {
+    myCharacterWeapons.forEach((w) => {
+      if (w && w.name?.trim()) {
+        options.push({ category: "weapon", name: w.name, dmg: w.dmg || "", type: w.type || "", notes: w.notes || "" });
+      }
+    });
+  }
+  if (Array.isArray(myStructuredInventory)) {
+    myStructuredInventory.forEach((item) => {
+      if (item && item.name?.trim()) {
+        options.push({ category: "item", name: item.name, qty: item.qty || 1, weight: item.weight || 0, notes: item.notes || "" });
+      }
+    });
+  }
+
+  if (options.length === 0) {
+    showStatus("Your Weapons Arsenal and Inventory are empty.");
+    return;
+  }
+
+  const promptText = options.map((opt, i) => `${i + 1}. [${opt.category === "weapon" ? "⚔️ Weapon" : "🎒 Item"}] ${opt.name}`).join("\n");
+  const choice = prompt(`Select an item/weapon from your sheet to gift (enter number 1-${options.length}):\n\n${promptText}`);
+  if (!choice) return;
+  const num = parseInt(choice, 10);
+  if (isNaN(num) || num < 1 || num > options.length) {
+    showStatus("Invalid selection.");
+    return;
+  }
+
+  const chosen = options[num - 1];
+  const typeSelect = document.getElementById("handoutFormType");
+  if (typeSelect) {
+    typeSelect.value = chosen.category;
+    updateHandoutFormVisibility();
+  }
+
+  if (chosen.category === "weapon") {
+    const nameEl = document.getElementById("handoutWpnName");
+    const dmgEl = document.getElementById("handoutWpnDmg");
+    const typeEl = document.getElementById("handoutWpnType");
+    const notesEl = document.getElementById("handoutWpnNotes");
+    if (nameEl) nameEl.value = chosen.name;
+    if (dmgEl) dmgEl.value = chosen.dmg;
+    if (typeEl) typeEl.value = chosen.type;
+    if (notesEl) notesEl.value = chosen.notes;
+  } else {
+    const nameEl = document.getElementById("handoutItemName");
+    const qtyEl = document.getElementById("handoutItemQty");
+    const weightEl = document.getElementById("handoutItemWeight");
+    const notesEl = document.getElementById("handoutFormContent");
+    if (nameEl) nameEl.value = chosen.name;
+    if (qtyEl) qtyEl.value = chosen.qty;
+    if (weightEl) weightEl.value = chosen.weight;
+    if (notesEl) notesEl.value = chosen.notes;
+  }
+
+  showStatus(`Loaded "${chosen.name}" from your sheet! Choose recipient and click Award.`);
+}
+
 function updateHandoutFormVisibility() {
   const typeSelect = document.getElementById("handoutFormType");
   const val = typeSelect?.value || "weapon";
@@ -6636,9 +6967,20 @@ function updateHandoutFormVisibility() {
   const label = document.getElementById("handoutContentLabel");
   const content = document.getElementById("handoutFormContent");
 
+  // Sync category visual nav pills
+  document.querySelectorAll(".handout-cat-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.type === val);
+  });
+
+  // Render presets for this category
+  renderHandoutPresets(val);
+
   if (wpnBox) wpnBox.style.display = (val === "weapon") ? "block" : "none";
   if (itemBox) itemBox.style.display = (val === "item") ? "block" : "none";
-  if (coinBox) coinBox.style.display = (val === "coin") ? "block" : "none";
+  if (coinBox) {
+    coinBox.style.display = (val === "coin") ? "block" : "none";
+    if (val === "coin") updateHandoutCoinSplit();
+  }
   if (stdBox) stdBox.style.display = (val === "weapon" || val === "item" || val === "coin") ? "none" : "block";
 
   if (label && content) {
@@ -6659,6 +7001,12 @@ function updateHandoutFormVisibility() {
 }
 
 function openHandoutEditor(handoutId = null) {
+  let preselectedType = null;
+  if (typeof handoutId === "string" && ["weapon", "item", "coin", "letter"].includes(handoutId)) {
+    preselectedType = handoutId;
+    handoutId = null;
+  }
+
   const modal = document.getElementById("handoutModal");
   const viewMode = document.getElementById("handoutViewMode");
   const editMode = document.getElementById("handoutEditMode");
@@ -6704,6 +7052,8 @@ function openHandoutEditor(handoutId = null) {
   // Populate recipient options with connected party members (excluding DM)
   if (recipientSelect) {
     let opts = '<option value="all">👥 Everyone in Party</option>';
+    let chipsHtml = `<button type="button" class="recipient-chip ${(!existingHandout || existingHandout.recipient === 'all') ? 'active' : ''}" data-recipient="all">👥 Everyone in Party</button>`;
+
     if (Array.isArray(cachedRoomMembers)) {
       cachedRoomMembers.forEach((m) => {
         if (!m) return;
@@ -6716,10 +7066,13 @@ function openHandoutEditor(handoutId = null) {
         if (m.name) {
           const isSelected = existingHandout && (existingHandout.recipient === m.name || existingHandout.recipientId === m.id);
           opts += `<option value="${escapeHtml(m.name)}" data-member-id="${escapeHtml(m.id || "")}" ${isSelected ? "selected" : ""}>👤 ${escapeHtml(m.name)}</option>`;
+          chipsHtml += `<button type="button" class="recipient-chip ${isSelected ? 'active' : ''}" data-recipient="${escapeHtml(m.name)}" data-member-id="${escapeHtml(m.id || '')}">👤 ${escapeHtml(m.name)}</button>`;
         }
       });
     }
     recipientSelect.innerHTML = opts;
+    const chipsContainer = document.getElementById("handoutRecipientChips");
+    if (chipsContainer) chipsContainer.innerHTML = chipsHtml;
   }
 
   if (existingHandout) {
@@ -6763,7 +7116,7 @@ function openHandoutEditor(handoutId = null) {
     document.getElementById("handoutModalTitle").textContent = "Edit Handout";
   } else {
     if (hiddenId) hiddenId.value = "";
-    if (typeSelect) typeSelect.value = "weapon";
+    if (typeSelect) typeSelect.value = preselectedType || "weapon";
     if (recipientSelect) recipientSelect.value = "all";
     if (titleInput) titleInput.value = "";
     if (authorInput) authorInput.value = "";
@@ -6796,7 +7149,7 @@ function openHandoutEditor(handoutId = null) {
   modal.classList.add("open");
 }
 
-function saveHandoutFromForm() {
+function saveHandoutFromForm(isDraft = false) {
   const id = document.getElementById("editingHandoutId")?.value || ("handout_" + Date.now());
   const type = document.getElementById("handoutFormType")?.value || "weapon";
   const recipientSelect = document.getElementById("handoutFormRecipient");
@@ -6897,7 +7250,9 @@ function saveHandoutFromForm() {
   closeModal("handoutModal");
 
   const activeRoom = connectedCampaignRoom || activeDMRoomCode;
-  if (activeRoom) {
+  if (isDraft) {
+    showStatus(`Saved "${title}" to your private stash!`);
+  } else if (activeRoom) {
     shareHandoutToParty(id);
   } else {
     showStatus(`Handout "${title}" saved!`);
@@ -6921,6 +7276,8 @@ async function claimHandoutWeapon(handoutId) {
     }
     return;
   }
+
+  playLootClaimSound("weapon");
 
   const weaponName = w.name || h.title || "Weapon";
   const weaponDmg = w.dmg || "";
@@ -7019,6 +7376,8 @@ async function claimHandoutItem(handoutId) {
     return;
   }
 
+  playLootClaimSound("item");
+
   if (!Array.isArray(myStructuredInventory)) myStructuredInventory = [];
 
   // When claimable by everyone and maxClaims > 1, claim 1 copy per party member
@@ -7100,6 +7459,8 @@ async function claimHandoutCoins(handoutId) {
     }
     return;
   }
+
+  playLootClaimSound("coin");
 
   const cpInput = document.getElementById("coin_cp");
   const spInput = document.getElementById("coin_sp");

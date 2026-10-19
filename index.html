@@ -1299,12 +1299,17 @@
               <button type="button" class="btn btn-primary btn-sm" id="createHandoutBtn">+ New Handout</button>
             </div>
           </div>
-          <div class="handout-filter-bar">
-            <button type="button" class="handout-filter-chip active" data-filter="all">All Handouts</button>
-            <button type="button" class="handout-filter-chip" data-filter="weapon">⚔️ Weapons</button>
-            <button type="button" class="handout-filter-chip" data-filter="item">🎒 Items</button>
-            <button type="button" class="handout-filter-chip" data-filter="coin">💰 Coins</button>
-            <button type="button" class="handout-filter-chip" data-filter="letter">📜 Lore &amp; Notes</button>
+          <div class="handout-toolbar-row">
+            <div class="handout-filter-bar">
+              <button type="button" class="handout-filter-chip active" data-filter="all">All Handouts</button>
+              <button type="button" class="handout-filter-chip" data-filter="weapon">⚔️ Weapons</button>
+              <button type="button" class="handout-filter-chip" data-filter="item">🎒 Items</button>
+              <button type="button" class="handout-filter-chip" data-filter="coin">💰 Coins</button>
+              <button type="button" class="handout-filter-chip" data-filter="letter">📜 Lore &amp; Notes</button>
+            </div>
+            <div class="handout-search-wrap">
+              <input type="search" id="handoutSearchInput" class="handout-search-input" placeholder="🔍 Search loot, weapons, clues..." />
+            </div>
           </div>
           <div class="handouts-cards-grid" id="handoutsGrid">
             <!-- Populated dynamically by app.js -->
@@ -1865,23 +1870,42 @@
         <div id="handoutEditMode" style="display: none;" class="handout-editor-form">
           <input type="hidden" id="editingHandoutId" value="" />
 
-          <!-- Category and Recipient Selection -->
-          <div class="handout-form-row">
-            <label class="handout-form-label">
-              <span>Category / Type</span>
-              <select id="handoutFormType" class="handout-form-input">
-                <option value="weapon" selected>⚔️ Weapon</option>
-                <option value="item">🎒 Item / Gear</option>
-                <option value="coin">💰 Coins / Treasure</option>
-                <option value="letter">📜 Lore, Letter, Map &amp; Clues</option>
-              </select>
-            </label>
-            <label class="handout-form-label">
-              <span>Recipient</span>
-              <select id="handoutFormRecipient" class="handout-form-input">
-                <option value="all">👥 Everyone in Party</option>
-              </select>
-            </label>
+          <!-- Category Visual Selector Tabs -->
+          <div class="handout-category-nav" id="handoutCategoryNav">
+            <button type="button" class="handout-cat-btn active" data-type="weapon">⚔️ Weapon</button>
+            <button type="button" class="handout-cat-btn" data-type="item">🎒 Item / Gear</button>
+            <button type="button" class="handout-cat-btn" data-type="coin">💰 Treasure Coins</button>
+            <button type="button" class="handout-cat-btn" data-type="letter">📜 Lore &amp; Notes</button>
+          </div>
+          <select id="handoutFormType" style="display: none;">
+            <option value="weapon" selected>⚔️ Weapon</option>
+            <option value="item">🎒 Item / Gear</option>
+            <option value="coin">💰 Coins / Treasure</option>
+            <option value="letter">📜 Lore, Letter, Map &amp; Clues</option>
+          </select>
+
+          <!-- 1-Click Quick Templates Bar -->
+          <div class="handout-presets-wrap">
+            <div class="handout-presets-header">
+              <span class="handout-presets-title">⚡ 1-Click Quick Templates</span>
+              <button type="button" class="btn btn-ghost btn-xs" id="handoutGiftFromSheetBtn" title="Load an item or weapon from your own character sheet to gift to another player">📦 Gift from My Sheet</button>
+            </div>
+            <div class="handout-presets-bar" id="handoutPresetsBar">
+              <!-- Dynamically populated based on active category -->
+            </div>
+          </div>
+
+          <!-- Recipient Selector Row (Pills + Hidden Select for compatibility) -->
+          <div class="handout-recipient-section">
+            <div class="handout-presets-header">
+              <span class="handout-subform-title">👤 Handout Recipient</span>
+            </div>
+            <div class="handout-recipient-chips" id="handoutRecipientChips">
+              <button type="button" class="recipient-chip active" data-recipient="all">👥 Everyone in Party</button>
+            </div>
+            <select id="handoutFormRecipient" class="handout-form-input" style="display: none;">
+              <option value="all">👥 Everyone in Party</option>
+            </select>
           </div>
 
           <!-- 1. Weapon Specific Subform -->
@@ -1934,7 +1958,22 @@
 
           <!-- 3. Coins Specific Subform -->
           <div id="handoutCoinFields" class="handout-subform-box" style="display: none;">
-            <span class="handout-subform-title">💰 Treasure Coins</span>
+            <div class="handout-presets-header">
+              <span class="handout-subform-title">💰 Treasure Coins</span>
+              <div class="coin-quick-controls">
+                <span class="coin-quick-label">⚡ Quick GP:</span>
+                <div class="coin-quick-btns">
+                  <button type="button" class="btn btn-xs btn-outline coin-quick-btn" data-add-gp="10">+10</button>
+                  <button type="button" class="btn btn-xs btn-outline coin-quick-btn" data-add-gp="50">+50</button>
+                  <button type="button" class="btn btn-xs btn-outline coin-quick-btn" data-add-gp="100">+100</button>
+                  <button type="button" class="btn btn-xs btn-outline coin-quick-btn" data-add-gp="500">+500</button>
+                  <button type="button" class="btn btn-xs btn-ghost coin-clear-btn" id="clearHandoutCoinsBtn">Clear</button>
+                </div>
+              </div>
+            </div>
+            <div class="coin-split-helper" id="coinSplitHelper">
+              <span id="coinSplitText">🪙 Total Value: 0 GP • Split: 0 GP per adventurer</span>
+            </div>
             <div class="handout-coins-grid">
               <label class="coin-entry cp">
                 <span>Copper (CP)</span>
@@ -1987,7 +2026,8 @@
 
           <div class="handout-editor-actions">
             <button type="button" class="btn btn-ghost" id="cancelHandoutEditBtn">Cancel</button>
-            <button type="button" class="btn btn-primary" id="saveHandoutBtn">Save &amp; Send Handout</button>
+            <button type="button" class="btn btn-outline" id="saveDraftHandoutBtn" title="Save in your personal collection without publishing yet">Save to My Stash</button>
+            <button type="button" class="btn btn-primary" id="saveHandoutBtn">✨ Award &amp; Send to Party</button>
           </div>
         </div>
       </div>
