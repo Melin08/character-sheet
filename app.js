@@ -511,7 +511,7 @@ function updateHealthBars() {
     if (curHp <= 0) caption.textContent = "Unconscious / Dying (0%)";
     else if (hpPct <= 25) caption.textContent = `Critical (${hpPct}%)`;
     else if (hpPct <= 50) caption.textContent = `Bloodied (${hpPct}%)`;
-    else caption.textContent = `Healthy (${hpPct}%)${tempHp > 0 ? ` +${tempHp} Temp` : ""}`;
+    else caption.textContent = `HP (${hpPct}%)${tempHp > 0 ? ` +${tempHp} Temp` : ""}`;
   }
 
   const hpCard = document.querySelector(".hp-card");
@@ -5385,6 +5385,9 @@ document.addEventListener("input", (e) => {
   if (e.target.id === "handoutSearchInput") {
     renderHandoutsGrid();
   }
+  if (e.target.id === "quickWeaponFilterInput") {
+    renderHandoutPresets(e.target.value);
+  }
 });
 
 document.addEventListener("focusout", (e) => {
@@ -6723,27 +6726,61 @@ function openHandoutViewer(handoutId) {
    ========================================================================== */
 
 const SIMPLE_WEAPONS = [
-  { label: "Club", name: "Club", dmg: "1d4", type: "Bludgeoning", notes: "Light" },
+  // Most Common & Popular Standard Weapons
   { label: "Dagger", name: "Dagger", dmg: "1d4", type: "Piercing", notes: "Finesse, Light, Thrown (20/60)" },
-  { label: "Greatclub", name: "Greatclub", dmg: "1d8", type: "Bludgeoning", notes: "Two-Handed" },
-  { label: "Handaxe", name: "Handaxe", dmg: "1d6", type: "Slashing", notes: "Light, Thrown (20/60)" },
-  { label: "Javelin", name: "Javelin", dmg: "1d6", type: "Piercing", notes: "Thrown (30/120)" },
-  { label: "Light Hammer", name: "Light Hammer", dmg: "1d4", type: "Bludgeoning", notes: "Light, Thrown (20/60)" },
-  { label: "Mace", name: "Mace", dmg: "1d6", type: "Bludgeoning", notes: "" },
-  { label: "Quarterstaff", name: "Quarterstaff", dmg: "1d6", type: "Bludgeoning", notes: "Versatile (1d8)" },
-  { label: "Sickle", name: "Sickle", dmg: "1d4", type: "Slashing", notes: "Light" },
-  { label: "Spear", name: "Spear", dmg: "1d6", type: "Piercing", notes: "Thrown (20/60), Versatile (1d8)" },
-  { label: "Light Crossbow", name: "Light Crossbow", dmg: "1d8", type: "Piercing", notes: "Ammunition (80/320), Loading, Two-Handed" },
-  { label: "Dart", name: "Dart", dmg: "1d4", type: "Piercing", notes: "Finesse, Thrown (20/60)" },
+  { label: "Shortsword", name: "Shortsword", dmg: "1d6", type: "Piercing", notes: "Finesse, Light" },
+  { label: "Longsword", name: "Longsword", dmg: "1d8", type: "Slashing", notes: "Versatile (1d10)" },
+  { label: "Greatsword", name: "Greatsword", dmg: "2d6", type: "Slashing", notes: "Heavy, Two-Handed" },
   { label: "Shortbow", name: "Shortbow", dmg: "1d6", type: "Piercing", notes: "Ammunition (80/320), Two-Handed" },
-  { label: "Sling", name: "Sling", dmg: "1d4", type: "Bludgeoning", notes: "Ammunition (30/120)" }
+  { label: "Longbow", name: "Longbow", dmg: "1d8", type: "Piercing", notes: "Ammunition (150/600), Heavy, Two-Handed" },
+  { label: "Light Crossbow", name: "Light Crossbow", dmg: "1d8", type: "Piercing", notes: "Ammunition (80/320), Loading, Two-Handed" },
+  { label: "Heavy Crossbow", name: "Heavy Crossbow", dmg: "1d10", type: "Piercing", notes: "Ammunition (100/400), Heavy, Loading, Two-Handed" },
+  { label: "Hand Crossbow", name: "Hand Crossbow", dmg: "1d6", type: "Piercing", notes: "Ammunition (30/120), Light, Loading" },
+  { label: "Rapier", name: "Rapier", dmg: "1d8", type: "Piercing", notes: "Finesse" },
+  { label: "Scimitar", name: "Scimitar", dmg: "1d6", type: "Slashing", notes: "Finesse, Light" },
+  { label: "Handaxe", name: "Handaxe", dmg: "1d6", type: "Slashing", notes: "Light, Thrown (20/60)" },
+  { label: "Battleaxe", name: "Battleaxe", dmg: "1d8", type: "Slashing", notes: "Versatile (1d10)" },
+  { label: "Greataxe", name: "Greataxe", dmg: "1d12", type: "Slashing", notes: "Heavy, Two-Handed" },
+  { label: "Spear", name: "Spear", dmg: "1d6", type: "Piercing", notes: "Thrown (20/60), Versatile (1d8)" },
+  { label: "Quarterstaff", name: "Quarterstaff", dmg: "1d6", type: "Bludgeoning", notes: "Versatile (1d8)" },
+  { label: "Mace", name: "Mace", dmg: "1d6", type: "Bludgeoning", notes: "" },
+  { label: "Warhammer", name: "Warhammer", dmg: "1d8", type: "Bludgeoning", notes: "Versatile (1d10)" },
+  { label: "Maul", name: "Maul", dmg: "2d6", type: "Bludgeoning", notes: "Heavy, Two-Handed" },
+  { label: "Javelin", name: "Javelin", dmg: "1d6", type: "Piercing", notes: "Thrown (30/120)" },
+  { label: "Halberd", name: "Halberd", dmg: "1d10", type: "Slashing", notes: "Heavy, Reach, Two-Handed" },
+  { label: "Glaive", name: "Glaive", dmg: "1d10", type: "Slashing", notes: "Heavy, Reach, Two-Handed" },
+  { label: "Pike", name: "Pike", dmg: "1d10", type: "Piercing", notes: "Heavy, Reach, Two-Handed" },
+  { label: "Trident", name: "Trident", dmg: "1d6", type: "Piercing", notes: "Thrown (20/60), Versatile (1d8)" },
+  { label: "Club", name: "Club", dmg: "1d4", type: "Bludgeoning", notes: "Light" },
+  { label: "Greatclub", name: "Greatclub", dmg: "1d8", type: "Bludgeoning", notes: "Two-Handed" },
+  { label: "Light Hammer", name: "Light Hammer", dmg: "1d4", type: "Bludgeoning", notes: "Light, Thrown (20/60)" },
+  { label: "Sickle", name: "Sickle", dmg: "1d4", type: "Slashing", notes: "Light" },
+  { label: "Dart", name: "Dart", dmg: "1d4", type: "Piercing", notes: "Finesse, Thrown (20/60)" },
+  { label: "Sling", name: "Sling", dmg: "1d4", type: "Bludgeoning", notes: "Ammunition (30/120)" },
+  { label: "Whip", name: "Whip", dmg: "1d4", type: "Slashing", notes: "Finesse, Reach" },
+  { label: "Morningstar", name: "Morningstar", dmg: "1d8", type: "Piercing", notes: "" },
+  { label: "Flail", name: "Flail", dmg: "1d8", type: "Bludgeoning", notes: "" },
+  { label: "War Pick", name: "War Pick", dmg: "1d8", type: "Piercing", notes: "" },
+  { label: "Lance", name: "Lance", dmg: "1d12", type: "Piercing", notes: "Reach, Special" },
+  { label: "Blowgun", name: "Blowgun", dmg: "1", type: "Piercing", notes: "Ammunition (25/100), Loading" },
+  { label: "Net", name: "Net", dmg: "—", type: "Special", notes: "Thrown (5/15), Special" },
+  { label: "Unarmed Strike", name: "Unarmed Strike", dmg: "1", type: "Bludgeoning", notes: "" }
 ];
 
-function renderHandoutPresets() {
+function renderHandoutPresets(filterQuery = "") {
   const bar = document.getElementById("handoutPresetsBar");
   if (!bar) return;
-  bar.innerHTML = SIMPLE_WEAPONS.map((p, idx) => `
-    <button type="button" class="handout-preset-chip" data-preset-index="${idx}">
+  const q = (typeof filterQuery === "string" ? filterQuery : (document.getElementById("quickWeaponFilterInput")?.value || "")).trim().toLowerCase();
+  const list = q
+    ? SIMPLE_WEAPONS.map((p, idx) => ({ ...p, origIdx: idx })).filter((p) => p.name.toLowerCase().includes(q) || p.type.toLowerCase().includes(q) || p.notes.toLowerCase().includes(q))
+    : SIMPLE_WEAPONS.map((p, idx) => ({ ...p, origIdx: idx }));
+
+  if (list.length === 0) {
+    bar.innerHTML = `<span style="font-size:0.72rem; color:var(--text-dim); font-style:italic;">No weapons match "${escapeHtml(q)}".</span>`;
+    return;
+  }
+  bar.innerHTML = list.map((p) => `
+    <button type="button" class="handout-preset-chip" data-preset-index="${p.origIdx}">
       ${p.label}
     </button>
   `).join("");
@@ -7090,6 +7127,8 @@ function openHandoutEditor(handoutId = null) {
     document.getElementById("handoutModalTitle").textContent = "New Handout / Reward";
   }
 
+  const filterInput = document.getElementById("quickWeaponFilterInput");
+  if (filterInput) filterInput.value = "";
   updateHandoutFormVisibility();
   viewMode.style.display = "none";
   editMode.style.display = "block";
