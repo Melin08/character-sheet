@@ -402,7 +402,7 @@
             <span class="dock-chat-badge" id="dockChatBadge" style="display: none;">0</span>
           </button>
           <button type="button" class="btn btn-primary btn-xs dock-handout-btn" id="dockDmHandoutBtn" style="display: none;" title="Create &amp; Award Loot Handouts to Party">
-            <span>🎁 Handout Loot</span>
+            <span>Handout Loot</span>
           </button>
           <button type="button" class="btn btn-outline btn-xs" id="dockOpenFullPartyBtn">Party &amp; DM Dashboard</button>
           <button type="button" class="btn btn-ghost btn-xs" id="dockToggleCollapseBtn" title="Collapse/Expand">&#9650;</button>
@@ -1302,13 +1302,13 @@
           <div class="handout-toolbar-row">
             <div class="handout-filter-bar">
               <button type="button" class="handout-filter-chip active" data-filter="all">All Handouts</button>
-              <button type="button" class="handout-filter-chip" data-filter="weapon">⚔️ Weapons</button>
-              <button type="button" class="handout-filter-chip" data-filter="item">🎒 Items</button>
-              <button type="button" class="handout-filter-chip" data-filter="coin">💰 Coins</button>
-              <button type="button" class="handout-filter-chip" data-filter="letter">📜 Lore &amp; Notes</button>
+              <button type="button" class="handout-filter-chip" data-filter="weapon">Weapons</button>
+              <button type="button" class="handout-filter-chip" data-filter="item">Items</button>
+              <button type="button" class="handout-filter-chip" data-filter="coin">Coins</button>
+              <button type="button" class="handout-filter-chip" data-filter="letter">Lore &amp; Notes</button>
             </div>
             <div class="handout-search-wrap">
-              <input type="search" id="handoutSearchInput" class="handout-search-input" placeholder="🔍 Search loot, weapons, clues..." />
+              <input type="search" id="handoutSearchInput" class="handout-search-input" placeholder="Search loot, weapons, clues..." />
             </div>
           </div>
           <div class="handouts-cards-grid" id="handoutsGrid">
@@ -1549,7 +1549,7 @@
             <div class="dm-action-btns">
               <input type="text" id="dmRoomCodeInput" class="party-room-input center" placeholder="Custom Code (optional)" maxlength="20" autocomplete="off" style="width: 195px; font-size: 0.85rem; padding: 0.4rem 0.6rem;" />
               <button type="button" class="btn btn-primary" id="createCampaignBtn">Create Party</button>
-              <button type="button" class="btn btn-outline" id="dmQuickHandoutBtn" style="display: none;" title="Award items, coins, or clues to players">🎁 Handout Loot</button>
+              <button type="button" class="btn btn-outline" id="dmQuickHandoutBtn" style="display: none;" title="Award items, coins, or clues to players">Handout Loot</button>
               <button type="button" class="btn btn-ghost" id="copyRoomCodeBtn" style="display: none;">Copy Code</button>
               <button type="button" class="btn btn-ghost" id="copyDMInviteLinkBtn" style="display: none;">Invite Link</button>
               <button type="button" class="btn btn-danger-ghost" id="closeCampaignBtn" style="display: none;">Close</button>
@@ -1838,7 +1838,7 @@
         <!-- MODE 1: Parchment View Mode -->
         <div id="handoutViewMode" class="handout-parchment-sheet">
           <div class="parchment-wax-seal">
-            <span class="parchment-seal-symbol" id="parchmentSealIcon">📜</span>
+            <span class="parchment-seal-symbol" id="parchmentSealIcon"></span>
           </div>
           <div class="parchment-header">
             <h2 id="parchmentTitle" class="parchment-title">Ancient Parchment</h2>
@@ -1852,7 +1852,7 @@
           <!-- Interactive Claim Box for Items and Coins -->
           <div id="parchmentClaimBox" class="parchment-claim-box" style="display: none;">
             <div class="claim-info-wrap" id="parchmentClaimInfo"></div>
-            <button type="button" class="btn btn-primary claim-handout-btn" id="parchmentClaimBtn">🎒 Claim Item</button>
+            <button type="button" class="btn btn-primary claim-handout-btn" id="parchmentClaimBtn">Claim Item</button>
           </div>
 
           <div id="parchmentImageWrap" class="parchment-image-wrap" style="display: none;">
@@ -1872,45 +1872,45 @@
 
           <!-- Category Visual Selector Tabs -->
           <div class="handout-category-nav" id="handoutCategoryNav">
-            <button type="button" class="handout-cat-btn active" data-type="weapon">⚔️ Weapon</button>
-            <button type="button" class="handout-cat-btn" data-type="item">🎒 Item / Gear</button>
-            <button type="button" class="handout-cat-btn" data-type="coin">💰 Treasure Coins</button>
-            <button type="button" class="handout-cat-btn" data-type="letter">📜 Lore &amp; Notes</button>
+            <button type="button" class="handout-cat-btn active" data-type="weapon">Weapon</button>
+            <button type="button" class="handout-cat-btn" data-type="item">Item / Gear</button>
+            <button type="button" class="handout-cat-btn" data-type="coin">Treasure Coins</button>
+            <button type="button" class="handout-cat-btn" data-type="letter">Lore &amp; Notes</button>
+            <button type="button" class="handout-cat-btn handout-gift-btn" id="handoutGiftFromSheetBtn" title="Load an item or weapon from your own character sheet to gift to another player">Gift from My Sheet</button>
           </div>
           <select id="handoutFormType" style="display: none;">
-            <option value="weapon" selected>⚔️ Weapon</option>
-            <option value="item">🎒 Item / Gear</option>
-            <option value="coin">💰 Coins / Treasure</option>
-            <option value="letter">📜 Lore, Letter, Map &amp; Clues</option>
+            <option value="weapon" selected>Weapon</option>
+            <option value="item">Item / Gear</option>
+            <option value="coin">Coins / Treasure</option>
+            <option value="letter">Lore, Letter, Map &amp; Clues</option>
           </select>
 
-          <!-- 1-Click Quick Templates Bar -->
-          <div class="handout-presets-wrap">
+          <!-- Quick Handouts (Simple Weapons) -->
+          <div class="handout-presets-wrap" id="handoutPresetsWrap">
             <div class="handout-presets-header">
-              <span class="handout-presets-title">⚡ 1-Click Quick Templates</span>
-              <button type="button" class="btn btn-ghost btn-xs" id="handoutGiftFromSheetBtn" title="Load an item or weapon from your own character sheet to gift to another player">📦 Gift from My Sheet</button>
+              <span class="handout-presets-title">Quick Handouts:</span>
             </div>
             <div class="handout-presets-bar" id="handoutPresetsBar">
-              <!-- Dynamically populated based on active category -->
+              <!-- Dynamically populated with Simple Weapons -->
             </div>
           </div>
 
           <!-- Recipient Selector Row (Pills + Hidden Select for compatibility) -->
           <div class="handout-recipient-section">
             <div class="handout-presets-header">
-              <span class="handout-subform-title">👤 Handout Recipient</span>
+              <span class="handout-subform-title">Handout Recipient</span>
             </div>
             <div class="handout-recipient-chips" id="handoutRecipientChips">
-              <button type="button" class="recipient-chip active" data-recipient="all">👥 Everyone in Party</button>
+              <button type="button" class="recipient-chip active" data-recipient="all">Everyone in Party</button>
             </div>
             <select id="handoutFormRecipient" class="handout-form-input" style="display: none;">
-              <option value="all">👥 Everyone in Party</option>
+              <option value="all">Everyone in Party</option>
             </select>
           </div>
 
           <!-- 1. Weapon Specific Subform -->
           <div id="handoutWeaponFields" class="handout-subform-box">
-            <span class="handout-subform-title">⚔️ Weapon Specifications</span>
+            <span class="handout-subform-title">Weapon Specifications</span>
             <div class="handout-form-row">
               <label class="handout-form-label" style="grid-column: span 2;">
                 <span>Weapon</span>
@@ -1937,7 +1937,7 @@
 
           <!-- 2. Item Specific Subform -->
           <div id="handoutItemFields" class="handout-subform-box" style="display: none;">
-            <span class="handout-subform-title">🎒 Item Specifications</span>
+            <span class="handout-subform-title">Item Specifications</span>
             <div class="handout-form-row">
               <label class="handout-form-label" style="grid-column: span 2;">
                 <span>Item Name</span>
@@ -1959,9 +1959,9 @@
           <!-- 3. Coins Specific Subform -->
           <div id="handoutCoinFields" class="handout-subform-box" style="display: none;">
             <div class="handout-presets-header">
-              <span class="handout-subform-title">💰 Treasure Coins</span>
+              <span class="handout-subform-title">Treasure Coins</span>
               <div class="coin-quick-controls">
-                <span class="coin-quick-label">⚡ Quick GP:</span>
+                <span class="coin-quick-label">Quick GP:</span>
                 <div class="coin-quick-btns">
                   <button type="button" class="btn btn-xs btn-outline coin-quick-btn" data-add-gp="10">+10</button>
                   <button type="button" class="btn btn-xs btn-outline coin-quick-btn" data-add-gp="50">+50</button>
@@ -1972,7 +1972,7 @@
               </div>
             </div>
             <div class="coin-split-helper" id="coinSplitHelper">
-              <span id="coinSplitText">🪙 Total Value: 0 GP • Split: 0 GP per adventurer</span>
+              <span id="coinSplitText">Total Value: 0 GP • Split: 0 GP per adventurer</span>
             </div>
             <div class="handout-coins-grid">
               <label class="coin-entry cp">
@@ -2027,7 +2027,7 @@
           <div class="handout-editor-actions">
             <button type="button" class="btn btn-ghost" id="cancelHandoutEditBtn">Cancel</button>
             <button type="button" class="btn btn-outline" id="saveDraftHandoutBtn" title="Save in your personal collection without publishing yet">Save to My Stash</button>
-            <button type="button" class="btn btn-primary" id="saveHandoutBtn">✨ Award &amp; Send to Party</button>
+            <button type="button" class="btn btn-primary" id="saveHandoutBtn">Award &amp; Send to Party</button>
           </div>
         </div>
       </div>

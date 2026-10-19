@@ -5055,7 +5055,7 @@ kbd {
 /* Quick Category Nav */
 .handout-category-nav {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
   gap: 0.4rem;
   background: rgba(0, 0, 0, 0.28);
   padding: 0.35rem;
@@ -5088,6 +5088,15 @@ kbd {
   border-color: var(--accent-gold);
   color: var(--accent-gold);
   box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+.handout-cat-btn.handout-gift-btn {
+  border: 1px dashed var(--border-subtle);
+  color: var(--accent-gold);
+}
+.handout-cat-btn.handout-gift-btn:hover {
+  border-color: var(--accent-gold);
+  background: rgba(212, 175, 55, 0.12);
+  color: #ffd700;
 }
 
 /* Presets Drawer */

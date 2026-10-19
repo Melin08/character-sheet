@@ -4852,10 +4852,9 @@ function exportCharacterJson() {
 
   // Quick preset template chip click
   const presetChip = e.target.closest(".handout-preset-chip");
-  if (presetChip && presetChip.dataset.presetType) {
-    const pType = presetChip.dataset.presetType;
+  if (presetChip && presetChip.dataset.presetIndex !== undefined) {
     const pIdx = parseInt(presetChip.dataset.presetIndex, 10);
-    applyLootPreset(pType, pIdx);
+    applyLootPreset(pIdx);
     return;
   }
 
@@ -6442,14 +6441,13 @@ function renderHandoutsGrid() {
     const isSearch = Boolean(searchQ);
     grid.innerHTML = `
       <div class="handout-empty-state">
-        <div class="handout-empty-icon">${isSearch ? "🔍" : "🎁"}</div>
         <div class="handout-empty-title">${isSearch ? `No handouts match "${escapeHtml(searchQ)}"` : "No handouts yet in this category"}</div>
         <div class="handout-empty-desc">${isSearch ? "Try adjusting your search terms or clearing the search bar." : "Award weapons, magic items, treasure coins, or secret clues directly to your adventuring party."}</div>
         ${!isSearch ? `
           <div class="handout-empty-actions">
-            <button type="button" class="btn btn-primary btn-xs" onclick="openHandoutEditor('weapon')">⚔️ Add Weapon</button>
-            <button type="button" class="btn btn-outline btn-xs" onclick="openHandoutEditor('item')">🎒 Add Item</button>
-            <button type="button" class="btn btn-outline btn-xs" onclick="openHandoutEditor('coin')">💰 Distribute Coins</button>
+            <button type="button" class="btn btn-primary btn-xs" onclick="openHandoutEditor('weapon')">Add Weapon</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="openHandoutEditor('item')">Add Item</button>
+            <button type="button" class="btn btn-outline btn-xs" onclick="openHandoutEditor('coin')">Distribute Coins</button>
           </div>
         ` : `<button type="button" class="btn btn-outline btn-xs" onclick="document.getElementById('handoutSearchInput').value=''; renderHandoutsGrid();">Clear Search</button>`}
       </div>
@@ -6458,19 +6456,19 @@ function renderHandoutsGrid() {
   }
 
   const typeIcons = {
-    weapon: "⚔️ Weapon",
-    item: "🎒 Item Loot",
-    coin: "💰 Coins",
-    letter: "📜 Lore & Notes",
-    bounty: "📜 Bounty",
-    clue: "🔍 Clue",
-    map: "🗺️ Map",
-    contract: "🖋️ Contract",
-    note: "📝 Note"
+    weapon: "Weapon",
+    item: "Item Loot",
+    coin: "Coins",
+    letter: "Lore & Notes",
+    bounty: "Bounty",
+    clue: "Clue",
+    map: "Map",
+    contract: "Contract",
+    note: "Note"
   };
 
   grid.innerHTML = filtered.map((h) => {
-    const typeLabel = typeIcons[h.type] || "📜 Handout";
+    const typeLabel = typeIcons[h.type] || "Handout";
     const authorStr = h.author ? `By ${escapeHtml(h.author)}` : "Author Unknown";
     const dateStr = h.date ? escapeHtml(h.date) : "Undated";
     const isShared = Boolean(h.isShared);
@@ -6492,7 +6490,7 @@ function renderHandoutsGrid() {
       if (w.dmg) parts.push(`Dmg: ${w.dmg}`);
       if (w.type || w.atk) parts.push(`Type: ${w.type || w.atk}`);
       if (parts.length > 0) {
-        weaponStatHtml = `<div class="handout-weapon-stat-pill">⚔️ ${escapeHtml(parts.join(" • "))}</div>`;
+        weaponStatHtml = `<div class="handout-weapon-stat-pill">${escapeHtml(parts.join(" • "))}</div>`;
       }
       snippet = [w.notes, h.content].filter(Boolean).join(" — ");
       if (!snippet) snippet = "Arsenal Weapon";
@@ -6511,9 +6509,9 @@ function renderHandoutsGrid() {
     let claimActionHtml = "";
     if (h.type === "weapon") {
       if (isClaimed) {
-        claimActionHtml = `<span class="claimed-badge">✓ In Arsenal</span>`;
+        claimActionHtml = `<span class="claimed-badge">In Arsenal</span>`;
       } else if (canClaim) {
-        claimActionHtml = `<button type="button" class="btn btn-xs btn-primary claim-weapon-btn" data-id="${escapeHtml(h.id)}">⚔️ Claim Weapon</button>`;
+        claimActionHtml = `<button type="button" class="btn btn-xs btn-primary claim-weapon-btn" data-id="${escapeHtml(h.id)}">Claim Weapon</button>`;
       } else if (fullyClaimed) {
         claimActionHtml = `<span class="claimed-badge" style="opacity: 0.65;">Claimed</span>`;
       }
@@ -6521,7 +6519,7 @@ function renderHandoutsGrid() {
       const btnClass = h.type === "item" ? "claim-item-btn" : "claim-coins-btn";
       const btnText = h.type === "item" ? "Claim Item" : "Claim Coins";
       if (isClaimed) {
-        claimActionHtml = `<span class="claimed-badge">✓ Claimed</span>`;
+        claimActionHtml = `<span class="claimed-badge">Claimed</span>`;
       } else if (canClaim) {
         claimActionHtml = `<button type="button" class="btn btn-xs btn-primary ${btnClass}" data-id="${escapeHtml(h.id)}">${btnText}</button>`;
       } else if (fullyClaimed) {
@@ -6531,7 +6529,7 @@ function renderHandoutsGrid() {
 
     let recipientBadge = "";
     if (h.recipient && h.recipient !== "all") {
-      recipientBadge = `<span class="tag-pill" style="color:#60a5fa; border-color: rgba(96,165,250,0.3);">👤 ${escapeHtml(h.recipient)}</span>`;
+      recipientBadge = `<span class="tag-pill" style="color:#60a5fa; border-color: rgba(96,165,250,0.3);">${escapeHtml(h.recipient)}</span>`;
     }
 
     let qtyBadge = "";
@@ -6588,11 +6586,7 @@ function openHandoutViewer(handoutId) {
   // Seal Icon
   const sealEl = document.getElementById("parchmentSealIcon");
   if (sealEl) {
-    if (h.type === "weapon") sealEl.textContent = "⚔️";
-    else if (h.type === "item") sealEl.textContent = "🎒";
-    else if (h.type === "coin") sealEl.textContent = "💰";
-    else if (h.type === "map") sealEl.textContent = "🗺️";
-    else sealEl.textContent = "📜";
+    sealEl.textContent = "";
   }
 
   // Interactive Claim Box
@@ -6614,16 +6608,16 @@ function openHandoutViewer(handoutId) {
       const notesDesc = w.notes ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${escapeHtml(w.notes)}</div>` : "";
 
       claimInfo.innerHTML = `
-        <span class="claim-info-title">⚔️ ${escapeHtml(w.name || h.title)}</span>
+        <span class="claim-info-title">${escapeHtml(w.name || h.title)}</span>
         <span class="claim-info-sub">${escapeHtml(statDesc)}</span>
         ${notesDesc}
       `;
       if (isClaimed) {
         claimBtn.style.display = "none";
-        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem;">✓ In Weapons Arsenal</span>';
+        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem;">In Weapons Arsenal</span>';
       } else if (canClaim) {
         claimBtn.style.display = "inline-flex";
-        claimBtn.textContent = "⚔️ Claim to Weapons Arsenal";
+        claimBtn.textContent = "Claim to Weapons Arsenal";
         claimBtn.className = "btn btn-primary claim-weapon-btn";
         claimBtn.dataset.id = h.id;
         claimBtn.dataset.type = "weapon";
@@ -6641,15 +6635,15 @@ function openHandoutViewer(handoutId) {
         countNote = ` • Available: ${Math.max(0, h.maxClaims - (h.claimedCount || 0))}/${h.maxClaims}`;
       }
       claimInfo.innerHTML = `
-        <span class="claim-info-title">🎒 ${escapeHtml(h.item.name || h.title)} (x${h.item.qty || 1}${countNote})</span>
+        <span class="claim-info-title">${escapeHtml(h.item.name || h.title)} (x${h.item.qty || 1}${countNote})</span>
         <span class="claim-info-sub">Weight: ${h.item.weight || 0} lbs each</span>
       `;
       if (isClaimed) {
         claimBtn.style.display = "none";
-        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem;">✓ Claimed in Inventory</span>';
+        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem;">Claimed in Inventory</span>';
       } else if (canClaim) {
         claimBtn.style.display = "inline-flex";
-        claimBtn.textContent = "🎒 Claim & Add to Inventory";
+        claimBtn.textContent = "Claim & Add to Inventory";
         claimBtn.className = "btn btn-primary claim-item-btn";
         claimBtn.dataset.id = h.id;
         claimBtn.dataset.type = "item";
@@ -6669,15 +6663,15 @@ function openHandoutViewer(handoutId) {
       if (h.coins.sp) pills += `<span class="coin-pill sp">${h.coins.sp} SP</span>`;
       if (h.coins.cp) pills += `<span class="coin-pill cp">${h.coins.cp} CP</span>`;
       claimInfo.innerHTML = `
-        <span class="claim-info-title">💰 Treasure Coins</span>
+        <span class="claim-info-title">Treasure Coins</span>
         <div class="handout-coins-pills">${pills}</div>
       `;
       if (isClaimed) {
         claimBtn.style.display = "none";
-        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem;">✓ Claimed in Vault</span>';
+        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem;">Claimed in Vault</span>';
       } else if (canClaim) {
         claimBtn.style.display = "inline-flex";
-        claimBtn.textContent = "🪙 Claim & Add to Vault";
+        claimBtn.textContent = "Claim & Add to Vault";
         claimBtn.className = "btn btn-primary claim-coins-btn";
         claimBtn.dataset.id = h.id;
         claimBtn.dataset.type = "coin";
@@ -6728,107 +6722,52 @@ function openHandoutViewer(handoutId) {
    PARTY HANDOUTS & LOOT SYSTEM (ENHANCED PRESETS & WORKFLOWS)
    ========================================================================== */
 
-const LOOT_PRESETS = {
-  weapon: [
-    { label: "⚔️ Longsword", name: "Longsword", dmg: "1d8", type: "Slashing", notes: "Versatile (1d10)" },
-    { label: "🏹 Shortbow", name: "Shortbow", dmg: "1d6", type: "Piercing", notes: "Range 80/320, Two-Handed" },
-    { label: "🗡️ Dagger", name: "Dagger", dmg: "1d4", type: "Piercing", notes: "Finesse, Light, Thrown (20/60)" },
-    { label: "⚔️ Greatsword", name: "Greatsword", dmg: "2d6", type: "Slashing", notes: "Heavy, Two-Handed" },
-    { label: "🗡️ Rapier", name: "Rapier", dmg: "1d8", type: "Piercing", notes: "Finesse" },
-    { label: "🪓 Battleaxe", name: "Battleaxe", dmg: "1d8", type: "Slashing", notes: "Versatile (1d10)" },
-    { label: "🏹 Heavy Crossbow", name: "Heavy Crossbow", dmg: "1d10", type: "Piercing", notes: "Heavy, Loading, Range 100/400" },
-    { label: "🔥 Flame Tongue", name: "Flame Tongue Longsword", dmg: "1d8+2d6 fire", type: "Slashing / Fire", notes: "Commands flames, sheds bright light 40 ft" },
-    { label: "🌙 Moonblade", name: "Moonblade +1", dmg: "1d8+1", type: "Radiant", notes: "Finesse, Versatile (1d10), glows near foes" },
-    { label: "⚡ Javelin of Lightning", name: "Javelin of Lightning", dmg: "1d6+4d6", type: "Lightning", notes: "Transforms into a 120-ft bolt of lightning" }
-  ],
-  item: [
-    { label: "🧪 Potion of Healing", name: "Potion of Healing", qty: 1, weight: 0.5, content: "Regains 2d4+2 hit points when consumed as an action or bonus action." },
-    { label: "🧪 Greater Healing", name: "Potion of Greater Healing", qty: 1, weight: 0.5, content: "Regains 4d4+4 hit points when consumed." },
-    { label: "🧪 Superior Healing", name: "Potion of Superior Healing", qty: 1, weight: 0.5, content: "Regains 8d4+8 hit points when consumed." },
-    { label: "✨ Bag of Holding", name: "Bag of Holding", qty: 1, weight: 15, content: "Holds up to 500 lbs and 64 cubic feet while always weighing 15 lbs." },
-    { label: "🪢 Rope of Climbing", name: "Rope of Climbing", qty: 1, weight: 3, content: "60-foot silk rope that can knot, unknot, and anchor itself on command." },
-    { label: "🧥 Cloak of Elvenkind", name: "Cloak of Elvenkind", qty: 1, weight: 1, content: "While wearing this cloak with hood up, Stealth checks are made with advantage." },
-    { label: "💍 Ring of Protection", name: "Ring of Protection +1", qty: 1, weight: 0.1, content: "Requires attunement. You gain a +1 bonus to AC and saving throws." },
-    { label: "🪶 Boots of Elvenkind", name: "Boots of Elvenkind", qty: 1, weight: 0.5, content: "Your steps make no sound. Advantage on Stealth checks relying on sound." }
-  ],
-  coin: [
-    { label: "🪙 Small Pouch (25 GP)", gp: 25, sp: 20, cp: 50, ep: 0, pp: 0, desc: "A bandit's pouch snatched from the hideout." },
-    { label: "💰 Adventurer's Bounty (100 GP)", gp: 100, sp: 150, cp: 0, ep: 0, pp: 0, desc: "Quest reward from the town council." },
-    { label: "👑 Noble's Purse (500 GP)", gp: 500, sp: 0, cp: 0, ep: 0, pp: 25, desc: "Heavy velvet coin purse of a merchant lord." },
-    { label: "🐉 Dragon's Hoard (2,500 GP)", gp: 2500, sp: 1000, cp: 0, ep: 0, pp: 150, desc: "Gleaming treasure trove uncovered in ancient ruins." }
-  ],
-  letter: [
-    { label: "📜 Bounty Notice", title: "Bounty Notice: Wanted Dead or Alive", author: "City Guard Captain", content: "A reward of 200 gold pieces is offered for the capture or demise of the bandit ringleader spotted in the Whispering Woods." },
-    { label: "🗺️ Dungeon Map", title: "Parchment Map: Forgotten Crypt", author: "Fallen Explorer", content: "Detailed floor plan showing the entrance, a hidden lever behind the altar, and warning notes about pressure plates in the main hall." },
-    { label: "✉️ Sealed Letter", title: "Sealed Letter with Raven Wax", author: "Unknown Patron", content: "Meet me at the Sign of the Gilded Tankard when bells toll midnight. Come alone, and speak only the counter-phrase: 'Night falls early.'" },
-    { label: "🍺 Tavern Rumor", title: "Tavern Rumor: The Sunken Ruins", author: "Old Sailor", content: "They say when the tide is low during the blood moon, the spire of the ancient elven temple breaks the surface of the bay." }
-  ]
-};
+const SIMPLE_WEAPONS = [
+  { label: "Club", name: "Club", dmg: "1d4", type: "Bludgeoning", notes: "Light" },
+  { label: "Dagger", name: "Dagger", dmg: "1d4", type: "Piercing", notes: "Finesse, Light, Thrown (20/60)" },
+  { label: "Greatclub", name: "Greatclub", dmg: "1d8", type: "Bludgeoning", notes: "Two-Handed" },
+  { label: "Handaxe", name: "Handaxe", dmg: "1d6", type: "Slashing", notes: "Light, Thrown (20/60)" },
+  { label: "Javelin", name: "Javelin", dmg: "1d6", type: "Piercing", notes: "Thrown (30/120)" },
+  { label: "Light Hammer", name: "Light Hammer", dmg: "1d4", type: "Bludgeoning", notes: "Light, Thrown (20/60)" },
+  { label: "Mace", name: "Mace", dmg: "1d6", type: "Bludgeoning", notes: "" },
+  { label: "Quarterstaff", name: "Quarterstaff", dmg: "1d6", type: "Bludgeoning", notes: "Versatile (1d8)" },
+  { label: "Sickle", name: "Sickle", dmg: "1d4", type: "Slashing", notes: "Light" },
+  { label: "Spear", name: "Spear", dmg: "1d6", type: "Piercing", notes: "Thrown (20/60), Versatile (1d8)" },
+  { label: "Light Crossbow", name: "Light Crossbow", dmg: "1d8", type: "Piercing", notes: "Ammunition (80/320), Loading, Two-Handed" },
+  { label: "Dart", name: "Dart", dmg: "1d4", type: "Piercing", notes: "Finesse, Thrown (20/60)" },
+  { label: "Shortbow", name: "Shortbow", dmg: "1d6", type: "Piercing", notes: "Ammunition (80/320), Two-Handed" },
+  { label: "Sling", name: "Sling", dmg: "1d4", type: "Bludgeoning", notes: "Ammunition (30/120)" }
+];
 
-function renderHandoutPresets(type) {
+function renderHandoutPresets() {
   const bar = document.getElementById("handoutPresetsBar");
   if (!bar) return;
-  const list = LOOT_PRESETS[type] || [];
-  if (list.length === 0) {
-    bar.innerHTML = `<span style="font-size:0.72rem; color:var(--text-dim); font-style:italic;">No quick presets available.</span>`;
-    return;
-  }
-  bar.innerHTML = list.map((p, idx) => `
-    <button type="button" class="handout-preset-chip" data-preset-type="${type}" data-preset-index="${idx}">
+  bar.innerHTML = SIMPLE_WEAPONS.map((p, idx) => `
+    <button type="button" class="handout-preset-chip" data-preset-index="${idx}">
       ${p.label}
     </button>
   `).join("");
 }
 
-function applyLootPreset(type, index) {
-  const list = LOOT_PRESETS[type] || [];
-  const p = list[index];
+function applyLootPreset(index) {
+  const p = SIMPLE_WEAPONS[index];
   if (!p) return;
 
-  if (type === "weapon") {
-    const nameEl = document.getElementById("handoutWpnName");
-    const dmgEl = document.getElementById("handoutWpnDmg");
-    const typeEl = document.getElementById("handoutWpnType");
-    const notesEl = document.getElementById("handoutWpnNotes");
-    if (nameEl) nameEl.value = p.name || "";
-    if (dmgEl) dmgEl.value = p.dmg || "";
-    if (typeEl) typeEl.value = p.type || "";
-    if (notesEl) notesEl.value = p.notes || "";
-    showStatus(`Applied template: ${p.name}`);
-  } else if (type === "item") {
-    const nameEl = document.getElementById("handoutItemName");
-    const qtyEl = document.getElementById("handoutItemQty");
-    const weightEl = document.getElementById("handoutItemWeight");
-    const contentEl = document.getElementById("handoutFormContent");
-    if (nameEl) nameEl.value = p.name || "";
-    if (qtyEl) qtyEl.value = p.qty || 1;
-    if (weightEl) weightEl.value = p.weight || 0;
-    if (contentEl) contentEl.value = p.content || "";
-    showStatus(`Applied template: ${p.name}`);
-  } else if (type === "coin") {
-    const cpEl = document.getElementById("handoutCoinCP");
-    const spEl = document.getElementById("handoutCoinSP");
-    const epEl = document.getElementById("handoutCoinEP");
-    const gpEl = document.getElementById("handoutCoinGP");
-    const ppEl = document.getElementById("handoutCoinPP");
-    const contentEl = document.getElementById("handoutFormContent");
-    if (cpEl) cpEl.value = p.cp || 0;
-    if (spEl) spEl.value = p.sp || 0;
-    if (epEl) epEl.value = p.ep || 0;
-    if (gpEl) gpEl.value = p.gp || 0;
-    if (ppEl) ppEl.value = p.pp || 0;
-    if (contentEl && p.desc) contentEl.value = p.desc;
-    updateHandoutCoinSplit();
-    showStatus(`Applied template: ${p.label}`);
-  } else if (type === "letter") {
-    const titleEl = document.getElementById("handoutFormTitle");
-    const authorEl = document.getElementById("handoutFormAuthor");
-    const contentEl = document.getElementById("handoutFormContent");
-    if (titleEl) titleEl.value = p.title || "";
-    if (authorEl) authorEl.value = p.author || "";
-    if (contentEl) contentEl.value = p.content || "";
-    showStatus(`Applied template: ${p.title}`);
+  const typeSelect = document.getElementById("handoutFormType");
+  if (typeSelect && typeSelect.value !== "weapon") {
+    typeSelect.value = "weapon";
+    updateHandoutFormVisibility();
   }
+
+  const nameEl = document.getElementById("handoutWpnName");
+  const dmgEl = document.getElementById("handoutWpnDmg");
+  const typeEl = document.getElementById("handoutWpnType");
+  const notesEl = document.getElementById("handoutWpnNotes");
+  if (nameEl) nameEl.value = p.name || "";
+  if (dmgEl) dmgEl.value = p.dmg || "";
+  if (typeEl) typeEl.value = p.type || "";
+  if (notesEl) notesEl.value = p.notes || "";
+  showStatus(`Applied: ${p.name}`);
 }
 
 function updateHandoutCoinSplit() {
@@ -6846,7 +6785,7 @@ function updateHandoutCoinSplit() {
   const splitVal = (totalGP / partyCount).toFixed(1);
   const splitEl = document.getElementById("coinSplitText");
   if (splitEl) {
-    splitEl.innerHTML = `🪙 Total Value: <strong>~${Math.round(totalGP)} GP</strong> • Split: <strong>~${splitVal} GP</strong> per adventurer (${partyCount} in party)`;
+    splitEl.innerHTML = `Total Value: <strong>~${Math.round(totalGP)} GP</strong> • Split: <strong>~${splitVal} GP</strong> per adventurer (${partyCount} in party)`;
   }
 }
 
@@ -6918,7 +6857,7 @@ function openHandoutGiftPicker() {
     return;
   }
 
-  const promptText = options.map((opt, i) => `${i + 1}. [${opt.category === "weapon" ? "⚔️ Weapon" : "🎒 Item"}] ${opt.name}`).join("\n");
+  const promptText = options.map((opt, i) => `${i + 1}. [${opt.category === "weapon" ? "Weapon" : "Item"}] ${opt.name}`).join("\n");
   const choice = prompt(`Select an item/weapon from your sheet to gift (enter number 1-${options.length}):\n\n${promptText}`);
   if (!choice) return;
   const num = parseInt(choice, 10);
@@ -6964,16 +6903,24 @@ function updateHandoutFormVisibility() {
   const itemBox = document.getElementById("handoutItemFields");
   const coinBox = document.getElementById("handoutCoinFields");
   const stdBox = document.getElementById("handoutStandardFields");
+  const presetsWrap = document.getElementById("handoutPresetsWrap");
   const label = document.getElementById("handoutContentLabel");
   const content = document.getElementById("handoutFormContent");
 
   // Sync category visual nav pills
   document.querySelectorAll(".handout-cat-btn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.type === val);
+    if (btn.dataset.type) {
+      btn.classList.toggle("active", btn.dataset.type === val);
+    }
   });
 
-  // Render presets for this category
-  renderHandoutPresets(val);
+  // Render presets (all simple weapons) and display when on weapon category
+  if (presetsWrap) {
+    presetsWrap.style.display = (val === "weapon") ? "block" : "none";
+  }
+  if (val === "weapon") {
+    renderHandoutPresets();
+  }
 
   if (wpnBox) wpnBox.style.display = (val === "weapon") ? "block" : "none";
   if (itemBox) itemBox.style.display = (val === "item") ? "block" : "none";
@@ -7051,8 +6998,8 @@ function openHandoutEditor(handoutId = null) {
 
   // Populate recipient options with connected party members (excluding DM)
   if (recipientSelect) {
-    let opts = '<option value="all">👥 Everyone in Party</option>';
-    let chipsHtml = `<button type="button" class="recipient-chip ${(!existingHandout || existingHandout.recipient === 'all') ? 'active' : ''}" data-recipient="all">👥 Everyone in Party</button>`;
+    let opts = '<option value="all">Everyone in Party</option>';
+    let chipsHtml = `<button type="button" class="recipient-chip ${(!existingHandout || existingHandout.recipient === 'all') ? 'active' : ''}" data-recipient="all">Everyone in Party</button>`;
 
     if (Array.isArray(cachedRoomMembers)) {
       cachedRoomMembers.forEach((m) => {
@@ -7065,8 +7012,8 @@ function openHandoutEditor(handoutId = null) {
         }
         if (m.name) {
           const isSelected = existingHandout && (existingHandout.recipient === m.name || existingHandout.recipientId === m.id);
-          opts += `<option value="${escapeHtml(m.name)}" data-member-id="${escapeHtml(m.id || "")}" ${isSelected ? "selected" : ""}>👤 ${escapeHtml(m.name)}</option>`;
-          chipsHtml += `<button type="button" class="recipient-chip ${isSelected ? 'active' : ''}" data-recipient="${escapeHtml(m.name)}" data-member-id="${escapeHtml(m.id || '')}">👤 ${escapeHtml(m.name)}</button>`;
+          opts += `<option value="${escapeHtml(m.name)}" data-member-id="${escapeHtml(m.id || "")}" ${isSelected ? "selected" : ""}>${escapeHtml(m.name)}</option>`;
+          chipsHtml += `<button type="button" class="recipient-chip ${isSelected ? 'active' : ''}" data-recipient="${escapeHtml(m.name)}" data-member-id="${escapeHtml(m.id || '')}">${escapeHtml(m.name)}</button>`;
         }
       });
     }
@@ -7357,7 +7304,7 @@ async function claimHandoutWeapon(handoutId) {
     openHandoutViewer(handoutId);
   }
 
-  showStatus(`⚔️ "${weaponName}" claimed! Added directly to your Weapons Arsenal.`);
+  showStatus(`"${weaponName}" claimed! Added directly to your Weapons Arsenal.`);
 }
 
 async function claimHandoutItem(handoutId) {
@@ -7573,19 +7520,19 @@ async function shareHandoutToParty(handoutId) {
     h.isShared = true;
     await db.collection("campaigns").doc(activeRoom).collection("handouts").doc(h.id).set(h, { merge: true });
 
-    let chatText = `📜 Shared a new handout: "${h.title}"`;
+    let chatText = `Shared a new handout: "${h.title}"`;
     if (h.type === "weapon") {
       chatText = h.recipient && h.recipient !== "all"
-        ? `⚔️ Awarded weapon to ${h.recipient}: "${h.title}"`
-        : `⚔️ Awarded weapon: "${h.title}"`;
+        ? `Awarded weapon to ${h.recipient}: "${h.title}"`
+        : `Awarded weapon: "${h.title}"`;
     } else if (h.type === "item") {
       chatText = h.recipient && h.recipient !== "all"
-        ? `🎒 Handed out loot for ${h.recipient}: "${h.title}"`
-        : `🎒 Handed out loot: "${h.title}"`;
+        ? `Handed out loot for ${h.recipient}: "${h.title}"`
+        : `Handed out loot: "${h.title}"`;
     } else if (h.type === "coin") {
       chatText = h.recipient && h.recipient !== "all"
-        ? `💰 Distributed treasure to ${h.recipient}: ${h.title}`
-        : `💰 Distributed treasure: ${h.title}`;
+        ? `Distributed treasure to ${h.recipient}: ${h.title}`
+        : `Distributed treasure: ${h.title}`;
     }
 
     await sendPartyChatMessage(chatText, "handout", h);
