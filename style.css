@@ -2780,7 +2780,7 @@ input[type="number"].attr-input:focus,
 }
 .attack-headers {
   display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 2.2fr) 28px;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 2.2fr) 28px;
   gap: 0.45rem;
   font-size: 0.64rem;
   font-weight: 700;
@@ -2795,7 +2795,7 @@ input[type="number"].attr-input:focus,
 }
 .weapon-row-card {
   display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 2.2fr) 28px;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 2.2fr) 28px;
   gap: 0.45rem;
   align-items: center;
   background: rgba(0, 0, 0, 0.28);

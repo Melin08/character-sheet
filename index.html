@@ -735,9 +735,9 @@
             <div class="attacks-table-wrapper">
               <div class="attacks-table">
                 <div class="attack-headers">
-                  <span>Weapon / Action</span>
-                  <span class="center">Hit</span>
+                  <span>Weapon</span>
                   <span class="center">Damage</span>
+                  <span class="center">Type</span>
                   <span>Properties &amp; Notes</span>
                   <span></span>
                 </div>
@@ -1889,28 +1889,24 @@
             <span class="handout-subform-title">⚔️ Weapon Specifications</span>
             <div class="handout-form-row">
               <label class="handout-form-label" style="grid-column: span 2;">
-                <span>Weapon Name</span>
-                <input type="text" id="handoutWpnName" class="handout-form-input" placeholder="e.g. Flame Tongue Greatsword, Sun Blade +2, Moonbow" />
+                <span>Weapon</span>
+                <input type="text" id="handoutWpnName" class="handout-form-input" placeholder="e.g. Flame Tongue Greatsword, Longsword" />
               </label>
             </div>
             <div class="handout-form-row">
               <label class="handout-form-label">
-                <span>Attack Bonus</span>
-                <input type="text" id="handoutWpnAtk" class="handout-form-input" placeholder="e.g. +7 or +1 + DEX" />
+                <span>Damage</span>
+                <input type="text" id="handoutWpnDmg" class="handout-form-input" placeholder="e.g. 1d8+3, 2d6" />
               </label>
               <label class="handout-form-label">
-                <span>Damage &amp; Type</span>
-                <input type="text" id="handoutWpnDmg" class="handout-form-input" placeholder="e.g. 2d6+4 slashing + 2d6 fire" />
+                <span>Type</span>
+                <input type="text" id="handoutWpnType" class="handout-form-input" placeholder="e.g. Slashing, Piercing, Fire" />
               </label>
             </div>
             <div class="handout-form-row">
-              <label class="handout-form-label">
-                <span>Properties / Masteries</span>
-                <input type="text" id="handoutWpnNotes" class="handout-form-input" placeholder="e.g. Versatile, Finesse, Light, Graze" />
-              </label>
-              <label class="handout-form-label">
-                <span>Weight (lbs)</span>
-                <input type="number" id="handoutWpnWeight" class="handout-form-input center" value="3" min="0" step="0.1" />
+              <label class="handout-form-label" style="grid-column: span 2;">
+                <span>Properties/Notes</span>
+                <input type="text" id="handoutWpnNotes" class="handout-form-input" placeholder="e.g. Versatile, Finesse, Light, Range 80/320" />
               </label>
             </div>
           </div>

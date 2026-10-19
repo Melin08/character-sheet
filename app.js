@@ -42,8 +42,8 @@ let myCharacterAvatar = "";
 let myCharacterSpells = [];
 let myCharacterTraits = [];
 let myCharacterWeapons = [
-  { name: "", atk: "", dmg: "", notes: "" },
-  { name: "", atk: "", dmg: "", notes: "" }
+  { name: "", dmg: "", type: "", notes: "" },
+  { name: "", dmg: "", type: "", notes: "" }
 ];
 let myCustomResources = [];
 let myStructuredInventory = [];
@@ -715,21 +715,18 @@ function renderWeapons() {
   }
 
   while (myCharacterWeapons.length < 2) {
-    myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+    myCharacterWeapons.push({ name: "", dmg: "", type: "", notes: "" });
   }
 
   container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
     <div class="attack-entry weapon-row-card" data-index="${idx}">
-      <input type="text" class="save-field wpn-field wpn-name-input" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon or Attack..." />
-      <div class="wpn-cell-with-roll">
-        <input type="text" class="save-field wpn-field wpn-type-input center" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="+5" />
-        <button type="button" class="wpn-roll-btn wpn-roll-atk-btn" data-index="${idx}" title="Roll Weapon Attack (d20 + Atk Bonus)">&#9856;</button>
-      </div>
+      <input type="text" class="save-field wpn-field wpn-name-input" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon..." />
       <div class="wpn-cell-with-roll">
         <input type="text" class="save-field wpn-field wpn-dmg-input center" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8+3" />
         <button type="button" class="wpn-roll-btn wpn-roll-dmg-btn" data-index="${idx}" title="Roll Weapon Damage">&#9876;</button>
       </div>
-      <input type="text" class="save-field wpn-field wpn-notes-input" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Range, mastery, properties..." />
+      <input type="text" class="save-field wpn-field wpn-type-input center" data-prop="type" value="${escapeHtml(wpn.type || wpn.atk || "")}" placeholder="Type..." />
+      <input type="text" class="save-field wpn-field wpn-notes-input" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Properties / Notes..." />
       <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
     </div>
   `).join("");
@@ -1457,8 +1454,8 @@ function applyCharacterData(charData) {
   myHandouts = charData.handouts || [];
   myClaimedHandoutIds = charData.claimedHandouts || [];
   myCharacterWeapons = charData.weapons && charData.weapons.length >= 2 ? charData.weapons : [
-    { name: "", atk: "", dmg: "", notes: "" },
-    { name: "", atk: "", dmg: "", notes: "" }
+    { name: "", dmg: "", type: "", notes: "" },
+    { name: "", dmg: "", type: "", notes: "" }
   ];
 
   renderAvatar();
@@ -1538,8 +1535,8 @@ function resetSheet() {
   myHandouts = [];
   myClaimedHandoutIds = [];
   myCharacterWeapons = [
-    { name: "", atk: "", dmg: "", notes: "" },
-    { name: "", atk: "", dmg: "", notes: "" }
+    { name: "", dmg: "", type: "", notes: "" },
+    { name: "", dmg: "", type: "", notes: "" }
   ];
   diceRollHistory = [];
 
@@ -4961,7 +4958,7 @@ function exportCharacterJson() {
   // Weapons Add / Delete
   if (e.target.id === "addWeaponBtn" || e.target.closest("#addWeaponBtn") || e.target.closest(".btn-add-weapon")) {
     if (!Array.isArray(myCharacterWeapons)) myCharacterWeapons = [];
-    myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+    myCharacterWeapons.push({ name: "", dmg: "", type: "", notes: "" });
     saveSheet(false);
     renderWeapons();
     showStatus("Weapon Added!");
@@ -4972,7 +4969,7 @@ function exportCharacterJson() {
     const idx = parseInt(e.target.dataset.index, 10);
     myCharacterWeapons.splice(idx, 1);
     while (myCharacterWeapons.length < 2) {
-      myCharacterWeapons.push({ name: "", atk: "", dmg: "", notes: "" });
+      myCharacterWeapons.push({ name: "", dmg: "", type: "", notes: "" });
     }
     saveSheet(false);
     renderWeapons();
@@ -6394,12 +6391,12 @@ function renderHandoutsGrid() {
     if (h.type === "weapon" && (h.item || h.weapon)) {
       const w = h.weapon || h.item;
       const parts = [];
-      if (w.atk) parts.push(`Atk: ${w.atk}`);
       if (w.dmg) parts.push(`Dmg: ${w.dmg}`);
+      if (w.type || w.atk) parts.push(`Type: ${w.type || w.atk}`);
       if (parts.length > 0) {
         weaponStatHtml = `<div class="handout-weapon-stat-pill">⚔️ ${escapeHtml(parts.join(" • "))}</div>`;
       }
-      snippet = [w.notes, h.content, (w.weight ? `Weight: ${w.weight} lbs` : "")].filter(Boolean).join(" — ");
+      snippet = [w.notes, h.content].filter(Boolean).join(" — ");
       if (!snippet) snippet = "Arsenal Weapon";
     } else if (h.type === "item" && h.item) {
       snippet = `Item: ${h.item.name} (x${h.item.qty || 1}${h.item.weight ? `, ${h.item.weight} lbs` : ""}) ${h.content ? `— ${h.content}` : ""}`;
@@ -6513,9 +6510,8 @@ function openHandoutViewer(handoutId) {
       const w = h.weapon || h.item;
       claimBox.style.display = "flex";
       const statParts = [];
-      if (w.atk) statParts.push(`Atk: ${w.atk}`);
-      if (w.dmg) statParts.push(`Dmg: ${w.dmg}`);
-      if (w.weight) statParts.push(`Weight: ${w.weight} lbs`);
+      if (w.dmg) statParts.push(`Damage: ${w.dmg}`);
+      if (w.type || w.atk) statParts.push(`Type: ${w.type || w.atk}`);
       const statDesc = statParts.length > 0 ? statParts.join(" • ") : "Arsenal Weapon";
       const notesDesc = w.notes ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${escapeHtml(w.notes)}</div>` : "";
 
@@ -6686,8 +6682,8 @@ function openHandoutEditor(handoutId = null) {
   const contentInput = document.getElementById("handoutFormContent");
 
   const wpnNameInput = document.getElementById("handoutWpnName");
-  const wpnAtkInput = document.getElementById("handoutWpnAtk");
   const wpnDmgInput = document.getElementById("handoutWpnDmg");
+  const wpnTypeInput = document.getElementById("handoutWpnType");
   const wpnNotesInput = document.getElementById("handoutWpnNotes");
   const wpnWeightInput = document.getElementById("handoutWpnWeight");
 
@@ -6740,16 +6736,16 @@ function openHandoutEditor(handoutId = null) {
     if (h.type === "weapon" || h.item?.isWeapon) {
       const w = h.weapon || h.item || {};
       if (wpnNameInput) wpnNameInput.value = w.name || h.title || "";
-      if (wpnAtkInput) wpnAtkInput.value = w.atk || "";
       if (wpnDmgInput) wpnDmgInput.value = w.dmg || "";
+      if (wpnTypeInput) wpnTypeInput.value = w.type || w.atk || "";
       if (wpnNotesInput) wpnNotesInput.value = w.notes || "";
-      if (wpnWeightInput) wpnWeightInput.value = (w.weight !== undefined) ? w.weight : 3;
+      if (wpnWeightInput) wpnWeightInput.value = (w.weight !== undefined) ? w.weight : 0;
     } else {
       if (wpnNameInput) wpnNameInput.value = "";
-      if (wpnAtkInput) wpnAtkInput.value = "";
       if (wpnDmgInput) wpnDmgInput.value = "";
+      if (wpnTypeInput) wpnTypeInput.value = "";
       if (wpnNotesInput) wpnNotesInput.value = "";
-      if (wpnWeightInput) wpnWeightInput.value = 3;
+      if (wpnWeightInput) wpnWeightInput.value = 0;
     }
 
     if (h.item && !h.item?.isWeapon) {
@@ -6776,10 +6772,10 @@ function openHandoutEditor(handoutId = null) {
     if (contentInput) contentInput.value = "";
 
     if (wpnNameInput) wpnNameInput.value = "";
-    if (wpnAtkInput) wpnAtkInput.value = "";
     if (wpnDmgInput) wpnDmgInput.value = "";
+    if (wpnTypeInput) wpnTypeInput.value = "";
     if (wpnNotesInput) wpnNotesInput.value = "";
-    if (wpnWeightInput) wpnWeightInput.value = 3;
+    if (wpnWeightInput) wpnWeightInput.value = 0;
 
     if (itemNameInput) itemNameInput.value = "";
     if (itemQtyInput) itemQtyInput.value = 1;
@@ -6818,17 +6814,15 @@ function saveHandoutFromForm() {
 
   if (type === "weapon") {
     const wpnName = document.getElementById("handoutWpnName")?.value.trim() || "Mystic Weapon";
-    const wpnAtk = document.getElementById("handoutWpnAtk")?.value.trim() || "";
     const wpnDmg = document.getElementById("handoutWpnDmg")?.value.trim() || "";
+    const wpnType = document.getElementById("handoutWpnType")?.value.trim() || "";
     const wpnNotes = document.getElementById("handoutWpnNotes")?.value.trim() || "";
-    const wpnWeight = parseFloat(document.getElementById("handoutWpnWeight")?.value) || 0;
     title = wpnName;
     itemData = {
       name: wpnName,
-      atk: wpnAtk,
       dmg: wpnDmg,
+      type: wpnType,
       notes: wpnNotes,
-      weight: wpnWeight,
       qty: 1,
       isWeapon: true
     };
@@ -6929,23 +6923,22 @@ async function claimHandoutWeapon(handoutId) {
   }
 
   const weaponName = w.name || h.title || "Weapon";
-  const weaponAtk = w.atk || "";
   const weaponDmg = w.dmg || "";
+  const weaponType = w.type || w.atk || "";
   const weaponNotes = w.notes || h.content || "";
-  const weaponWeight = parseFloat(w.weight) || 0;
 
   // 1. Add directly to Weapons Arsenal (myCharacterWeapons on Combat tab)
   if (!Array.isArray(myCharacterWeapons)) myCharacterWeapons = [];
 
   // Search for an empty row to fill first
   const emptyIndex = myCharacterWeapons.findIndex(
-    (wpn) => !wpn.name && !wpn.atk && !wpn.dmg && !wpn.notes
+    (wpn) => !wpn.name && !wpn.dmg && !wpn.type && !wpn.atk && !wpn.notes
   );
 
   const newWeapon = {
     name: weaponName,
-    atk: weaponAtk,
     dmg: weaponDmg,
+    type: weaponType,
     notes: weaponNotes
   };
 
@@ -6955,18 +6948,9 @@ async function claimHandoutWeapon(handoutId) {
     myCharacterWeapons.push(newWeapon);
   }
 
-  // 2. Also record in structured inventory (so weight & encumbrance are tracked)
-  if (!Array.isArray(myStructuredInventory)) myStructuredInventory = [];
-  const inventoryNotes = [weaponDmg, weaponNotes].filter(Boolean).join(" • ");
-  myStructuredInventory.push({
-    equipped: true,
-    name: weaponName,
-    qty: 1,
-    weight: weaponWeight,
-    notes: inventoryNotes
-  });
+  // Handed out weapons only go into Arsenal, not into inventory
 
-  // 3. Mark as claimed locally
+  // 2. Mark as claimed locally
   myClaimedHandoutIds.push(handoutId);
 
   // 4. Update claim counts on shared handout in Firestore
