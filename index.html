@@ -116,6 +116,16 @@
               </svg>
               <span>Notes &amp; Quests</span>
             </button>
+
+            <button class="main-tab" data-target="tab-owlbear" type="button" id="mainTabOwlbearBtn">
+              <svg class="nav-tab-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                <line x1="8" y1="2" x2="8" y2="18"></line>
+                <line x1="16" y1="6" x2="16" y2="22"></line>
+              </svg>
+              <span>Owlbear Rodeo</span>
+              <span class="tab-counter-pill" id="owlbearNavBadge" style="display:none; background: #4ade80; color: #000; font-size: 0.6rem; font-weight: 800;">LIVE</span>
+            </button>
           </nav>
 
           <!-- Right: Quick Search Command Trigger -->
@@ -1335,6 +1345,152 @@
             <!-- Populated dynamically by app.js -->
           </div>
         </div>
+      </div>
+
+      <!-- =============================================================== -->
+      <!-- TAB 7: OWLBEAR RODEO VTT (BATTLE MAP VIEWPORT)                  -->
+      <!-- =============================================================== -->
+      <div id="tab-owlbear" class="tab-page owlbear-tab-page">
+
+        <!-- Top Control Bar -->
+        <div class="owlbear-control-bar">
+          <div class="owlbear-title-cluster">
+            <div class="owlbear-brand-badge">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                <line x1="8" y1="2" x2="8" y2="18"></line>
+                <line x1="16" y1="6" x2="16" y2="22"></line>
+              </svg>
+              <span>Owlbear Rodeo</span>
+            </div>
+            <span class="owlbear-status-pill" id="owlbearStatusPill">
+              <span class="status-indicator-dot" id="owlbearStatusDot"></span>
+              <span id="owlbearStatusText">No Room Loaded</span>
+            </span>
+          </div>
+
+          <!-- Room Input & Actions -->
+          <div class="owlbear-actions-cluster">
+            <div class="owlbear-input-wrap">
+              <input type="url" id="owlbearRoomUrlInput" class="owlbear-room-input" placeholder="Paste Owlbear Room URL (https://www.owlbear.rodeo/room/...)" spellcheck="false" autocomplete="off" />
+              <button type="button" id="owlbearClearInputBtn" class="owlbear-clear-btn" title="Clear URL">&times;</button>
+            </div>
+            <button type="button" id="owlbearLoadBtn" class="btn btn-gold-subtle btn-sm">Load Map</button>
+            <button type="button" id="owlbearPopoutBtn" class="btn btn-outline btn-sm" title="Launch as a companion window side-by-side with your sheet">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+              <span>Companion Window</span>
+            </button>
+            <button type="button" id="owlbearExternalBtn" class="btn btn-outline btn-sm" title="Open in new tab">
+              ↗ New Tab
+            </button>
+            <button type="button" id="owlbearTheaterToggleBtn" class="btn btn-outline btn-sm" title="Toggle Fullscreen Theater Mode">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <polyline points="9 21 3 21 3 15"></polyline>
+                <line x1="21" y1="3" x2="14" y2="10"></line>
+                <line x1="3" y1="21" x2="10" y2="14"></line>
+              </svg>
+              <span id="owlbearTheaterBtnLabel">Theater Mode</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tactical Quick Vitals & Action Strip -->
+        <div class="owlbear-tactical-strip" id="owlbearTacticalStrip">
+          <div class="owlbear-vitals-mini">
+            <div class="owlbear-vital-badge" title="Current Health / Maximum Health">
+              <span class="vital-label">HP</span>
+              <strong id="owlbearHpDisplay" style="color: #4ade80;">--/--</strong>
+            </div>
+            <div class="owlbear-vital-badge" title="Armor Class">
+              <span class="vital-label">AC</span>
+              <strong id="owlbearAcDisplay" style="color: var(--accent-gold);">--</strong>
+            </div>
+            <div class="owlbear-vital-badge" title="Passive Perception">
+              <span class="vital-label">PERC</span>
+              <strong id="owlbearPercDisplay" style="color: #60a5fa;">--</strong>
+            </div>
+            <div class="owlbear-vital-badge" title="Heroic Inspiration">
+              <span class="vital-label">INSP</span>
+              <strong id="owlbearInspDisplay" style="color: #c084fc;">No</strong>
+            </div>
+          </div>
+          <div class="owlbear-quick-actions" id="owlbearQuickActions">
+            <button type="button" class="btn btn-outline btn-xs" id="owlbearRollInitBtn" title="Roll Initiative with your DEX modifier">🎲 Roll Initiative</button>
+            <button type="button" class="btn btn-outline btn-xs" id="owlbearRollAtkBtn" title="Roll attack with primary weapon">⚔️ Primary Attack</button>
+            <button type="button" class="btn btn-outline btn-xs" id="owlbearPartyChatBtn" title="Toggle Party Chat">💬 Party Chat</button>
+          </div>
+        </div>
+
+        <!-- Viewport Frame -->
+        <div class="owlbear-viewport-frame" id="owlbearViewportFrame">
+          
+          <!-- State A: Empty / Setup Wizard -->
+          <div class="owlbear-empty-state" id="owlbearEmptyState">
+            <div class="owlbear-empty-icon-ring">
+              <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--accent-gold)" stroke-width="1.8">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                <line x1="8" y1="2" x2="8" y2="18"></line>
+                <line x1="16" y1="6" x2="16" y2="22"></line>
+                <circle cx="12" cy="12" r="3" fill="var(--accent-gold)"></circle>
+              </svg>
+            </div>
+            <h3 class="owlbear-empty-title">Owlbear Rodeo Virtual Tabletop</h3>
+            <p class="owlbear-empty-subtitle">Connect your battle map room to view dynamic tactical tokens, combat grids, and roll dice seamlessly alongside your character sheet.</p>
+
+            <div class="owlbear-empty-inputs">
+              <input type="text" id="owlbearWizardRoomInput" class="owlbear-wizard-input" placeholder="Enter Owlbear Rodeo Room URL (https://www.owlbear.rodeo/room/...)" />
+              <button type="button" id="owlbearWizardConnectBtn" class="btn btn-gold-subtle">Connect to Room</button>
+            </div>
+
+            <div class="owlbear-empty-helpers">
+              <span>Don't have an Owlbear room yet?</span>
+              <a href="https://www.owlbear.rodeo" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-xs">
+                Create Free Room at owlbear.rodeo &rarr;
+              </a>
+              <button type="button" class="btn btn-ghost btn-xs" id="owlbearUseDemoRoomBtn">Paste Sample Room</button>
+            </div>
+
+            <div class="owlbear-features-grid">
+              <div class="owlbear-feature-card">
+                <span class="feat-icon">⚡</span>
+                <strong>Companion Window Mode</strong>
+                <p>Dock the map right alongside your character sheet on multi-monitor or ultra-wide setups.</p>
+              </div>
+              <div class="owlbear-feature-card">
+                <span class="feat-icon">🎲</span>
+                <strong>Tactical Roll HUD</strong>
+                <p>Roll attacks, saves, and initiative without leaving the battlemap tab.</p>
+              </div>
+              <div class="owlbear-feature-card">
+                <span class="feat-icon">👥</span>
+                <strong>Automatic Party Sync</strong>
+                <p>When the DM sets the battlemap room, all connected party members can view it automatically.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- State B: Active Battle Map Container -->
+          <div class="owlbear-active-container" id="owlbearActiveContainer" style="display: none;">
+            <div class="owlbear-browser-helper-banner" id="owlbearBrowserHelperBanner">
+              <div class="banner-text">
+                <span class="banner-badge">💡 Tip</span>
+                <span>For full hardware-accelerated WebGL performance, or if your browser blocks iframes due to Owlbear's security policy:</span>
+              </div>
+              <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearBannerPopoutBtn">
+                🪟 Launch Companion Window
+              </button>
+            </div>
+
+            <iframe id="owlbearIframe" class="owlbear-map-iframe" src="" allow="camera; microphone; clipboard-read; clipboard-write; fullscreen; display-capture" loading="lazy"></iframe>
+          </div>
+
+        </div>
+
       </div>
 
     </div><!-- /.codex-tabs-viewport -->
