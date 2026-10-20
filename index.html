@@ -1376,6 +1376,7 @@
               <button type="button" id="owlbearClearInputBtn" class="owlbear-clear-btn" title="Clear URL">&times;</button>
             </div>
             <button type="button" id="owlbearLoadBtn" class="btn btn-gold-subtle btn-sm">Load Map</button>
+            <button type="button" id="owlbearLeaveBtn" class="btn red btn-sm" style="display: none;" title="Leave and disconnect from this battle map">🚪 Leave Map</button>
             <button type="button" id="owlbearPopoutBtn" class="btn btn-outline btn-sm" title="Launch as a companion window side-by-side with your sheet">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -1476,17 +1477,97 @@
 
           <!-- State B: Active Battle Map Container -->
           <div class="owlbear-active-container" id="owlbearActiveContainer" style="display: none;">
-            <div class="owlbear-browser-helper-banner" id="owlbearBrowserHelperBanner">
-              <div class="banner-text">
-                <span class="banner-badge">💡 Tip</span>
-                <span>For full hardware-accelerated WebGL performance, or if your browser blocks iframes due to Owlbear's security policy:</span>
+            
+            <!-- VTT Active Header Bar -->
+            <div class="owlbear-active-header-bar">
+              <div class="active-room-meta-group">
+                <span class="active-status-badge">🟢 Connected to Tabletop</span>
+                <span class="active-room-url-display" id="owlbearActiveUrlDisplay">https://www.owlbear.rodeo/room/...</span>
+                <button type="button" id="owlbearCopyRoomUrlBtn" class="btn btn-ghost btn-xs" title="Copy Room URL to clipboard">📋 Copy</button>
               </div>
-              <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearBannerPopoutBtn">
-                🪟 Launch Companion Window
-              </button>
+
+              <div class="active-room-action-buttons">
+                <button type="button" id="owlbearActivePopoutBtn" class="btn btn-gold-subtle btn-sm">
+                  🪟 Launch Tabletop Window
+                </button>
+                <button type="button" id="owlbearActiveExternalBtn" class="btn btn-outline btn-sm">
+                  ↗ New Tab
+                </button>
+                <button type="button" id="owlbearActiveLeaveBtn" class="btn red btn-sm" title="Disconnect and exit this battle map">
+                  🚪 Leave Map
+                </button>
+              </div>
             </div>
 
-            <iframe id="owlbearIframe" class="owlbear-map-iframe" src="" allow="camera; microphone; clipboard-read; clipboard-write; fullscreen; display-capture" loading="lazy"></iframe>
+            <!-- Main Battle Deck Hub -->
+            <div class="owlbear-deck-hub" id="owlbearDeckHub">
+              
+              <div class="owlbear-hub-hero">
+                <div class="hub-hero-visual">
+                  <div class="hub-radar-circle">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--accent-gold)" stroke-width="1.8">
+                      <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                      <line x1="8" y1="2" x2="8" y2="18"></line>
+                      <line x1="16" y1="6" x2="16" y2="22"></line>
+                      <circle cx="12" cy="12" r="3" fill="var(--accent-gold)"></circle>
+                    </svg>
+                  </div>
+                </div>
+
+                <div class="hub-hero-info">
+                  <h3 class="hub-hero-title">Live Tactical Battlemap Ready</h3>
+                  <p class="hub-hero-desc">
+                    Your Owlbear Rodeo room is linked and ready. Because Owlbear Rodeo enforces browser security (<code style="color:var(--accent-gold); font-size:0.75rem;">X-Frame-Options: SAMEORIGIN</code>), running it in a <strong>Companion Window</strong> gives you the full, unblocked 3D dice & WebGL battle map alongside your character sheet.
+                  </p>
+
+                  <div class="hub-action-row">
+                    <button type="button" id="owlbearLaunchHubBtn" class="btn btn-gold-subtle btn-md hub-primary-btn">
+                      🚀 Open Battle Map Window (Side-by-Side)
+                    </button>
+                    <button type="button" id="owlbearToggleIframeModeBtn" class="btn btn-outline btn-sm" title="Toggle experimental in-page embed for browsers or extensions that allow framing">
+                      🖥️ Toggle In-Page Frame
+                    </button>
+                    <button type="button" id="owlbearHubLeaveBtn" class="btn red btn-sm" title="Leave and disconnect from this battle map">
+                      🚪 Leave Map
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Quick Tactical Dashboard -->
+              <div class="owlbear-hub-cards-grid">
+                <div class="hub-card">
+                  <span class="hub-card-label">Character Readiness</span>
+                  <div class="hub-card-vitals">
+                    <div><span class="dim">HP:</span> <strong id="owlbearHubHp" style="color:#4ade80;">--/--</strong></div>
+                    <div><span class="dim">AC:</span> <strong id="owlbearHubAc" style="color:var(--accent-gold);">--</strong></div>
+                    <div><span class="dim">Passive:</span> <strong id="owlbearHubPerc" style="color:#60a5fa;">--</strong></div>
+                  </div>
+                </div>
+
+                <div class="hub-card">
+                  <span class="hub-card-label">Quick Combat Rolls</span>
+                  <div class="hub-card-buttons">
+                    <button type="button" class="btn btn-outline btn-xs" id="owlbearHubInitBtn">🎲 Roll Initiative</button>
+                    <button type="button" class="btn btn-outline btn-xs" id="owlbearHubAtkBtn">⚔️ Primary Attack</button>
+                  </div>
+                </div>
+
+                <div class="hub-card">
+                  <span class="hub-card-label">Party & Multi-Monitor</span>
+                  <p style="font-size:0.72rem; color:var(--text-dim); margin:0;">
+                    Move the companion window to a second monitor or snap it to the right of your sheet for an ultimate split-screen tabletop!
+                  </p>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Optional / Experimental Embedded Iframe (Hidden by default, toggleable) -->
+            <div class="owlbear-iframe-wrapper" id="owlbearIframeWrapper" style="display: none;">
+              <iframe id="owlbearIframe" class="owlbear-map-iframe" src="" allow="camera; microphone; clipboard-read; clipboard-write; fullscreen; display-capture" loading="lazy"></iframe>
+            </div>
+
           </div>
 
         </div>

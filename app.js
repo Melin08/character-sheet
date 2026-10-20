@@ -10214,6 +10214,10 @@ function updateOwlbearVitalsHUD() {
   const percEl = document.getElementById("owlbearPercDisplay");
   const inspEl = document.getElementById("owlbearInspDisplay");
 
+  const hubHpEl = document.getElementById("owlbearHubHp");
+  const hubAcEl = document.getElementById("owlbearHubAc");
+  const hubPercEl = document.getElementById("owlbearHubPerc");
+
   const curHp = document.getElementById("curHp")?.value || 0;
   const maxHp = document.getElementById("maxHp")?.value || 0;
   const ac = document.getElementById("armorClass")?.value || 10;
@@ -10227,6 +10231,10 @@ function updateOwlbearVitalsHUD() {
     inspEl.textContent = hasInsp ? "Yes" : "No";
     inspEl.style.color = hasInsp ? "#c084fc" : "var(--text-dim)";
   }
+
+  if (hubHpEl) hubHpEl.textContent = `${curHp}/${maxHp}`;
+  if (hubAcEl) hubAcEl.textContent = ac;
+  if (hubPercEl) hubPercEl.textContent = perc;
 }
 
 function setOwlbearRoomUrl(rawUrl, broadcast = true) {
@@ -10247,6 +10255,10 @@ function setOwlbearRoomUrl(rawUrl, broadcast = true) {
   const statusPill = document.getElementById("owlbearStatusPill");
   const statusText = document.getElementById("owlbearStatusText");
   const navBadge = document.getElementById("owlbearNavBadge");
+  const leaveBtn = document.getElementById("owlbearLeaveBtn");
+  const activeUrlDisplay = document.getElementById("owlbearActiveUrlDisplay");
+  const deckHub = document.getElementById("owlbearDeckHub");
+  const iframeWrapper = document.getElementById("owlbearIframeWrapper");
 
   if (input) input.value = cleanUrl;
   if (wizardInput) wizardInput.value = cleanUrl;
@@ -10255,15 +10267,24 @@ function setOwlbearRoomUrl(rawUrl, broadcast = true) {
     if (iframe && iframe.src !== cleanUrl) {
       iframe.src = cleanUrl;
     }
+    if (activeUrlDisplay) {
+      activeUrlDisplay.textContent = cleanUrl;
+      activeUrlDisplay.title = cleanUrl;
+    }
     if (emptyState) emptyState.style.display = "none";
     if (activeContainer) activeContainer.style.display = "flex";
+    if (deckHub) deckHub.style.display = "flex";
+    if (iframeWrapper) iframeWrapper.style.display = "none";
+    if (leaveBtn) leaveBtn.style.display = "inline-flex";
     if (statusPill) statusPill.classList.add("is-active");
     if (statusText) statusText.textContent = "Room Loaded";
     if (navBadge) navBadge.style.display = "inline-block";
   } else {
     if (iframe) iframe.src = "";
+    if (activeUrlDisplay) activeUrlDisplay.textContent = "";
     if (emptyState) emptyState.style.display = "flex";
     if (activeContainer) activeContainer.style.display = "none";
+    if (leaveBtn) leaveBtn.style.display = "none";
     if (statusPill) statusPill.classList.remove("is-active");
     if (statusText) statusText.textContent = "No Room Loaded";
     if (navBadge) navBadge.style.display = "none";
@@ -10273,6 +10294,50 @@ function setOwlbearRoomUrl(rawUrl, broadcast = true) {
 
   if (broadcast && cleanUrl) {
     broadcastOwlbearUrlToParty(cleanUrl);
+  }
+}
+
+function leaveOwlbearRoom() {
+  if (confirm("Disconnect and leave this Owlbear battle map?")) {
+    setOwlbearRoomUrl("", false);
+    showStatus("Disconnected from Owlbear battle map.");
+  }
+}
+
+function copyOwlbearRoomUrl() {
+  const url = normalizeOwlbearUrl(document.getElementById("owlbearRoomUrlInput")?.value || getStoredOwlbearUrl());
+  if (!url) {
+    showStatus("No active Owlbear room URL to copy.");
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showStatus("Owlbear room link copied to clipboard!");
+    }).catch(() => {
+      prompt("Copy Owlbear room link:", url);
+    });
+  } else {
+    prompt("Copy Owlbear room link:", url);
+  }
+}
+
+function toggleOwlbearIframeMode() {
+  const hub = document.getElementById("owlbearDeckHub");
+  const iframeWrapper = document.getElementById("owlbearIframeWrapper");
+  const toggleBtn = document.getElementById("owlbearToggleIframeModeBtn");
+  if (!hub || !iframeWrapper) return;
+
+  const isIframeVisible = iframeWrapper.style.display !== "none";
+  if (isIframeVisible) {
+    iframeWrapper.style.display = "none";
+    hub.style.display = "flex";
+    if (toggleBtn) toggleBtn.textContent = "🖥️ Toggle In-Page Frame";
+    showStatus("Switched to Battle Deck Hub mode.");
+  } else {
+    iframeWrapper.style.display = "flex";
+    hub.style.display = "none";
+    if (toggleBtn) toggleBtn.textContent = "🗺️ Back to Battle Deck Hub";
+    showStatus("Switched to in-page frame mode.");
   }
 }
 
@@ -10337,11 +10402,19 @@ function initOwlbearVTT() {
 
   const loadBtn = document.getElementById("owlbearLoadBtn");
   const input = document.getElementById("owlbearRoomUrlInput");
+  const leaveBtn = document.getElementById("owlbearLeaveBtn");
+  const activeLeaveBtn = document.getElementById("owlbearActiveLeaveBtn");
+  const hubLeaveBtn = document.getElementById("owlbearHubLeaveBtn");
+  const copyBtn = document.getElementById("owlbearCopyRoomUrlBtn");
+  const toggleFrameBtn = document.getElementById("owlbearToggleIframeModeBtn");
+  const hubLaunchBtn = document.getElementById("owlbearLaunchHubBtn");
+  const activePopoutBtn = document.getElementById("owlbearActivePopoutBtn");
+  const activeExternalBtn = document.getElementById("owlbearActiveExternalBtn");
+
   const wizardBtn = document.getElementById("owlbearWizardConnectBtn");
   const wizardInput = document.getElementById("owlbearWizardRoomInput");
   const clearBtn = document.getElementById("owlbearClearInputBtn");
   const popoutBtn = document.getElementById("owlbearPopoutBtn");
-  const bannerPopoutBtn = document.getElementById("owlbearBannerPopoutBtn");
   const externalBtn = document.getElementById("owlbearExternalBtn");
   const theaterBtn = document.getElementById("owlbearTheaterToggleBtn");
   const demoBtn = document.getElementById("owlbearUseDemoRoomBtn");
@@ -10350,10 +10423,10 @@ function initOwlbearVTT() {
     loadBtn.addEventListener("click", () => {
       const url = input.value.trim();
       if (!url) {
-        setOwlbearRoomUrl("", true);
-        showStatus("Owlbear room cleared.");
+        leaveOwlbearRoom();
       } else {
         setOwlbearRoomUrl(url, true);
+        openOwlbearCompanionWindow();
         showStatus("Connected to Owlbear Rodeo room!");
       }
     });
@@ -10370,6 +10443,7 @@ function initOwlbearVTT() {
       const url = wizardInput.value.trim();
       if (url) {
         setOwlbearRoomUrl(url, true);
+        openOwlbearCompanionWindow();
         showStatus("Connected to Owlbear Rodeo room!");
       } else {
         alert("Please paste a valid Owlbear Rodeo room link (e.g. https://www.owlbear.rodeo/room/...)");
@@ -10383,6 +10457,24 @@ function initOwlbearVTT() {
     });
   }
 
+  // Leave map actions
+  if (leaveBtn) leaveBtn.addEventListener("click", leaveOwlbearRoom);
+  if (activeLeaveBtn) activeLeaveBtn.addEventListener("click", leaveOwlbearRoom);
+  if (hubLeaveBtn) hubLeaveBtn.addEventListener("click", leaveOwlbearRoom);
+
+  // Companion window & external tab actions
+  if (popoutBtn) popoutBtn.addEventListener("click", openOwlbearCompanionWindow);
+  if (hubLaunchBtn) hubLaunchBtn.addEventListener("click", openOwlbearCompanionWindow);
+  if (activePopoutBtn) activePopoutBtn.addEventListener("click", openOwlbearCompanionWindow);
+  if (externalBtn) externalBtn.addEventListener("click", openOwlbearExternalTab);
+  if (activeExternalBtn) activeExternalBtn.addEventListener("click", openOwlbearExternalTab);
+
+  // Copy Room URL
+  if (copyBtn) copyBtn.addEventListener("click", copyOwlbearRoomUrl);
+
+  // Toggle in-page frame mode
+  if (toggleFrameBtn) toggleFrameBtn.addEventListener("click", toggleOwlbearIframeMode);
+
   if (clearBtn && input) {
     clearBtn.addEventListener("click", () => {
       input.value = "";
@@ -10390,20 +10482,18 @@ function initOwlbearVTT() {
     });
   }
 
-  if (popoutBtn) popoutBtn.addEventListener("click", openOwlbearCompanionWindow);
-  if (bannerPopoutBtn) bannerPopoutBtn.addEventListener("click", openOwlbearCompanionWindow);
-  if (externalBtn) externalBtn.addEventListener("click", openOwlbearExternalTab);
   if (theaterBtn) theaterBtn.addEventListener("click", toggleOwlbearTheaterMode);
 
   if (demoBtn) {
     demoBtn.addEventListener("click", () => {
       const demoUrl = "https://www.owlbear.rodeo";
       setOwlbearRoomUrl(demoUrl, false);
+      openOwlbearCompanionWindow();
       showStatus("Loaded Owlbear Rodeo lobby. Paste a specific room link anytime!");
     });
   }
 
-  // Quick Tactical Actions
+  // Quick Tactical Actions in Control Strip
   const initBtn = document.getElementById("owlbearRollInitBtn");
   if (initBtn) {
     initBtn.addEventListener("click", () => {
@@ -10415,6 +10505,29 @@ function initOwlbearVTT() {
   const atkBtn = document.getElementById("owlbearRollAtkBtn");
   if (atkBtn) {
     atkBtn.addEventListener("click", () => {
+      const firstWpn = (Array.isArray(myCharacterWeapons) && myCharacterWeapons[0]) ? myCharacterWeapons[0] : null;
+      if (firstWpn && firstWpn.name) {
+        const numMatch = String(firstWpn.atk || "").match(/[+-]?\d+/);
+        const bonus = numMatch ? parseInt(numMatch[0], 10) : 0;
+        performD20Roll(bonus, `${firstWpn.name} Atk`);
+      } else {
+        performD20Roll(0, "Unarmed Strike");
+      }
+    });
+  }
+
+  // Quick Tactical Actions in Battle Deck Hub
+  const hubInitBtn = document.getElementById("owlbearHubInitBtn");
+  if (hubInitBtn) {
+    hubInitBtn.addEventListener("click", () => {
+      const bonus = parseInt(document.getElementById("initiativeDisplay")?.textContent, 10) || 0;
+      performD20Roll(bonus, "Initiative");
+    });
+  }
+
+  const hubAtkBtn = document.getElementById("owlbearHubAtkBtn");
+  if (hubAtkBtn) {
+    hubAtkBtn.addEventListener("click", () => {
       const firstWpn = (Array.isArray(myCharacterWeapons) && myCharacterWeapons[0]) ? myCharacterWeapons[0] : null;
       if (firstWpn && firstWpn.name) {
         const numMatch = String(firstWpn.atk || "").match(/[+-]?\d+/);
