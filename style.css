@@ -5267,6 +5267,22 @@ body.chat-resizing * {
   background: var(--bg-input);
   color: var(--accent-gold);
 }
+.chat-sender-role.chat-sender-role-system {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  letter-spacing: 0.06em;
+  font-weight: 800;
+  padding: 0.08rem 0.38rem;
+  border-radius: 4px;
+}
+.chat-message-row.is-system {
+  border-left: 3px solid #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.06) !important;
+}
+.chat-message-row.is-system .chat-msg-text {
+  color: #f0f9ff;
+}
 .chat-timestamp {
   font-size: 0.65rem;
   color: var(--text-dim);
@@ -6796,6 +6812,29 @@ body.theme-parchment .party-status-indicator {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+.admin-time-preset-row {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  flex-wrap: wrap;
+}
+.admin-preset-time-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.12rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.admin-preset-time-btn:hover {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: var(--accent-gold);
+  color: #fff;
 }
 
 .admin-diag-section {

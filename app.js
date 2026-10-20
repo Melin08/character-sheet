@@ -2414,30 +2414,33 @@ function buildQuickSearchIndex(query = "") {
     { title: "Create Handout (Item, Coins, Letter, Map, Clue)", sub: "Award loot, maps, letters, or clues to the party", tag: "Handout", tab: "tab-journal", subtab: "sub-handouts", selector: "#createHandoutBtn", keywords: "create handout award loot item coins letter map clue" }
   );
 
-  myHandouts.forEach((h) => {
-    if (h && (h.title || h.content)) {
-      const hTitle = h.title || "Untitled Handout";
-      const hType = (h.type || "letter").toUpperCase();
-      let extra = "";
-      if (h.type === "item" && h.item) {
-        extra = `Item: ${h.item.name}`;
-      } else if (h.type === "coin" && h.coins) {
-        extra = `Coins: ${h.coins.gp || 0} GP`;
-      } else if (h.content) {
-        extra = h.content.slice(0, 50) + "...";
+  const activeHandoutsRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+  if (activeHandoutsRoom) {
+    partyRoomHandouts.forEach((h) => {
+      if (h && (h.title || h.content) && canISeeHandout(h)) {
+        const hTitle = h.title || "Untitled Handout";
+        const hType = (h.type || "letter").toUpperCase();
+        let extra = "";
+        if (h.type === "item" && h.item) {
+          extra = `Item: ${h.item.name}`;
+        } else if (h.type === "coin" && h.coins) {
+          extra = `Coins: ${h.coins.gp || 0} GP`;
+        } else if (h.content) {
+          extra = h.content.slice(0, 50) + "...";
+        }
+        items.push({
+          title: `Handout: ${hTitle}`,
+          sub: `${hType} • ${h.author ? `By ${h.author} • ` : ""}${extra}`,
+          tag: "Handout",
+          tab: "tab-journal",
+          subtab: "sub-handouts",
+          selector: `.handout-card[data-id="${h.id}"]`,
+          handoutId: h.id,
+          keywords: `handout loot letter clue map coins item ${hTitle} ${h.type || ""} ${h.content || ""}`
+        });
       }
-      items.push({
-        title: `Handout: ${hTitle}`,
-        sub: `${hType} • ${h.author ? `By ${h.author} • ` : ""}${extra}`,
-        tag: "Handout",
-        tab: "tab-journal",
-        subtab: "sub-handouts",
-        selector: `.handout-card[data-id="${h.id}"]`,
-        handoutId: h.id,
-        keywords: `handout loot letter clue map coins item ${hTitle} ${h.type || ""} ${h.content || ""}`
-      });
-    }
-  });
+    });
+  }
 
   // 13. UTILITIES, ACTIONS & REST
   items.push(
@@ -4912,6 +4915,23 @@ function exportCharacterJson() {
     clearActiveTopNoticeBanner();
     return;
   }
+  const adminPresetBtn = e.target.closest(".admin-preset-time-btn");
+  if (adminPresetBtn && adminPresetBtn.dataset.preset) {
+    const preset = adminPresetBtn.dataset.preset;
+    let msToAdd = 15000;
+    if (preset === "15s") msToAdd = 15000;
+    else if (preset === "5m") msToAdd = 5 * 60 * 1000;
+    else if (preset === "15m") msToAdd = 15 * 60 * 1000;
+    else if (preset === "1h") msToAdd = 60 * 60 * 1000;
+    else if (preset === "24h") msToAdd = 24 * 60 * 60 * 1000;
+
+    const targetDate = new Date(Date.now() + msToAdd);
+    const endInput = document.getElementById("adminNoticeEndTime");
+    if (endInput) {
+      endInput.value = formatDateTimeLocal(targetDate);
+    }
+    return;
+  }
   if (e.target.id === "adminCloseDrawerBtn" || e.target.closest("#adminCloseDrawerBtn")) {
     const drawer = document.getElementById("adminRoomDetailDrawer");
     if (drawer) drawer.style.display = "none";
@@ -4995,11 +5015,27 @@ function exportCharacterJson() {
   }
 
   // Party Handouts System Controls
+  if (e.target.id === "handoutsConnectPartyBtn" || e.target.closest("#handoutsConnectPartyBtn")) {
+    openPartyModal();
+    return;
+  }
   if (e.target.id === "createHandoutBtn") {
+    const activeRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+    if (!activeRoom) {
+      showStatus("Please join or host a party before creating party handouts.");
+      openPartyModal();
+      return;
+    }
     openHandoutEditor();
     return;
   }
   if (e.target.id === "dmQuickHandoutBtn" || e.target.id === "dockDmHandoutBtn" || e.target.closest("#dockDmHandoutBtn")) {
+    const activeRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+    if (!activeRoom) {
+      showStatus("Please join or host a party before creating party handouts.");
+      openPartyModal();
+      return;
+    }
     closeModal("partyModal");
     openHandoutEditor();
     return;
@@ -6492,12 +6528,24 @@ function renderPartyChatMessages() {
       `;
     }
 
+    const isSystemMsg = msg.type === "system" ||
+                        msg.senderId === "system" ||
+                        msg.senderId === "master_admin" ||
+                        (msg.senderName && (msg.senderName.includes("System") || msg.senderName.includes("Maintenance") || msg.senderName.includes("Decree")));
+
+    let roleTag = "";
+    if (isSystemMsg) {
+      roleTag = `<span class="chat-sender-role chat-sender-role-system">SYSTEM</span>`;
+    } else if (msg.isDM) {
+      roleTag = `<span class="chat-sender-role">DM</span>`;
+    }
+
     return `
-      <div class="chat-message-row ${isMe ? 'is-me' : ''} ${msg.isDM ? 'is-dm' : ''}">
+      <div class="chat-message-row ${isMe ? 'is-me' : ''} ${isSystemMsg ? 'is-system' : (msg.isDM ? 'is-dm' : '')}">
         <div class="chat-msg-header">
           <div class="chat-sender-info">
-            <span class="chat-sender-name">${escapeHtml(msg.senderName || "Adventurer")}</span>
-            ${msg.isDM ? `<span class="chat-sender-role">DM</span>` : ''}
+            <span class="chat-sender-name">${escapeHtml(msg.senderName || (isSystemMsg ? "System" : "Adventurer"))}</span>
+            ${roleTag}
           </div>
           <span class="chat-timestamp">${timeStr}</span>
         </div>
@@ -6646,12 +6694,12 @@ function shareLastRollToPartyChat() {
 
 function canISeeHandout(h) {
   if (!h) return false;
-  const activeRoom = connectedCampaignRoom || activeDMRoomCode;
+  const activeRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+  if (!activeRoom) return false; // Handouts only belong to active party rooms
   const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === activeRoom);
   if (isDM) return true;
 
   if (h.authorUid && auth?.currentUser?.uid && h.authorUid === auth.currentUser.uid) return true;
-  if (myHandouts.some((mh) => mh.id === h.id)) return true;
 
   const rec = (h.recipient || "all").trim().toLowerCase();
   if (rec === "all" || rec === "") return true;
@@ -6675,9 +6723,10 @@ function isHandoutFullyClaimed(h) {
 
 function canIClaimHandout(h) {
   if (!h) return false;
+  const activeRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+  if (!activeRoom) return false;
   if (!canISeeHandout(h)) return false;
 
-  const activeRoom = connectedCampaignRoom || activeDMRoomCode;
   const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === activeRoom);
   if (isDM) return false;
 
@@ -6689,10 +6738,11 @@ function canIClaimHandout(h) {
 
 function canIEditOrDeleteHandout(h) {
   if (!h) return false;
-  const activeRoom = connectedCampaignRoom || activeDMRoomCode;
+  const activeRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+  if (!activeRoom) return false;
   const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === activeRoom);
   if (isDM) return true;
-  if (myHandouts.some((mh) => mh.id === h.id)) return true;
+  if (h.authorUid && auth?.currentUser?.uid && h.authorUid === auth.currentUser.uid) return true;
   return false;
 }
 
@@ -6701,15 +6751,29 @@ function renderHandoutsGrid() {
   const countBadge = document.getElementById("handoutsCountBadge");
   if (!grid) return;
 
-  const combined = [...myHandouts];
-  partyRoomHandouts.forEach((rh) => {
-    if (!combined.some((h) => h.id === rh.id)) {
-      combined.push(rh);
-    }
-  });
+  const activeRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+
+  // If not currently connected to any party room, do NOT show party handouts
+  if (!activeRoom) {
+    if (countBadge) countBadge.textContent = "0";
+    grid.innerHTML = `
+      <div class="handout-empty-state">
+        <div class="handout-empty-icon">📜</div>
+        <div class="handout-empty-title">No Active Party Connected</div>
+        <div class="handout-empty-desc">Connect to a campaign room or host as Dungeon Master to view, claim, and distribute live party handouts, loot, and quest clues.</div>
+        <button type="button" class="btn btn-primary btn-sm" id="handoutsConnectPartyBtn" style="margin-top: 0.35rem;">
+          <span>⚔️</span> Join or Host Party
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  // When in a party: Only show handouts belonging to the active party room (filter out system documents)
+  const roomHandouts = partyRoomHandouts.filter((h) => h && h.id !== "global_notice" && h.type !== "system");
 
   // Only handouts the current player is allowed to see
-  const visibleHandouts = combined.filter((h) => canISeeHandout(h));
+  const visibleHandouts = roomHandouts.filter((h) => canISeeHandout(h));
 
   if (countBadge) countBadge.textContent = visibleHandouts.length;
 
@@ -6877,7 +6941,12 @@ function renderHandoutsGrid() {
 }
 
 function openHandoutViewer(handoutId) {
-  const combined = [...myHandouts, ...partyRoomHandouts];
+  const activeRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+  if (!activeRoom) {
+    showStatus("Connect to a party room to view party handouts.");
+    return;
+  }
+  const combined = [...partyRoomHandouts];
   const h = combined.find((item) => item.id === handoutId);
   if (!h || !canISeeHandout(h)) return;
 
@@ -7306,6 +7375,12 @@ function updateHandoutFormVisibility() {
 }
 
 function openHandoutEditor(handoutId = null) {
+  const activeRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+  if (!activeRoom) {
+    showStatus("Connect to a party room to create or edit handouts.");
+    openPartyModal();
+    return;
+  }
   let preselectedType = null;
   if (typeof handoutId === "string" && ["weapon", "item", "coin", "letter"].includes(handoutId)) {
     preselectedType = handoutId;
@@ -7317,7 +7392,7 @@ function openHandoutEditor(handoutId = null) {
   const editMode = document.getElementById("handoutEditMode");
   if (!modal || !viewMode || !editMode) return;
 
-  const combined = [...myHandouts, ...partyRoomHandouts];
+  const combined = [...partyRoomHandouts];
   const existingHandout = handoutId ? combined.find((item) => item.id === handoutId) : null;
 
   if (existingHandout && !canIEditOrDeleteHandout(existingHandout)) {
@@ -8830,6 +8905,17 @@ async function deleteAdminRoom(roomCode) {
   }
 }
 
+function formatDateTimeLocal(date) {
+  const d = new Date(date);
+  const pad = (n) => String(n).padStart(2, "0");
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 let globalNoticeCountdownTimer = null;
 let globalNoticeUnsubscribe = null;
 let activeTopNoticeData = null;
@@ -8913,7 +8999,7 @@ function renderGlobalSiteNoticeBanner(data, remainingMs) {
 
   banner.style.display = "block";
 
-  const totalDurationMs = (data.durationSeconds || 15) * 1000;
+  const totalDurationMs = Math.max(1000, (data.durationSeconds || 15) * 1000);
   const expiresAt = data.expiresAt || (Date.now() + remainingMs);
 
   function updateTicker() {
@@ -8921,7 +9007,23 @@ function renderGlobalSiteNoticeBanner(data, remainingMs) {
     const leftMs = Math.max(0, expiresAt - now);
     const leftSec = Math.ceil(leftMs / 1000);
 
-    if (timerEl) timerEl.textContent = `${leftSec}s`;
+    if (timerEl) {
+      if (leftSec >= 86400) {
+        const d = Math.floor(leftSec / 86400);
+        const h = Math.floor((leftSec % 86400) / 3600);
+        timerEl.textContent = `${d}d ${h}h`;
+      } else if (leftSec >= 3600) {
+        const h = Math.floor(leftSec / 3600);
+        const m = Math.floor((leftSec % 3600) / 60);
+        timerEl.textContent = `${h}h ${m}m`;
+      } else if (leftSec >= 60) {
+        const m = Math.floor(leftSec / 60);
+        const s = leftSec % 60;
+        timerEl.textContent = `${m}m ${s}s`;
+      } else {
+        timerEl.textContent = `${leftSec}s`;
+      }
+    }
     if (progBar) {
       const pct = Math.max(0, Math.min(100, (leftMs / totalDurationMs) * 100));
       progBar.style.width = `${pct}%`;
@@ -8985,7 +9087,28 @@ function updateAdminNoticeUI(data) {
   }
 
   const leftSec = Math.max(0, Math.ceil((data.expiresAt - Date.now()) / 1000));
-  summaryEl.innerHTML = `<span style="color: #34d399; font-weight:700;">Active Top Banner (${leftSec}s remaining):</span> "${escapeHtml((data.text || '').substring(0, 40))}${data.text && data.text.length > 40 ? '...' : ''}"`;
+  const endDateStr = new Date(data.expiresAt).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+  let remainStr = `${leftSec}s`;
+  if (leftSec >= 86400) {
+    const d = Math.floor(leftSec / 86400);
+    const h = Math.floor((leftSec % 86400) / 3600);
+    remainStr = `${d}d ${h}h`;
+  } else if (leftSec >= 3600) {
+    const h = Math.floor(leftSec / 3600);
+    const m = Math.floor((leftSec % 3600) / 60);
+    remainStr = `${h}h ${m}m`;
+  } else if (leftSec >= 60) {
+    const m = Math.floor(leftSec / 60);
+    const s = leftSec % 60;
+    remainStr = `${m}m ${s}s`;
+  }
+
+  summaryEl.innerHTML = `<span style="color: #34d399; font-weight:700;">Active Top Banner (ends ${endDateStr} · ${remainStr} left):</span> "${escapeHtml((data.text || '').substring(0, 45))}${data.text && data.text.length > 45 ? '...' : ''}"`;
   if (clearBtn) clearBtn.style.display = "inline-block";
 }
 
@@ -9015,10 +9138,22 @@ async function sendAdminBroadcast(e) {
 
   // 1. TOP WEBSITE NOTICE BANNER BROADCAST (ALL SITE VISITORS)
   if (targetSelect === "top_banner") {
-    const durInput = document.getElementById("adminNoticeDuration");
-    let durSec = parseInt(durInput?.value, 10);
-    if (isNaN(durSec) || durSec <= 0) {
-      durSec = 15; // default to 15 seconds if not specified!
+    const endInput = document.getElementById("adminNoticeEndTime");
+    let expiresAt = 0;
+    if (endInput && endInput.value) {
+      const parsed = new Date(endInput.value).getTime();
+      if (!isNaN(parsed) && parsed > Date.now()) {
+        expiresAt = parsed;
+      }
+    }
+
+    let durSec = 15;
+    if (expiresAt > Date.now()) {
+      durSec = Math.max(1, Math.round((expiresAt - Date.now()) / 1000));
+    } else {
+      // If no time period is specified or an expired time is picked, default to 15 seconds
+      durSec = 15;
+      expiresAt = Date.now() + 15000;
     }
 
     let tag = "System Notice";
@@ -9035,7 +9170,10 @@ async function sendAdminBroadcast(e) {
       noticeStyle = "warning";
     }
 
-    showStatus(`Broadcasting top website notice for ${durSec}s...`);
+    const timeDesc = durSec >= 3600
+      ? `until ${new Date(expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      : `for ${durSec}s`;
+    showStatus(`Broadcasting top website notice ${timeDesc}...`);
 
     try {
       const noticePayload = {
@@ -9046,7 +9184,7 @@ async function sendAdminBroadcast(e) {
         style: noticeStyle,
         durationSeconds: durSec,
         createdAt: Date.now(),
-        expiresAt: Date.now() + (durSec * 1000)
+        expiresAt: expiresAt
       };
 
       const handoutPayload = {
@@ -9062,7 +9200,8 @@ async function sendAdminBroadcast(e) {
       await db.collection("campaigns").doc("CODEX_GLOBAL_SYSTEM").collection("handouts").doc("global_notice").set(handoutPayload);
 
       if (textInput) textInput.value = "";
-      showStatus(`Top website notice live for ${durSec}s!`);
+      if (endInput) endInput.value = "";
+      showStatus(`Top website notice live ${timeDesc}!`);
     } catch (err) {
       console.error("Top banner broadcast failed:", err);
       showStatus("Broadcast failed: " + err.message);
@@ -9135,9 +9274,9 @@ async function sendAdminBroadcast(e) {
   for (const roomCode of targetRooms) {
     try {
       await db.collection("campaigns").doc(roomCode).collection("chat").add({
-        senderId: "master_admin",
+        senderId: "system",
         senderName: senderName,
-        isDM: true,
+        isDM: false,
         type: "system",
         text: formattedText,
         timestamp: Date.now()
@@ -9430,16 +9569,16 @@ function initAdminPanel() {
     });
   }
 
-  // Broadcast target selector toggle custom room code & duration inputs
+  // Broadcast target selector toggle custom room code & end time inputs
   const targetSelect = document.getElementById("adminBroadcastTarget");
   if (targetSelect) {
     const updateBroadcastInputs = () => {
       const val = targetSelect.value;
       const customWrap = document.getElementById("adminCustomRoomCodeWrap");
-      const durWrap = document.getElementById("adminNoticeDurationWrap");
+      const endWrap = document.getElementById("adminNoticeEndTimeWrap") || document.getElementById("adminNoticeDurationWrap");
       const textInput = document.getElementById("adminBroadcastText");
 
-      if (durWrap) durWrap.style.display = val === "top_banner" ? "block" : "none";
+      if (endWrap) endWrap.style.display = val === "top_banner" ? "block" : "none";
       if (customWrap) customWrap.style.display = val === "custom" ? "block" : "none";
       if (textInput) {
         textInput.placeholder = val === "top_banner"

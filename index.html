@@ -1957,9 +1957,16 @@
                   <option value="custom">Specific Room Code... (Party Chat)</option>
                 </select>
               </label>
-              <label class="handout-form-label" id="adminNoticeDurationWrap">
-                <span>Display Duration (seconds)</span>
-                <input type="number" id="adminNoticeDuration" class="handout-form-input" placeholder="15 (Default: 15s)" min="3" max="86400" />
+              <label class="handout-form-label" id="adminNoticeEndTimeWrap">
+                <span>End At (Date &amp; Time Alert Disappears)</span>
+                <input type="datetime-local" id="adminNoticeEndTime" class="handout-form-input" />
+                <div class="admin-time-preset-row">
+                  <button type="button" class="btn btn-ghost btn-xs admin-preset-time-btn" data-preset="15s">+15s</button>
+                  <button type="button" class="btn btn-ghost btn-xs admin-preset-time-btn" data-preset="5m">+5m</button>
+                  <button type="button" class="btn btn-ghost btn-xs admin-preset-time-btn" data-preset="15m">+15m</button>
+                  <button type="button" class="btn btn-ghost btn-xs admin-preset-time-btn" data-preset="1h">+1h</button>
+                  <button type="button" class="btn btn-ghost btn-xs admin-preset-time-btn" data-preset="24h">+24h</button>
+                </div>
               </label>
               <label class="handout-form-label" id="adminCustomRoomCodeWrap" style="display: none;">
                 <span>Specific Room Code</span>
