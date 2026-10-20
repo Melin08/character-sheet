@@ -120,11 +120,15 @@ service cloud.firestore {
     }
 
     function isValidCampaign(data) {
-      return data.keys().hasOnly(['creatorUid', 'createdAt']) &&
+      return (
+        (data.keys().hasOnly(['creatorUid', 'createdAt']) ||
+         data.keys().hasOnly(['creatorUid', 'createdAt', 'creatorEmail'])) &&
         data.creatorUid is string &&
         data.creatorUid.size() > 0 &&
         data.creatorUid.size() <= 128 &&
-        data.createdAt is number;
+        data.createdAt is number &&
+        (!('creatorEmail' in data) || (data.creatorEmail is string && data.creatorEmail.size() <= 200))
+      );
     }
 
     function isValidMemberData(data) {

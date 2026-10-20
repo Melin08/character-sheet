@@ -3203,11 +3203,25 @@ async function createNewCampaignRoom() {
 
     addCreatedRoom(code);
 
-    // Strictly write ONLY creatorUid and createdAt to adhere to production Firestore rules
-    await db.collection("campaigns").doc(code).set({
+    // Save campaign room document with creator UID and optional creator email
+    const basePayload = {
       creatorUid: auth?.currentUser?.uid || "local",
       createdAt: Date.now()
-    });
+    };
+    const creatorEmail = (auth?.currentUser && !auth.currentUser.isAnonymous && auth.currentUser.email) ? auth.currentUser.email.trim() : "";
+    if (creatorEmail) {
+      try {
+        await db.collection("campaigns").doc(code).set({
+          ...basePayload,
+          creatorEmail: creatorEmail
+        });
+      } catch (e) {
+        console.warn("Could not write creatorEmail directly to room doc, falling back to base payload:", e);
+        await db.collection("campaigns").doc(code).set(basePayload);
+      }
+    } else {
+      await db.collection("campaigns").doc(code).set(basePayload);
+    }
 
     if (dmInput) dmInput.value = "";
     await startDMLiveListener(code, true);
@@ -4952,8 +4966,10 @@ function exportCharacterJson() {
     const roomCode = adminJoinBtn.dataset.room.trim().toUpperCase();
     isJoinedViaAdminPanel = true;
     try { sessionStorage.setItem("admin_joined_room_" + roomCode, "true"); } catch (err) {}
-    joinCampaignRoom(roomCode);
     closeAdminModal();
+    switchAdminChatRoom(roomCode);
+    toggleFloatingPartyChat(true);
+    showStatus(`Admin: Opened party chat for "${roomCode}"`);
     return;
   }
   const adminDeleteBtn = e.target.closest(".admin-delete-room-btn");
@@ -6872,6 +6888,16 @@ function switchAdminChatRoom(roomCode) {
     activeChatRoomOverride = targetCode;
   }
 
+  // Stealth Spectator Mode:
+  // When joining/monitoring a chat through the admin panel, the admin must NOT notify the room owner
+  // and must NOT be shown or registered as a player in the party.
+  // Silently remove any admin character document from the members subcollection so admin never appears in the party dock.
+  if (db && activeCharId && isAdminSession()) {
+    try {
+      db.collection("campaigns").doc(targetCode).collection("members").doc(activeCharId).delete().catch(() => {});
+    } catch (e) {}
+  }
+
   startPartyChatListener(targetCode);
   updateAdminChatBarUI();
   updatePartyStatusUI();
@@ -6902,22 +6928,14 @@ async function openAdminChatWithoutRoom() {
 
   if (rooms.length > 0) {
     const targetRoom = rooms[0];
-    activeChatRoomOverride = targetRoom;
-    try { sessionStorage.setItem("admin_joined_room_" + targetRoom, "true"); } catch (err) {}
-    startPartyChatListener(targetRoom);
+    switchAdminChatRoom(targetRoom);
     toggleFloatingPartyChat(true);
-    updateAdminChatBarUI();
-    updateChatInputPlaceholder();
   } else {
     const custom = prompt("Admin Party Chat Monitor: Enter a Campaign Room Code to inspect:");
     if (custom && custom.trim()) {
       const cleanCustom = custom.trim().toUpperCase();
-      activeChatRoomOverride = cleanCustom;
-      try { sessionStorage.setItem("admin_joined_room_" + cleanCustom, "true"); } catch (err) {}
-      startPartyChatListener(cleanCustom);
+      switchAdminChatRoom(cleanCustom);
       toggleFloatingPartyChat(true);
-      updateAdminChatBarUI();
-      updateChatInputPlaceholder();
     } else {
       showStatus("No campaign room selected.");
     }
@@ -9010,6 +9028,7 @@ async function loadAdminCampaigns() {
         discoveredRooms.set(code, {
           code,
           creatorUid: data.creatorUid || "unknown",
+          creatorEmail: data.creatorEmail || "",
           createdAt: data.createdAt,
           isCreatedByMe: data.creatorUid === auth?.currentUser?.uid,
           source: "Live Firestore"
@@ -9033,6 +9052,21 @@ async function loadAdminCampaigns() {
   container.innerHTML = roomItems.map((room) => {
     const isCurrent = (connectedCampaignRoom === room.code || activeDMRoomCode === room.code);
     const dateStr = room.createdAt ? new Date(room.createdAt).toLocaleDateString() : (room.source || "Active");
+
+    let ownerDisplay = "Guest";
+    if (room.creatorEmail) {
+      ownerDisplay = room.creatorEmail;
+    } else if (room.isCreatedByMe && auth?.currentUser?.email && !auth.currentUser.isAnonymous) {
+      ownerDisplay = auth.currentUser.email;
+    } else if (Array.isArray(adminActivePresenceSessions) && adminActivePresenceSessions.length > 0) {
+      const match = adminActivePresenceSessions.find((s) =>
+        (s.uid && room.creatorUid && room.creatorUid !== "local" && s.uid === room.creatorUid && s.email) ||
+        (s.activeRoom === room.code && s.role === "Dungeon Master" && s.email)
+      );
+      if (match && match.email) ownerDisplay = match.email;
+    }
+    const isGuest = (ownerDisplay === "Guest");
+
     return `
       <div class="admin-room-item">
         <div class="admin-room-info">
@@ -9041,17 +9075,70 @@ async function loadAdminCampaigns() {
             ${isCurrent ? '<span class="admin-badge-pill" style="color: #4ade80;">Active</span>' : ''}
             ${room.isCreatedByMe ? '<span class="admin-badge-pill" style="color: var(--accent-gold);">Host</span>' : ''}
           </div>
-          <span class="admin-room-meta">Source: ${escapeHtml(room.source || "Firestore")} &bull; Logged: ${escapeHtml(dateStr)} ${room.creatorUid ? `&bull; Creator: ${escapeHtml(room.creatorUid.substring(0, 10))}` : ''}</span>
+          <span class="admin-room-meta">Source: ${escapeHtml(room.source || "Firestore")} &bull; Logged: ${escapeHtml(dateStr)} &bull; Owner: <span style="color: ${isGuest ? 'var(--text-muted)' : '#60a5fa'}; font-weight: ${isGuest ? 'normal' : '600'};">${escapeHtml(ownerDisplay)}</span></span>
         </div>
         <div class="admin-room-btns">
-          <button type="button" class="btn btn-gold-subtle btn-xs admin-open-chat-room-btn" data-room="${escapeHtml(room.code)}" title="Open live party chat for this campaign">💬 Chat</button>
+          <button type="button" class="btn btn-gold-subtle btn-xs admin-open-chat-room-btn" data-room="${escapeHtml(room.code)}" title="Open live party chat for this campaign">💬 Open Chat</button>
           <button type="button" class="btn btn-outline btn-xs admin-inspect-room-btn" data-room="${escapeHtml(room.code)}">Inspect</button>
-          <button type="button" class="btn btn-outline btn-xs admin-join-room-btn" data-room="${escapeHtml(room.code)}">Direct Join</button>
           <button type="button" class="btn red btn-xs admin-delete-room-btn" data-room="${escapeHtml(room.code)}">Purge</button>
         </div>
       </div>
     `;
   }).join("");
+}
+
+async function resolveRoomOwnerEmail(roomCode, roomData) {
+  // 1. Direct field on roomDoc
+  if (roomData && roomData.creatorEmail && typeof roomData.creatorEmail === "string" && roomData.creatorEmail.trim()) {
+    return roomData.creatorEmail.trim();
+  }
+
+  const creatorUid = roomData?.creatorUid || "";
+
+  // 2. Local check: if current user created this room locally
+  if (isLocalRoomCreator(roomCode) || activeDMRoomCode === roomCode) {
+    if (auth?.currentUser && !auth.currentUser.isAnonymous && auth.currentUser.email) {
+      return auth.currentUser.email.trim();
+    }
+  }
+
+  // 3. Search in cached live presence sessions (adminActivePresenceSessions)
+  if (Array.isArray(adminActivePresenceSessions) && adminActivePresenceSessions.length > 0) {
+    if (creatorUid && creatorUid !== "local" && creatorUid !== "anon") {
+      const match = adminActivePresenceSessions.find((s) => s.uid === creatorUid && s.email);
+      if (match && match.email) return match.email.trim();
+    }
+    const dmMatch = adminActivePresenceSessions.find((s) => s.activeRoom === roomCode && s.role === "Dungeon Master" && s.email);
+    if (dmMatch && dmMatch.email) return dmMatch.email.trim();
+
+    const roomMatch = adminActivePresenceSessions.find((s) => s.activeRoom === roomCode && s.email);
+    if (roomMatch && roomMatch.email) return roomMatch.email.trim();
+  }
+
+  // 4. Query CODEX_PRESENCE members subcollection from Firestore
+  if (db && creatorUid && creatorUid !== "local" && creatorUid !== "anon") {
+    try {
+      const snap = await db.collection("campaigns").doc("CODEX_PRESENCE").collection("members").limit(50).get();
+      if (snap && !snap.empty) {
+        let found = "";
+        snap.forEach((doc) => {
+          if (found) return;
+          const d = doc.data() || {};
+          const emailVal = (d.charClass && d.charClass.includes("@")) ? d.charClass.trim() : "";
+          if (d.ownerUid === creatorUid && emailVal) {
+            found = emailVal;
+          } else if (d.charBackground === `Party: ${roomCode}` && d.charAlignment === "Dungeon Master" && emailVal) {
+            found = emailVal;
+          }
+        });
+        if (found) return found;
+      }
+    } catch (err) {
+      console.warn("CODEX_PRESENCE owner email query err:", err);
+    }
+  }
+
+  return "";
 }
 
 async function inspectAdminRoom(roomCode) {
@@ -9110,7 +9197,25 @@ async function inspectAdminRoom(roomCode) {
 
     const createdDate = roomData?.createdAt ? new Date(roomData.createdAt).toLocaleString() : "Active (Subcollections)";
 
+    const ownerEmail = await resolveRoomOwnerEmail(roomCode, roomData);
+    const isGuest = !ownerEmail;
+    const ownerDisplay = ownerEmail || "Guest";
+
     let html = `
+      <!-- Room Owner Banner -->
+      <div style="background: rgba(0,0,0,0.35); padding: 0.65rem 0.85rem; border-radius: 6px; margin-bottom: 0.75rem; border: 1px solid var(--border-subtle); border-left: 3px solid ${isGuest ? 'var(--border-subtle)' : 'var(--accent-gold)'}; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <div>
+          <span style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase; letter-spacing: 0.05em; font-weight: 600;">Room Owner</span><br>
+          <div style="display: flex; align-items: center; gap: 0.45rem; margin-top: 0.15rem;">
+            <strong style="color: ${isGuest ? 'var(--text-muted)' : '#60a5fa'}; font-size: 0.9rem; font-family: ${isGuest ? 'inherit' : 'monospace'};">
+              ${escapeHtml(ownerDisplay)}
+            </strong>
+            ${isGuest ? '<span class="admin-badge-pill" style="color: var(--text-dim); background: rgba(255,255,255,0.06);">Guest (Not Logged In)</span>' : '<span class="admin-badge-pill" style="color: #4ade80; background: rgba(74,222,128,0.12);">Logged In</span>'}
+          </div>
+        </div>
+        ${roomData?.creatorUid && roomData.creatorUid !== "local" ? `<span style="font-size: 0.68rem; color: var(--text-dim); font-family: monospace;">UID: ${escapeHtml(roomData.creatorUid.substring(0, 16))}...</span>` : ''}
+      </div>
+
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.75rem;">
         <div style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px;">
           <span style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">Room Document</span><br>
@@ -9179,8 +9284,7 @@ async function inspectAdminRoom(roomCode) {
     // Direct Action Buttons
     html += `
       <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;">
-        <button type="button" class="btn btn-gold-subtle btn-xs admin-open-chat-room-btn" data-room="${escapeHtml(roomCode)}">💬 Open Live Chat</button>
-        <button type="button" class="btn btn-outline btn-xs admin-join-room-btn" data-room="${escapeHtml(roomCode)}">Join Room</button>
+        <button type="button" class="btn btn-gold-subtle btn-xs admin-open-chat-room-btn" data-room="${escapeHtml(roomCode)}">💬 Open Chat</button>
         <button type="button" class="btn red btn-xs admin-delete-room-btn" data-room="${escapeHtml(roomCode)}">Purge Room</button>
       </div>
     `;
