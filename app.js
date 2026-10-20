@@ -4974,6 +4974,8 @@ function exportCharacterJson() {
   }
   const adminDeleteBtn = e.target.closest(".admin-delete-room-btn");
   if (adminDeleteBtn && adminDeleteBtn.dataset.room) {
+    e.preventDefault();
+    e.stopPropagation();
     deleteAdminRoom(adminDeleteBtn.dataset.room);
     return;
   }
@@ -6841,6 +6843,62 @@ function shareLastRollToPartyChat() {
 }
 
 /* ==========================================================================
+   ADMIN PURGED CAMPAIGN ROOMS REGISTRY
+   ========================================================================== */
+
+const ADMIN_PURGED_ROOMS_KEY = "codex_admin_purged_rooms";
+
+function getPurgedRooms() {
+  try {
+    const raw = localStorage.getItem(ADMIN_PURGED_ROOMS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.map((r) => String(r || "").trim().toUpperCase()).filter(Boolean) : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function addPurgedRoom(code) {
+  if (!code) return;
+  const clean = code.trim().toUpperCase();
+  const set = getPurgedRooms();
+  set.add(clean);
+  try {
+    localStorage.setItem(ADMIN_PURGED_ROOMS_KEY, JSON.stringify(Array.from(set)));
+  } catch (e) {}
+}
+
+async function syncPurgedRoomsToCloud(code) {
+  if (!db || !code) return;
+  const clean = code.trim().toUpperCase();
+  try {
+    const ref = db.collection("campaigns").doc("CODEX_GLOBAL_SYSTEM").collection("handouts").doc("purged_campaigns");
+    const snap = await ref.get().catch(() => null);
+    let list = [];
+    if (snap && snap.exists) {
+      try {
+        const d = snap.data();
+        list = JSON.parse(d.content || "[]");
+      } catch (err) {}
+    }
+    if (!Array.isArray(list)) list = [];
+    if (!list.includes(clean)) list.push(clean);
+    if (list.length > 250) list = list.slice(list.length - 250);
+
+    await ref.set({
+      id: "purged_campaigns",
+      title: "Purged Campaigns Registry",
+      type: "system",
+      author: "Admin",
+      content: JSON.stringify(list),
+      isShared: true,
+      updatedAt: Date.now()
+    }, { merge: true }).catch(() => {});
+  } catch (e) {}
+}
+
+/* ==========================================================================
    ADMIN PARTY CHAT CAMPAIGN SWITCHER & MONITOR
    ========================================================================== */
 
@@ -6870,6 +6928,10 @@ async function getAdminActiveCampaignRoomsList() {
       console.warn("getAdminActiveCampaignRoomsList query error:", err);
     }
   }
+
+  // Filter out any purged rooms
+  const purged = getPurgedRooms();
+  purged.forEach((code) => roomSet.delete(code));
 
   return Array.from(roomSet).filter(Boolean);
 }
@@ -8999,22 +9061,46 @@ async function loadAdminCampaigns() {
 
   container.innerHTML = `<div class="admin-empty-notice"><span class="codex-spin-icon">⏳</span> Querying Firestore campaign records...</div>`;
 
+  // Fetch cloud purged registry if available
+  if (db) {
+    try {
+      const purgedSnap = await db.collection("campaigns").doc("CODEX_GLOBAL_SYSTEM").collection("handouts").doc("purged_campaigns").get().catch(() => null);
+      if (purgedSnap && purgedSnap.exists) {
+        const cloudPurged = JSON.parse(purgedSnap.data()?.content || "[]");
+        if (Array.isArray(cloudPurged)) {
+          cloudPurged.forEach((r) => addPurgedRoom(r));
+        }
+      }
+    } catch (e) {}
+  }
+
+  const purgedRooms = getPurgedRooms();
   const discoveredRooms = new Map();
 
-  // 1. Gather all local created and recent rooms
+  // 1. Gather all local created and recent rooms (skipping purged)
   getCreatedRooms().forEach((code) => {
-    discoveredRooms.set(code, { code, isCreatedByMe: true, source: "Local Creator Registry" });
-  });
-  getRecentRooms().forEach((code) => {
-    if (!discoveredRooms.has(code)) {
-      discoveredRooms.set(code, { code, source: "Recent History" });
+    const clean = (code || "").trim().toUpperCase();
+    if (clean && !purgedRooms.has(clean)) {
+      discoveredRooms.set(clean, { code: clean, isCreatedByMe: true, source: "Local Creator Registry" });
     }
   });
-  if (connectedCampaignRoom && !discoveredRooms.has(connectedCampaignRoom)) {
-    discoveredRooms.set(connectedCampaignRoom, { code: connectedCampaignRoom, source: "Active Session" });
+  getRecentRooms().forEach((code) => {
+    const clean = (code || "").trim().toUpperCase();
+    if (clean && !purgedRooms.has(clean) && !discoveredRooms.has(clean)) {
+      discoveredRooms.set(clean, { code: clean, source: "Recent History" });
+    }
+  });
+  if (connectedCampaignRoom) {
+    const clean = connectedCampaignRoom.trim().toUpperCase();
+    if (clean && !purgedRooms.has(clean) && !discoveredRooms.has(clean)) {
+      discoveredRooms.set(clean, { code: clean, source: "Active Session" });
+    }
   }
-  if (activeDMRoomCode && !discoveredRooms.has(activeDMRoomCode)) {
-    discoveredRooms.set(activeDMRoomCode, { code: activeDMRoomCode, isCreatedByMe: true, source: "Active DM Session" });
+  if (activeDMRoomCode) {
+    const clean = activeDMRoomCode.trim().toUpperCase();
+    if (clean && !purgedRooms.has(clean) && !discoveredRooms.has(clean)) {
+      discoveredRooms.set(clean, { code: clean, isCreatedByMe: true, source: "Active DM Session" });
+    }
   }
 
   // 2. Query Firestore collection
@@ -9022,8 +9108,10 @@ async function loadAdminCampaigns() {
     try {
       const snap = await db.collection("campaigns").limit(50).get();
       snap.forEach((doc) => {
-        const code = doc.id;
-        if (code === "CODEX_PRESENCE" || code === "CODEX_GLOBAL_SYSTEM" || code === "GLOBAL_PRESENCE" || code === "GLOBAL_SYSTEM" || code.startsWith("__")) return;
+        const rawCode = doc.id;
+        if (!rawCode || rawCode.startsWith("__") || rawCode === "CODEX_PRESENCE" || rawCode === "CODEX_GLOBAL_SYSTEM" || rawCode === "GLOBAL_PRESENCE" || rawCode === "GLOBAL_SYSTEM") return;
+        const code = rawCode.trim().toUpperCase();
+        if (purgedRooms.has(code)) return;
         const data = doc.data() || {};
         discoveredRooms.set(code, {
           code,
@@ -9297,58 +9385,90 @@ async function inspectAdminRoom(roomCode) {
 }
 
 async function deleteAdminRoom(roomCode) {
-  if (!confirm(`Are you sure you want to permanently purge room "${roomCode}"? All members, chat messages, and loot will be removed.`)) {
+  if (!roomCode) return;
+  const cleanCode = roomCode.trim().toUpperCase();
+
+  if (!confirm(`Are you sure you want to permanently purge room "${cleanCode}"? All members, chat messages, and loot will be removed.`)) {
     return;
   }
-  showStatus(`Purging campaign room ${roomCode}...`);
+
+  showStatus(`Purging campaign room "${cleanCode}"...`);
+
+  // 1. Mark as purged locally immediately
+  addPurgedRoom(cleanCode);
+  removeCreatedRoom(cleanCode);
+  removeRecentRoom(cleanCode);
+
+  // 2. Clear current sessions if this room was active
+  if (connectedCampaignRoom && connectedCampaignRoom.trim().toUpperCase() === cleanCode) {
+    leaveCampaignRoom();
+  }
+  if (activeDMRoomCode && activeDMRoomCode.trim().toUpperCase() === cleanCode) {
+    activeDMRoomCode = "";
+    localStorage.removeItem(DM_ROOM_KEY);
+  }
+  if (activeChatRoomOverride && activeChatRoomOverride.trim().toUpperCase() === cleanCode) {
+    activeChatRoomOverride = null;
+    updateAdminChatBarUI();
+  }
+
+  // 3. Immediately close detail drawer if it was inspecting this room
+  const drawer = document.getElementById("adminRoomDetailDrawer");
+  if (drawer) drawer.style.display = "none";
+
+  // 4. Immediately remove any corresponding DOM cards for instant responsive feedback
+  document.querySelectorAll(".admin-room-item").forEach((card) => {
+    const codeEl = card.querySelector(".admin-room-code");
+    if (codeEl && codeEl.textContent.trim().toUpperCase() === cleanCode) {
+      card.style.transition = "opacity 0.25s, transform 0.25s";
+      card.style.opacity = "0";
+      card.style.transform = "scale(0.95)";
+      setTimeout(() => card.remove(), 250);
+    }
+  });
+
   try {
     if (db) {
-      // Purge members
-      const membersSnap = await db.collection("campaigns").doc(roomCode).collection("members").get().catch(() => null);
+      // 5. Purge subcollections and parent room doc in Firestore
+      const roomRef = db.collection("campaigns").doc(cleanCode);
+
+      const [membersSnap, chatSnap, handoutsSnap] = await Promise.all([
+        roomRef.collection("members").get().catch(() => null),
+        roomRef.collection("chat").get().catch(() => null),
+        roomRef.collection("handouts").get().catch(() => null)
+      ]);
+
       if (membersSnap && !membersSnap.empty) {
         const batch1 = db.batch();
-        membersSnap.docs.forEach((doc) => batch1.delete(doc.ref));
-        await batch1.commit().catch(() => {});
+        membersSnap.docs.forEach((d) => batch1.delete(d.ref));
+        await batch1.commit().catch((e) => console.warn("Members purge note:", e));
       }
-      // Purge chat
-      const chatSnap = await db.collection("campaigns").doc(roomCode).collection("chat").get().catch(() => null);
+
       if (chatSnap && !chatSnap.empty) {
         const batch2 = db.batch();
-        chatSnap.docs.forEach((doc) => batch2.delete(doc.ref));
-        await batch2.commit().catch(() => {});
+        chatSnap.docs.forEach((d) => batch2.delete(d.ref));
+        await batch2.commit().catch((e) => console.warn("Chat purge note:", e));
       }
-      // Purge handouts
-      const handoutsSnap = await db.collection("campaigns").doc(roomCode).collection("handouts").get().catch(() => null);
+
       if (handoutsSnap && !handoutsSnap.empty) {
         const batch3 = db.batch();
-        handoutsSnap.docs.forEach((doc) => batch3.delete(doc.ref));
-        await batch3.commit().catch(() => {});
+        handoutsSnap.docs.forEach((d) => batch3.delete(d.ref));
+        await batch3.commit().catch((e) => console.warn("Handouts purge note:", e));
       }
-      // Delete parent room doc
-      await db.collection("campaigns").doc(roomCode).delete().catch(() => {});
+
+      // 6. Delete the parent room document
+      await roomRef.delete().catch((e) => console.warn("Parent room doc delete note:", e));
+
+      // 7. Sync purged record to cloud registry so it never reappears
+      await syncPurgedRoomsToCloud(cleanCode);
     }
 
-    if (connectedCampaignRoom === roomCode) leaveCampaignRoom();
-    if (activeDMRoomCode === roomCode) {
-      activeDMRoomCode = "";
-      localStorage.removeItem(DM_ROOM_KEY);
-    }
-    if (activeChatRoomOverride === roomCode) {
-      activeChatRoomOverride = null;
-      updateAdminChatBarUI();
-    }
-    removeCreatedRoom(roomCode);
-
-    const drawer = document.getElementById("adminRoomDetailDrawer");
-    if (drawer) drawer.style.display = "none";
-
-    showStatus(`Room "${roomCode}" successfully purged.`);
-    loadAdminCampaigns();
+    showStatus(`Room "${cleanCode}" successfully purged.`);
+    await loadAdminCampaigns();
   } catch (err) {
     console.error("Purge room error:", err);
-    removeCreatedRoom(roomCode);
-    showStatus(`Notice: Room removed locally (${err.message})`, 4000);
-    loadAdminCampaigns();
+    showStatus(`Room "${cleanCode}" purged locally (${err.message})`, 4000);
+    await loadAdminCampaigns();
   }
 }
 

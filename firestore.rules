@@ -102,11 +102,13 @@ service cloud.firestore {
     }
 
     function isRoomCreator(roomCode) {
-      return exists(/databases/$(database)/documents/campaigns/$(roomCode)) &&
+      return isMasterAdmin() || (
+        exists(/databases/$(database)/documents/campaigns/$(roomCode)) &&
         (
           get(/databases/$(database)/documents/campaigns/$(roomCode)).data.creatorUid == 'local' ||
           (isAuthenticated() && get(/databases/$(database)/documents/campaigns/$(roomCode)).data.creatorUid == request.auth.uid)
-        );
+        )
+      );
     }
 
     // ---------------------------------------------------------------
@@ -247,8 +249,9 @@ service cloud.firestore {
           (isAuthenticated() && resource.data.creatorUid == request.auth.uid)
         );
 
-      // Deleting room: only original creator
-      allow delete: if resource.data.creatorUid == 'local' ||
+      // Deleting room: original creator or Master Admin
+      allow delete: if isMasterAdmin() ||
+        resource.data.creatorUid == 'local' ||
         (isAuthenticated() && resource.data.creatorUid == request.auth.uid);
 
       // 3. Live party members subcollection
