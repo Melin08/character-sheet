@@ -2655,12 +2655,16 @@ function renderRecentRoomsBar() {
     return;
   }
 
+  const current = (activeDMRoomCode || connectedCampaignRoom || "").trim().toUpperCase();
   bar.style.display = "flex";
-  listEl.innerHTML = rooms.map((code) => `
-    <button type="button" class="recent-room-chip" data-room="${escapeHtml(code)}" title="Click to connect to ${escapeHtml(code)}">
-      ${escapeHtml(code)}
-    </button>
-  `).join("");
+  listEl.innerHTML = rooms.map((code) => {
+    const isCurrent = (current && current === code);
+    return `
+      <button type="button" class="recent-room-chip ${isCurrent ? 'is-current' : ''}" data-room="${escapeHtml(code)}" title="Click to connect to ${escapeHtml(code)}">
+        ${isCurrent ? '<span class="recent-chip-dot"></span>' : ''}${escapeHtml(code)}
+      </button>
+    `;
+  }).join("");
 }
 
 function copyRoomInviteLink(roomCode) {
@@ -2830,15 +2834,20 @@ function updatePartyStatusUI() {
   const copyDMInviteBtn = document.getElementById("copyDMInviteLinkBtn");
   const closeBtn = document.getElementById("closeCampaignBtn");
   const dmHandoutBtn = document.getElementById("dmQuickHandoutBtn");
+  const dmActiveCard = document.getElementById("dmActiveSessionCard");
+  const dmCreateCard = document.getElementById("dmCreateRoomCard");
 
   if (activeDMRoomCode) {
+    if (dmActiveCard) dmActiveCard.style.display = "block";
+    if (dmCreateCard) dmCreateCard.style.display = "none";
     if (dmCodeText) dmCodeText.textContent = activeDMRoomCode;
-    if (dmInput) dmInput.value = activeDMRoomCode;
     if (copyBtn) copyBtn.style.display = "inline-flex";
     if (copyDMInviteBtn) copyDMInviteBtn.style.display = "inline-flex";
     if (closeBtn) closeBtn.style.display = "inline-flex";
     if (dmHandoutBtn) dmHandoutBtn.style.display = "inline-flex";
   } else {
+    if (dmActiveCard) dmActiveCard.style.display = "none";
+    if (dmCreateCard) dmCreateCard.style.display = "block";
     if (dmCodeText) dmCodeText.textContent = "NONE";
     if (copyBtn) copyBtn.style.display = "none";
     if (copyDMInviteBtn) copyDMInviteBtn.style.display = "none";
@@ -3271,7 +3280,23 @@ async function startDMLiveListener(roomCode, isNewlyCreated = false) {
 
       if (!grid) return;
       if (cachedRoomMembers.length === 0) {
-        grid.innerHTML = `<p class="dm-empty-msg">Waiting for adventurers to join room ${activeDMRoomCode}...</p>`;
+        grid.innerHTML = `
+          <div class="dm-empty-state-box">
+            <div class="dm-empty-halo">
+              <span class="dm-empty-halo-icon">🏰</span>
+            </div>
+            <h4 class="dm-empty-headline">Your Realm is Ready</h4>
+            <p class="dm-empty-instruction">Share your Room Code <strong>${escapeHtml(activeDMRoomCode)}</strong> or send the invite link. As soon as your players connect, their live HP, AC, conditions, and vitals will appear here.</p>
+            <div class="dm-empty-cta-row">
+              <button type="button" class="btn btn-primary btn-sm dm-empty-copy-code-btn" data-room="${escapeHtml(activeDMRoomCode)}">
+                <span>📋</span> Copy Room Code
+              </button>
+              <button type="button" class="btn btn-dark-glass btn-sm dm-empty-copy-link-btn" data-room="${escapeHtml(activeDMRoomCode)}">
+                <span>🔗</span> Copy 1-Click Invite Link
+              </button>
+            </div>
+          </div>
+        `;
         return;
       }
 
@@ -3421,7 +3446,17 @@ async function closeDMCampaignRoom() {
   updatePartyStatusUI();
 
   const grid = document.getElementById("dmPartyGrid");
-  if (grid) grid.innerHTML = `<p class="dm-empty-msg">No DM session active. Click "+ New Room" or reopen a room you created to inspect your players live.</p>`;
+  if (grid) {
+    grid.innerHTML = `
+      <div class="dm-empty-state-box">
+        <div class="dm-empty-halo">
+          <span class="dm-empty-halo-icon">👑</span>
+        </div>
+        <h4 class="dm-empty-headline">No Active DM Session</h4>
+        <p class="dm-empty-instruction">Host a campaign realm above to monitor your players live and inspect their full character sheets.</p>
+      </div>
+    `;
+  }
   showStatus(`DM Room ${roomToClose} closed. All players have been kicked.`);
 }
 
@@ -4095,7 +4130,9 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  if (e.target.id === "dockCopyLinkBtn" || e.target.id === "copyInviteLinkBtn" || e.target.id === "copyDMInviteLinkBtn") {
+  if (e.target.id === "dockCopyLinkBtn" || e.target.closest("#dockCopyLinkBtn") ||
+      e.target.id === "copyInviteLinkBtn" || e.target.closest("#copyInviteLinkBtn") ||
+      e.target.id === "copyDMInviteLinkBtn" || e.target.closest("#copyDMInviteLinkBtn")) {
     copyRoomInviteLink(connectedCampaignRoom || activeDMRoomCode);
     return;
   }
@@ -4543,7 +4580,7 @@ function exportCharacterJson() {
   }
 
   // Party Room Actions
-  if (e.target.id === "joinCampaignBtn") {
+  if (e.target.id === "joinCampaignBtn" || e.target.closest("#joinCampaignBtn")) {
     const input = document.getElementById("campaignRoomInput");
     if (input && input.value.trim()) {
       await joinCampaignRoom(input.value.trim());
@@ -4553,25 +4590,79 @@ function exportCharacterJson() {
     return;
   }
 
-  if (e.target.id === "leaveCampaignBtn") {
+  if (e.target.id === "leaveCampaignBtn" || e.target.closest("#leaveCampaignBtn")) {
     await leaveCampaignRoom();
     return;
   }
 
-  if (e.target.id === "createCampaignBtn") {
+  if (e.target.id === "createCampaignBtn" || e.target.closest("#createCampaignBtn")) {
     await createNewCampaignRoom();
     return;
   }
 
-  if (e.target.id === "copyRoomCodeBtn") {
-    const code = document.getElementById("dmActiveRoomCode")?.textContent;
+  if (e.target.id === "copyRoomCodeBtn" || e.target.closest("#copyRoomCodeBtn") || e.target.id === "dmQuickCopyIconBtn" || e.target.closest("#dmQuickCopyIconBtn")) {
+    const code = document.getElementById("dmActiveRoomCode")?.textContent?.trim();
     if (code && code !== "NONE") {
-      navigator.clipboard.writeText(code).then(() => showStatus("Room Code Copied!"));
+      navigator.clipboard.writeText(code).then(() => showStatus(`Room Code ${code} Copied!`));
     }
     return;
   }
 
-  if (e.target.id === "closeCampaignBtn") {
+  if (e.target.id === "copyPlayerRoomCodeBtn" || e.target.closest("#copyPlayerRoomCodeBtn")) {
+    const code = connectedCampaignRoom;
+    if (code) {
+      navigator.clipboard.writeText(code).then(() => showStatus(`Room Code ${code} Copied!`));
+    }
+    return;
+  }
+
+  if (e.target.id === "dmRandomizeCodeBtn" || e.target.closest("#dmRandomizeCodeBtn")) {
+    const prefixes = ["REALM", "VALOR", "QUEST", "HAVEN", "CODEX", "DRAGON", "FORGE", "MYTH", "NEXUS", "SHADOW"];
+    const pre = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const num = Math.floor(1000 + Math.random() * 9000);
+    const input = document.getElementById("dmRoomCodeInput");
+    if (input) {
+      input.value = `${pre}-${num}`;
+      input.focus();
+    }
+    return;
+  }
+
+  if (e.target.id === "dmToggleCreateOtherBtn" || e.target.closest("#dmToggleCreateOtherBtn")) {
+    const createCard = document.getElementById("dmCreateRoomCard");
+    const toggleBtn = document.getElementById("dmToggleCreateOtherBtn");
+    if (createCard) {
+      const isVisible = createCard.style.display !== "none" && createCard.style.display !== "";
+      createCard.style.display = isVisible ? "none" : "block";
+      if (toggleBtn) {
+        toggleBtn.innerHTML = isVisible ? "<span>➕</span> Host a different room" : "<span>✖</span> Hide room creator";
+      }
+      if (!isVisible) {
+        createCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+    return;
+  }
+
+  const emptyCopyCode = e.target.closest(".dm-empty-copy-code-btn");
+  if (emptyCopyCode) {
+    const code = emptyCopyCode.dataset.room || activeDMRoomCode;
+    if (code) {
+      navigator.clipboard.writeText(code).then(() => showStatus(`Room Code ${code} Copied!`));
+    }
+    return;
+  }
+
+  const emptyCopyLink = e.target.closest(".dm-empty-copy-link-btn");
+  if (emptyCopyLink) {
+    const code = emptyCopyLink.dataset.room || activeDMRoomCode;
+    if (code) {
+      copyRoomInviteLink(code);
+    }
+    return;
+  }
+
+  if (e.target.id === "closeCampaignBtn" || e.target.closest("#closeCampaignBtn")) {
     await closeDMCampaignRoom();
     return;
   }

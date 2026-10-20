@@ -1517,37 +1517,63 @@
 
       <div class="party-modal-content">
         <div id="recentRoomsBar" class="recent-rooms-bar" style="display: none;">
-          <span class="recent-rooms-label">Recent Rooms:</span>
+          <span class="recent-rooms-label">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            Recent Realms
+          </span>
           <div id="recentRoomsList" class="recent-rooms-chips"></div>
         </div>
 
         <div class="subtab-controls party-mode-tabs">
-          <button type="button" class="sub-tab active" data-sub="party-join-view">Player: Party View</button>
-          <button type="button" class="sub-tab" data-sub="party-dm-view">DM: Live Dashboard</button>
+          <button type="button" class="sub-tab active" data-sub="party-join-view">
+            <span class="tab-icon">⚔️</span>
+            <span>Player: Party View</span>
+          </button>
+          <button type="button" class="sub-tab" data-sub="party-dm-view">
+            <span class="tab-icon">👑</span>
+            <span>DM: Live Dashboard</span>
+          </button>
         </div>
 
         <!-- VIEW 1: Player Join & Party View -->
         <div id="party-join-view" class="subtab-page active">
-          <p class="party-modal-desc">
-            Enter your DM's Room Code to join the party. Players can view party members' live <strong>HP, AC, Conditions, and Concentration</strong> while keeping private character sheet details hidden.
-          </p>
+          <div class="player-join-card">
+            <div class="player-join-header">
+              <span class="player-join-glyph">🛡️</span>
+              <div class="player-join-text">
+                <h4 class="player-join-heading">Join an Adventuring Party</h4>
+                <p class="player-join-sub">Enter your DM's Room Code to connect. You'll see live party vitals (HP, AC, conditions) while private character sheet details remain hidden.</p>
+              </div>
+            </div>
 
-          <div class="party-action-row">
-            <input type="text" id="campaignRoomInput" class="party-room-input center" placeholder="ROOM CODE (e.g. REALM-4200)" maxlength="15" autocomplete="off" />
-            <button type="button" class="btn btn-primary" id="joinCampaignBtn">Connect</button>
-            <button type="button" class="btn btn-ghost" id="copyPlayerRoomCodeBtn" style="display: none;">Copy Code</button>
-            <button type="button" class="btn btn-ghost" id="copyInviteLinkBtn" style="display: none;">Invite Link</button>
-            <button type="button" class="btn btn-danger-ghost" id="leaveCampaignBtn" style="display: none;">Leave</button>
-          </div>
+            <div class="player-join-form-row">
+              <input type="text" id="campaignRoomInput" class="party-room-input player-input-field center" placeholder="ENTER ROOM CODE (e.g. REALM-4200)" maxlength="15" autocomplete="off" />
+              <button type="button" class="btn btn-primary player-join-btn" id="joinCampaignBtn">
+                <span>⚔️</span> Connect
+              </button>
+              <button type="button" class="btn btn-dark-glass btn-sm" id="copyPlayerRoomCodeBtn" style="display: none;">
+                <span>📋</span> Copy Code
+              </button>
+              <button type="button" class="btn btn-dark-glass btn-sm" id="copyInviteLinkBtn" style="display: none;">
+                <span>🔗</span> Invite Link
+              </button>
+              <button type="button" class="btn btn-danger-glass btn-sm" id="leaveCampaignBtn" style="display: none;">
+                <span>🚪</span> Leave Party
+              </button>
+            </div>
 
-          <div class="party-status-indicator" id="partyStatusBox">
-            <span class="status-dot disconnected"></span>
-            <span id="partyStatusText">Not connected to any campaign room.</span>
+            <div class="party-status-indicator" id="partyStatusBox">
+              <span class="status-dot disconnected"></span>
+              <span id="partyStatusText">Not connected to any campaign room.</span>
+            </div>
           </div>
 
           <div class="player-party-section" id="playerPartySection" style="margin-top: 1.25rem; display: none;">
             <div class="dm-party-header-bar">
-              <span class="dm-party-heading">Party Vitals (HP, AC, Conditions &amp; Concentration)</span>
+              <div class="dm-header-title-col">
+                <span class="dm-party-heading">Party Vitals</span>
+                <span class="dm-party-subheading">Live HP, Armor Class, Conditions &amp; Spell Concentration</span>
+              </div>
               <span class="dm-member-counter" id="playerMemberCount">0 Active</span>
             </div>
             <div class="player-party-cards-grid" id="playerPartyGrid">
@@ -1558,31 +1584,81 @@
 
         <!-- VIEW 2: DM Live Dashboard (Restricted to Room Creator) -->
         <div id="party-dm-view" class="subtab-page">
-          <p class="party-modal-desc">
-            Enter a custom code or leave blank to auto-generate, then click <strong>Create Party</strong>. Only the room creator can inspect player sheets and manage party vitals.
-          </p>
-          <div class="dm-command-strip">
-            <div class="dm-room-display">
-              <span class="dm-code-label">Active DM Room:</span>
-              <strong id="dmActiveRoomCode" class="dm-code-text">NONE</strong>
+          <!-- Active DM Session Card (Shown when hosting a live room) -->
+          <div id="dmActiveSessionCard" class="dm-active-session-card" style="display: none;">
+            <div class="dm-session-top-row">
+              <div class="dm-session-beacon-wrap">
+                <span class="dm-beacon-dot"></span>
+                <div class="dm-beacon-meta">
+                  <span class="dm-beacon-tag">Active DM Session</span>
+                  <div class="dm-active-code-flex">
+                    <strong id="dmActiveRoomCode" class="dm-active-code-val">NONE</strong>
+                    <button type="button" class="dm-copy-code-inline-btn" id="dmQuickCopyIconBtn" title="Copy Room Code">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="dm-session-actions-grid">
+                <button type="button" class="btn btn-gold-subtle btn-sm dm-act-btn" id="dmQuickHandoutBtn" style="display: none;" title="Award items, coins, or clues to players">
+                  <span>🎁</span> Handout Loot
+                </button>
+                <button type="button" class="btn btn-dark-glass btn-sm dm-act-btn" id="copyRoomCodeBtn" style="display: none;">
+                  <span>📋</span> Copy Code
+                </button>
+                <button type="button" class="btn btn-dark-glass btn-sm dm-act-btn" id="copyDMInviteLinkBtn" style="display: none;">
+                  <span>🔗</span> Invite Link
+                </button>
+                <button type="button" class="btn btn-danger-glass btn-sm dm-act-btn" id="closeCampaignBtn" style="display: none;">
+                  <span>🚪</span> Close Room
+                </button>
+              </div>
             </div>
-            <div class="dm-action-btns">
-              <input type="text" id="dmRoomCodeInput" class="party-room-input center" placeholder="Custom Code (optional)" maxlength="20" autocomplete="off" style="width: 195px; font-size: 0.85rem; padding: 0.4rem 0.6rem;" />
-              <button type="button" class="btn btn-primary" id="createCampaignBtn">Create Party</button>
-              <button type="button" class="btn btn-outline" id="dmQuickHandoutBtn" style="display: none;" title="Award items, coins, or clues to players">Handout Loot</button>
-              <button type="button" class="btn btn-ghost" id="copyRoomCodeBtn" style="display: none;">Copy Code</button>
-              <button type="button" class="btn btn-ghost" id="copyDMInviteLinkBtn" style="display: none;">Invite Link</button>
-              <button type="button" class="btn btn-danger-ghost" id="closeCampaignBtn" style="display: none;">Close</button>
+
+            <div class="dm-session-secondary-row">
+              <button type="button" class="dm-host-other-btn" id="dmToggleCreateOtherBtn">
+                <span>➕</span> Host a different room
+              </button>
+            </div>
+          </div>
+
+          <!-- DM Host New Realm Card (Shown when no session is active, or toggled open) -->
+          <div id="dmCreateRoomCard" class="dm-create-card">
+            <div class="dm-create-header">
+              <span class="dm-create-glyph">👑</span>
+              <div class="dm-create-text">
+                <h4 class="dm-create-heading">Host a Campaign Party</h4>
+                <p class="dm-create-sub">Enter a custom realm code or leave blank to auto-generate. As the room creator, you can inspect full player sheets and award loot in real time.</p>
+              </div>
+            </div>
+            <div class="dm-create-form-row">
+              <div class="dm-input-container">
+                <input type="text" id="dmRoomCodeInput" class="party-room-input dm-input-field center" placeholder="CUSTOM CODE (OR LEAVE BLANK)" maxlength="20" autocomplete="off" />
+                <button type="button" class="dm-input-randomize-btn" id="dmRandomizeCodeBtn" title="Generate random fantasy realm code">🎲 Randomize</button>
+              </div>
+              <button type="button" class="btn btn-primary dm-create-submit-btn" id="createCampaignBtn">
+                <span>⚔️</span> Create Party
+              </button>
             </div>
           </div>
 
           <div class="dm-party-section">
             <div class="dm-party-header-bar">
-              <span class="dm-party-heading">Active Adventurers (Room Creator Only: Click to Inspect Full Sheet)</span>
+              <div class="dm-header-title-col">
+                <span class="dm-party-heading">Active Adventurers</span>
+                <span class="dm-party-subheading">Room Creator: Click any adventurer to inspect their complete character sheet</span>
+              </div>
               <span class="dm-member-counter" id="dmMemberCount">0 Active</span>
             </div>
             <div class="dm-party-cards-grid" id="dmPartyGrid">
-              <p class="dm-empty-msg">No DM session active. Create a party above to inspect your players live.</p>
+              <div class="dm-empty-state-box">
+                <div class="dm-empty-halo">
+                  <span class="dm-empty-halo-icon">👑</span>
+                </div>
+                <h4 class="dm-empty-headline">No Active DM Session</h4>
+                <p class="dm-empty-instruction">Host a campaign realm above to monitor your players live and inspect their full character sheets.</p>
+              </div>
             </div>
           </div>
         </div>
