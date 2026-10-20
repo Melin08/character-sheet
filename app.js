@@ -4744,6 +4744,10 @@ function exportCharacterJson() {
     toggleFloatingPartyChat(false);
     return;
   }
+  if (e.target.id === "floatingChatExpandBtn" || e.target.closest("#floatingChatExpandBtn")) {
+    toggleFloatingChatExpanded();
+    return;
+  }
   if (e.target.id === "chatCreateChannelBtn" || e.target.closest("#chatCreateChannelBtn")) {
     openCreateChannelModal();
     return;
@@ -4791,7 +4795,14 @@ function exportCharacterJson() {
   }
   const claimItemBtn = e.target.closest(".claim-item-btn");
   if (claimItemBtn && claimItemBtn.dataset.id) {
-    claimHandoutItem(claimItemBtn.dataset.id);
+    const qty = parseInt(claimItemBtn.dataset.qty, 10) || 1;
+    claimHandoutItem(claimItemBtn.dataset.id, qty);
+    return;
+  }
+  const claimItemAllBtn = e.target.closest(".claim-item-all-btn");
+  if (claimItemAllBtn && claimItemAllBtn.dataset.id) {
+    const qty = parseInt(claimItemAllBtn.dataset.qty, 10) || 1;
+    claimHandoutItem(claimItemAllBtn.dataset.id, qty);
     return;
   }
   const claimCoinsBtn = e.target.closest(".claim-coins-btn");
@@ -4802,8 +4813,9 @@ function exportCharacterJson() {
   if (e.target.id === "parchmentClaimBtn") {
     const id = e.target.dataset.id;
     const type = e.target.dataset.type;
+    const qty = parseInt(e.target.dataset.qty, 10) || 1;
     if (type === "weapon") claimHandoutWeapon(id);
-    else if (type === "item") claimHandoutItem(id);
+    else if (type === "item") claimHandoutItem(id, qty);
     else if (type === "coin") claimHandoutCoins(id);
     return;
   }
@@ -6209,27 +6221,44 @@ function renderPartyChatMessages() {
       let claimBtn = "";
       const isClaimed = myClaimedHandoutIds.includes(h.id);
       const canClaim = canIClaimHandout(h);
+      const fullyClaimed = isHandoutFullyClaimed(h);
+      const myCount = myClaimedHandoutIds.filter((id) => id === h.id).length;
 
       if (h.type === "weapon") {
         badge = "⚔️";
-        if (isClaimed) {
-          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">✓ In Arsenal</span>`;
-        } else if (canClaim) {
+        if (canClaim) {
           claimBtn = `<button type="button" class="btn btn-xs btn-primary claim-weapon-btn" data-id="${escapeHtml(h.id || '')}" style="margin-left: auto;">⚔️ Claim Weapon</button>`;
+        } else if (fullyClaimed) {
+          claimBtn = `<span class="claimed-badge" style="margin-left: auto; opacity: 0.75;">${myCount > 0 ? '✓ In Arsenal' : 'Claimed'}</span>`;
+        } else if (isClaimed) {
+          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">✓ In Arsenal</span>`;
         }
       } else if (h.type === "item") {
         badge = "🎒";
-        if (isClaimed) {
-          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">✓ Claimed</span>`;
-        } else if (canClaim) {
-          claimBtn = `<button type="button" class="btn btn-xs btn-primary claim-item-btn" data-id="${escapeHtml(h.id || '')}" style="margin-left: auto;">Claim Item</button>`;
+        const maxClaims = parseInt(h.maxClaims, 10) || 1;
+        const currentClaimed = parseInt(h.claimedCount, 10) || 0;
+        const left = Math.max(0, maxClaims - currentClaimed);
+
+        if (canClaim && left > 0) {
+          const claimLabel = maxClaims > 1 ? `🎒 Claim (${left} left)` : "🎒 Claim Item";
+          const myBadge = myCount > 0 ? `<span class="claimed-badge" style="font-size:0.65rem; padding:0.12rem 0.35rem;">Bag: ${myCount}</span>` : "";
+          claimBtn = `
+            <div style="margin-left: auto; display: inline-flex; align-items: center; gap: 0.35rem;">
+              ${myBadge}
+              <button type="button" class="btn btn-xs btn-primary claim-item-btn" data-id="${escapeHtml(h.id || '')}">${claimLabel}</button>
+            </div>
+          `;
+        } else if (fullyClaimed) {
+          claimBtn = `<span class="claimed-badge" style="margin-left: auto; opacity: 0.75;">${myCount > 0 ? `✓ Claimed (${myCount})` : 'All Claimed'}</span>`;
+        } else if (isClaimed) {
+          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">✓ Claimed (${myCount})</span>`;
         }
       } else if (h.type === "coin") {
         badge = "💰";
-        if (isClaimed) {
-          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">✓ Claimed</span>`;
-        } else if (canClaim) {
+        if (canClaim) {
           claimBtn = `<button type="button" class="btn btn-xs btn-primary claim-coins-btn" data-id="${escapeHtml(h.id || '')}" style="margin-left: auto;">Claim Coins</button>`;
+        } else if (fullyClaimed || isClaimed) {
+          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">✓ Claimed</span>`;
         }
       }
 
@@ -6308,11 +6337,14 @@ function toggleFloatingPartyChat(forceOpen = null) {
 
   if (isFloatingChatOpen) {
     panel.style.display = "flex";
+    clampFloatingChatToBounds();
     unreadChatCount = 0;
     unreadPerChannel[activePartyChannelId] = 0;
     updateChatUnreadBadges();
     const input = document.getElementById("floatingChatInput");
     if (input) setTimeout(() => input.focus(), 50);
+    const msgs = document.getElementById("floatingChatMessages");
+    if (msgs) setTimeout(() => { msgs.scrollTop = msgs.scrollHeight; }, 50);
   } else {
     panel.style.display = "none";
   }
@@ -6320,6 +6352,66 @@ function toggleFloatingPartyChat(forceOpen = null) {
   const bottomChatBtn = document.getElementById("bottomLeftPartyChatBtn");
   if (bottomChatBtn) {
     bottomChatBtn.classList.toggle("active", isFloatingChatOpen);
+  }
+}
+
+let preExpandedChatSize = null;
+
+function toggleFloatingChatExpanded() {
+  const panel = document.getElementById("floatingPartyChat");
+  const expandBtn = document.getElementById("floatingChatExpandBtn");
+  if (!panel) return;
+
+  const willBeExpanded = !panel.classList.contains("expanded");
+
+  if (willBeExpanded) {
+    preExpandedChatSize = {
+      width: panel.style.width,
+      height: panel.style.height
+    };
+    panel.classList.add("expanded");
+  } else {
+    panel.classList.remove("expanded");
+    if (preExpandedChatSize) {
+      if (preExpandedChatSize.width) panel.style.width = preExpandedChatSize.width;
+      if (preExpandedChatSize.height) panel.style.height = preExpandedChatSize.height;
+    }
+  }
+
+  if (expandBtn) {
+    const expandIcon = expandBtn.querySelector(".expand-icon");
+    const compressIcon = expandBtn.querySelector(".compress-icon");
+    if (expandIcon && compressIcon) {
+      expandIcon.style.display = willBeExpanded ? "none" : "block";
+      compressIcon.style.display = willBeExpanded ? "block" : "none";
+    }
+    const label = willBeExpanded ? "Restore Chat Size" : "Expand / Maximize Chat";
+    expandBtn.setAttribute("title", label);
+    expandBtn.setAttribute("aria-label", label);
+  }
+
+  clampFloatingChatToBounds();
+
+  const msgs = document.getElementById("floatingChatMessages");
+  if (msgs) setTimeout(() => { msgs.scrollTop = msgs.scrollHeight; }, 60);
+}
+
+function clampFloatingChatToBounds() {
+  const panel = document.getElementById("floatingPartyChat");
+  if (!panel || panel.style.display === "none") return;
+  const rect = panel.getBoundingClientRect();
+  const maxLeft = Math.max(0, window.innerWidth - rect.width);
+  const maxTop = Math.max(0, window.innerHeight - 50);
+
+  if (panel.style.top && panel.style.top !== "auto") {
+    let curLeft = parseFloat(panel.style.left) || rect.left;
+    let curTop = parseFloat(panel.style.top) || rect.top;
+    if (curLeft > maxLeft) curLeft = maxLeft;
+    if (curLeft < 0) curLeft = 0;
+    if (curTop > maxTop) curTop = maxTop;
+    if (curTop < 0) curTop = 0;
+    panel.style.left = `${curLeft}px`;
+    panel.style.top = `${curTop}px`;
   }
 }
 
@@ -6374,12 +6466,7 @@ function canIClaimHandout(h) {
   const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === activeRoom);
   if (isDM) return false;
 
-  if (myClaimedHandoutIds.includes(h.id)) return false;
-  const curName = (document.getElementById("charName")?.value || "").trim();
-  if (Array.isArray(h.claimedBy) && (h.claimedBy.includes(activeCharId) || (curName && h.claimedBy.includes(curName)))) {
-    return false;
-  }
-
+  // Handout can be claimed by eligible players as long as remaining copies exist
   if (isHandoutFullyClaimed(h)) return false;
 
   return true;
@@ -6510,23 +6597,34 @@ function renderHandoutsGrid() {
     }
 
     let claimActionHtml = "";
+    const myCount = myClaimedHandoutIds.filter((id) => id === h.id).length;
     if (h.type === "weapon") {
-      if (isClaimed) {
-        claimActionHtml = `<span class="claimed-badge">In Arsenal</span>`;
-      } else if (canClaim) {
+      if (canClaim) {
         claimActionHtml = `<button type="button" class="btn btn-xs btn-primary claim-weapon-btn" data-id="${escapeHtml(h.id)}">Claim Weapon</button>`;
       } else if (fullyClaimed) {
-        claimActionHtml = `<span class="claimed-badge" style="opacity: 0.65;">Claimed</span>`;
+        claimActionHtml = `<span class="claimed-badge" style="opacity: 0.65;">${myCount > 0 ? 'In Arsenal' : 'Claimed'}</span>`;
+      } else if (isClaimed) {
+        claimActionHtml = `<span class="claimed-badge">In Arsenal</span>`;
       }
     } else if (h.type === "item" || h.type === "coin") {
       const btnClass = h.type === "item" ? "claim-item-btn" : "claim-coins-btn";
-      const btnText = h.type === "item" ? "Claim Item" : "Claim Coins";
-      if (isClaimed) {
-        claimActionHtml = `<span class="claimed-badge">Claimed</span>`;
-      } else if (canClaim) {
-        claimActionHtml = `<button type="button" class="btn btn-xs btn-primary ${btnClass}" data-id="${escapeHtml(h.id)}">${btnText}</button>`;
+      const isItem = h.type === "item";
+      const maxClaims = parseInt(h.maxClaims, 10) || 1;
+      const claimedCount = parseInt(h.claimedCount, 10) || 0;
+      const left = Math.max(0, maxClaims - claimedCount);
+
+      if (canClaim && left > 0) {
+        const btnText = (isItem && maxClaims > 1) ? `Claim (${left} Left)` : (isItem ? "Claim Item" : "Claim Coins");
+        claimActionHtml = `
+          <div style="display:inline-flex; align-items:center; gap:0.35rem;">
+            ${myCount > 0 ? `<span class="claimed-badge" style="font-size:0.65rem; padding:0.1rem 0.35rem;">Bag: ${myCount}</span>` : ''}
+            <button type="button" class="btn btn-xs btn-primary ${btnClass}" data-id="${escapeHtml(h.id)}">${btnText}</button>
+          </div>
+        `;
       } else if (fullyClaimed) {
-        claimActionHtml = `<span class="claimed-badge" style="opacity: 0.65;">All Claimed</span>`;
+        claimActionHtml = `<span class="claimed-badge" style="opacity: 0.65;">${myCount > 0 ? `Claimed (${myCount})` : 'All Claimed'}</span>`;
+      } else if (isClaimed) {
+        claimActionHtml = `<span class="claimed-badge">Claimed (${myCount})</span>`;
       }
     }
 
@@ -6615,10 +6713,7 @@ function openHandoutViewer(handoutId) {
         <span class="claim-info-sub">${escapeHtml(statDesc)}</span>
         ${notesDesc}
       `;
-      if (isClaimed) {
-        claimBtn.style.display = "none";
-        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem;">In Weapons Arsenal</span>';
-      } else if (canClaim) {
+      if (canClaim) {
         claimBtn.style.display = "inline-flex";
         claimBtn.textContent = "Claim to Weapons Arsenal";
         claimBtn.className = "btn btn-primary claim-weapon-btn";
@@ -6626,33 +6721,56 @@ function openHandoutViewer(handoutId) {
         claimBtn.dataset.type = "weapon";
       } else if (fullyClaimed) {
         claimBtn.style.display = "none";
-        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem; opacity:0.65;">Already claimed</span>';
+        claimInfo.innerHTML += `<span class="claimed-badge" style="margin-top:0.35rem; opacity:0.65;">${myCount > 0 ? 'In Weapons Arsenal' : 'Already claimed'}</span>`;
+      } else if (isClaimed) {
+        claimBtn.style.display = "none";
+        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem;">In Weapons Arsenal</span>';
       } else {
         claimBtn.style.display = "none";
         claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem; opacity:0.65;">Not claimable</span>';
       }
     } else if (h.type === "item" && h.item) {
       claimBox.style.display = "flex";
+      const maxClaims = parseInt(h.maxClaims, 10) || 1;
+      const claimedCount = parseInt(h.claimedCount, 10) || 0;
+      const left = Math.max(0, maxClaims - claimedCount);
+      const myCount = myClaimedHandoutIds.filter((id) => id === h.id).length;
+
       let countNote = "";
-      if (h.maxClaims && h.maxClaims > 1) {
-        countNote = ` • Available: ${Math.max(0, h.maxClaims - (h.claimedCount || 0))}/${h.maxClaims}`;
+      if (maxClaims > 1) {
+        countNote = ` • Available: ${left}/${maxClaims}`;
       }
+      if (myCount > 0) {
+        countNote += ` (You claimed: ${myCount})`;
+      }
+
       claimInfo.innerHTML = `
         <span class="claim-info-title">${escapeHtml(h.item.name || h.title)} (x${h.item.qty || 1}${countNote})</span>
         <span class="claim-info-sub">Weight: ${h.item.weight || 0} lbs each</span>
       `;
-      if (isClaimed) {
-        claimBtn.style.display = "none";
-        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem;">Claimed in Inventory</span>';
-      } else if (canClaim) {
+      if (left > 0 && canClaim) {
         claimBtn.style.display = "inline-flex";
-        claimBtn.textContent = "Claim & Add to Inventory";
         claimBtn.className = "btn btn-primary claim-item-btn";
         claimBtn.dataset.id = h.id;
         claimBtn.dataset.type = "item";
+        claimBtn.dataset.qty = "1";
+
+        if (left > 1) {
+          claimBtn.textContent = `Claim 1 (${left} left)`;
+          claimInfo.innerHTML += `
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.5rem;">
+              <button type="button" class="btn btn-outline btn-xs claim-item-all-btn" data-id="${escapeHtml(h.id)}" data-qty="${left}">Claim All (${left})</button>
+            </div>
+          `;
+        } else {
+          claimBtn.textContent = "Claim & Add to Inventory";
+        }
       } else if (fullyClaimed) {
         claimBtn.style.display = "none";
-        claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem; opacity:0.65;">All copies claimed</span>';
+        claimInfo.innerHTML += `<span class="claimed-badge" style="margin-top:0.35rem; opacity:0.75;">All ${maxClaims} claimed${myCount > 0 ? ` (You have ${myCount})` : ''}</span>`;
+      } else if (isClaimed) {
+        claimBtn.style.display = "none";
+        claimInfo.innerHTML += `<span class="claimed-badge" style="margin-top:0.35rem;">Claimed (${myCount}) in Inventory</span>`;
       } else {
         claimBtn.style.display = "none";
         claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem; opacity:0.65;">Not claimable</span>';
@@ -7177,8 +7295,8 @@ function saveHandoutFromForm(isDraft = false) {
       weight: itemWeight,
       isWeapon: false
     };
-    // If distributed to everyone in party, each member can claim 1 up to itemQty total claims
-    maxClaims = (recipient === "all") ? itemQty : 1;
+    // Total available claims is the item quantity
+    maxClaims = Math.max(1, itemQty);
   } else if (type === "coin") {
     const cp = parseInt(document.getElementById("handoutCoinCP")?.value, 10) || 0;
     const sp = parseInt(document.getElementById("handoutCoinSP")?.value, 10) || 0;
@@ -7255,8 +7373,6 @@ async function claimHandoutWeapon(handoutId) {
   if (!canIClaimHandout(h)) {
     if (isHandoutFullyClaimed(h)) {
       showStatus("This weapon has already been claimed!");
-    } else if (myClaimedHandoutIds.includes(handoutId)) {
-      showStatus("You already have this weapon in your Arsenal!");
     } else {
       showStatus("This handout is not assigned to you.");
     }
@@ -7346,7 +7462,7 @@ async function claimHandoutWeapon(handoutId) {
   showStatus(`"${weaponName}" claimed! Added directly to your Weapons Arsenal.`);
 }
 
-async function claimHandoutItem(handoutId) {
+async function claimHandoutItem(handoutId, qtyToClaim = 1) {
   const combined = [...myHandouts, ...partyRoomHandouts];
   const h = combined.find((item) => item.id === handoutId);
   if (!h || !h.item) return;
@@ -7354,8 +7470,6 @@ async function claimHandoutItem(handoutId) {
   if (!canIClaimHandout(h)) {
     if (isHandoutFullyClaimed(h)) {
       showStatus("This loot item has already been fully claimed!");
-    } else if (myClaimedHandoutIds.includes(handoutId)) {
-      showStatus("You have already claimed this item!");
     } else {
       showStatus("This handout is not assigned to you.");
     }
@@ -7366,28 +7480,43 @@ async function claimHandoutItem(handoutId) {
 
   if (!Array.isArray(myStructuredInventory)) myStructuredInventory = [];
 
-  // When claimable by everyone and maxClaims > 1, claim 1 copy per party member
-  const isMultiPartyClaim = (h.recipient === "all" || !h.recipient) && (h.maxClaims > 1);
-  const qtyToClaim = isMultiPartyClaim ? 1 : (parseInt(h.item.qty, 10) || 1);
+  const maxClaims = parseInt(h.maxClaims, 10) || 1;
+  const currentClaimed = parseInt(h.claimedCount, 10) || 0;
+  const remaining = Math.max(1, maxClaims - currentClaimed);
+  const countClaimed = Math.min(Math.max(1, parseInt(qtyToClaim, 10) || 1), remaining);
 
-  const newItem = {
-    equipped: false,
-    name: h.item.name || h.title || "Loot Item",
-    qty: qtyToClaim,
-    weight: parseFloat(h.item.weight) || 0,
-    notes: h.content || ""
-  };
+  const itemName = h.item.name || h.title || "Loot Item";
+  const itemWeight = parseFloat(h.item.weight) || 0;
 
-  myStructuredInventory.push(newItem);
-  myClaimedHandoutIds.push(handoutId);
+  // Stacking: If an item with the same name already exists in inventory, increment quantity!
+  const existingItem = myStructuredInventory.find(
+    (it) => it.name && it.name.trim().toLowerCase() === itemName.trim().toLowerCase()
+  );
+
+  if (existingItem) {
+    existingItem.qty = (parseInt(existingItem.qty, 10) || 0) + countClaimed;
+  } else {
+    myStructuredInventory.push({
+      equipped: false,
+      name: itemName,
+      qty: countClaimed,
+      weight: itemWeight,
+      notes: h.content || ""
+    });
+  }
+
+  // Record claim
+  for (let i = 0; i < countClaimed; i++) {
+    myClaimedHandoutIds.push(handoutId);
+  }
 
   // Update claim counts on shared handout
   const activeRoom = connectedCampaignRoom || activeDMRoomCode;
   const myIdentifier = activeCharId || document.getElementById("charName")?.value?.trim() || "Adventurer";
   const nextClaimedBy = Array.isArray(h.claimedBy) ? [...h.claimedBy] : [];
   if (!nextClaimedBy.includes(myIdentifier)) nextClaimedBy.push(myIdentifier);
-  const nextClaimedCount = (parseInt(h.claimedCount, 10) || 0) + 1;
-  const isNowMax = nextClaimedCount >= (parseInt(h.maxClaims, 10) || 1);
+  const nextClaimedCount = currentClaimed + countClaimed;
+  const isNowMax = nextClaimedCount >= maxClaims;
 
   h.claimedBy = nextClaimedBy;
   h.claimedCount = nextClaimedCount;
@@ -7427,7 +7556,8 @@ async function claimHandoutItem(handoutId) {
     openHandoutViewer(handoutId);
   }
 
-  showStatus(`Added "${newItem.name}" to your inventory!`);
+  const claimQtyMsg = countClaimed > 1 ? ` (x${countClaimed})` : "";
+  showStatus(`Added "${itemName}"${claimQtyMsg} to your inventory!`);
 }
 
 async function claimHandoutCoins(handoutId) {
@@ -7676,6 +7806,206 @@ function initPWAAndNetworkStatus() {
   }
 }
 
+function initFloatingPartyChatDragAndResize() {
+  const panel = document.getElementById("floatingPartyChat");
+  if (!panel) return;
+
+  const header = panel.querySelector(".floating-chat-header");
+  const resizeHandle = document.getElementById("chatResizeHandle");
+
+  // Restore saved position/size if available
+  try {
+    const savedPos = JSON.parse(localStorage.getItem("partyChatPos") || "null");
+    if (savedPos && typeof savedPos.left === "number" && typeof savedPos.top === "number") {
+      const maxLeft = Math.max(0, window.innerWidth - (savedPos.width || 380));
+      const maxTop = Math.max(0, window.innerHeight - 50);
+      const left = Math.max(0, Math.min(savedPos.left, maxLeft));
+      const top = Math.max(0, Math.min(savedPos.top, maxTop));
+      panel.style.left = `${left}px`;
+      panel.style.top = `${top}px`;
+      panel.style.bottom = "auto";
+      panel.style.right = "auto";
+      panel.style.margin = "0";
+    }
+    const savedSize = JSON.parse(localStorage.getItem("partyChatSize") || "null");
+    if (savedSize && typeof savedSize.width === "number" && typeof savedSize.height === "number") {
+      const width = Math.max(300, Math.min(savedSize.width, window.innerWidth - 10));
+      const height = Math.max(320, Math.min(savedSize.height, window.innerHeight - 20));
+      panel.style.width = `${width}px`;
+      panel.style.height = `${height}px`;
+    }
+  } catch (err) {
+    console.warn("Could not load party chat pos/size:", err);
+  }
+
+  // --- DRAGGING VIA HEADER ---
+  if (header) {
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let initialLeft = 0;
+    let initialTop = 0;
+    let panelWidth = 0;
+    let panelHeight = 0;
+
+    function startDrag(e) {
+      if (e.target.closest("button, input, select, textarea, a, .chat-room-badge")) return;
+      isDragging = true;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      startX = clientX;
+      startY = clientY;
+
+      const rect = panel.getBoundingClientRect();
+      initialLeft = rect.left;
+      initialTop = rect.top;
+      panelWidth = rect.width;
+      panelHeight = rect.height;
+
+      panel.style.left = `${initialLeft}px`;
+      panel.style.top = `${initialTop}px`;
+      panel.style.bottom = "auto";
+      panel.style.right = "auto";
+      panel.style.margin = "0";
+
+      document.body.classList.add("chat-dragging");
+
+      if (e.type === "mousedown") {
+        window.addEventListener("mousemove", onDragMove);
+        window.addEventListener("mouseup", onDragEnd);
+      } else if (e.type === "touchstart") {
+        window.addEventListener("touchmove", onDragMove, { passive: false });
+        window.addEventListener("touchend", onDragEnd);
+      }
+    }
+
+    function onDragMove(e) {
+      if (!isDragging) return;
+      if (e.cancelable && e.type === "touchmove") e.preventDefault();
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const dx = clientX - startX;
+      const dy = clientY - startY;
+
+      let newLeft = initialLeft + dx;
+      let newTop = initialTop + dy;
+
+      const maxLeft = Math.max(0, window.innerWidth - panelWidth);
+      const maxTop = Math.max(0, window.innerHeight - 50);
+
+      newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+      newTop = Math.max(0, Math.min(newTop, maxTop));
+
+      panel.style.left = `${newLeft}px`;
+      panel.style.top = `${newTop}px`;
+    }
+
+    function onDragEnd() {
+      if (!isDragging) return;
+      isDragging = false;
+      document.body.classList.remove("chat-dragging");
+
+      window.removeEventListener("mousemove", onDragMove);
+      window.removeEventListener("mouseup", onDragEnd);
+      window.removeEventListener("touchmove", onDragMove);
+      window.removeEventListener("touchend", onDragEnd);
+
+      const rect = panel.getBoundingClientRect();
+      try {
+        localStorage.setItem("partyChatPos", JSON.stringify({ left: rect.left, top: rect.top, width: rect.width }));
+      } catch (err) {}
+    }
+
+    header.addEventListener("mousedown", startDrag);
+    header.addEventListener("touchstart", startDrag, { passive: true });
+
+    // Double-click header to toggle expand/restore
+    header.addEventListener("dblclick", (e) => {
+      if (e.target.closest("button, input, select, textarea, a")) return;
+      toggleFloatingChatExpanded();
+    });
+  }
+
+  // --- RESIZING VIA CORNER HANDLE ---
+  if (resizeHandle) {
+    let isResizing = false;
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+
+    function startResize(e) {
+      isResizing = true;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      startX = clientX;
+      startY = clientY;
+
+      const rect = panel.getBoundingClientRect();
+      startWidth = rect.width;
+      startHeight = rect.height;
+
+      document.body.classList.add("chat-resizing");
+
+      if (e.type === "mousedown") {
+        window.addEventListener("mousemove", onResizeMove);
+        window.addEventListener("mouseup", onResizeEnd);
+      } else if (e.type === "touchstart") {
+        window.addEventListener("touchmove", onResizeMove, { passive: false });
+        window.addEventListener("touchend", onResizeEnd);
+      }
+    }
+
+    function onResizeMove(e) {
+      if (!isResizing) return;
+      if (e.cancelable) e.preventDefault();
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const dx = clientX - startX;
+      const dy = clientY - startY;
+
+      const rect = panel.getBoundingClientRect();
+      const maxW = window.innerWidth - rect.left - 10;
+      const maxH = window.innerHeight - rect.top - 10;
+
+      const newW = Math.max(300, Math.min(startWidth + dx, maxW));
+      const newH = Math.max(320, Math.min(startHeight + dy, maxH));
+
+      panel.style.width = `${newW}px`;
+      panel.style.height = `${newH}px`;
+    }
+
+    function onResizeEnd() {
+      if (!isResizing) return;
+      isResizing = false;
+      document.body.classList.remove("chat-resizing");
+
+      window.removeEventListener("mousemove", onResizeMove);
+      window.removeEventListener("mouseup", onResizeEnd);
+      window.removeEventListener("touchmove", onResizeMove);
+      window.removeEventListener("touchend", onResizeEnd);
+
+      const rect = panel.getBoundingClientRect();
+      try {
+        localStorage.setItem("partyChatSize", JSON.stringify({ width: rect.width, height: rect.height }));
+      } catch (err) {}
+    }
+
+    resizeHandle.addEventListener("mousedown", startResize);
+    resizeHandle.addEventListener("touchstart", startResize, { passive: false });
+  }
+
+  // Window resize bounds check
+  window.addEventListener("resize", () => {
+    clampFloatingChatToBounds();
+  });
+}
+
 /* ==========================================================================
    INITIALIZATION & URL INVITE LINK CHECK
    ========================================================================== */
@@ -7686,6 +8016,7 @@ loadSheet();
 loadAllSpells();
 loadAllTraits();
 initPWAAndNetworkStatus();
+initFloatingPartyChatDragAndResize();
 
 // Check if user opened a 1-click ?room=CODE invite link
 const urlParams = new URLSearchParams(window.location.search);

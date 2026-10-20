@@ -4383,10 +4383,12 @@ kbd {
   bottom: 4.8rem;
   left: 1.5rem;
   right: auto;
-  width: 380px;
-  max-width: calc(100vw - 3rem);
-  height: 510px;
-  max-height: calc(100vh - 6rem);
+  width: 390px;
+  min-width: 300px;
+  max-width: calc(100vw - 2rem);
+  height: 520px;
+  min-height: 320px;
+  max-height: calc(100vh - 4rem);
   background: var(--bg-surface);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-lg);
@@ -4397,6 +4399,13 @@ kbd {
   overflow: hidden;
   backdrop-filter: blur(20px);
   animation: slideUpFade 0.22s ease-out;
+  resize: both;
+}
+.floating-party-chat.expanded {
+  width: min(720px, calc(100vw - 2rem)) !important;
+  height: min(760px, calc(100vh - 4rem)) !important;
+  max-width: calc(100vw - 2rem) !important;
+  max-height: calc(100vh - 4rem) !important;
 }
 @keyframes slideUpFade {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }
@@ -4406,9 +4415,41 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.65rem 0.85rem;
+  padding: 0.55rem 0.75rem;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-subtle);
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+.floating-chat-header:active {
+  cursor: grabbing;
+}
+body.chat-dragging,
+body.chat-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+body.chat-resizing,
+body.chat-resizing * {
+  cursor: nwse-resize !important;
+  user-select: none !important;
+}
+.chat-drag-grip {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  opacity: 0.45;
+  letter-spacing: -1.5px;
+  cursor: grab;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  margin-right: -0.15rem;
+  transition: all 0.15s ease;
+}
+.floating-chat-header:hover .chat-drag-grip {
+  opacity: 1;
+  color: var(--accent-gold);
 }
 .floating-chat-title-group {
   display: flex;
@@ -4438,7 +4479,52 @@ kbd {
 .floating-chat-controls {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
+}
+.floating-chat-controls .chat-ctrl-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.floating-chat-controls .chat-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  border-color: var(--border-subtle);
+}
+.floating-chat-controls .chat-close-btn {
+  font-size: 1.55rem !important;
+  font-weight: 300;
+  line-height: 1 !important;
+  color: var(--text-muted) !important;
+}
+.floating-chat-controls .chat-close-btn:hover {
+  color: #ff6b6b !important;
+  background: rgba(239, 68, 68, 0.22) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+.chat-resize-handle {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 40%, var(--border-medium) 40%, var(--border-medium) 55%, transparent 55%, transparent 70%, var(--border-medium) 70%);
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+  z-index: 20;
+}
+.chat-resize-handle:hover {
+  opacity: 1;
 }
 
 /* Multi-Channel Selector Strip */

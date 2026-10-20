@@ -1708,8 +1708,9 @@
 
   <!-- FLOATING LIVE PARTY CHAT & ROLLS WIDGET (BOTTOM-LEFT DOCKED) -->
   <div id="floatingPartyChat" class="floating-party-chat bottom-left-chat" style="display: none;">
-    <div class="floating-chat-header">
+    <div class="floating-chat-header" title="Drag to move chat (double click to expand/restore)">
       <div class="floating-chat-title-group">
+        <span class="chat-drag-grip" aria-hidden="true" title="Drag to move chat">&#x22EE;&#x22EE;</span>
         <span class="chat-live-pulse"></span>
         <strong id="floatingChatRoomTitle">Party Chat</strong>
         <span class="chat-room-badge" id="floatingChatRoomBadge">ROOM</span>
@@ -1717,7 +1718,21 @@
       <div class="floating-chat-controls">
         <button type="button" class="btn btn-ghost btn-xs" id="chatCreateChannelBtn" title="Create New Private Chat Channel">+ New Chat</button>
         <button type="button" class="btn btn-ghost btn-xs" id="floatingChatShareRollBtn" title="Share Last Dice Roll to Chat">🎲 Roll</button>
-        <button type="button" class="btn btn-ghost btn-xs" id="floatingChatCloseBtn" title="Close Chat">&times;</button>
+        <button type="button" class="btn btn-ghost chat-ctrl-btn" id="floatingChatExpandBtn" title="Expand / Maximize Chat" aria-label="Expand Chat">
+          <svg class="expand-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+          <svg class="compress-icon" style="display:none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 14 10 14 10 20"></polyline>
+            <polyline points="20 10 14 10 14 4"></polyline>
+            <line x1="14" y1="10" x2="21" y2="3"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+        </button>
+        <button type="button" class="btn btn-ghost chat-ctrl-btn chat-close-btn" id="floatingChatCloseBtn" title="Close Chat" aria-label="Close Chat">&times;</button>
       </div>
     </div>
 
@@ -1744,6 +1759,7 @@
       <input type="text" id="floatingChatInput" class="floating-chat-input" placeholder="Message #general... (Enter to send)" maxlength="400" autocomplete="off" />
       <button type="submit" class="btn btn-primary btn-xs" id="floatingChatSendBtn">Send</button>
     </form>
+    <div class="chat-resize-handle" id="chatResizeHandle" title="Drag to resize chat"></div>
   </div>
 
   <!-- BOTTOM-LEFT PARTY CHAT TRIGGER BUTTON (Only visible when connected to party) -->
