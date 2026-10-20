@@ -8428,7 +8428,7 @@ function startPartyHandoutsListener(roomCode) {
         if (doc.id === "owlbear_vtt" || d.id === "owlbear_vtt") {
           try {
             const parsed = JSON.parse(d.content || "{}");
-            if (parsed.url && typeof setOwlbearRoomUrl === "function" && parsed.url !== getStoredOwlbearUrl()) {
+            if (!vttUserLeftMap && parsed.url && typeof setOwlbearRoomUrl === "function" && parsed.url !== getStoredOwlbearUrl()) {
               setOwlbearRoomUrl(parsed.url, false);
             }
           } catch (e) {}
@@ -10259,6 +10259,7 @@ let vttActiveSyncRoomId = "";
 let vttLastLocalUpdateTs = 0;
 let vttSyncDebounceTimer = null;
 let vttMediaStream = null;
+let vttUserLeftMap = false;
 
 let vttState = {
   scene: "forest_ambush",
@@ -10357,6 +10358,7 @@ function setOwlbearRoomUrl(rawUrl, broadcast = true) {
   const cleanUrl = normalizeOwlbearUrl(rawUrl);
   try {
     if (cleanUrl) {
+      vttUserLeftMap = false;
       localStorage.setItem(OWLBEAR_ROOM_KEY, cleanUrl);
     } else {
       localStorage.removeItem(OWLBEAR_ROOM_KEY);
@@ -10395,12 +10397,17 @@ function setOwlbearRoomUrl(rawUrl, broadcast = true) {
     loadOwlbearRoomState(roomId);
     switchOwlbearViewMode(vttActiveMode || "native");
   } else {
+    if (vttSyncDebounceTimer) {
+      clearTimeout(vttSyncDebounceTimer);
+      vttSyncDebounceTimer = null;
+    }
     stopOwlbearStream();
     if (vttRoomUnsubscribe) {
       vttRoomUnsubscribe();
       vttRoomUnsubscribe = null;
     }
     vttActiveSyncRoomId = "";
+    selectVttToken(null);
     if (iframe) iframe.src = "";
     if (activeUrlDisplay) activeUrlDisplay.textContent = "";
     if (emptyState) emptyState.style.display = "flex";
@@ -10419,11 +10426,39 @@ function setOwlbearRoomUrl(rawUrl, broadcast = true) {
   }
 }
 
-function leaveOwlbearRoom() {
-  if (confirm("Disconnect and leave this Owlbear battle map?")) {
-    setOwlbearRoomUrl("", false);
-    showStatus("Left Owlbear battle map.");
+function leaveOwlbearRoom(e) {
+  if (e && typeof e.preventDefault === "function") e.preventDefault();
+  if (e && typeof e.stopPropagation === "function") e.stopPropagation();
+
+  vttUserLeftMap = true;
+  if (vttSyncDebounceTimer) {
+    clearTimeout(vttSyncDebounceTimer);
+    vttSyncDebounceTimer = null;
   }
+
+  // Exit theater mode if active
+  if (document.body.classList.contains("owlbear-theater-active")) {
+    document.body.classList.remove("owlbear-theater-active");
+    const label = document.getElementById("owlbearTheaterBtnLabel");
+    if (label) label.textContent = "Theater Mode";
+  }
+
+  setOwlbearRoomUrl("", false);
+
+  // Also clear the shared room URL in Firestore if user is DM or in a room so onSnapshot doesn't re-trigger it
+  const roomCode = activeDMRoomCode || connectedCampaignRoom;
+  if (db && roomCode) {
+    db.collection("campaigns").doc(roomCode).collection("handouts").doc("owlbear_vtt").set({
+      id: "owlbear_vtt",
+      title: "Owlbear Rodeo Battle Map",
+      type: "map",
+      content: JSON.stringify({ url: "", updatedAt: Date.now() }),
+      isShared: false,
+      createdAt: Date.now()
+    }, { merge: true }).catch(() => {});
+  }
+
+  showStatus("Closed Owlbear battle map.");
 }
 
 function copyOwlbearRoomUrl() {
@@ -12115,16 +12150,27 @@ function initOwlbearVTT() {
     });
   }
 
-  // Leave Map Buttons
+  // Leave / Close Map Buttons (Direct + Delegated fallback)
   if (leaveBtn) leaveBtn.addEventListener("click", leaveOwlbearRoom);
   if (activeLeaveBtn) activeLeaveBtn.addEventListener("click", leaveOwlbearRoom);
+  document.addEventListener("click", (e) => {
+    const closeTarget = e.target.closest("#owlbearLeaveBtn, #owlbearActiveLeaveBtn, .owlbear-leave-map-btn");
+    if (closeTarget) {
+      leaveOwlbearRoom(e);
+    }
+  });
 
-  // Copy Link & Clear Input
+  // Copy Link & Clear Input (also closes active map when clicked!)
   if (copyBtn) copyBtn.addEventListener("click", copyOwlbearRoomUrl);
   if (clearBtn && input) {
-    clearBtn.addEventListener("click", () => {
+    clearBtn.addEventListener("click", (e) => {
       input.value = "";
-      input.focus();
+      if (wizardInput) wizardInput.value = "";
+      if (getStoredOwlbearUrl() || document.getElementById("owlbearActiveContainer")?.style.display !== "none") {
+        leaveOwlbearRoom(e);
+      } else {
+        input.focus();
+      }
     });
   }
 
