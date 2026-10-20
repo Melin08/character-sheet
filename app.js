@@ -4795,14 +4795,7 @@ function exportCharacterJson() {
   }
   const claimItemBtn = e.target.closest(".claim-item-btn");
   if (claimItemBtn && claimItemBtn.dataset.id) {
-    const qty = parseInt(claimItemBtn.dataset.qty, 10) || 1;
-    claimHandoutItem(claimItemBtn.dataset.id, qty);
-    return;
-  }
-  const claimItemAllBtn = e.target.closest(".claim-item-all-btn");
-  if (claimItemAllBtn && claimItemAllBtn.dataset.id) {
-    const qty = parseInt(claimItemAllBtn.dataset.qty, 10) || 1;
-    claimHandoutItem(claimItemAllBtn.dataset.id, qty);
+    claimHandoutItem(claimItemBtn.dataset.id, 1);
     return;
   }
   const claimCoinsBtn = e.target.closest(".claim-coins-btn");
@@ -4813,9 +4806,8 @@ function exportCharacterJson() {
   if (e.target.id === "parchmentClaimBtn") {
     const id = e.target.dataset.id;
     const type = e.target.dataset.type;
-    const qty = parseInt(e.target.dataset.qty, 10) || 1;
     if (type === "weapon") claimHandoutWeapon(id);
-    else if (type === "item") claimHandoutItem(id, qty);
+    else if (type === "item") claimHandoutItem(id, 1);
     else if (type === "coin") claimHandoutCoins(id);
     return;
   }
@@ -6240,12 +6232,11 @@ function renderPartyChatMessages() {
         const left = Math.max(0, maxClaims - currentClaimed);
 
         if (canClaim && left > 0) {
-          const claimLabel = maxClaims > 1 ? `🎒 Claim (${left} left)` : "🎒 Claim Item";
           const myBadge = myCount > 0 ? `<span class="claimed-badge" style="font-size:0.65rem; padding:0.12rem 0.35rem;">Bag: ${myCount}</span>` : "";
           claimBtn = `
             <div style="margin-left: auto; display: inline-flex; align-items: center; gap: 0.35rem;">
               ${myBadge}
-              <button type="button" class="btn btn-xs btn-primary claim-item-btn" data-id="${escapeHtml(h.id || '')}">${claimLabel}</button>
+              <button type="button" class="btn btn-xs btn-primary claim-item-btn" data-id="${escapeHtml(h.id || '')}">🎒 Claim</button>
             </div>
           `;
         } else if (fullyClaimed) {
@@ -6600,7 +6591,7 @@ function renderHandoutsGrid() {
     const myCount = myClaimedHandoutIds.filter((id) => id === h.id).length;
     if (h.type === "weapon") {
       if (canClaim) {
-        claimActionHtml = `<button type="button" class="btn btn-xs btn-primary claim-weapon-btn" data-id="${escapeHtml(h.id)}">Claim Weapon</button>`;
+        claimActionHtml = `<button type="button" class="btn btn-xs btn-primary claim-weapon-btn" data-id="${escapeHtml(h.id)}">Claim</button>`;
       } else if (fullyClaimed) {
         claimActionHtml = `<span class="claimed-badge" style="opacity: 0.65;">${myCount > 0 ? 'In Arsenal' : 'Claimed'}</span>`;
       } else if (isClaimed) {
@@ -6608,17 +6599,15 @@ function renderHandoutsGrid() {
       }
     } else if (h.type === "item" || h.type === "coin") {
       const btnClass = h.type === "item" ? "claim-item-btn" : "claim-coins-btn";
-      const isItem = h.type === "item";
       const maxClaims = parseInt(h.maxClaims, 10) || 1;
       const claimedCount = parseInt(h.claimedCount, 10) || 0;
       const left = Math.max(0, maxClaims - claimedCount);
 
       if (canClaim && left > 0) {
-        const btnText = (isItem && maxClaims > 1) ? `Claim (${left} Left)` : (isItem ? "Claim Item" : "Claim Coins");
         claimActionHtml = `
           <div style="display:inline-flex; align-items:center; gap:0.35rem;">
             ${myCount > 0 ? `<span class="claimed-badge" style="font-size:0.65rem; padding:0.1rem 0.35rem;">Bag: ${myCount}</span>` : ''}
-            <button type="button" class="btn btn-xs btn-primary ${btnClass}" data-id="${escapeHtml(h.id)}">${btnText}</button>
+            <button type="button" class="btn btn-xs btn-primary ${btnClass}" data-id="${escapeHtml(h.id)}">Claim</button>
           </div>
         `;
       } else if (fullyClaimed) {
@@ -6715,7 +6704,7 @@ function openHandoutViewer(handoutId) {
       `;
       if (canClaim) {
         claimBtn.style.display = "inline-flex";
-        claimBtn.textContent = "Claim to Weapons Arsenal";
+        claimBtn.textContent = "Claim";
         claimBtn.className = "btn btn-primary claim-weapon-btn";
         claimBtn.dataset.id = h.id;
         claimBtn.dataset.type = "weapon";
@@ -6754,17 +6743,7 @@ function openHandoutViewer(handoutId) {
         claimBtn.dataset.id = h.id;
         claimBtn.dataset.type = "item";
         claimBtn.dataset.qty = "1";
-
-        if (left > 1) {
-          claimBtn.textContent = `Claim 1 (${left} left)`;
-          claimInfo.innerHTML += `
-            <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.5rem;">
-              <button type="button" class="btn btn-outline btn-xs claim-item-all-btn" data-id="${escapeHtml(h.id)}" data-qty="${left}">Claim All (${left})</button>
-            </div>
-          `;
-        } else {
-          claimBtn.textContent = "Claim & Add to Inventory";
-        }
+        claimBtn.textContent = "Claim";
       } else if (fullyClaimed) {
         claimBtn.style.display = "none";
         claimInfo.innerHTML += `<span class="claimed-badge" style="margin-top:0.35rem; opacity:0.75;">All ${maxClaims} claimed${myCount > 0 ? ` (You have ${myCount})` : ''}</span>`;
@@ -6792,7 +6771,7 @@ function openHandoutViewer(handoutId) {
         claimInfo.innerHTML += '<span class="claimed-badge" style="margin-top:0.35rem;">Claimed in Vault</span>';
       } else if (canClaim) {
         claimBtn.style.display = "inline-flex";
-        claimBtn.textContent = "Claim & Add to Vault";
+        claimBtn.textContent = "Claim";
         claimBtn.className = "btn btn-primary claim-coins-btn";
         claimBtn.dataset.id = h.id;
         claimBtn.dataset.type = "coin";
