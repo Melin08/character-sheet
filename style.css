@@ -7229,6 +7229,104 @@ body.theme-parchment .party-status-indicator {
   animation: bannerSlideDown 0.25s ease-out;
 }
 
+/* ==========================================================================
+   ADMIN PARTY CHAT CAMPAIGN SWITCHER
+   ========================================================================== */
+.admin-chat-campaign-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.65rem;
+  background: rgba(212, 175, 55, 0.08);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
+  font-size: 0.72rem;
+  flex-shrink: 0;
+}
+.admin-chat-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+.admin-chat-crown {
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}
+.admin-chat-label {
+  color: var(--accent-gold);
+  font-weight: 700;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.admin-chat-select {
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 4px;
+  color: #fef08a;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.4rem;
+  outline: none;
+  cursor: pointer;
+  flex: 1;
+  max-width: 175px;
+  min-width: 110px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.admin-chat-select:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3);
+}
+.admin-chat-icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0.1rem 0.2rem;
+  transition: color 0.15s ease;
+  flex-shrink: 0;
+}
+.admin-chat-icon-btn:hover {
+  color: #ffffff;
+}
+.admin-chat-myroom-btn {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 4px;
+  color: #38bdf8;
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.admin-chat-myroom-btn:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+.chat-room-badge.admin-override {
+  background: rgba(56, 189, 248, 0.2) !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  color: #38bdf8 !important;
+}
+.chat-chan-pill.admin-rooms-pill {
+  border-color: rgba(212, 175, 55, 0.35) !important;
+  color: var(--accent-gold) !important;
+}
+.chat-chan-pill.admin-rooms-pill:hover {
+  background: rgba(212, 175, 55, 0.15) !important;
+  border-color: var(--accent-gold) !important;
+}
+
 @media print {
   body { background: #ffffff !important; color: #000000 !important; padding: 0 !important; }
   .top-command-bar, .codex-navigation-dock, .dice-station-bar, .floating-d20-trigger, .bottom-left-chat-trigger, .sheet-footer, .ambient-glow, .modal-backdrop, .blur-toggle-btn, .live-party-dock, .floating-party-chat, .floating-chat-bubble {

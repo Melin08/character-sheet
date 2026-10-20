@@ -73,6 +73,11 @@ let partyHandoutsUnsubscribe = null;
 let cachedChatMessages = [];
 let isFloatingChatOpen = false;
 let unreadChatCount = 0;
+let activeChatRoomOverride = null;
+
+function getActiveChatRoomCode() {
+  return activeChatRoomOverride || connectedCampaignRoom || activeDMRoomCode || "";
+}
 let partyChannels = [
   { id: "general", name: "general", isDefault: true, allowedMembers: [] }
 ];
@@ -1687,9 +1692,21 @@ function updateAuthUI(user) {
   if (topNavAdminBtn) topNavAdminBtn.style.display = isAdmin ? "inline-flex" : "none";
   if (adminBadgeInAccount) adminBadgeInAccount.style.display = isAdmin ? "block" : "none";
   if (openAdminFromAuthModalBtn) openAdminFromAuthModalBtn.style.display = isAdmin ? "block" : "none";
+  const partyQuickRow = document.getElementById("adminPartyModalQuickChatRow");
+  if (partyQuickRow) partyQuickRow.style.display = isAdmin ? "flex" : "none";
 
   if (!isAdmin) {
     closeAdminModal();
+    if (activeChatRoomOverride) {
+      activeChatRoomOverride = null;
+    }
+  }
+
+  if (typeof updatePartyStatusUI === "function") {
+    updatePartyStatusUI();
+  }
+  if (typeof updateAdminChatBarUI === "function") {
+    updateAdminChatBarUI();
   }
 
   if (user && !user.isAnonymous) {
@@ -2860,15 +2877,17 @@ function updatePartyStatusUI() {
 
   // Update Bottom-Left Party Chat Trigger Button Visibility
   const activeRoom = connectedCampaignRoom || activeDMRoomCode;
+  const isMasterAdmin = isAdminSession();
+  const effectiveChatRoom = activeChatRoomOverride || activeRoom;
   const bottomChatBtn = document.getElementById("bottomLeftPartyChatBtn");
   const bottomRoomBadge = document.getElementById("bottomChatRoomBadge");
   if (bottomChatBtn) {
-    bottomChatBtn.style.display = activeRoom ? "inline-flex" : "none";
-    if (bottomRoomBadge && activeRoom) {
-      bottomRoomBadge.textContent = activeRoom;
+    bottomChatBtn.style.display = (activeRoom || isMasterAdmin) ? "inline-flex" : "none";
+    if (bottomRoomBadge && (activeRoom || isMasterAdmin)) {
+      bottomRoomBadge.textContent = effectiveChatRoom || "ADMIN";
     }
   }
-  if (!activeRoom) {
+  if (!activeRoom && !isMasterAdmin && !activeChatRoomOverride) {
     const chatPanel = document.getElementById("floatingPartyChat");
     if (chatPanel) chatPanel.style.display = "none";
     isFloatingChatOpen = false;
@@ -4896,6 +4915,30 @@ function exportCharacterJson() {
     inspectAdminRoom(adminInspectBtn.dataset.room);
     return;
   }
+  const adminOpenChatBtn = e.target.closest(".admin-open-chat-room-btn");
+  if (adminOpenChatBtn && adminOpenChatBtn.dataset.room) {
+    const roomCode = adminOpenChatBtn.dataset.room;
+    closeAdminModal();
+    switchAdminChatRoom(roomCode);
+    toggleFloatingPartyChat(true);
+    showStatus(`Admin: Opened party chat for "${roomCode}"`);
+    return;
+  }
+  if (e.target.id === "adminModalOpenPartyChatBtn" || e.target.closest("#adminModalOpenPartyChatBtn")) {
+    closeModal("partyModal");
+    openAdminChatWithoutRoom();
+    return;
+  }
+  if (e.target.id === "adminQuickSwitchCampaignPill" || e.target.closest("#adminQuickSwitchCampaignPill")) {
+    const select = document.getElementById("adminChatCampaignSelect");
+    if (select) {
+      select.focus();
+      if (typeof select.showPicker === "function") {
+        try { select.showPicker(); } catch (err) {}
+      }
+    }
+    return;
+  }
   const adminJoinBtn = e.target.closest(".admin-join-room-btn");
   if (adminJoinBtn && adminJoinBtn.dataset.room) {
     joinCampaignRoom(adminJoinBtn.dataset.room);
@@ -6112,6 +6155,7 @@ function playChatNotificationSound() {
 
 function isUserAllowedInChannel(chan) {
   if (!chan || chan.id === "general" || chan.isDefault) return true;
+  if (isAdminSession()) return true; // Admins have universal oversight across all channels
   const myCharId = activeCharId;
   const myUid = auth?.currentUser?.uid;
   const myName = (document.getElementById("charName")?.value || "").trim().toLowerCase();
@@ -6132,13 +6176,25 @@ function isUserAllowedInChannel(chan) {
 
 function startPartyChatListener(roomCode) {
   if (!db || !roomCode) return;
-  if (partyChatUnsubscribe) partyChatUnsubscribe();
+  if (partyChatUnsubscribe) {
+    partyChatUnsubscribe();
+    partyChatUnsubscribe = null;
+  }
+
+  cachedChatMessages = [];
+  renderPartyChatMessages();
 
   const titleEl = document.getElementById("floatingChatRoomTitle");
   const badgeEl = document.getElementById("floatingChatRoomBadge");
   const bottomBadge = document.getElementById("bottomChatRoomBadge");
-  if (titleEl) titleEl.textContent = `Party: ${roomCode}`;
-  if (badgeEl) badgeEl.textContent = roomCode;
+  const myRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+  const isOverride = Boolean(activeChatRoomOverride && activeChatRoomOverride === roomCode && activeChatRoomOverride !== myRoom);
+
+  if (titleEl) titleEl.textContent = isOverride ? `Party Chat: ${roomCode}` : `Party: ${roomCode}`;
+  if (badgeEl) {
+    badgeEl.textContent = isOverride ? `${roomCode} (ADMIN)` : roomCode;
+    badgeEl.classList.toggle("admin-override", isOverride);
+  }
   if (bottomBadge) bottomBadge.textContent = roomCode;
 
   partyChatUnsubscribe = db.collection("campaigns").doc(roomCode).collection("chat")
@@ -6240,7 +6296,7 @@ function renderChatChannelsBar() {
   const infoPrivacy = document.getElementById("chatCurrentChannelPrivacy");
   if (!list) return;
 
-  list.innerHTML = partyChannels.map((chan) => {
+  let channelsHtml = partyChannels.map((chan) => {
     const isActive = chan.id === activePartyChannelId;
     const isPrivate = !chan.isDefault && chan.id !== "general";
     const unread = unreadPerChannel[chan.id] || 0;
@@ -6251,6 +6307,16 @@ function renderChatChannelsBar() {
       </button>
     `;
   }).join("");
+
+  if (isAdminSession()) {
+    channelsHtml += `
+      <button type="button" class="chat-chan-pill admin-rooms-pill" id="adminQuickSwitchCampaignPill" title="Admin: Switch between campaign chats">
+        <span>🏰 Other Campaigns ▾</span>
+      </button>
+    `;
+  }
+
+  list.innerHTML = channelsHtml;
 
   const current = partyChannels.find((c) => c.id === activePartyChannelId) || partyChannels[0];
   if (infoTag) infoTag.textContent = `# ${current.name} ${current.isDefault ? '' : '🔒'}`;
@@ -6382,7 +6448,7 @@ async function confirmCreateChannel() {
 }
 
 async function sendPartyChatMessage(text, type = "chat", payload = null) {
-  const activeRoom = connectedCampaignRoom || activeDMRoomCode;
+  const activeRoom = getActiveChatRoomCode();
   if (!db || !activeRoom) {
     showStatus("Not connected to a party room.");
     return;
@@ -6393,12 +6459,21 @@ async function sendPartyChatMessage(text, type = "chat", payload = null) {
 
   await ensureAuthenticated();
   const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === activeRoom);
-  const senderName = isDM ? "Dungeon Master" : (document.getElementById("charName")?.value?.trim() || "Adventurer");
+  const isMasterAdmin = isAdminSession();
+
+  let senderName = isDM ? "Dungeon Master" : (document.getElementById("charName")?.value?.trim() || "Adventurer");
+  let senderId = activeCharId || auth?.currentUser?.uid || "anon";
+
+  // If admin is chatting in a monitored external campaign room:
+  if (isMasterAdmin && activeChatRoomOverride && activeChatRoomOverride !== (connectedCampaignRoom || activeDMRoomCode)) {
+    senderName = "👑 Master Admin";
+    senderId = "master_admin";
+  }
 
   const targetChannelId = (payload && payload.channelId) || activePartyChannelId || "general";
 
   const messageDoc = {
-    senderId: activeCharId || auth?.currentUser?.uid || "anon",
+    senderId: senderId,
     senderName: senderName,
     isDM: isDM,
     type: type,
@@ -6434,6 +6509,7 @@ function renderPartyChatMessages() {
 
     // Handout targeting and claim status filter
     if (msg.type === "handout" && msg.payload) {
+      if (isAdminSession()) return true; // Admins overseeing a campaign see all handouts
       const h = msg.payload;
       // 1. Only specified recipient (or DM/author) can see targeted handouts
       if (!canISeeHandout(h)) return false;
@@ -6456,7 +6532,7 @@ function renderPartyChatMessages() {
   }
 
   const html = channelMsgs.map((msg) => {
-    const isMe = msg.senderId === activeCharId;
+    const isMe = msg.senderId === activeCharId || (isAdminSession() && (msg.senderId === "master_admin" || msg.senderId === "system"));
     const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
     let contentHtml = `<div class="chat-msg-text">${escapeHtml(msg.text)}</div>`;
 
@@ -6589,8 +6665,14 @@ function toggleFloatingPartyChat(forceOpen = null) {
     return;
   }
 
-  const activeRoom = connectedCampaignRoom || activeDMRoomCode;
+  const activeRoom = getActiveChatRoomCode();
+  const isMasterAdmin = isAdminSession();
+
   if (!activeRoom) {
+    if (isMasterAdmin) {
+      openAdminChatWithoutRoom();
+      return;
+    }
     showStatus("Connect to a party room first to chat!");
     openPartyModal();
     return;
@@ -6604,6 +6686,7 @@ function toggleFloatingPartyChat(forceOpen = null) {
     unreadChatCount = 0;
     unreadPerChannel[activePartyChannelId] = 0;
     updateChatUnreadBadges();
+    updateAdminChatBarUI();
     const input = document.getElementById("floatingChatInput");
     if (input) setTimeout(() => input.focus(), 50);
     const msgs = document.getElementById("floatingChatMessages");
@@ -6686,6 +6769,195 @@ function shareLastRollToPartyChat() {
   const text = `Rolled ${lastBroadcastRoll.desc} = ${lastBroadcastRoll.total}`;
   sendPartyChatMessage(text, "roll", lastBroadcastRoll);
   showStatus("Shared roll to chat!");
+}
+
+/* ==========================================================================
+   ADMIN PARTY CHAT CAMPAIGN SWITCHER & MONITOR
+   ========================================================================== */
+
+async function getAdminActiveCampaignRoomsList() {
+  const roomSet = new Set();
+
+  // 1. Current rooms
+  if (connectedCampaignRoom) roomSet.add(connectedCampaignRoom.trim().toUpperCase());
+  if (activeDMRoomCode) roomSet.add(activeDMRoomCode.trim().toUpperCase());
+  if (activeChatRoomOverride) roomSet.add(activeChatRoomOverride.trim().toUpperCase());
+
+  // 2. Local created and recent rooms
+  getCreatedRooms().forEach((r) => roomSet.add(r.trim().toUpperCase()));
+  getRecentRooms().forEach((r) => roomSet.add(r.trim().toUpperCase()));
+
+  // 3. Firestore query if admin
+  if (db && isAdminSession()) {
+    try {
+      const snap = await db.collection("campaigns").limit(50).get();
+      snap.forEach((doc) => {
+        const id = doc.id;
+        if (id && !id.startsWith("__") && id !== "CODEX_PRESENCE" && id !== "CODEX_GLOBAL_SYSTEM" && id !== "GLOBAL_PRESENCE" && id !== "GLOBAL_SYSTEM") {
+          roomSet.add(id.trim().toUpperCase());
+        }
+      });
+    } catch (err) {
+      console.warn("getAdminActiveCampaignRoomsList query error:", err);
+    }
+  }
+
+  return Array.from(roomSet).filter(Boolean);
+}
+
+function switchAdminChatRoom(roomCode) {
+  if (!roomCode) return;
+  const targetCode = roomCode.trim().toUpperCase();
+  const myRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+
+  if (myRoom && targetCode === myRoom) {
+    activeChatRoomOverride = null;
+  } else {
+    activeChatRoomOverride = targetCode;
+  }
+
+  startPartyChatListener(targetCode);
+  updateAdminChatBarUI();
+  updatePartyStatusUI();
+  showStatus(`Admin: Switched party chat to campaign "${targetCode}"`);
+}
+
+function returnToMyAdminPartyRoom() {
+  activeChatRoomOverride = null;
+  const myRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+  if (myRoom) {
+    startPartyChatListener(myRoom);
+    showStatus(`Returned to your campaign room "${myRoom}"`);
+  } else {
+    updateAdminChatBarUI();
+  }
+  updateAdminChatBarUI();
+  updatePartyStatusUI();
+}
+
+async function openAdminChatWithoutRoom() {
+  showStatus("Opening Party Chat in Admin Mode...");
+  const rooms = await getAdminActiveCampaignRoomsList();
+
+  if (rooms.length > 0) {
+    const targetRoom = rooms[0];
+    activeChatRoomOverride = targetRoom;
+    startPartyChatListener(targetRoom);
+    toggleFloatingPartyChat(true);
+    updateAdminChatBarUI();
+  } else {
+    const custom = prompt("Admin Party Chat Monitor: Enter a Campaign Room Code to inspect:");
+    if (custom && custom.trim()) {
+      const cleanCustom = custom.trim().toUpperCase();
+      activeChatRoomOverride = cleanCustom;
+      startPartyChatListener(cleanCustom);
+      toggleFloatingPartyChat(true);
+      updateAdminChatBarUI();
+    } else {
+      showStatus("No campaign room selected.");
+    }
+  }
+}
+
+async function updateAdminChatBarUI() {
+  const bar = document.getElementById("adminChatCampaignBar");
+  const select = document.getElementById("adminChatCampaignSelect");
+  const myRoomBtn = document.getElementById("adminChatMyRoomBtn");
+  const badgeEl = document.getElementById("floatingChatRoomBadge");
+  const titleEl = document.getElementById("floatingChatRoomTitle");
+  if (!bar || !select) return;
+
+  if (!isAdminSession()) {
+    bar.style.display = "none";
+    if (badgeEl) badgeEl.classList.remove("admin-override");
+    return;
+  }
+
+  bar.style.display = "flex";
+
+  const myRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
+  const currentRoom = (activeChatRoomOverride || myRoom || "").trim().toUpperCase();
+
+  // Populate options
+  const rooms = await getAdminActiveCampaignRoomsList();
+
+  let optionsHtml = "";
+  if (myRoom) {
+    optionsHtml += `<option value="${escapeHtml(myRoom)}">⭐ My Room (${escapeHtml(myRoom)})</option>`;
+  }
+
+  rooms.forEach((r) => {
+    if (r !== myRoom) {
+      optionsHtml += `<option value="${escapeHtml(r)}">🏰 Campaign: ${escapeHtml(r)}</option>`;
+    }
+  });
+
+  optionsHtml += `<option value="__custom__">➕ Custom Room Code...</option>`;
+
+  select.innerHTML = optionsHtml;
+  if (currentRoom) {
+    select.value = currentRoom;
+  }
+
+  // Toggle "↩ My Room" button and titles
+  if (myRoom && activeChatRoomOverride && activeChatRoomOverride !== myRoom) {
+    if (myRoomBtn) {
+      myRoomBtn.style.display = "inline-flex";
+      myRoomBtn.textContent = `↩ My Room (${myRoom})`;
+    }
+    if (badgeEl) {
+      badgeEl.textContent = `${activeChatRoomOverride} (ADMIN)`;
+      badgeEl.classList.add("admin-override");
+    }
+    if (titleEl) {
+      titleEl.textContent = `Party Chat: ${activeChatRoomOverride}`;
+    }
+  } else {
+    if (myRoomBtn) myRoomBtn.style.display = "none";
+    if (badgeEl) {
+      badgeEl.classList.remove("admin-override");
+      if (currentRoom) badgeEl.textContent = currentRoom;
+    }
+    if (titleEl) {
+      titleEl.textContent = currentRoom ? `Party: ${currentRoom}` : "Party Chat";
+    }
+  }
+}
+
+function initAdminChatSwitcherListeners() {
+  const select = document.getElementById("adminChatCampaignSelect");
+  if (select) {
+    select.addEventListener("change", (e) => {
+      const val = e.target.value;
+      if (val === "__custom__") {
+        const custom = prompt("Enter Campaign Room Code to open chat:");
+        if (custom && custom.trim()) {
+          switchAdminChatRoom(custom.trim().toUpperCase());
+        } else {
+          updateAdminChatBarUI();
+        }
+      } else if (val) {
+        switchAdminChatRoom(val);
+      }
+    });
+  }
+
+  const refreshBtn = document.getElementById("adminChatRefreshRoomsBtn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", async () => {
+      refreshBtn.classList.add("codex-spin-icon");
+      await updateAdminChatBarUI();
+      setTimeout(() => refreshBtn.classList.remove("codex-spin-icon"), 400);
+      showStatus("Refreshed campaign rooms list!");
+    });
+  }
+
+  const myRoomBtn = document.getElementById("adminChatMyRoomBtn");
+  if (myRoomBtn) {
+    myRoomBtn.addEventListener("click", () => {
+      returnToMyAdminPartyRoom();
+    });
+  }
 }
 
 /* ==========================================================================
@@ -8707,6 +8979,7 @@ async function loadAdminCampaigns() {
           <span class="admin-room-meta">Source: ${escapeHtml(room.source || "Firestore")} &bull; Logged: ${escapeHtml(dateStr)} ${room.creatorUid ? `&bull; Creator: ${escapeHtml(room.creatorUid.substring(0, 10))}` : ''}</span>
         </div>
         <div class="admin-room-btns">
+          <button type="button" class="btn btn-gold-subtle btn-xs admin-open-chat-room-btn" data-room="${escapeHtml(room.code)}" title="Open live party chat for this campaign">💬 Chat</button>
           <button type="button" class="btn btn-outline btn-xs admin-inspect-room-btn" data-room="${escapeHtml(room.code)}">Inspect</button>
           <button type="button" class="btn btn-outline btn-xs admin-join-room-btn" data-room="${escapeHtml(room.code)}">Direct Join</button>
           <button type="button" class="btn red btn-xs admin-delete-room-btn" data-room="${escapeHtml(room.code)}">Purge</button>
@@ -8840,7 +9113,8 @@ async function inspectAdminRoom(roomCode) {
 
     // Direct Action Buttons
     html += `
-      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem;">
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;">
+        <button type="button" class="btn btn-gold-subtle btn-xs admin-open-chat-room-btn" data-room="${escapeHtml(roomCode)}">💬 Open Live Chat</button>
         <button type="button" class="btn btn-outline btn-xs admin-join-room-btn" data-room="${escapeHtml(roomCode)}">Join Room</button>
         <button type="button" class="btn red btn-xs admin-delete-room-btn" data-room="${escapeHtml(roomCode)}">Purge Room</button>
       </div>
@@ -8889,6 +9163,10 @@ async function deleteAdminRoom(roomCode) {
     if (activeDMRoomCode === roomCode) {
       activeDMRoomCode = "";
       localStorage.removeItem(DM_ROOM_KEY);
+    }
+    if (activeChatRoomOverride === roomCode) {
+      activeChatRoomOverride = null;
+      updateAdminChatBarUI();
     }
     removeCreatedRoom(roomCode);
 
@@ -9616,6 +9894,7 @@ loadAllTraits();
 initPWAAndNetworkStatus();
 initFloatingPartyChatDragAndResize();
 initAdminPanel();
+initAdminChatSwitcherListeners();
 initSessionPresence();
 initGlobalSiteNoticeListener();
 

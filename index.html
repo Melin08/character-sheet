@@ -1566,6 +1566,11 @@
               <span class="status-dot disconnected"></span>
               <span id="partyStatusText">Not connected to any campaign room.</span>
             </div>
+
+            <div id="adminPartyModalQuickChatRow" style="display: none; margin-top: 0.65rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-subtle); justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700;">👑 Admin Access:</span>
+              <button type="button" class="btn btn-gold-subtle btn-xs" id="adminModalOpenPartyChatBtn">💬 Open Party Chat (Browse Any Campaign)</button>
+            </div>
           </div>
 
           <div class="player-party-section" id="playerPartySection" style="margin-top: 1.25rem; display: none;">
@@ -2123,6 +2128,21 @@
           </svg>
         </button>
         <button type="button" class="btn btn-ghost chat-ctrl-btn chat-close-btn" id="floatingChatCloseBtn" title="Close Chat" aria-label="Close Chat">&times;</button>
+      </div>
+    </div>
+
+    <!-- Admin Campaign Switcher Bar (Visible for Admin Sessions) -->
+    <div class="admin-chat-campaign-bar" id="adminChatCampaignBar" style="display: none;">
+      <div class="admin-chat-bar-left">
+        <span class="admin-chat-crown" title="Admin Active">👑</span>
+        <label for="adminChatCampaignSelect" class="admin-chat-label">Campaign:</label>
+        <select id="adminChatCampaignSelect" class="admin-chat-select" title="Switch active campaign chat">
+          <option value="">Loading campaigns...</option>
+        </select>
+        <button type="button" class="admin-chat-icon-btn" id="adminChatRefreshRoomsBtn" title="Scan &amp; refresh active campaign rooms">🔄</button>
+      </div>
+      <div class="admin-chat-bar-right">
+        <button type="button" class="admin-chat-myroom-btn" id="adminChatMyRoomBtn" style="display: none;" title="Return to my joined campaign">↩ My Room</button>
       </div>
     </div>
 
