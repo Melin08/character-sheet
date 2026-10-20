@@ -217,6 +217,12 @@
 
           <div class="auth-box">
             <button class="btn btn-outline" id="authModalBtn" type="button">Account</button>
+            <button class="btn admin-nav-btn" id="topNavAdminBtn" type="button" style="display: none;" title="Master Admin Control Panel">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+              <span>Admin</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1698,10 +1704,257 @@
         <div id="authLoggedInView" style="display: none;">
           <p class="auth-user-label">Signed in as</p>
           <p id="currentUserText" class="auth-user-email"></p>
+          <div id="adminBadgeInAccount" class="admin-account-badge" style="display: none;">👑 Master Admin Verified</div>
           <div class="auth-sync-status" id="cloudSyncStatus">Cloud Sync: Active</div>
+          <button class="btn btn-primary-gold admin-account-btn" id="openAdminFromAuthModalBtn" type="button" style="display: none; margin-bottom: 0.75rem; width: 100%;">🛡️ Open Master Admin Panel</button>
           <button class="btn red auth-logout-btn" id="logoutBtn" type="button">Log Out</button>
         </div>
         <p id="authErrorMsg" class="auth-error-msg"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MASTER ADMIN CONTROL PANEL MODAL (RESTRICTED TO OWNER EMAIL) -->
+  <div id="adminModal" class="modal-backdrop" role="dialog" aria-modal="true" style="display: none;">
+    <div class="modal-box admin-modal-box">
+      <div class="modal-header admin-modal-header">
+        <div class="admin-title-wrap">
+          <span class="admin-crown-icon">👑</span>
+          <div>
+            <h3>Master Admin Panel</h3>
+            <span class="admin-subtitle" id="adminSessionSubtitle">Restricted System Access</span>
+          </div>
+        </div>
+        <button id="closeAdminModal" class="modal-close-btn" type="button" aria-label="Close admin modal">&times;</button>
+      </div>
+
+      <!-- Segmented Admin Navigation Strip -->
+      <div class="admin-nav-tabs" id="adminNavTabs">
+        <button type="button" class="admin-tab-btn active" data-tab="adminTabOverview">
+          <span>📊 Overview</span>
+        </button>
+        <button type="button" class="admin-tab-btn" data-tab="adminTabCampaigns">
+          <span>🏰 Campaign Rooms</span>
+        </button>
+        <button type="button" class="admin-tab-btn" data-tab="adminTabBroadcast">
+          <span>📢 Broadcast Alert</span>
+        </button>
+        <button type="button" class="admin-tab-btn" data-tab="adminTabDispenser">
+          <span>⚔️ Item Dispenser</span>
+        </button>
+        <button type="button" class="admin-tab-btn" data-tab="adminTabDiagnostics">
+          <span>🛠️ Data &amp; Health</span>
+        </button>
+      </div>
+
+      <div class="admin-modal-content">
+        <!-- 1. Overview Tab -->
+        <div id="adminTabOverview" class="admin-tab-pane active">
+          <div class="admin-session-card">
+            <div class="admin-session-info">
+              <span class="admin-badge-pill">👑 Verified Owner Session</span>
+              <strong id="adminUserEmailText" class="admin-email-highlight">ludvigpoulsen08@gmail.com</strong>
+              <span id="adminUserUidText" class="admin-uid-text">UID: Checking...</span>
+            </div>
+            <div class="admin-session-actions">
+              <button type="button" class="btn btn-outline btn-xs" id="adminRefreshStatsBtn">Refresh Metrics</button>
+            </div>
+          </div>
+
+          <div class="admin-bento-grid">
+            <div class="admin-stat-card">
+              <span class="admin-stat-label">Local Characters</span>
+              <span class="admin-stat-value" id="adminStatRosterCount">0</span>
+              <span class="admin-stat-sub">Saved in Codex Roster</span>
+            </div>
+            <div class="admin-stat-card">
+              <span class="admin-stat-label">Active Party Connection</span>
+              <span class="admin-stat-value" id="adminStatPartyRoom">None</span>
+              <span class="admin-stat-sub" id="adminStatPartyRole">Stand-alone Mode</span>
+            </div>
+            <div class="admin-stat-card">
+              <span class="admin-stat-label">Local Storage Footprint</span>
+              <span class="admin-stat-value" id="adminStatStorageSize">0 KB</span>
+              <span class="admin-stat-sub">Browser Quota Active</span>
+            </div>
+            <div class="admin-stat-card">
+              <span class="admin-stat-label">Cloud Firestore</span>
+              <span class="admin-stat-value" id="adminStatCloudStatus" style="color: #10b981;">Online</span>
+              <span class="admin-stat-sub">Live Sync Engine</span>
+            </div>
+          </div>
+
+          <div class="admin-quick-actions-bar">
+            <button type="button" class="btn btn-primary btn-sm" id="adminQuickScanRoomsBtn">Scan Active Campaign Rooms</button>
+            <button type="button" class="btn btn-outline btn-sm" id="adminQuickExportDumpBtn">Download Complete JSON Backup</button>
+          </div>
+        </div>
+
+        <!-- 2. Campaign Rooms Inspector Tab -->
+        <div id="adminTabCampaigns" class="admin-tab-pane">
+          <div class="admin-section-header">
+            <div>
+              <h4 style="margin: 0; font-size: 0.95rem;">Active Campaign Rooms</h4>
+              <p style="margin: 2px 0 0; font-size: 0.76rem; color: var(--text-muted);">Inspect, monitor, join, or terminate party campaign rooms in Firestore.</p>
+            </div>
+            <button type="button" class="btn btn-outline btn-xs" id="adminFetchRoomsBtn">Scan Now</button>
+          </div>
+
+          <div id="adminRoomsList" class="admin-rooms-list">
+            <div class="admin-empty-notice">Click "Scan Now" to query active campaign rooms from Firestore.</div>
+          </div>
+
+          <div id="adminRoomDetailDrawer" class="admin-room-drawer" style="display: none;">
+            <div class="admin-drawer-header">
+              <strong id="adminDrawerTitle">Room Inspection</strong>
+              <button type="button" class="btn btn-ghost btn-xs" id="adminCloseDrawerBtn">&times;</button>
+            </div>
+            <div id="adminDrawerContent" class="admin-drawer-content"></div>
+          </div>
+        </div>
+
+        <!-- 3. Broadcast Alert Tab -->
+        <div id="adminTabBroadcast" class="admin-tab-pane">
+          <div class="admin-section-header">
+            <div>
+              <h4 style="margin: 0; font-size: 0.95rem;">Global &amp; Room System Broadcast</h4>
+              <p style="margin: 2px 0 0; font-size: 0.76rem; color: var(--text-muted);">Transmit an official system decree or maintenance notice into campaign party chats.</p>
+            </div>
+          </div>
+
+          <form id="adminBroadcastForm" class="admin-form-group">
+            <div class="handout-form-row">
+              <label class="handout-form-label">
+                <span>Target Destination</span>
+                <select id="adminBroadcastTarget" class="handout-form-input">
+                  <option value="current">Current Connected Room</option>
+                  <option value="all">All Known Active Campaign Rooms</option>
+                  <option value="custom">Specific Room Code...</option>
+                </select>
+              </label>
+              <label class="handout-form-label" id="adminCustomRoomCodeWrap" style="display: none;">
+                <span>Specific Room Code</span>
+                <input type="text" id="adminCustomRoomCode" class="handout-form-input" placeholder="e.g. REALM-4821" />
+              </label>
+              <label class="handout-form-label">
+                <span>Message Style</span>
+                <select id="adminBroadcastStyle" class="handout-form-input">
+                  <option value="system">📢 System Alert</option>
+                  <option value="dm">👑 Admin Decree</option>
+                  <option value="maint">⚠️ Server Maintenance Notice</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="handout-form-label">
+              <span>Broadcast Content</span>
+              <textarea id="adminBroadcastText" class="handout-form-textarea" placeholder="Type system announcement text here..." style="min-height: 90px;"></textarea>
+            </label>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
+              <button type="submit" class="btn btn-primary" id="adminSendBroadcastBtn">Transmit Announcement</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 4. Master Item Dispenser Tab -->
+        <div id="adminTabDispenser" class="admin-tab-pane">
+          <div class="admin-section-header">
+            <div>
+              <h4 style="margin: 0; font-size: 0.95rem;">Master Item &amp; Treasure Dispenser</h4>
+              <p style="margin: 2px 0 0; font-size: 0.76rem; color: var(--text-muted);">Directly generate and award custom loot or legendary artifacts to any room or player.</p>
+            </div>
+          </div>
+
+          <form id="adminDispenserForm" class="admin-form-group">
+            <div class="handout-form-row">
+              <label class="handout-form-label">
+                <span>Quick Preset Template</span>
+                <select id="adminPresetSelect" class="handout-form-input">
+                  <option value="custom">-- Custom Item / Weapon --</option>
+                  <option value="vorpal">Vorpal Greatsword (+3, 2d6+3 slashing, decapitate)</option>
+                  <option value="flametongue">Flame Tongue Longsword (1d8 slashing + 2d6 fire)</option>
+                  <option value="potions">5x Potions of Superior Healing (8d4+8 HP)</option>
+                  <option value="bag">Bag of Holding (Capacity 500 lbs, 64 cu ft)</option>
+                  <option value="goldchest">Treasure Chest (500 GP, 50 PP, 100 SP)</option>
+                </select>
+              </label>
+              <label class="handout-form-label">
+                <span>Target Room</span>
+                <input type="text" id="adminDispenserRoom" class="handout-form-input" placeholder="Current Connected Room" />
+              </label>
+            </div>
+
+            <div class="handout-form-row">
+              <label class="handout-form-label">
+                <span>Item Name</span>
+                <input type="text" id="adminDispenserName" class="handout-form-input" placeholder="e.g. Staff of the Magi" required />
+              </label>
+              <label class="handout-form-label">
+                <span>Category</span>
+                <select id="adminDispenserType" class="handout-form-input">
+                  <option value="weapon">Weapon (Combat Arsenal)</option>
+                  <option value="item">Loot Item (Inventory)</option>
+                  <option value="coin">Coins (Vault)</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="handout-form-row">
+              <label class="handout-form-label">
+                <span>Damage / Value / Qty</span>
+                <input type="text" id="adminDispenserDmg" class="handout-form-input" placeholder="e.g. 2d6+3, or 5, or 500 GP" />
+              </label>
+              <label class="handout-form-label">
+                <span>Recipient (Player or 'all')</span>
+                <input type="text" id="adminDispenserRecipient" class="handout-form-input" value="all" placeholder="all or character name" />
+              </label>
+            </div>
+
+            <label class="handout-form-label">
+              <span>Item Description &amp; Properties</span>
+              <textarea id="adminDispenserNotes" class="handout-form-textarea" placeholder="Magic item lore, attunement requirements, or special properties..." style="min-height: 80px;"></textarea>
+            </label>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem;">
+              <button type="submit" class="btn btn-primary" id="adminSpawnItemBtn">Spawn &amp; Award Loot Handout</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 5. Data & Diagnostics Tab -->
+        <div id="adminTabDiagnostics" class="admin-tab-pane">
+          <div class="admin-section-header">
+            <div>
+              <h4 style="margin: 0; font-size: 0.95rem;">System Health &amp; Maintenance Diagnostics</h4>
+              <p style="margin: 2px 0 0; font-size: 0.76rem; color: var(--text-muted);">Benchmark database latency, manage backups, and configure trusted administrators.</p>
+            </div>
+          </div>
+
+          <div class="admin-diag-section">
+            <h5 style="margin:0 0 0.35rem 0; font-size:0.84rem;">⚡ Database Latency Benchmark</h5>
+            <div style="display: flex; align-items: center; gap: 0.85rem; margin-top: 0.4rem;">
+              <button type="button" class="btn btn-outline btn-xs" id="adminPingBtn">Ping Firestore Database</button>
+              <span id="adminPingResult" style="font-size: 0.82rem; color: var(--accent-gold); font-weight: 700;">Ready to test</span>
+            </div>
+          </div>
+
+          <div class="admin-diag-section" style="margin-top: 1rem;">
+            <h5 style="margin:0 0 0.35rem 0; font-size:0.84rem;">💾 Master JSON Roster Dump</h5>
+            <p style="font-size: 0.76rem; color: var(--text-muted); margin: 0.2rem 0 0.45rem;">Export all character profiles, inventory states, and settings to a complete offline archive.</p>
+            <button type="button" class="btn btn-outline btn-xs" id="adminFullDumpBtn">Download Complete JSON Backup</button>
+          </div>
+
+          <div class="admin-diag-section" style="margin-top: 1rem;">
+            <h5 style="margin:0 0 0.35rem 0; font-size:0.84rem;">👥 Additional Trusted Admin Emails</h5>
+            <p style="font-size: 0.76rem; color: var(--text-muted); margin: 0.2rem 0 0.45rem;">The primary owner email (<strong>ludvigpoulsen08@gmail.com</strong>) always has master authorization. You can add secondary admin emails below.</p>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <input type="email" id="adminNewEmailInput" class="handout-form-input" placeholder="secondary-admin@example.com" style="flex: 1;" />
+              <button type="button" class="btn btn-primary btn-xs" id="adminAddEmailBtn">Add Admin</button>
+            </div>
+            <div id="adminEmailsList" style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.35rem;"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

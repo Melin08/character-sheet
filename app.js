@@ -1654,11 +1654,42 @@ function setAuthError(message) {
   if (el) el.textContent = message || "";
 }
 
+const PRIMARY_ADMIN_EMAIL = "ludvigpoulsen08@gmail.com";
+let additionalAdminEmails = [];
+try {
+  additionalAdminEmails = JSON.parse(localStorage.getItem("codex_admin_emails") || "[]");
+  if (!Array.isArray(additionalAdminEmails)) additionalAdminEmails = [];
+} catch (e) {
+  additionalAdminEmails = [];
+}
+
+function isAdminSession(user = auth?.currentUser) {
+  if (!user || user.isAnonymous) return false;
+  const email = (user.email || "").trim().toLowerCase();
+  if (!email) return false;
+  if (email === PRIMARY_ADMIN_EMAIL.toLowerCase()) return true;
+  if (additionalAdminEmails.map((e) => (e || "").toLowerCase()).includes(email)) return true;
+  return false;
+}
+
 function updateAuthUI(user) {
   const authBtn = document.getElementById("authModalBtn");
   const loggedOutView = document.getElementById("authLoggedOutView");
   const loggedInView = document.getElementById("authLoggedInView");
   const userText = document.getElementById("currentUserText");
+  const topNavAdminBtn = document.getElementById("topNavAdminBtn");
+  const adminBadgeInAccount = document.getElementById("adminBadgeInAccount");
+  const openAdminFromAuthModalBtn = document.getElementById("openAdminFromAuthModalBtn");
+
+  const isAdmin = isAdminSession(user);
+
+  if (topNavAdminBtn) topNavAdminBtn.style.display = isAdmin ? "inline-flex" : "none";
+  if (adminBadgeInAccount) adminBadgeInAccount.style.display = isAdmin ? "block" : "none";
+  if (openAdminFromAuthModalBtn) openAdminFromAuthModalBtn.style.display = isAdmin ? "block" : "none";
+
+  if (!isAdmin) {
+    closeAdminModal();
+  }
 
   if (user && !user.isAnonymous) {
     if (authBtn) authBtn.textContent = user.displayName || user.email.split("@")[0];
@@ -1881,6 +1912,10 @@ function navigateToSearchedThing(item) {
     openPartyModal();
     return;
   }
+  if (item.action === "open-admin") {
+    openAdminModal();
+    return;
+  }
   if (item.action === "open-chat") {
     toggleFloatingPartyChat(true);
     const chat = document.getElementById("floatingPartyChat") || document.getElementById("floatingPartyChatContainer");
@@ -2048,6 +2083,15 @@ function buildQuickSearchIndex(query = "") {
   const items = [];
 
   // 1. MAIN NAVIGATION TABS
+  if (isAdminSession()) {
+    items.push({
+      title: "Master Admin Control Panel",
+      sub: "Restricted campaign rooms inspector, global broadcast & system health",
+      tag: "Admin",
+      action: "open-admin",
+      keywords: "admin master panel rooms broadcast owner system"
+    });
+  }
   items.push(
     { title: "Combat & Core Tab", sub: "Vitals, Ability Scores, Skills & Weapon Attacks", tag: "Navigation", tab: "tab-stats", selector: "#tab-stats", keywords: "combat core vitals hp ac stats sheet" },
     { title: "Features & Traits Tab", sub: "Class Features, Feats & Racial Traits", tag: "Navigation", tab: "tab-traits", selector: "#tab-traits", keywords: "features traits abilities feats class" },
@@ -4731,6 +4775,73 @@ function exportCharacterJson() {
         document.execCommand("copy");
         showStatus("Copied to clipboard!");
       });
+    }
+    return;
+  }
+
+  // Master Admin Panel Trigger Controls
+  if (e.target.id === "topNavAdminBtn" || e.target.closest("#topNavAdminBtn") || e.target.id === "openAdminFromAuthModalBtn" || e.target.closest("#openAdminFromAuthModalBtn")) {
+    openAdminModal();
+    return;
+  }
+  if (e.target.id === "closeAdminModal" || e.target.closest("#closeAdminModal")) {
+    closeAdminModal();
+    return;
+  }
+  const adminTabBtn = e.target.closest(".admin-tab-btn");
+  if (adminTabBtn && adminTabBtn.dataset.tab) {
+    switchAdminTab(adminTabBtn.dataset.tab);
+    return;
+  }
+  const adminInspectBtn = e.target.closest(".admin-inspect-room-btn");
+  if (adminInspectBtn && adminInspectBtn.dataset.room) {
+    inspectAdminRoom(adminInspectBtn.dataset.room);
+    return;
+  }
+  const adminJoinBtn = e.target.closest(".admin-join-room-btn");
+  if (adminJoinBtn && adminJoinBtn.dataset.room) {
+    joinCampaignRoom(adminJoinBtn.dataset.room);
+    closeAdminModal();
+    return;
+  }
+  const adminDeleteBtn = e.target.closest(".admin-delete-room-btn");
+  if (adminDeleteBtn && adminDeleteBtn.dataset.room) {
+    deleteAdminRoom(adminDeleteBtn.dataset.room);
+    return;
+  }
+  if (e.target.id === "adminCloseDrawerBtn") {
+    const drawer = document.getElementById("adminRoomDetailDrawer");
+    if (drawer) drawer.style.display = "none";
+    return;
+  }
+  if (e.target.id === "adminFetchRoomsBtn" || e.target.id === "adminQuickScanRoomsBtn") {
+    switchAdminTab("adminTabCampaigns");
+    loadAdminCampaigns();
+    return;
+  }
+  if (e.target.id === "adminRefreshStatsBtn") {
+    loadAdminOverview();
+    showStatus("Refreshed system metrics!");
+    return;
+  }
+  if (e.target.id === "adminQuickExportDumpBtn" || e.target.id === "adminFullDumpBtn") {
+    exportMasterJsonDump();
+    return;
+  }
+  if (e.target.id === "adminPingBtn") {
+    benchmarkFirestoreLatency();
+    return;
+  }
+  const removeEmailBtn = e.target.closest(".admin-remove-email-btn");
+  if (removeEmailBtn && removeEmailBtn.dataset.email) {
+    removeAdditionalAdminEmail(removeEmailBtn.dataset.email);
+    return;
+  }
+  if (e.target.id === "adminAddEmailBtn") {
+    const input = document.getElementById("adminNewEmailInput");
+    if (input) {
+      addAdditionalAdminEmail(input.value);
+      input.value = "";
     }
     return;
   }
@@ -7986,6 +8097,754 @@ function initFloatingPartyChatDragAndResize() {
 }
 
 /* ==========================================================================
+   MASTER ADMIN PANEL CONTROLLER (RESTRICTED TO OWNER EMAIL)
+   ========================================================================== */
+
+function openAdminModal() {
+  if (!isAdminSession()) {
+    showStatus("Access restricted to master administrator.", 3000);
+    return;
+  }
+  const modal = document.getElementById("adminModal");
+  if (modal) {
+    modal.style.display = "flex";
+    modal.classList.add("open");
+  }
+  loadAdminOverview();
+}
+
+function closeAdminModal() {
+  const modal = document.getElementById("adminModal");
+  if (modal) {
+    modal.classList.remove("open");
+    modal.style.display = "none";
+  }
+}
+
+function switchAdminTab(tabId) {
+  const tabs = document.querySelectorAll(".admin-tab-btn");
+  tabs.forEach((tab) => {
+    if (tab.dataset.tab === tabId) {
+      tab.classList.add("active");
+    } else {
+      tab.classList.remove("active");
+    }
+  });
+
+  const panes = document.querySelectorAll(".admin-tab-pane");
+  panes.forEach((pane) => {
+    if (pane.id === tabId) {
+      pane.classList.add("active");
+    } else {
+      pane.classList.remove("active");
+    }
+  });
+
+  if (tabId === "adminTabCampaigns") {
+    loadAdminCampaigns();
+  } else if (tabId === "adminTabOverview") {
+    loadAdminOverview();
+  } else if (tabId === "adminTabDiagnostics") {
+    renderAdminEmailsList();
+  }
+}
+
+function loadAdminOverview() {
+  const emailEl = document.getElementById("adminUserEmailText");
+  const uidEl = document.getElementById("adminUserUidText");
+  const rosterCountEl = document.getElementById("adminStatRosterCount");
+  const roomEl = document.getElementById("adminStatPartyRoom");
+  const roleEl = document.getElementById("adminStatPartyRole");
+  const storageEl = document.getElementById("adminStatStorageSize");
+
+  const curUser = auth?.currentUser;
+  if (emailEl) emailEl.textContent = (curUser && curUser.email) || PRIMARY_ADMIN_EMAIL;
+  if (uidEl) uidEl.textContent = `UID: ${(curUser && curUser.uid) || "Local/Dev"}`;
+
+  try {
+    const roster = JSON.parse(localStorage.getItem(ROSTER_STORAGE_KEY) || "{}");
+    if (rosterCountEl) rosterCountEl.textContent = Object.keys(roster).length;
+  } catch (e) {
+    if (rosterCountEl) rosterCountEl.textContent = "1";
+  }
+
+  const activeRoom = connectedCampaignRoom || activeDMRoomCode;
+  if (roomEl) roomEl.textContent = activeRoom || "None";
+  if (roleEl) {
+    roleEl.textContent = activeDMRoomCode ? "Hosting as DM" : (connectedCampaignRoom ? "Connected as Player" : "Stand-alone Mode");
+  }
+
+  try {
+    let totalBytes = 0;
+    for (let key in localStorage) {
+      if (localStorage.hasOwnProperty(key)) {
+        totalBytes += ((localStorage[key].length + key.length) * 2);
+      }
+    }
+    const kb = (totalBytes / 1024).toFixed(1);
+    if (storageEl) storageEl.textContent = `${kb} KB`;
+  } catch (e) {
+    if (storageEl) storageEl.textContent = "Unknown";
+  }
+
+  // Pre-fill target room inputs if active
+  const broadcastInput = document.getElementById("adminCustomRoomCode");
+  if (broadcastInput && activeRoom && !broadcastInput.value) {
+    broadcastInput.value = activeRoom;
+  }
+  const dispenserRoom = document.getElementById("adminDispenserRoom");
+  if (dispenserRoom && activeRoom && !dispenserRoom.value) {
+    dispenserRoom.value = activeRoom;
+  }
+}
+
+async function loadAdminCampaigns() {
+  const container = document.getElementById("adminRoomsList");
+  if (!container) return;
+
+  container.innerHTML = `<div class="admin-empty-notice"><span class="codex-spin-icon">⏳</span> Querying Firestore campaign records...</div>`;
+
+  const discoveredRooms = new Map();
+
+  // 1. Gather all local created and recent rooms
+  getCreatedRooms().forEach((code) => {
+    discoveredRooms.set(code, { code, isCreatedByMe: true, source: "Local Creator Registry" });
+  });
+  getRecentRooms().forEach((code) => {
+    if (!discoveredRooms.has(code)) {
+      discoveredRooms.set(code, { code, source: "Recent History" });
+    }
+  });
+  if (connectedCampaignRoom && !discoveredRooms.has(connectedCampaignRoom)) {
+    discoveredRooms.set(connectedCampaignRoom, { code: connectedCampaignRoom, source: "Active Session" });
+  }
+  if (activeDMRoomCode && !discoveredRooms.has(activeDMRoomCode)) {
+    discoveredRooms.set(activeDMRoomCode, { code: activeDMRoomCode, isCreatedByMe: true, source: "Active DM Session" });
+  }
+
+  // 2. Query Firestore collection
+  if (db) {
+    try {
+      const snap = await db.collection("campaigns").limit(50).get();
+      snap.forEach((doc) => {
+        const data = doc.data() || {};
+        const code = doc.id;
+        discoveredRooms.set(code, {
+          code,
+          creatorUid: data.creatorUid || "unknown",
+          createdAt: data.createdAt,
+          isCreatedByMe: data.creatorUid === auth?.currentUser?.uid,
+          source: "Live Firestore"
+        });
+      });
+    } catch (err) {
+      console.warn("Admin could not list all campaigns directly from Firestore:", err);
+    }
+  }
+
+  if (discoveredRooms.size === 0) {
+    container.innerHTML = `
+      <div class="admin-empty-notice">
+        No active or historic campaign rooms found. When rooms are created or joined, they will appear here.
+      </div>
+    `;
+    return;
+  }
+
+  const roomItems = Array.from(discoveredRooms.values());
+  container.innerHTML = roomItems.map((room) => {
+    const isCurrent = (connectedCampaignRoom === room.code || activeDMRoomCode === room.code);
+    const dateStr = room.createdAt ? new Date(room.createdAt).toLocaleDateString() : (room.source || "Active");
+    return `
+      <div class="admin-room-item">
+        <div class="admin-room-info">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="admin-room-code">${escapeHtml(room.code)}</span>
+            ${isCurrent ? '<span class="admin-badge-pill" style="color: #4ade80;">Active</span>' : ''}
+            ${room.isCreatedByMe ? '<span class="admin-badge-pill" style="color: var(--accent-gold);">Host</span>' : ''}
+          </div>
+          <span class="admin-room-meta">Source: ${escapeHtml(room.source || "Firestore")} &bull; Logged: ${escapeHtml(dateStr)} ${room.creatorUid ? `&bull; Creator: ${escapeHtml(room.creatorUid.substring(0, 10))}` : ''}</span>
+        </div>
+        <div class="admin-room-btns">
+          <button type="button" class="btn btn-outline btn-xs admin-inspect-room-btn" data-room="${escapeHtml(room.code)}">Inspect</button>
+          <button type="button" class="btn btn-outline btn-xs admin-join-room-btn" data-room="${escapeHtml(room.code)}">Direct Join</button>
+          <button type="button" class="btn red btn-xs admin-delete-room-btn" data-room="${escapeHtml(room.code)}">Purge</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function inspectAdminRoom(roomCode) {
+  const drawer = document.getElementById("adminRoomDetailDrawer");
+  const title = document.getElementById("adminDrawerTitle");
+  const content = document.getElementById("adminDrawerContent");
+  if (!drawer || !content) return;
+
+  drawer.style.display = "block";
+  if (title) title.textContent = `Inspecting Room: ${roomCode}`;
+  content.innerHTML = `<div style="text-align:center; padding: 1rem; color: var(--text-dim);"><span class="codex-spin-icon">⏳</span> Fetching room data from Firestore...</div>`;
+
+  if (!db) {
+    content.innerHTML = `<div style="color: #f87171;">Firestore is not connected.</div>`;
+    return;
+  }
+
+  try {
+    const roomRef = db.collection("campaigns").doc(roomCode);
+    const [roomDoc, membersSnap, chatSnap, handoutsSnap] = await Promise.all([
+      roomRef.get().catch(() => null),
+      roomRef.collection("members").get().catch(() => null),
+      roomRef.collection("chat").orderBy("timestamp", "desc").limit(10).get().catch(() => null),
+      roomRef.collection("handouts").get().catch(() => null)
+    ]);
+
+    const roomData = roomDoc && roomDoc.exists ? roomDoc.data() : null;
+    const members = [];
+    if (membersSnap) {
+      membersSnap.forEach((d) => members.push({ id: d.id, ...d.data() }));
+    }
+    const messages = [];
+    if (chatSnap) {
+      chatSnap.forEach((d) => messages.push({ id: d.id, ...d.data() }));
+    }
+    const handouts = [];
+    if (handoutsSnap) {
+      handoutsSnap.forEach((d) => handouts.push({ id: d.id, ...d.data() }));
+    }
+
+    const createdDate = roomData?.createdAt ? new Date(roomData.createdAt).toLocaleString() : "Unknown";
+
+    let html = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.75rem;">
+        <div style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px;">
+          <span style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">Room Status</span><br>
+          <strong style="color: ${roomDoc?.exists ? '#4ade80' : '#f87171'};">${roomDoc?.exists ? 'Document Exists' : 'Virtual / Subcollections Only'}</strong>
+        </div>
+        <div style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px;">
+          <span style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">Registered Members</span><br>
+          <strong>${members.length} player(s)</strong>
+        </div>
+        <div style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px;">
+          <span style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">Handouts</span><br>
+          <strong>${handouts.length} item(s)</strong>
+        </div>
+        <div style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px;">
+          <span style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">Created Date</span><br>
+          <span style="font-size:0.75rem;">${escapeHtml(createdDate)}</span>
+        </div>
+      </div>
+    `;
+
+    // Members list
+    html += `<h5 style="margin: 0.5rem 0 0.25rem 0; font-size: 0.78rem; text-transform: uppercase; color: var(--accent-gold);">Party Members (${members.length})</h5>`;
+    if (members.length === 0) {
+      html += `<p style="font-size:0.75rem; color:var(--text-muted); margin:0 0 0.5rem;">No members currently registered in this room.</p>`;
+    } else {
+      html += `<div style="display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.75rem;">`;
+      members.forEach((m) => {
+        const hpCur = m.hp?.cur !== undefined ? m.hp.cur : "-";
+        const hpMax = m.hp?.max !== undefined ? m.hp.max : "-";
+        const ac = m.ac !== undefined ? m.ac : "-";
+        const charCls = [m.charClass, m.level ? `Lvl ${m.level}` : ""].filter(Boolean).join(" ");
+        html += `
+          <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); padding: 0.4rem 0.6rem; border-radius: 4px; border: 1px solid var(--border-subtle);">
+            <div>
+              <strong style="color: #ffffff;">${escapeHtml(m.name || "Unnamed Adventurer")}</strong>
+              <span style="font-size: 0.7rem; color: var(--text-dim); margin-left: 0.4rem;">${escapeHtml(charCls || "Adventurer")}</span>
+            </div>
+            <div style="font-size: 0.74rem; font-family: 'JetBrains Mono', monospace;">
+              <span style="color: #4ade80;">HP: ${hpCur}/${hpMax}</span> &bull; <span>AC: ${ac}</span>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+
+    // Recent Chat preview
+    html += `<h5 style="margin: 0.5rem 0 0.25rem 0; font-size: 0.78rem; text-transform: uppercase; color: var(--accent-gold);">Recent Chat Messages (${messages.length})</h5>`;
+    if (messages.length === 0) {
+      html += `<p style="font-size:0.75rem; color:var(--text-muted); margin:0 0 0.5rem;">No chat messages recorded.</p>`;
+    } else {
+      html += `<div style="display: flex; flex-direction: column; gap: 0.25rem; max-height: 140px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px; font-size: 0.74rem;">`;
+      messages.forEach((msg) => {
+        const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : "";
+        html += `
+          <div>
+            <span style="color: var(--accent-gold); font-weight: 700;">${escapeHtml(msg.senderName || "Unknown")}:</span>
+            <span style="color: var(--text-main); margin-left: 0.3rem;">${escapeHtml((msg.text || "").substring(0, 80))}</span>
+            <span style="color: var(--text-dim); font-size: 0.65rem; margin-left: 0.4rem;">${escapeHtml(time)}</span>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+
+    // Direct Action Buttons
+    html += `
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem;">
+        <button type="button" class="btn btn-outline btn-xs admin-join-room-btn" data-room="${escapeHtml(roomCode)}">Join Room</button>
+        <button type="button" class="btn red btn-xs admin-delete-room-btn" data-room="${escapeHtml(roomCode)}">Purge Room</button>
+      </div>
+    `;
+
+    content.innerHTML = html;
+  } catch (err) {
+    console.error("Inspect room error:", err);
+    content.innerHTML = `<div style="color: #f87171;">Failed to inspect room: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function deleteAdminRoom(roomCode) {
+  if (!confirm(`Are you sure you want to permanently purge room "${roomCode}"? All members, chat messages, and loot will be removed.`)) {
+    return;
+  }
+  showStatus(`Purging campaign room ${roomCode}...`);
+  try {
+    if (db) {
+      // Purge members
+      const membersSnap = await db.collection("campaigns").doc(roomCode).collection("members").get().catch(() => null);
+      if (membersSnap && !membersSnap.empty) {
+        const batch1 = db.batch();
+        membersSnap.docs.forEach((doc) => batch1.delete(doc.ref));
+        await batch1.commit().catch(() => {});
+      }
+      // Purge chat
+      const chatSnap = await db.collection("campaigns").doc(roomCode).collection("chat").get().catch(() => null);
+      if (chatSnap && !chatSnap.empty) {
+        const batch2 = db.batch();
+        chatSnap.docs.forEach((doc) => batch2.delete(doc.ref));
+        await batch2.commit().catch(() => {});
+      }
+      // Purge handouts
+      const handoutsSnap = await db.collection("campaigns").doc(roomCode).collection("handouts").get().catch(() => null);
+      if (handoutsSnap && !handoutsSnap.empty) {
+        const batch3 = db.batch();
+        handoutsSnap.docs.forEach((doc) => batch3.delete(doc.ref));
+        await batch3.commit().catch(() => {});
+      }
+      // Delete parent room doc
+      await db.collection("campaigns").doc(roomCode).delete().catch(() => {});
+    }
+
+    if (connectedCampaignRoom === roomCode) leaveCampaignRoom();
+    if (activeDMRoomCode === roomCode) {
+      activeDMRoomCode = "";
+      localStorage.removeItem(DM_ROOM_KEY);
+    }
+    removeCreatedRoom(roomCode);
+
+    const drawer = document.getElementById("adminRoomDetailDrawer");
+    if (drawer) drawer.style.display = "none";
+
+    showStatus(`Room "${roomCode}" successfully purged.`);
+    loadAdminCampaigns();
+  } catch (err) {
+    console.error("Purge room error:", err);
+    removeCreatedRoom(roomCode);
+    showStatus(`Notice: Room removed locally (${err.message})`, 4000);
+    loadAdminCampaigns();
+  }
+}
+
+async function sendAdminBroadcast(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
+  if (!isAdminSession()) {
+    showStatus("Unauthorized broadcast attempt.");
+    return;
+  }
+
+  const targetSelect = document.getElementById("adminBroadcastTarget")?.value || "current";
+  const customRoomInput = document.getElementById("adminCustomRoomCode")?.value?.trim().toUpperCase();
+  const style = document.getElementById("adminBroadcastStyle")?.value || "system";
+  const textInput = document.getElementById("adminBroadcastText");
+  const rawText = textInput ? textInput.value.trim() : "";
+
+  if (!rawText) {
+    alert("Please enter the announcement text to broadcast.");
+    return;
+  }
+
+  let targetRooms = [];
+  if (targetSelect === "current") {
+    const cur = connectedCampaignRoom || activeDMRoomCode;
+    if (!cur) {
+      alert("You are not currently connected to any campaign room. Choose 'Specific Room Code' or 'All Active Campaign Rooms'.");
+      return;
+    }
+    targetRooms.push(cur);
+  } else if (targetSelect === "custom") {
+    if (!customRoomInput) {
+      alert("Please enter the specific room code to broadcast to.");
+      return;
+    }
+    targetRooms.push(customRoomInput);
+  } else if (targetSelect === "all") {
+    const set = new Set();
+    getCreatedRooms().forEach((r) => set.add(r));
+    getRecentRooms().forEach((r) => set.add(r));
+    if (connectedCampaignRoom) set.add(connectedCampaignRoom);
+    if (activeDMRoomCode) set.add(activeDMRoomCode);
+    if (db) {
+      try {
+        const snap = await db.collection("campaigns").limit(50).get();
+        snap.forEach((doc) => set.add(doc.id));
+      } catch (err) {}
+    }
+    targetRooms = Array.from(set);
+    if (targetRooms.length === 0) {
+      alert("No active campaign rooms found to broadcast to.");
+      return;
+    }
+  }
+
+  let formattedText = rawText;
+  let senderName = "👑 Master Admin";
+  if (style === "system") {
+    senderName = "📢 System Alert";
+    formattedText = `[SYSTEM NOTICE]: ${rawText}`;
+  } else if (style === "maint") {
+    senderName = "⚠️ Maintenance Notice";
+    formattedText = `[SCHEDULED MAINTENANCE]: ${rawText}`;
+  } else {
+    senderName = "👑 Master Admin";
+    formattedText = `[ADMIN DECREE]: ${rawText}`;
+  }
+
+  showStatus(`Transmitting broadcast to ${targetRooms.length} room(s)...`);
+
+  if (!db) {
+    showStatus("Database offline. Broadcast could not be sent.");
+    return;
+  }
+
+  let successCount = 0;
+  for (const roomCode of targetRooms) {
+    try {
+      await db.collection("campaigns").doc(roomCode).collection("chat").add({
+        senderId: "master_admin",
+        senderName: senderName,
+        isDM: true,
+        type: "system",
+        text: formattedText,
+        timestamp: Date.now()
+      });
+      successCount++;
+    } catch (err) {
+      console.warn(`Failed to broadcast to ${roomCode}:`, err);
+    }
+  }
+
+  if (textInput) textInput.value = "";
+  showStatus(`Broadcast successfully sent to ${successCount} party room(s)!`);
+}
+
+async function spawnAdminItem(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
+  if (!isAdminSession()) {
+    showStatus("Unauthorized item dispenser attempt.");
+    return;
+  }
+
+  const roomInput = document.getElementById("adminDispenserRoom")?.value?.trim().toUpperCase();
+  const targetRoom = roomInput || connectedCampaignRoom || activeDMRoomCode;
+  if (!targetRoom) {
+    alert("Please enter or connect to a campaign room to bestow items into.");
+    return;
+  }
+
+  const name = document.getElementById("adminDispenserName")?.value?.trim() || "Mystic Relic";
+  const type = document.getElementById("adminDispenserType")?.value || "item";
+  const dmgVal = document.getElementById("adminDispenserDmg")?.value?.trim() || "";
+  const recipient = document.getElementById("adminDispenserRecipient")?.value?.trim() || "all";
+  const notes = document.getElementById("adminDispenserNotes")?.value?.trim() || "";
+
+  if (!db) {
+    showStatus("Database offline. Cannot bestow items.");
+    return;
+  }
+
+  showStatus(`Bestowing "${name}" to room ${targetRoom}...`);
+
+  const handoutId = "admin_loot_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6);
+
+  let itemPayload = null;
+  let coinsPayload = null;
+  let maxClaims = 1;
+
+  if (type === "weapon") {
+    itemPayload = {
+      name: name,
+      dmg: dmgVal || "1d8",
+      type: "Melee Weapon",
+      notes: notes,
+      qty: 1,
+      isWeapon: true
+    };
+    maxClaims = 1;
+  } else if (type === "coin") {
+    coinsPayload = {
+      gp: parseInt(dmgVal, 10) || 500,
+      pp: 50,
+      sp: 100,
+      ep: 0,
+      cp: 0
+    };
+    maxClaims = 1;
+  } else {
+    const qty = parseInt(dmgVal, 10) || 1;
+    itemPayload = {
+      name: name,
+      qty: qty,
+      weight: 1,
+      isWeapon: false
+    };
+    maxClaims = Math.max(1, qty);
+  }
+
+  const handoutObj = {
+    id: handoutId,
+    title: name,
+    type: type,
+    recipient: recipient,
+    recipientId: "all",
+    claimedBy: [],
+    claimedCount: 0,
+    maxClaims: maxClaims,
+    author: "👑 Master Admin",
+    date: new Date().toLocaleDateString(),
+    imageUrl: "",
+    content: notes,
+    item: itemPayload,
+    coins: coinsPayload,
+    isShared: true,
+    updatedAt: Date.now()
+  };
+
+  try {
+    // 1. Add to handouts subcollection
+    await db.collection("campaigns").doc(targetRoom).collection("handouts").doc(handoutId).set(handoutObj);
+
+    // 2. Announce in chat
+    await db.collection("campaigns").doc(targetRoom).collection("chat").add({
+      senderId: "master_admin",
+      senderName: "👑 Master Admin",
+      isDM: true,
+      type: "handout",
+      text: `👑 Master Admin bestowed handout: "${name}"`,
+      payload: { id: handoutId, title: name, type: type, recipient: recipient },
+      timestamp: Date.now()
+    });
+
+    showStatus(`Successfully spawned "${name}" in ${targetRoom}!`);
+
+    // Reset fields to custom
+    const presetSelect = document.getElementById("adminPresetSelect");
+    if (presetSelect) presetSelect.value = "custom";
+    const nameInput = document.getElementById("adminDispenserName");
+    if (nameInput) nameInput.value = "";
+    const dmgInput = document.getElementById("adminDispenserDmg");
+    if (dmgInput) dmgInput.value = "";
+    const notesInput = document.getElementById("adminDispenserNotes");
+    if (notesInput) notesInput.value = "";
+  } catch (err) {
+    console.error("Spawn item error:", err);
+    showStatus(`Failed to spawn item: ${err.message}`, 4000);
+  }
+}
+
+async function benchmarkFirestoreLatency() {
+  const resultEl = document.getElementById("adminPingResult");
+  if (resultEl) {
+    resultEl.textContent = "Pinging Firestore...";
+    resultEl.style.color = "var(--accent-gold)";
+  }
+
+  const start = performance.now();
+  try {
+    if (!db) throw new Error("Database SDK offline");
+    await db.collection("campaigns").limit(1).get();
+    const elapsed = Math.round(performance.now() - start);
+    if (resultEl) {
+      resultEl.textContent = `Latency: ${elapsed} ms (Healthy)`;
+      resultEl.style.color = elapsed < 400 ? "#4ade80" : "var(--accent-gold)";
+    }
+    showStatus(`Firestore benchmark: ${elapsed} ms`);
+  } catch (err) {
+    const elapsed = Math.round(performance.now() - start);
+    if (resultEl) {
+      resultEl.textContent = `Error (${elapsed} ms): ${err.message}`;
+      resultEl.style.color = "#f87171";
+    }
+    showStatus(`Database ping error: ${err.message}`, 4000);
+  }
+}
+
+function exportMasterJsonDump() {
+  const dump = {
+    archiveDate: new Date().toISOString(),
+    primaryAdmin: PRIMARY_ADMIN_EMAIL,
+    additionalAdmins: additionalAdminEmails,
+    currentUser: auth?.currentUser ? {
+      email: auth.currentUser.email,
+      uid: auth.currentUser.uid,
+      isAnonymous: auth.currentUser.isAnonymous
+    } : null,
+    storage: {}
+  };
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    try {
+      dump.storage[key] = JSON.parse(localStorage.getItem(key));
+    } catch (e) {
+      dump.storage[key] = localStorage.getItem(key);
+    }
+  }
+
+  const jsonString = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dump, null, 2));
+  const dlAnchor = document.createElement("a");
+  dlAnchor.setAttribute("href", jsonString);
+  dlAnchor.setAttribute("download", `codex_admin_backup_${new Date().toISOString().slice(0, 10)}.json`);
+  document.body.appendChild(dlAnchor);
+  dlAnchor.click();
+  dlAnchor.remove();
+
+  showStatus("Master JSON archive downloaded!");
+}
+
+function renderAdminEmailsList() {
+  const listEl = document.getElementById("adminEmailsList");
+  if (!listEl) return;
+
+  let html = `
+    <span class="admin-email-pill primary">
+      <span>👑 ${escapeHtml(PRIMARY_ADMIN_EMAIL)}</span>
+      <span style="font-size:0.65rem; opacity:0.8;">(Owner)</span>
+    </span>
+  `;
+
+  additionalAdminEmails.forEach((email) => {
+    html += `
+      <span class="admin-email-pill secondary">
+        <span>${escapeHtml(email)}</span>
+        <button type="button" class="admin-remove-email-btn" data-email="${escapeHtml(email)}" title="Remove administrator access">&times;</button>
+      </span>
+    `;
+  });
+
+  listEl.innerHTML = html;
+}
+
+function addAdditionalAdminEmail(rawEmail) {
+  if (!rawEmail) return;
+  const email = rawEmail.trim().toLowerCase();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    alert("Please enter a valid email address.");
+    return;
+  }
+  if (email === PRIMARY_ADMIN_EMAIL.toLowerCase()) {
+    alert("This email is already the permanent Master Owner.");
+    return;
+  }
+  if (additionalAdminEmails.map((e) => e.toLowerCase()).includes(email)) {
+    alert("This email is already in the trusted administrator list.");
+    return;
+  }
+
+  additionalAdminEmails.push(email);
+  try {
+    localStorage.setItem("codex_admin_emails", JSON.stringify(additionalAdminEmails));
+  } catch (err) {}
+
+  renderAdminEmailsList();
+  showStatus(`Added ${email} to admin list.`);
+  updateAuthUI(auth?.currentUser);
+}
+
+function removeAdditionalAdminEmail(email) {
+  if (!email) return;
+  const target = email.trim().toLowerCase();
+  additionalAdminEmails = additionalAdminEmails.filter((e) => e.toLowerCase() !== target);
+  try {
+    localStorage.setItem("codex_admin_emails", JSON.stringify(additionalAdminEmails));
+  } catch (err) {}
+
+  renderAdminEmailsList();
+  showStatus(`Removed ${target} from admin list.`);
+  updateAuthUI(auth?.currentUser);
+}
+
+function initAdminPanel() {
+  // Preset selector auto-fill
+  const presetSelect = document.getElementById("adminPresetSelect");
+  if (presetSelect) {
+    presetSelect.addEventListener("change", (e) => {
+      const val = e.target.value;
+      const nameInput = document.getElementById("adminDispenserName");
+      const typeSelect = document.getElementById("adminDispenserType");
+      const dmgInput = document.getElementById("adminDispenserDmg");
+      const notesInput = document.getElementById("adminDispenserNotes");
+
+      if (val === "vorpal") {
+        if (nameInput) nameInput.value = "Vorpal Greatsword (+3)";
+        if (typeSelect) typeSelect.value = "weapon";
+        if (dmgInput) dmgInput.value = "2d6+3 Slashing";
+        if (notesInput) notesInput.value = "Requires Attunement. You gain a +3 bonus to attack and damage rolls made with this magic weapon. When you roll a 20 on an attack roll, you cut off one of the creature's heads.";
+      } else if (val === "flametongue") {
+        if (nameInput) nameInput.value = "Flame Tongue Longsword";
+        if (typeSelect) typeSelect.value = "weapon";
+        if (dmgInput) dmgInput.value = "1d8 Slashing + 2d6 Fire";
+        if (notesInput) notesInput.value = "Requires Attunement. Bonus action speaks the command word to ignite the blade. Deals an extra 2d6 fire damage on hit and sheds bright light in a 40-foot radius.";
+      } else if (val === "potions") {
+        if (nameInput) nameInput.value = "Potion of Superior Healing (x5)";
+        if (typeSelect) typeSelect.value = "item";
+        if (dmgInput) dmgInput.value = "5";
+        if (notesInput) notesInput.value = "Potion (Rare). Drinking this crimson potion regains 8d4 + 8 hit points. Bundle of 5 vials in a protective leather pouch.";
+      } else if (val === "bag") {
+        if (nameInput) nameInput.value = "Bag of Holding";
+        if (typeSelect) typeSelect.value = "item";
+        if (dmgInput) dmgInput.value = "1";
+        if (notesInput) notesInput.value = "Wondrous Item (Uncommon). Holds up to 500 pounds and 64 cubic feet of volume while weighing only 15 pounds.";
+      } else if (val === "goldchest") {
+        if (nameInput) nameInput.value = "Hoard Treasure Chest";
+        if (typeSelect) typeSelect.value = "coin";
+        if (dmgInput) dmgInput.value = "500";
+        if (notesInput) notesInput.value = "An iron-bound dwarven chest filled with 500 GP, 50 PP, and 100 SP.";
+      }
+    });
+  }
+
+  // Broadcast target selector toggle custom room code input
+  const targetSelect = document.getElementById("adminBroadcastTarget");
+  if (targetSelect) {
+    targetSelect.addEventListener("change", (e) => {
+      const wrap = document.getElementById("adminCustomRoomCodeWrap");
+      if (wrap) {
+        wrap.style.display = e.target.value === "custom" ? "block" : "none";
+      }
+    });
+  }
+
+  // Form submit listeners
+  const broadcastForm = document.getElementById("adminBroadcastForm");
+  if (broadcastForm) {
+    broadcastForm.addEventListener("submit", sendAdminBroadcast);
+  }
+
+  const dispenserForm = document.getElementById("adminDispenserForm");
+  if (dispenserForm) {
+    dispenserForm.addEventListener("submit", spawnAdminItem);
+  }
+
+  renderAdminEmailsList();
+}
+
+/* ==========================================================================
    INITIALIZATION & URL INVITE LINK CHECK
    ========================================================================== */
 
@@ -7996,6 +8855,7 @@ loadAllSpells();
 loadAllTraits();
 initPWAAndNetworkStatus();
 initFloatingPartyChatDragAndResize();
+initAdminPanel();
 
 // Check if user opened a 1-click ?room=CODE invite link
 const urlParams = new URLSearchParams(window.location.search);
