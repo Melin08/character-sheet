@@ -1578,7 +1578,12 @@ function switchMainTab(targetId) {
   if (targetId === "tab-owlbear") {
     if (typeof updateOwlbearVitalsHUD === "function") updateOwlbearVitalsHUD();
     if (typeof resizeAndRenderOwlbearCanvas === "function") {
-      requestAnimationFrame(() => resizeAndRenderOwlbearCanvas());
+      requestAnimationFrame(() => {
+        if (!vttCameraInitialized) {
+          resetVttCameraToFit();
+        }
+        resizeAndRenderOwlbearCanvas();
+      });
     }
   }
 }
@@ -8490,7 +8495,8 @@ function initPWAAndNetworkStatus() {
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js").then((reg) => {
+      navigator.serviceWorker.register("./sw.js?v=77", { updateViaCache: "none" }).then((reg) => {
+        reg.update().catch(() => {});
         console.log("5e Sheet Service Worker registered:", reg.scope);
       }).catch((err) => {
         console.log("5e Sheet Service Worker failed:", err);
@@ -10260,6 +10266,7 @@ let vttLastLocalUpdateTs = 0;
 let vttSyncDebounceTimer = null;
 let vttMediaStream = null;
 let vttUserLeftMap = false;
+let vttCameraInitialized = false;
 
 let vttState = {
   scene: "forest_ambush",
@@ -10295,6 +10302,29 @@ function extractOwlbearRoomId(rawUrl) {
     return "OBR-" + alnum.slice(0, 20);
   }
   return "OBR-TABLETOP";
+}
+
+function extractOwlbearRoomDisplayName(rawUrl, fallbackId) {
+  if (!rawUrl) return fallbackId || "OBR-TABLETOP";
+  const clean = rawUrl.trim();
+  const fullMatch = clean.match(/\/room\/([a-zA-Z0-9_-]+)(?:\/([a-zA-Z0-9_% -]+))?/i);
+  if (fullMatch) {
+    const slug = fullMatch[2] ? decodeURIComponent(fullMatch[2]).replace(/[-_]+/g, " ").trim() : "";
+    const code = fullMatch[1].slice(0, 12);
+    return slug ? `${slug} (${code})` : `Owlbear Room (${code})`;
+  }
+  return clean.length > 38 ? `${fallbackId} (${clean.slice(0, 32)}…)` : clean;
+}
+
+function inferSceneFromUrl(rawUrl) {
+  const s = String(rawUrl || "").toLowerCase();
+  if (/crypt|tomb|dungeon|lich|undead|catacomb|skeleton/.test(s)) return "dungeon_crypt";
+  if (/tavern|inn|bar|pub|gryphon/.test(s)) return "tavern_inn";
+  if (/lava|magma|dragon|volcano|inferno|hell|fire/.test(s)) return "magma_cavern";
+  if (/astral|arcane|sanctum|void|tower|portal|magic/.test(s)) return "arcane_sanctum";
+  if (/ship|pirate|galleon|sea|ocean|boat|naval/.test(s)) return "pirate_galleon";
+  if (/parchment|grid|blank|mat/.test(s)) return "parchment_mat";
+  return "forest_ambush";
 }
 
 function getStoredOwlbearUrl() {
@@ -10382,8 +10412,9 @@ function setOwlbearRoomUrl(rawUrl, broadcast = true) {
 
   if (cleanUrl) {
     const roomId = extractOwlbearRoomId(cleanUrl);
+    const displayName = extractOwlbearRoomDisplayName(cleanUrl, roomId);
     if (activeUrlDisplay) {
-      activeUrlDisplay.textContent = cleanUrl.length > 42 ? `${roomId} (${cleanUrl})` : cleanUrl;
+      activeUrlDisplay.textContent = displayName;
       activeUrlDisplay.title = cleanUrl;
     }
     if (emptyState) emptyState.style.display = "none";
@@ -10391,10 +10422,10 @@ function setOwlbearRoomUrl(rawUrl, broadcast = true) {
     if (leaveBtn) leaveBtn.style.display = "inline-flex";
     if (modeSwitcher) modeSwitcher.style.display = "inline-flex";
     if (statusPill) statusPill.classList.add("is-active");
-    if (statusText) statusText.textContent = `Active (${roomId})`;
+    if (statusText) statusText.textContent = `Active (${displayName})`;
     if (navBadge) navBadge.style.display = "inline-block";
 
-    loadOwlbearRoomState(roomId);
+    loadOwlbearRoomState(roomId, cleanUrl);
     switchOwlbearViewMode(vttActiveMode || "native");
   } else {
     if (vttSyncDebounceTimer) {
@@ -10516,12 +10547,13 @@ function getDefaultTokensForNewMap() {
   const curHp = parseInt(document.getElementById("curHp")?.value, 10) || 24;
   const maxHp = parseInt(document.getElementById("maxHp")?.value, 10) || 24;
   const ac = parseInt(document.getElementById("armorClass")?.value, 10) || 16;
-  const avatar = currentAvatarDataUrl || "";
+  const avatar = (typeof myCharacterAvatar !== "undefined" && myCharacterAvatar) ? myCharacterAvatar : "";
+  const heroId = (typeof activeCharId !== "undefined" && activeCharId) ? activeCharId : "main";
 
   return [
     {
-      id: "tok_hero_" + (activeCharId || "main"),
-      charId: activeCharId || "main",
+      id: "tok_hero_" + heroId,
+      charId: heroId,
       name: charName,
       icon: "⚔️",
       avatar: avatar,
@@ -10565,9 +10597,11 @@ function getDefaultTokensForNewMap() {
   ];
 }
 
-function loadOwlbearRoomState(roomId) {
+function loadOwlbearRoomState(roomId, rawUrl = "") {
   const syncRoom = (activeDMRoomCode || connectedCampaignRoom || roomId || "OBR-TABLETOP").trim().toUpperCase();
   vttActiveSyncRoomId = syncRoom;
+  vttCameraInitialized = false;
+  const defaultScene = inferSceneFromUrl(rawUrl || roomId);
 
   // Load local cached state for instant startup
   try {
@@ -10575,7 +10609,7 @@ function loadOwlbearRoomState(roomId) {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object") {
-        vttState.scene = parsed.scene || "forest_ambush";
+        vttState.scene = parsed.scene || defaultScene;
         vttState.customMapUrl = parsed.customMapUrl || "";
         vttState.fogEnabled = Boolean(parsed.fogEnabled);
         vttState.fogRects = Array.isArray(parsed.fogRects) ? parsed.fogRects : [];
@@ -10585,7 +10619,7 @@ function loadOwlbearRoomState(roomId) {
       }
     } else {
       vttState = {
-        scene: "forest_ambush",
+        scene: defaultScene,
         customMapUrl: "",
         fogEnabled: false,
         fogRects: [],
@@ -10752,17 +10786,21 @@ function getVttMapDimensions() {
 function resetVttCameraToFit() {
   const canvas = document.getElementById("owlbearMapCanvas");
   if (!canvas) return;
-  const rect = canvas.getBoundingClientRect();
+  const parent = canvas.parentElement || canvas;
+  const rect = parent.getBoundingClientRect();
   if (!rect.width || !rect.height) return;
 
   const dims = getVttMapDimensions();
-  const availW = Math.max(300, rect.width - 280);
+  const drawerOpen = document.getElementById("vttRightDrawer")?.classList.contains("open");
+  const rightInset = drawerOpen ? 280 : 30;
+  const availW = Math.max(300, rect.width - rightInset - 50);
   const availH = Math.max(300, rect.height - 40);
   const scaleX = availW / dims.width;
   const scaleY = availH / dims.height;
-  vttCamera.zoom = Math.min(1.25, Math.max(0.45, Math.min(scaleX, scaleY) * 0.92));
-  vttCamera.x = Math.max(54, (availW - dims.width * vttCamera.zoom) / 2 + 28);
-  vttCamera.y = Math.max(16, (availH - dims.height * vttCamera.zoom) / 2);
+  vttCamera.zoom = Math.min(1.25, Math.max(0.45, Math.min(scaleX, scaleY) * 0.94));
+  vttCamera.x = Math.max(54, (availW - dims.width * vttCamera.zoom) / 2 + 48);
+  vttCamera.y = Math.max(16, (availH - dims.height * vttCamera.zoom) / 2 + 12);
+  vttCameraInitialized = true;
   updateVttZoomLabel();
 }
 
@@ -11106,6 +11144,10 @@ function resizeAndRenderOwlbearCanvas() {
   if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
     canvas.width = Math.floor(rect.width * dpr);
     canvas.height = Math.floor(rect.height * dpr);
+  }
+
+  if (!vttCameraInitialized) {
+    resetVttCameraToFit();
   }
 
   renderOwlbearCanvas();
@@ -11642,15 +11684,17 @@ function spawnMyCharacterTokenOnVtt() {
   const curHp = parseInt(document.getElementById("curHp")?.value, 10) || 20;
   const maxHp = parseInt(document.getElementById("maxHp")?.value, 10) || 20;
   const ac = parseInt(document.getElementById("armorClass")?.value, 10) || 15;
-  const myId = "tok_hero_" + (activeCharId || "main");
+  const heroId = (typeof activeCharId !== "undefined" && activeCharId) ? activeCharId : "main";
+  const myId = "tok_hero_" + heroId;
+  const avatarUrl = (typeof myCharacterAvatar !== "undefined" && myCharacterAvatar) ? myCharacterAvatar : "";
 
-  const existing = (vttState.tokens || []).find((t) => t.id === myId || (t.charId && t.charId === activeCharId));
+  const existing = (vttState.tokens || []).find((t) => t.id === myId || (t.charId && t.charId === heroId));
   if (existing) {
     existing.name = charName;
     existing.hpCur = curHp;
     existing.hpMax = maxHp;
     existing.ac = ac;
-    if (currentAvatarDataUrl) existing.avatar = currentAvatarDataUrl;
+    if (avatarUrl) existing.avatar = avatarUrl;
     selectVttToken(existing.id);
     saveAndSyncOwlbearState();
     showStatus(`Updated ${charName}'s token on the battle map!`);
@@ -11659,10 +11703,10 @@ function spawnMyCharacterTokenOnVtt() {
 
   const newTok = {
     id: myId,
-    charId: activeCharId || "main",
+    charId: heroId,
     name: charName,
     icon: "⚔️",
-    avatar: currentAvatarDataUrl || "",
+    avatar: avatarUrl,
     x: 6 + Math.floor(Math.random() * 4),
     y: 7 + Math.floor(Math.random() * 4),
     size: 1,
@@ -11684,7 +11728,9 @@ function spawnCampaignPartyOnVtt() {
     setOwlbearRoomUrl(activeDMRoomCode || connectedCampaignRoom || "OBR-TABLETOP", true);
   }
 
-  const members = Array.isArray(livePartyMembers) && livePartyMembers.length > 0 ? livePartyMembers : [];
+  const members = (typeof cachedRoomMembers !== "undefined" && Array.isArray(cachedRoomMembers) && cachedRoomMembers.length > 0)
+    ? cachedRoomMembers
+    : [];
   if (members.length === 0) {
     spawnMyCharacterTokenOnVtt();
     return;
@@ -12092,11 +12138,6 @@ function initOwlbearCanvasListeners() {
 function initOwlbearVTT() {
   initOwlbearCanvasListeners();
 
-  const savedUrl = getStoredOwlbearUrl();
-  if (savedUrl) {
-    setOwlbearRoomUrl(savedUrl, false);
-  }
-
   const loadBtn = document.getElementById("owlbearLoadBtn");
   const input = document.getElementById("owlbearRoomUrlInput");
   const leaveBtn = document.getElementById("owlbearLeaveBtn");
@@ -12111,14 +12152,10 @@ function initOwlbearVTT() {
   // Connect / Load Map (Natively in-tab!)
   if (loadBtn && input) {
     loadBtn.addEventListener("click", () => {
-      const url = input.value.trim();
-      if (!url) {
-        setOwlbearRoomUrl(activeDMRoomCode || connectedCampaignRoom || "OBR-TABLETOP", true);
-        showStatus("Launched native Owlbear battle map!");
-      } else {
-        setOwlbearRoomUrl(url, true);
-        showStatus("Connected to Owlbear battle map in-tab!");
-      }
+      const url = input.value.trim() || wizardInput?.value?.trim() || activeDMRoomCode || connectedCampaignRoom || "https://www.owlbear.rodeo/room/codex-tabletop/ForestAmbush";
+      vttActiveMode = "native";
+      setOwlbearRoomUrl(url, true);
+      showStatus("Connected to Owlbear battle map in-tab!");
     });
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -12130,9 +12167,10 @@ function initOwlbearVTT() {
 
   if (wizardBtn && wizardInput) {
     wizardBtn.addEventListener("click", () => {
-      const url = wizardInput.value.trim() || activeDMRoomCode || connectedCampaignRoom || "OBR-TABLETOP";
+      const url = wizardInput.value.trim() || input?.value?.trim() || activeDMRoomCode || connectedCampaignRoom || "https://www.owlbear.rodeo/room/codex-tabletop/ForestAmbush";
+      vttActiveMode = "native";
       setOwlbearRoomUrl(url, true);
-      showStatus("Connected to Owlbear battle map!");
+      showStatus("Connected to Owlbear battle map in-tab!");
     });
     wizardInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -12145,6 +12183,7 @@ function initOwlbearVTT() {
   if (demoBtn) {
     demoBtn.addEventListener("click", () => {
       const defaultRoom = activeDMRoomCode || connectedCampaignRoom || "https://www.owlbear.rodeo/room/codex-battlemap/Tabletop";
+      vttActiveMode = "native";
       setOwlbearRoomUrl(defaultRoom, true);
       showStatus("Launched interactive Owlbear battle map!");
     });
@@ -12449,11 +12488,10 @@ function initOwlbearVTT() {
   });
 
   document.getElementById("vttClearAllTokensBtn")?.addEventListener("click", () => {
-    if (confirm("Remove all tokens from the battle map?")) {
-      vttState.tokens = [];
-      selectVttToken(null);
-      saveAndSyncOwlbearState();
-    }
+    vttState.tokens = [];
+    selectVttToken(null);
+    saveAndSyncOwlbearState();
+    showStatus("Cleared all tokens from the battle map.");
   });
 
   document.getElementById("vttActiveTokensList")?.addEventListener("click", (e) => {
@@ -12563,6 +12601,16 @@ function initOwlbearVTT() {
     chatBtn.addEventListener("click", () => {
       toggleFloatingPartyChat(true);
     });
+  }
+
+  // Restore saved Owlbear room URL AFTER all button listeners are safely registered
+  try {
+    const savedUrl = getStoredOwlbearUrl();
+    if (savedUrl) {
+      setOwlbearRoomUrl(savedUrl, false);
+    }
+  } catch (err) {
+    console.warn("Could not restore saved Owlbear room:", err);
   }
 }
 

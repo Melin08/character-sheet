@@ -7667,23 +7667,23 @@ body.theme-parchment .party-status-indicator {
 /* Left Floating Tool Dock */
 .vtt-left-dock {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 10px;
+  left: 10px;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.2rem;
   background: rgba(16, 13, 24, 0.94);
   backdrop-filter: blur(10px);
   border: 1px solid var(--border-medium);
   border-radius: 10px;
-  padding: 0.35rem;
+  padding: 0.28rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
   z-index: 20;
 }
 
 .vtt-tool-btn {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 7px;
   border: 1px solid transparent;
   background: transparent;
@@ -7692,7 +7692,7 @@ body.theme-parchment .party-status-indicator {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   transition: all 0.15s ease;
 }
 
@@ -7717,8 +7717,8 @@ body.theme-parchment .party-status-indicator {
 /* Dynamic Tool Sub-Toolbar */
 .vtt-sub-toolbar {
   position: absolute;
-  top: 12px;
-  left: 60px;
+  top: 46px;
+  left: 54px;
   background: rgba(16, 13, 24, 0.95);
   backdrop-filter: blur(10px);
   border: 1px solid var(--border-medium);
@@ -7728,7 +7728,7 @@ body.theme-parchment .party-status-indicator {
   align-items: center;
   gap: 0.6rem;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-  z-index: 20;
+  z-index: 23;
 }
 
 .vtt-sub-group {
@@ -7787,8 +7787,8 @@ body.theme-parchment .party-status-indicator {
 /* Selected Token Context HUD Popover */
 .vtt-token-popover {
   position: absolute;
-  bottom: 52px;
-  left: 60px;
+  top: 48px;
+  left: 54px;
   width: 270px;
   background: rgba(16, 13, 24, 0.96);
   backdrop-filter: blur(12px);
@@ -7918,11 +7918,11 @@ body.theme-parchment .party-status-indicator {
   margin-top: 0.1rem;
 }
 
-/* Bottom-Left Zoom Pill */
+/* Top-Left Zoom Pill */
 .vtt-zoom-pill {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
+  top: 10px;
+  left: 54px;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;

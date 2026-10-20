@@ -2,7 +2,7 @@
    ADVENTURER CODEX — 5E SHEET SERVICE WORKER (OFFLINE PWA ENGINE)
    ========================================================================== */
 
-const CACHE_NAME = "adventurer-codex-5e-v76";
+const CACHE_NAME = "adventurer-codex-5e-v77";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -48,10 +48,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Same-origin core files: Network-first with cache fallback
+  // Same-origin core files: Network-first (bypassing stale HTTP disk cache) with cache fallback
   if (url.origin === self.location.origin) {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: "no-cache" })
         .then((networkRes) => {
           if (networkRes && networkRes.status === 200) {
             const resClone = networkRes.clone();
