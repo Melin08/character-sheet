@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=MedievalSharp&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=80" />
+  <link rel="stylesheet" href="style.css?v=81" />
 </head>
 <body id="top" class="theme-nexus">
 
@@ -1371,8 +1371,11 @@
 
           <!-- Engine Mode Switcher (Visible when map is active) -->
           <div class="owlbear-mode-switcher" id="owlbearModeSwitcher" style="display: none;">
-            <button type="button" class="owlbear-mode-pill active" data-vtt-mode="native" title="Run interactive Owlbear-style battle map natively inside this tab">
-              🗺️ Native VTT
+            <button type="button" class="owlbear-mode-pill active" data-vtt-mode="real_owlbear" title="Run the official Owlbear Rodeo engine natively inside this tab">
+              🦉 Owlbear Rodeo
+            </button>
+            <button type="button" class="owlbear-mode-pill" data-vtt-mode="native" title="Run 5e Sheet-integrated Tactical VTT map">
+              🗺️ 5e Sheet Map
             </button>
             <button type="button" class="owlbear-mode-pill" data-vtt-mode="stream" title="Stream an open owlbear.rodeo tab directly into this viewport at 60fps">
               📺 Live Tab Stream
@@ -1453,9 +1456,9 @@
             </div>
 
             <div class="owlbear-empty-helpers">
-              <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearUseDemoRoomBtn">⚡ Launch Instant Native Battlemap</button>
+              <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearUseDemoRoomBtn">🦉 Launch Real Owlbear Rodeo Now</button>
               <a href="https://www.owlbear.rodeo" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-xs">
-                Open owlbear.rodeo &rarr;
+                Open owlbear.rodeo 2.0 &rarr;
               </a>
             </div>
 
@@ -1490,7 +1493,10 @@
               </div>
 
               <div class="active-room-action-buttons">
-                <span class="vtt-active-scene-label" id="vttActiveSceneLabel">🌲 Forest Road Ambush</span>
+                <button type="button" id="owlbearRealHomeBtn" class="btn btn-outline btn-xs" title="Open Owlbear Rodeo Home Screen (Start / Join / How-To)">
+                  🏠 Owlbear Home
+                </button>
+                <span class="vtt-active-scene-label" id="vttActiveSceneLabel" style="display: none;">🌲 Forest Road Ambush</span>
                 <button type="button" id="owlbearActiveLeaveBtn" class="btn red btn-xs owlbear-leave-map-btn" onclick="if(typeof leaveOwlbearRoom==='function')leaveOwlbearRoom(event);" title="Close and exit this battle map">
                   ✕ Close Map
                 </button>
@@ -1498,9 +1504,16 @@
             </div>
 
             <!-- ========================================================= -->
-            <!-- MODE 1: NATIVE INTERACTIVE OWLBEAR VTT CANVAS ENGINE      -->
+            <!-- MODE 0 (DEFAULT): REAL OFFICIAL OWLBEAR RODEO ENGINE      -->
             <!-- ========================================================= -->
-            <div class="owlbear-native-vtt-layer" id="owlbearNativeVttLayer">
+            <div class="owlbear-real-engine-layer" id="owlbearRealEngineLayer">
+              <iframe id="owlbearRealEngineFrame" class="owlbear-real-engine-iframe" src="" allow="camera; microphone; clipboard-read; clipboard-write; fullscreen; autoplay" title="Owlbear Rodeo Native VTT"></iframe>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- MODE 1: 5E SHEET INTERACTIVE TACTICAL CANVAS ENGINE       -->
+            <!-- ========================================================= -->
+            <div class="owlbear-native-vtt-layer" id="owlbearNativeVttLayer" style="display: none;">
               <canvas id="owlbearMapCanvas" class="owlbear-vtt-canvas"></canvas>
 
               <!-- Floating Left Tool Dock (Owlbear Rodeo Style) -->
@@ -3031,6 +3044,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=77"></script>
+  <script src="app.js?v=78"></script>
 </body>
 </html>

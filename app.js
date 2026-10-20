@@ -8495,7 +8495,7 @@ function initPWAAndNetworkStatus() {
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=77", { updateViaCache: "none" }).then((reg) => {
+      navigator.serviceWorker.register("./sw.js?v=78", { updateViaCache: "none" }).then((reg) => {
         reg.update().catch(() => {});
         console.log("5e Sheet Service Worker registered:", reg.scope);
       }).catch((err) => {
@@ -10236,7 +10236,7 @@ const VTT_PRESET_TOKENS = {
   portal: { name: "Arcane Portal", icon: "🌀", size: 2, hp: 50, ac: 15, color: "#06b6d4" }
 };
 
-let vttActiveMode = "native"; // 'native' | 'stream' | 'iframe'
+let vttActiveMode = "real_owlbear"; // 'real_owlbear' | 'native' | 'stream' | 'iframe'
 let vttCurrentTool = "select"; // 'select' | 'pan' | 'measure' | 'ping' | 'draw' | 'aoe' | 'fog'
 let vttDrawColor = "#d4af37";
 let vttAoeShape = "sphere_20";
@@ -10357,19 +10357,35 @@ function updateOwlbearVitalsHUD() {
 }
 
 function switchOwlbearViewMode(mode) {
-  vttActiveMode = mode || "native";
+  vttActiveMode = mode || "real_owlbear";
   document.querySelectorAll(".owlbear-mode-pill").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.vttMode === vttActiveMode);
   });
 
+  const realLayer = document.getElementById("owlbearRealEngineLayer");
+  const realFrame = document.getElementById("owlbearRealEngineFrame");
+  const realHomeBtn = document.getElementById("owlbearRealHomeBtn");
+  const sceneLabel = document.getElementById("vttActiveSceneLabel");
   const nativeLayer = document.getElementById("owlbearNativeVttLayer");
   const streamLayer = document.getElementById("owlbearStreamLayer");
   const iframeWrapper = document.getElementById("owlbearIframeWrapper");
   const iframe = document.getElementById("owlbearIframe");
 
+  if (realLayer) realLayer.style.display = vttActiveMode === "real_owlbear" ? "flex" : "none";
+  if (realHomeBtn) realHomeBtn.style.display = vttActiveMode === "real_owlbear" ? "inline-flex" : "none";
+  if (sceneLabel) sceneLabel.style.display = vttActiveMode === "native" ? "inline-flex" : "none";
   if (nativeLayer) nativeLayer.style.display = vttActiveMode === "native" ? "block" : "none";
   if (streamLayer) streamLayer.style.display = vttActiveMode === "stream" ? "flex" : "none";
   if (iframeWrapper) iframeWrapper.style.display = vttActiveMode === "iframe" ? "flex" : "none";
+
+  if (vttActiveMode === "real_owlbear" && realFrame) {
+    const raw = getStoredOwlbearUrl();
+    const roomId = extractOwlbearRoomId(raw || "OBR-TABLETOP");
+    const targetSrc = `./owlbear/index.html#/game/${encodeURIComponent(roomId)}`;
+    if (!realFrame.getAttribute("src") || !realFrame.getAttribute("src").includes(`#/game/${encodeURIComponent(roomId)}`)) {
+      realFrame.src = targetSrc;
+    }
+  }
 
   if (vttActiveMode === "iframe" && iframe) {
     const raw = getStoredOwlbearUrl();
@@ -10426,7 +10442,11 @@ function setOwlbearRoomUrl(rawUrl, broadcast = true) {
     if (navBadge) navBadge.style.display = "inline-block";
 
     loadOwlbearRoomState(roomId, cleanUrl);
-    switchOwlbearViewMode(vttActiveMode || "native");
+    const realFrame = document.getElementById("owlbearRealEngineFrame");
+    if (realFrame) {
+      realFrame.src = `./owlbear/index.html#/game/${encodeURIComponent(roomId)}`;
+    }
+    switchOwlbearViewMode(vttActiveMode || "real_owlbear");
   } else {
     if (vttSyncDebounceTimer) {
       clearTimeout(vttSyncDebounceTimer);
@@ -10439,6 +10459,8 @@ function setOwlbearRoomUrl(rawUrl, broadcast = true) {
     }
     vttActiveSyncRoomId = "";
     selectVttToken(null);
+    const realFrame = document.getElementById("owlbearRealEngineFrame");
+    if (realFrame) realFrame.src = "";
     if (iframe) iframe.src = "";
     if (activeUrlDisplay) activeUrlDisplay.textContent = "";
     if (emptyState) emptyState.style.display = "flex";
@@ -10660,10 +10682,24 @@ async function startOwlbearDedicatedRoomListener(syncRoom) {
     }
   } catch (e) {}
 
-  vttRoomUnsubscribe = db.collection("campaigns").doc(syncRoom).collection("handouts").doc("owlbear_vtt_state")
-    .onSnapshot((doc) => {
-      if (!doc.exists) return;
-      applyRemoteOwlbearVttState(doc.data());
+  vttRoomUnsubscribe = db.collection("campaigns").doc(syncRoom).collection("handouts")
+    .onSnapshot((snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "removed") return;
+        const doc = change.doc;
+        const d = doc.data() || {};
+        if (doc.id === "owlbear_vtt_state") {
+          applyRemoteOwlbearVttState(d);
+        } else if (doc.id === "owlbear_real_bridge" && d.content) {
+          try {
+            const msg = JSON.parse(d.content);
+            const realFrame = document.getElementById("owlbearRealEngineFrame");
+            if (realFrame && realFrame.contentWindow) {
+              realFrame.contentWindow.postMessage(msg, "*");
+            }
+          } catch (e) {}
+        }
+      });
     }, (err) => {
       console.warn("Owlbear VTT room sync error:", err);
     });
@@ -11679,6 +11715,9 @@ function spawnMyCharacterTokenOnVtt() {
   if (!getStoredOwlbearUrl()) {
     setOwlbearRoomUrl(activeDMRoomCode || connectedCampaignRoom || "OBR-TABLETOP", true);
   }
+  if (vttActiveMode !== "native") {
+    switchOwlbearViewMode("native");
+  }
 
   const charName = document.getElementById("charName")?.value?.trim() || "Hero";
   const curHp = parseInt(document.getElementById("curHp")?.value, 10) || 20;
@@ -11726,6 +11765,9 @@ function spawnMyCharacterTokenOnVtt() {
 function spawnCampaignPartyOnVtt() {
   if (!getStoredOwlbearUrl()) {
     setOwlbearRoomUrl(activeDMRoomCode || connectedCampaignRoom || "OBR-TABLETOP", true);
+  }
+  if (vttActiveMode !== "native") {
+    switchOwlbearViewMode("native");
   }
 
   const members = (typeof cachedRoomMembers !== "undefined" && Array.isArray(cachedRoomMembers) && cachedRoomMembers.length > 0)
@@ -12149,13 +12191,12 @@ function initOwlbearVTT() {
   const theaterBtn = document.getElementById("owlbearTheaterToggleBtn");
   const demoBtn = document.getElementById("owlbearUseDemoRoomBtn");
 
-  // Connect / Load Map (Natively in-tab!)
+  // Connect / Load Map (Runs Real Owlbear Rodeo Natively In-Tab!)
   if (loadBtn && input) {
     loadBtn.addEventListener("click", () => {
-      const url = input.value.trim() || wizardInput?.value?.trim() || activeDMRoomCode || connectedCampaignRoom || "https://www.owlbear.rodeo/room/codex-tabletop/ForestAmbush";
-      vttActiveMode = "native";
+      const url = input.value.trim() || wizardInput?.value?.trim() || activeDMRoomCode || connectedCampaignRoom || "https://www.owlbear.rodeo/room/codex-tabletop/Battlemap";
       setOwlbearRoomUrl(url, true);
-      showStatus("Connected to Owlbear battle map in-tab!");
+      showStatus("Loaded Owlbear Rodeo room in-tab!");
     });
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -12167,10 +12208,9 @@ function initOwlbearVTT() {
 
   if (wizardBtn && wizardInput) {
     wizardBtn.addEventListener("click", () => {
-      const url = wizardInput.value.trim() || input?.value?.trim() || activeDMRoomCode || connectedCampaignRoom || "https://www.owlbear.rodeo/room/codex-tabletop/ForestAmbush";
-      vttActiveMode = "native";
+      const url = wizardInput.value.trim() || input?.value?.trim() || activeDMRoomCode || connectedCampaignRoom || "https://www.owlbear.rodeo/room/codex-tabletop/Battlemap";
       setOwlbearRoomUrl(url, true);
-      showStatus("Connected to Owlbear battle map in-tab!");
+      showStatus("Connected to Owlbear Rodeo room in-tab!");
     });
     wizardInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -12183,11 +12223,51 @@ function initOwlbearVTT() {
   if (demoBtn) {
     demoBtn.addEventListener("click", () => {
       const defaultRoom = activeDMRoomCode || connectedCampaignRoom || "https://www.owlbear.rodeo/room/codex-battlemap/Tabletop";
-      vttActiveMode = "native";
+      vttActiveMode = "real_owlbear";
       setOwlbearRoomUrl(defaultRoom, true);
-      showStatus("Launched interactive Owlbear battle map!");
+      showStatus("Launched Real Owlbear Rodeo in-tab!");
     });
   }
+
+  document.getElementById("owlbearRealHomeBtn")?.addEventListener("click", () => {
+    const realFrame = document.getElementById("owlbearRealEngineFrame");
+    if (realFrame) {
+      vttActiveMode = "real_owlbear";
+      switchOwlbearViewMode("real_owlbear");
+      realFrame.src = "./owlbear/index.html#/";
+      showStatus("Opened Owlbear Rodeo Home Screen.");
+    }
+  });
+
+  window.addEventListener("message", (ev) => {
+    const msg = ev.data;
+    if (!msg || typeof msg !== "object") return;
+    if (msg.type === "OBR_ROOM_CHANGED" && msg.gameId) {
+      const newUrl = `https://www.owlbear.rodeo/room/${msg.gameId}`;
+      try {
+        localStorage.setItem(OWLBEAR_ROOM_KEY, newUrl);
+      } catch (e) {}
+      const inEl = document.getElementById("owlbearRoomUrlInput");
+      const wizEl = document.getElementById("owlbearWizardRoomInput");
+      const dispEl = document.getElementById("owlbearActiveUrlDisplay");
+      if (inEl) inEl.value = newUrl;
+      if (wizEl) wizEl.value = newUrl;
+      if (dispEl) dispEl.textContent = `Owlbear Room (${msg.gameId})`;
+      broadcastOwlbearUrlToParty(newUrl);
+    } else if (msg.type === "OBR_BRIDGE_EVENT" && db && vttActiveSyncRoomId) {
+      const serialized = JSON.stringify(msg);
+      if (serialized.length <= 49500) {
+        db.collection("campaigns").doc(vttActiveSyncRoomId).collection("handouts").doc("owlbear_real_bridge").set({
+          id: "owlbear_real_bridge",
+          title: "Owlbear Real-Time Packet",
+          type: "map",
+          content: serialized,
+          isShared: true,
+          updatedAt: Date.now()
+        }).catch(() => {});
+      }
+    }
+  });
 
   // Leave / Close Map Buttons (Direct + Delegated fallback)
   if (leaveBtn) leaveBtn.addEventListener("click", leaveOwlbearRoom);
