@@ -5276,12 +5276,30 @@ body.chat-resizing * {
   padding: 0.08rem 0.38rem;
   border-radius: 4px;
 }
+.chat-sender-role.chat-sender-role-dev {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.25) 0%, rgba(126, 34, 206, 0.35) 100%);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.55);
+  letter-spacing: 0.05em;
+  font-weight: 800;
+  text-transform: none;
+  padding: 0.08rem 0.38rem;
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.25);
+}
 .chat-message-row.is-system {
   border-left: 3px solid #38bdf8 !important;
   background: rgba(56, 189, 248, 0.06) !important;
 }
 .chat-message-row.is-system .chat-msg-text {
   color: #f0f9ff;
+}
+.chat-message-row.is-dev {
+  border-left: 3px solid #a855f7 !important;
+  background: rgba(168, 85, 247, 0.07) !important;
+}
+.chat-message-row.is-dev .chat-msg-text {
+  color: #faf5ff;
 }
 .chat-timestamp {
   font-size: 0.65rem;

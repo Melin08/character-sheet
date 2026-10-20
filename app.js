@@ -74,6 +74,7 @@ let cachedChatMessages = [];
 let isFloatingChatOpen = false;
 let unreadChatCount = 0;
 let activeChatRoomOverride = null;
+let isJoinedViaAdminPanel = false;
 
 function getActiveChatRoomCode() {
   return activeChatRoomOverride || connectedCampaignRoom || activeDMRoomCode || "";
@@ -2984,6 +2985,10 @@ async function leaveCampaignRoom() {
   }
   stopPartyChatListener();
   stopPartyHandoutsListener();
+  isJoinedViaAdminPanel = false;
+  if (roomToLeave) {
+    try { sessionStorage.removeItem("admin_joined_room_" + roomToLeave); } catch (e) {}
+  }
   connectedCampaignRoom = "";
   localStorage.removeItem(CAMPAIGN_ROOM_KEY);
   cachedRoomMembers = [];
@@ -4917,7 +4922,9 @@ function exportCharacterJson() {
   }
   const adminOpenChatBtn = e.target.closest(".admin-open-chat-room-btn");
   if (adminOpenChatBtn && adminOpenChatBtn.dataset.room) {
-    const roomCode = adminOpenChatBtn.dataset.room;
+    const roomCode = adminOpenChatBtn.dataset.room.trim().toUpperCase();
+    isJoinedViaAdminPanel = true;
+    try { sessionStorage.setItem("admin_joined_room_" + roomCode, "true"); } catch (err) {}
     closeAdminModal();
     switchAdminChatRoom(roomCode);
     toggleFloatingPartyChat(true);
@@ -4925,6 +4932,7 @@ function exportCharacterJson() {
     return;
   }
   if (e.target.id === "adminModalOpenPartyChatBtn" || e.target.closest("#adminModalOpenPartyChatBtn")) {
+    isJoinedViaAdminPanel = true;
     closeModal("partyModal");
     openAdminChatWithoutRoom();
     return;
@@ -4941,7 +4949,10 @@ function exportCharacterJson() {
   }
   const adminJoinBtn = e.target.closest(".admin-join-room-btn");
   if (adminJoinBtn && adminJoinBtn.dataset.room) {
-    joinCampaignRoom(adminJoinBtn.dataset.room);
+    const roomCode = adminJoinBtn.dataset.room.trim().toUpperCase();
+    isJoinedViaAdminPanel = true;
+    try { sessionStorage.setItem("admin_joined_room_" + roomCode, "true"); } catch (err) {}
+    joinCampaignRoom(roomCode);
     closeAdminModal();
     return;
   }
@@ -6273,6 +6284,25 @@ function stopPartyChatListener() {
   updateChatUnreadBadges();
 }
 
+function updateChatInputPlaceholder() {
+  const input = document.getElementById("floatingChatInput");
+  if (!input) return;
+  const current = partyChannels.find((c) => c.id === activePartyChannelId) || partyChannels[0];
+  const activeRoom = getActiveChatRoomCode();
+  const isMasterAdmin = isAdminSession();
+  const isAdminJoined = isMasterAdmin && (
+    isJoinedViaAdminPanel ||
+    Boolean(activeChatRoomOverride) ||
+    (activeRoom && sessionStorage.getItem("admin_joined_room_" + activeRoom) === "true")
+  );
+
+  if (isAdminJoined) {
+    input.placeholder = `Message #${current.name} as Admin [Dev]... (Enter to send)`;
+  } else {
+    input.placeholder = `Message #${current.name}... (Enter to send)`;
+  }
+}
+
 function switchPartyChannel(chanId) {
   if (!partyChannels.some((c) => c.id === chanId)) return;
   activePartyChannelId = chanId;
@@ -6283,9 +6313,8 @@ function switchPartyChannel(chanId) {
   updateChatUnreadBadges();
 
   const input = document.getElementById("floatingChatInput");
-  const current = partyChannels.find((c) => c.id === chanId) || partyChannels[0];
   if (input) {
-    input.placeholder = `Message #${current.name}... (Enter to send)`;
+    updateChatInputPlaceholder();
     input.focus();
   }
 }
@@ -6460,14 +6489,23 @@ async function sendPartyChatMessage(text, type = "chat", payload = null) {
   await ensureAuthenticated();
   const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === activeRoom);
   const isMasterAdmin = isAdminSession();
+  const isAdminJoined = isMasterAdmin && (
+    isJoinedViaAdminPanel ||
+    Boolean(activeChatRoomOverride) ||
+    (activeRoom && sessionStorage.getItem("admin_joined_room_" + activeRoom) === "true")
+  );
 
   let senderName = isDM ? "Dungeon Master" : (document.getElementById("charName")?.value?.trim() || "Adventurer");
   let senderId = activeCharId || auth?.currentUser?.uid || "anon";
+  let senderRole = isDM ? "dm" : "player";
+  let isDev = false;
 
-  // If admin is chatting in a monitored external campaign room:
-  if (isMasterAdmin && activeChatRoomOverride && activeChatRoomOverride !== (connectedCampaignRoom || activeDMRoomCode)) {
-    senderName = "👑 Master Admin";
-    senderId = "master_admin";
+  // When a chat is joined through the admin panel: name is "Admin" and role is "dev"
+  if (isAdminJoined) {
+    senderName = "Admin";
+    senderRole = "dev";
+    isDev = true;
+    senderId = "admin_" + (auth?.currentUser?.uid || "root");
   }
 
   const targetChannelId = (payload && payload.channelId) || activePartyChannelId || "general";
@@ -6475,7 +6513,9 @@ async function sendPartyChatMessage(text, type = "chat", payload = null) {
   const messageDoc = {
     senderId: senderId,
     senderName: senderName,
-    isDM: isDM,
+    senderRole: senderRole,
+    isDev: isDev,
+    isDM: isDM && !isDev,
     type: type,
     text: cleanText,
     channelId: targetChannelId,
@@ -6532,7 +6572,20 @@ function renderPartyChatMessages() {
   }
 
   const html = channelMsgs.map((msg) => {
-    const isMe = msg.senderId === activeCharId || (isAdminSession() && (msg.senderId === "master_admin" || msg.senderId === "system"));
+    const isDevMsg = msg.isDev === true ||
+                     msg.senderRole === "dev" ||
+                     msg.role === "dev" ||
+                     msg.senderId === "master_admin" ||
+                     (msg.senderId && String(msg.senderId).startsWith("admin_")) ||
+                     msg.senderName === "Admin" ||
+                     (msg.senderName && String(msg.senderName).toLowerCase() === "admin");
+
+    const isSystemMsg = !isDevMsg && (
+                        msg.type === "system" ||
+                        msg.senderId === "system" ||
+                        (msg.senderName && (msg.senderName.includes("System") || msg.senderName.includes("Maintenance") || msg.senderName.includes("Decree"))));
+
+    const isMe = msg.senderId === activeCharId || (isAdminSession() && (isDevMsg || msg.senderId === "system"));
     const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
     let contentHtml = `<div class="chat-msg-text">${escapeHtml(msg.text)}</div>`;
 
@@ -6604,23 +6657,22 @@ function renderPartyChatMessages() {
       `;
     }
 
-    const isSystemMsg = msg.type === "system" ||
-                        msg.senderId === "system" ||
-                        msg.senderId === "master_admin" ||
-                        (msg.senderName && (msg.senderName.includes("System") || msg.senderName.includes("Maintenance") || msg.senderName.includes("Decree")));
-
     let roleTag = "";
-    if (isSystemMsg) {
+    if (isDevMsg) {
+      roleTag = `<span class="chat-sender-role chat-sender-role-dev">Dev</span>`;
+    } else if (isSystemMsg) {
       roleTag = `<span class="chat-sender-role chat-sender-role-system">SYSTEM</span>`;
     } else if (msg.isDM) {
       roleTag = `<span class="chat-sender-role">DM</span>`;
     }
 
+    const senderDisplayName = isDevMsg ? "Admin" : (msg.senderName || (isSystemMsg ? "System" : "Adventurer"));
+
     return `
-      <div class="chat-message-row ${isMe ? 'is-me' : ''} ${isSystemMsg ? 'is-system' : (msg.isDM ? 'is-dm' : '')}">
+      <div class="chat-message-row ${isMe ? 'is-me' : ''} ${isDevMsg ? 'is-dev' : (isSystemMsg ? 'is-system' : (msg.isDM ? 'is-dm' : ''))}">
         <div class="chat-msg-header">
           <div class="chat-sender-info">
-            <span class="chat-sender-name">${escapeHtml(msg.senderName || (isSystemMsg ? "System" : "Adventurer"))}</span>
+            <span class="chat-sender-name">${escapeHtml(senderDisplayName)}</span>
             ${roleTag}
           </div>
           <span class="chat-timestamp">${timeStr}</span>
@@ -6687,6 +6739,7 @@ function toggleFloatingPartyChat(forceOpen = null) {
     unreadPerChannel[activePartyChannelId] = 0;
     updateChatUnreadBadges();
     updateAdminChatBarUI();
+    updateChatInputPlaceholder();
     const input = document.getElementById("floatingChatInput");
     if (input) setTimeout(() => input.focus(), 50);
     const msgs = document.getElementById("floatingChatMessages");
@@ -6810,6 +6863,9 @@ function switchAdminChatRoom(roomCode) {
   const targetCode = roomCode.trim().toUpperCase();
   const myRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
 
+  isJoinedViaAdminPanel = true;
+  try { sessionStorage.setItem("admin_joined_room_" + targetCode, "true"); } catch (err) {}
+
   if (myRoom && targetCode === myRoom) {
     activeChatRoomOverride = null;
   } else {
@@ -6819,13 +6875,16 @@ function switchAdminChatRoom(roomCode) {
   startPartyChatListener(targetCode);
   updateAdminChatBarUI();
   updatePartyStatusUI();
+  updateChatInputPlaceholder();
   showStatus(`Admin: Switched party chat to campaign "${targetCode}"`);
 }
 
 function returnToMyAdminPartyRoom() {
   activeChatRoomOverride = null;
+  isJoinedViaAdminPanel = false;
   const myRoom = (connectedCampaignRoom || activeDMRoomCode || "").trim().toUpperCase();
   if (myRoom) {
+    try { sessionStorage.removeItem("admin_joined_room_" + myRoom); } catch (err) {}
     startPartyChatListener(myRoom);
     showStatus(`Returned to your campaign room "${myRoom}"`);
   } else {
@@ -6833,26 +6892,32 @@ function returnToMyAdminPartyRoom() {
   }
   updateAdminChatBarUI();
   updatePartyStatusUI();
+  updateChatInputPlaceholder();
 }
 
 async function openAdminChatWithoutRoom() {
   showStatus("Opening Party Chat in Admin Mode...");
+  isJoinedViaAdminPanel = true;
   const rooms = await getAdminActiveCampaignRoomsList();
 
   if (rooms.length > 0) {
     const targetRoom = rooms[0];
     activeChatRoomOverride = targetRoom;
+    try { sessionStorage.setItem("admin_joined_room_" + targetRoom, "true"); } catch (err) {}
     startPartyChatListener(targetRoom);
     toggleFloatingPartyChat(true);
     updateAdminChatBarUI();
+    updateChatInputPlaceholder();
   } else {
     const custom = prompt("Admin Party Chat Monitor: Enter a Campaign Room Code to inspect:");
     if (custom && custom.trim()) {
       const cleanCustom = custom.trim().toUpperCase();
       activeChatRoomOverride = cleanCustom;
+      try { sessionStorage.setItem("admin_joined_room_" + cleanCustom, "true"); } catch (err) {}
       startPartyChatListener(cleanCustom);
       toggleFloatingPartyChat(true);
       updateAdminChatBarUI();
+      updateChatInputPlaceholder();
     } else {
       showStatus("No campaign room selected.");
     }
