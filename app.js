@@ -1664,7 +1664,7 @@ try {
   additionalAdminEmails = [];
 }
 
-function isAdminSession(user = auth?.currentUser) {
+function isAdminSession(user = (auth?.currentUser || currentUser)) {
   if (!user || user.isAnonymous) return false;
   const email = (user.email || "").trim().toLowerCase();
   if (!email) return false;
@@ -4821,7 +4821,7 @@ function exportCharacterJson() {
     clearActiveTopNoticeBanner();
     return;
   }
-  if (e.target.id === "adminCloseDrawerBtn") {
+  if (e.target.id === "adminCloseDrawerBtn" || e.target.closest("#adminCloseDrawerBtn")) {
     const drawer = document.getElementById("adminRoomDetailDrawer");
     if (drawer) drawer.style.display = "none";
     document.querySelectorAll(".admin-room-item").forEach(item => item.classList.remove("is-inspecting"));
@@ -8154,26 +8154,24 @@ async function sendSessionHeartbeat(force = false) {
   lastHeartbeatSentAt = now;
 
   try {
-    const user = auth?.currentUser;
+    const user = auth?.currentUser || currentUser;
     const email = (user && !user.isAnonymous && user.email) ? user.email.trim() : "";
     const charName = document.getElementById("charName")?.value?.trim() || "";
     const activeRoom = connectedCampaignRoom || activeDMRoomCode || "";
     const role = activeDMRoomCode ? "Dungeon Master" : (connectedCampaignRoom ? "Player" : "Stand-alone");
 
-    const sessionData = {
-      sessionId: currentSessionId,
-      uid: user ? user.uid : "guest",
-      email: email,
-      displayName: user?.displayName || charName || (email ? email.split("@")[0] : "Adventurer"),
-      activeCharName: charName,
-      activeRoom: activeRoom,
-      role: role,
-      device: getDeviceDescription(),
-      status: "online",
-      lastSeen: now
+    const memberPayload = {
+      id: currentSessionId,
+      name: (charName || (email ? email.split("@")[0] : "Adventurer")).substring(0, 100),
+      charClass: (email || "Guest Visitor").substring(0, 100),
+      charRace: getDeviceDescription().substring(0, 100),
+      charBackground: (activeRoom ? `Party: ${activeRoom}` : "Solo Sheet").substring(0, 100),
+      charAlignment: (role || "Stand-alone").substring(0, 100),
+      ownerUid: (user?.uid || "anon").substring(0, 128),
+      updatedAt: now
     };
 
-    await db.collection("active_sessions").doc(currentSessionId).set(sessionData, { merge: true });
+    await db.collection("campaigns").doc("CODEX_PRESENCE").collection("members").doc(currentSessionId).set(memberPayload, { merge: true });
   } catch (err) {
     // Non-blocking background heartbeat
   }
@@ -8205,11 +8203,11 @@ function initSessionPresence() {
   window.addEventListener("click", throttledActivity, { passive: true });
   window.addEventListener("keydown", throttledActivity, { passive: true });
 
-  // On page unload, attempt to remove session or mark offline
+  // On page unload, attempt to remove session
   window.addEventListener("beforeunload", () => {
     if (db && currentSessionId) {
       try {
-        db.collection("active_sessions").doc(currentSessionId).delete().catch(() => {});
+        db.collection("campaigns").doc("CODEX_PRESENCE").collection("members").doc(currentSessionId).delete().catch(() => {});
       } catch (e) {}
     }
   });
@@ -8224,7 +8222,7 @@ function startAdminPresenceListener() {
     container.innerHTML = `<div class="admin-empty-notice"><span class="codex-spin-icon">⏳</span> Synchronizing live site users...</div>`;
   }
 
-  adminPresenceUnsubscribe = db.collection("active_sessions")
+  adminPresenceUnsubscribe = db.collection("campaigns").doc("CODEX_PRESENCE").collection("members")
     .onSnapshot((snapshot) => {
       const now = Date.now();
       const activeCutoff = now - (3.5 * 60 * 1000); // 3.5 minutes
@@ -8234,11 +8232,22 @@ function startAdminPresenceListener() {
       snapshot.forEach((doc) => {
         const data = doc.data();
         if (!data) return;
-        const lastSeen = data.lastSeen || 0;
-        if (lastSeen >= activeCutoff && data.status !== "offline") {
-          sessions.push({ id: doc.id, ...data });
+        const lastSeen = data.updatedAt || 0;
+        if (lastSeen >= activeCutoff) {
+          const email = (data.charClass && data.charClass.includes("@")) ? data.charClass : "";
+          sessions.push({
+            id: doc.id,
+            sessionId: doc.id,
+            email: email,
+            displayName: data.name || (email ? email.split("@")[0] : "Adventurer"),
+            activeCharName: data.name || "",
+            device: data.charRace || "Device",
+            activeRoom: (data.charBackground || "").replace(/^Party:\s*/, ""),
+            role: data.charAlignment || "Player",
+            uid: data.ownerUid || "anon",
+            lastSeen: lastSeen
+          });
         } else if (lastSeen < staleCutoff) {
-          // Clean up dead sessions older than 25 minutes
           doc.ref.delete().catch(() => {});
         }
       });
@@ -8492,8 +8501,9 @@ async function loadAdminCampaigns() {
     try {
       const snap = await db.collection("campaigns").limit(50).get();
       snap.forEach((doc) => {
-        const data = doc.data() || {};
         const code = doc.id;
+        if (code === "CODEX_PRESENCE" || code === "CODEX_GLOBAL_SYSTEM" || code === "GLOBAL_PRESENCE" || code === "GLOBAL_SYSTEM" || code.startsWith("__")) return;
+        const data = doc.data() || {};
         discoveredRooms.set(code, {
           code,
           creatorUid: data.creatorUid || "unknown",
@@ -8548,10 +8558,15 @@ async function inspectAdminRoom(roomCode) {
 
   // Visual active highlight on clicked room item
   document.querySelectorAll(".admin-room-item").forEach(item => item.classList.remove("is-inspecting"));
-  const clickedBtn = document.querySelector(`.admin-inspect-room-btn[data-room="${roomCode}"]`);
-  if (clickedBtn) {
-    const parentCard = clickedBtn.closest(".admin-room-item");
-    if (parentCard) parentCard.classList.add("is-inspecting");
+  try {
+    const escaped = (typeof CSS !== "undefined" && CSS.escape) ? CSS.escape(roomCode) : roomCode;
+    const clickedBtn = document.querySelector(`.admin-inspect-room-btn[data-room="${escaped}"]`);
+    if (clickedBtn) {
+      const parentCard = clickedBtn.closest(".admin-room-item");
+      if (parentCard) parentCard.classList.add("is-inspecting");
+    }
+  } catch (e) {
+    console.warn("Could not highlight active room card:", e);
   }
 
   drawer.style.display = "block";
@@ -8732,7 +8747,10 @@ function initGlobalSiteNoticeListener() {
   if (!db) return;
   if (globalNoticeUnsubscribe) return;
 
-  globalNoticeUnsubscribe = db.collection("system_announcements").doc("global_notice")
+  globalNoticeUnsubscribe = db.collection("campaigns")
+    .doc("CODEX_GLOBAL_SYSTEM")
+    .collection("handouts")
+    .doc("global_notice")
     .onSnapshot((docSnap) => {
       if (!docSnap.exists) {
         dismissGlobalSiteNotice(false);
@@ -8740,7 +8758,26 @@ function initGlobalSiteNoticeListener() {
         return;
       }
 
-      const data = docSnap.data();
+      const handoutData = docSnap.data();
+      if (!handoutData || !handoutData.isShared || !handoutData.content) {
+        dismissGlobalSiteNotice(false);
+        updateAdminNoticeUI(null);
+        return;
+      }
+
+      let data;
+      try {
+        data = JSON.parse(handoutData.content);
+      } catch (e) {
+        data = null;
+      }
+
+      if (!data || data.cleared) {
+        dismissGlobalSiteNotice(false);
+        updateAdminNoticeUI(null);
+        return;
+      }
+
       activeTopNoticeData = data;
       updateAdminNoticeUI(data);
 
@@ -8828,7 +8865,15 @@ async function clearActiveTopNoticeBanner() {
   if (!isAdminSession()) return;
   if (!db) return;
   try {
-    await db.collection("system_announcements").doc("global_notice").delete();
+    await db.collection("campaigns").doc("CODEX_GLOBAL_SYSTEM").collection("handouts").doc("global_notice").set({
+      id: "global_notice",
+      title: "Notice Dismissed",
+      type: "system",
+      author: "Admin",
+      content: JSON.stringify({ cleared: true, expiresAt: 0 }),
+      isShared: false,
+      updatedAt: Date.now()
+    }, { merge: true });
     dismissGlobalSiteNotice(false);
     showStatus("Cleared top website notice banner.");
   } catch (err) {
@@ -8913,7 +8958,17 @@ async function sendAdminBroadcast(e) {
         expiresAt: Date.now() + (durSec * 1000)
       };
 
-      await db.collection("system_announcements").doc("global_notice").set(noticePayload);
+      const handoutPayload = {
+        id: "global_notice",
+        title: (rawText || "System Notice").substring(0, 150),
+        type: "system",
+        author: "Admin",
+        content: JSON.stringify(noticePayload),
+        isShared: true,
+        updatedAt: Date.now()
+      };
+
+      await db.collection("campaigns").doc("CODEX_GLOBAL_SYSTEM").collection("handouts").doc("global_notice").set(handoutPayload);
 
       if (textInput) textInput.value = "";
       showStatus(`Top website notice live for ${durSec}s!`);
@@ -8947,9 +9002,17 @@ async function sendAdminBroadcast(e) {
     if (db) {
       try {
         const snap = await db.collection("campaigns").limit(50).get();
-        snap.forEach((doc) => set.add(doc.id));
+        snap.forEach((doc) => {
+          const code = doc.id;
+          if (code === "CODEX_PRESENCE" || code === "CODEX_GLOBAL_SYSTEM" || code === "GLOBAL_PRESENCE" || code === "GLOBAL_SYSTEM" || code.startsWith("__")) return;
+          set.add(code);
+        });
       } catch (err) {}
     }
+    set.delete("CODEX_PRESENCE");
+    set.delete("CODEX_GLOBAL_SYSTEM");
+    set.delete("GLOBAL_PRESENCE");
+    set.delete("GLOBAL_SYSTEM");
     targetRooms = Array.from(set);
     if (targetRooms.length === 0) {
       alert("No active campaign rooms found to broadcast to.");
