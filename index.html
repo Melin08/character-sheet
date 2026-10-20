@@ -16,6 +16,20 @@
 </head>
 <body id="top" class="theme-nexus">
 
+  <!-- GLOBAL SITE TOP NOTICE BANNER (ADMIN BROADCAST) -->
+  <aside id="globalSiteNoticeBanner" class="global-site-notice-banner" style="display: none;" role="alert" aria-live="assertive">
+    <div class="global-notice-content">
+      <span class="global-notice-icon" id="globalNoticeIcon">📢</span>
+      <div class="global-notice-text-wrap">
+        <span class="global-notice-tag" id="globalNoticeTag">System Notice</span>
+        <span class="global-notice-message" id="globalNoticeMessage">Notice message text...</span>
+      </div>
+      <div class="global-notice-timer" id="globalNoticeTimer" title="Auto-dismiss timer">15s</div>
+      <button type="button" class="global-notice-close-btn" id="globalNoticeCloseBtn" aria-label="Dismiss notice">&times;</button>
+    </div>
+    <div class="global-notice-progress-bar" id="globalNoticeProgressBar"></div>
+  </aside>
+
   <!-- Toast Notification -->
   <div id="saveToast" class="toast-banner" role="status" aria-live="polite">Saved</div>
 
@@ -1832,16 +1846,17 @@
             <button type="button" class="btn btn-outline btn-xs" id="adminFetchRoomsBtn">Scan Now</button>
           </div>
 
-          <div id="adminRoomsList" class="admin-rooms-list">
-            <div class="admin-empty-notice">Click "Scan Now" to query active campaign rooms from Firestore.</div>
-          </div>
-
+          <!-- Inspection Drawer positioned right at top of tab for instant visibility -->
           <div id="adminRoomDetailDrawer" class="admin-room-drawer" style="display: none;">
             <div class="admin-drawer-header">
               <strong id="adminDrawerTitle">Room Inspection</strong>
               <button type="button" class="btn btn-ghost btn-xs" id="adminCloseDrawerBtn">&times;</button>
             </div>
             <div id="adminDrawerContent" class="admin-drawer-content"></div>
+          </div>
+
+          <div id="adminRoomsList" class="admin-rooms-list">
+            <div class="admin-empty-notice">Click "Scan Now" to query active campaign rooms from Firestore.</div>
           </div>
         </div>
 
@@ -1850,19 +1865,25 @@
           <div class="admin-section-header">
             <div>
               <h4 style="margin: 0; font-size: 0.95rem;">Global &amp; Room System Broadcast</h4>
-              <p style="margin: 2px 0 0; font-size: 0.76rem; color: var(--text-muted);">Transmit an official system decree or maintenance notice into campaign party chats.</p>
+              <p style="margin: 2px 0 0; font-size: 0.76rem; color: var(--text-muted);">Transmit an official system decree, maintenance notice, or site-wide top banner alert.</p>
             </div>
+            <button type="button" class="btn red btn-xs" id="adminClearTopNoticeBtn" style="display: none;">Clear Top Banner</button>
           </div>
 
           <form id="adminBroadcastForm" class="admin-form-group">
             <div class="handout-form-row">
               <label class="handout-form-label">
-                <span>Target Destination</span>
+                <span>Broadcast Channel / Target</span>
                 <select id="adminBroadcastTarget" class="handout-form-input">
-                  <option value="current">Current Connected Room</option>
-                  <option value="all">All Known Active Campaign Rooms</option>
-                  <option value="custom">Specific Room Code...</option>
+                  <option value="top_banner">🌐 Top Website Notice Banner (All Site Visitors)</option>
+                  <option value="current">Current Connected Room (Party Chat)</option>
+                  <option value="all">All Known Active Campaign Rooms (Party Chat)</option>
+                  <option value="custom">Specific Room Code... (Party Chat)</option>
                 </select>
+              </label>
+              <label class="handout-form-label" id="adminNoticeDurationWrap">
+                <span>Display Duration (seconds)</span>
+                <input type="number" id="adminNoticeDuration" class="handout-form-input" placeholder="15 (Default: 15s)" min="3" max="86400" />
               </label>
               <label class="handout-form-label" id="adminCustomRoomCodeWrap" style="display: none;">
                 <span>Specific Room Code</span>
@@ -1880,10 +1901,11 @@
 
             <label class="handout-form-label">
               <span>Broadcast Content</span>
-              <textarea id="adminBroadcastText" class="handout-form-textarea" placeholder="Type system announcement text here..." style="min-height: 90px;"></textarea>
+              <textarea id="adminBroadcastText" class="handout-form-textarea" placeholder="Type notice to display at the top of the website for all visitors..." style="min-height: 90px;"></textarea>
             </label>
 
-            <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+              <span id="adminActiveNoticeSummary" style="font-size: 0.75rem; color: var(--text-dim);">No active top notice banner.</span>
               <button type="submit" class="btn btn-primary" id="adminSendBroadcastBtn">Transmit Announcement</button>
             </div>
           </form>

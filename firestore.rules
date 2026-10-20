@@ -308,6 +308,14 @@ service cloud.firestore {
       allow delete: if true;
     }
 
+    // 7. System global announcements (Site-wide top notice banner)
+    match /system_announcements/{docId} {
+      // Any visitor can read the global notice to display the top banner
+      allow read: if true;
+      // Only Master Admin can publish or clear announcements
+      allow write: if isMasterAdmin();
+    }
+
     // Default deny for all other unspecified paths
     match /{document=**} {
       allow read, write: if false;

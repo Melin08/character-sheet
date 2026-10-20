@@ -4813,9 +4813,18 @@ function exportCharacterJson() {
     deleteAdminRoom(adminDeleteBtn.dataset.room);
     return;
   }
+  if (e.target.id === "globalNoticeCloseBtn" || e.target.closest("#globalNoticeCloseBtn")) {
+    dismissGlobalSiteNotice(true);
+    return;
+  }
+  if (e.target.id === "adminClearTopNoticeBtn" || e.target.closest("#adminClearTopNoticeBtn")) {
+    clearActiveTopNoticeBanner();
+    return;
+  }
   if (e.target.id === "adminCloseDrawerBtn") {
     const drawer = document.getElementById("adminRoomDetailDrawer");
     if (drawer) drawer.style.display = "none";
+    document.querySelectorAll(".admin-room-item").forEach(item => item.classList.remove("is-inspecting"));
     return;
   }
   if (e.target.id === "adminFetchRoomsBtn" || e.target.id === "adminQuickScanRoomsBtn") {
@@ -8537,22 +8546,32 @@ async function inspectAdminRoom(roomCode) {
   const content = document.getElementById("adminDrawerContent");
   if (!drawer || !content) return;
 
+  // Visual active highlight on clicked room item
+  document.querySelectorAll(".admin-room-item").forEach(item => item.classList.remove("is-inspecting"));
+  const clickedBtn = document.querySelector(`.admin-inspect-room-btn[data-room="${roomCode}"]`);
+  if (clickedBtn) {
+    const parentCard = clickedBtn.closest(".admin-room-item");
+    if (parentCard) parentCard.classList.add("is-inspecting");
+  }
+
   drawer.style.display = "block";
   if (title) title.textContent = `Inspecting Room: ${roomCode}`;
-  content.innerHTML = `<div style="text-align:center; padding: 1rem; color: var(--text-dim);"><span class="codex-spin-icon">⏳</span> Fetching room data from Firestore...</div>`;
+  content.innerHTML = `<div style="text-align:center; padding: 1.25rem; color: var(--text-dim);"><span class="codex-spin-icon">⏳</span> Fetching live room data from Firestore...</div>`;
+  drawer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  showStatus(`Inspecting room ${roomCode}...`);
 
   if (!db) {
-    content.innerHTML = `<div style="color: #f87171;">Firestore is not connected.</div>`;
+    content.innerHTML = `<div style="color: #f87171; padding: 0.5rem;">Firestore is not connected.</div>`;
     return;
   }
 
   try {
     const roomRef = db.collection("campaigns").doc(roomCode);
     const [roomDoc, membersSnap, chatSnap, handoutsSnap] = await Promise.all([
-      roomRef.get().catch(() => null),
-      roomRef.collection("members").get().catch(() => null),
-      roomRef.collection("chat").orderBy("timestamp", "desc").limit(10).get().catch(() => null),
-      roomRef.collection("handouts").get().catch(() => null)
+      roomRef.get().catch((err) => { console.warn("roomDoc fetch err:", err); return null; }),
+      roomRef.collection("members").get().catch((err) => { console.warn("membersSnap fetch err:", err); return null; }),
+      roomRef.collection("chat").limit(20).get().catch((err) => { console.warn("chatSnap fetch err:", err); return null; }),
+      roomRef.collection("handouts").get().catch((err) => { console.warn("handoutsSnap fetch err:", err); return null; })
     ]);
 
     const roomData = roomDoc && roomDoc.exists ? roomDoc.data() : null;
@@ -8563,27 +8582,28 @@ async function inspectAdminRoom(roomCode) {
     const messages = [];
     if (chatSnap) {
       chatSnap.forEach((d) => messages.push({ id: d.id, ...d.data() }));
+      messages.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     }
     const handouts = [];
     if (handoutsSnap) {
       handoutsSnap.forEach((d) => handouts.push({ id: d.id, ...d.data() }));
     }
 
-    const createdDate = roomData?.createdAt ? new Date(roomData.createdAt).toLocaleString() : "Unknown";
+    const createdDate = roomData?.createdAt ? new Date(roomData.createdAt).toLocaleString() : "Active (Subcollections)";
 
     let html = `
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 0.75rem;">
         <div style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px;">
-          <span style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">Room Status</span><br>
-          <strong style="color: ${roomDoc?.exists ? '#4ade80' : '#f87171'};">${roomDoc?.exists ? 'Document Exists' : 'Virtual / Subcollections Only'}</strong>
+          <span style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">Room Document</span><br>
+          <strong style="color: ${roomDoc?.exists ? '#4ade80' : '#fbbf24'};">${roomDoc?.exists ? 'Verified Active' : 'Virtual Session'}</strong>
         </div>
         <div style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px;">
           <span style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">Registered Members</span><br>
-          <strong>${members.length} player(s)</strong>
+          <strong style="color: #60a5fa;">${members.length} player(s)</strong>
         </div>
         <div style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px;">
-          <span style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">Handouts</span><br>
-          <strong>${handouts.length} item(s)</strong>
+          <span style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">Loot Handouts</span><br>
+          <strong style="color: var(--accent-gold);">${handouts.length} item(s)</strong>
         </div>
         <div style="background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px;">
           <span style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">Created Date</span><br>
@@ -8604,7 +8624,7 @@ async function inspectAdminRoom(roomCode) {
         const ac = m.ac !== undefined ? m.ac : "-";
         const charCls = [m.charClass, m.level ? `Lvl ${m.level}` : ""].filter(Boolean).join(" ");
         html += `
-          <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); padding: 0.4rem 0.6rem; border-radius: 4px; border: 1px solid var(--border-subtle);">
+          <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); padding: 0.45rem 0.65rem; border-radius: 4px; border: 1px solid var(--border-subtle);">
             <div>
               <strong style="color: #ffffff;">${escapeHtml(m.name || "Unnamed Adventurer")}</strong>
               <span style="font-size: 0.7rem; color: var(--text-dim); margin-left: 0.4rem;">${escapeHtml(charCls || "Adventurer")}</span>
@@ -8624,12 +8644,12 @@ async function inspectAdminRoom(roomCode) {
       html += `<p style="font-size:0.75rem; color:var(--text-muted); margin:0 0 0.5rem;">No chat messages recorded.</p>`;
     } else {
       html += `<div style="display: flex; flex-direction: column; gap: 0.25rem; max-height: 140px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px; font-size: 0.74rem;">`;
-      messages.forEach((msg) => {
+      messages.slice(0, 10).forEach((msg) => {
         const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : "";
         html += `
           <div>
             <span style="color: var(--accent-gold); font-weight: 700;">${escapeHtml(msg.senderName || "Unknown")}:</span>
-            <span style="color: var(--text-main); margin-left: 0.3rem;">${escapeHtml((msg.text || "").substring(0, 80))}</span>
+            <span style="color: var(--text-main); margin-left: 0.3rem;">${escapeHtml((msg.text || "").substring(0, 90))}</span>
             <span style="color: var(--text-dim); font-size: 0.65rem; margin-left: 0.4rem;">${escapeHtml(time)}</span>
           </div>
         `;
@@ -8648,7 +8668,7 @@ async function inspectAdminRoom(roomCode) {
     content.innerHTML = html;
   } catch (err) {
     console.error("Inspect room error:", err);
-    content.innerHTML = `<div style="color: #f87171;">Failed to inspect room: ${escapeHtml(err.message)}</div>`;
+    content.innerHTML = `<div style="color: #f87171; padding: 0.5rem;">Failed to inspect room: ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -8704,6 +8724,135 @@ async function deleteAdminRoom(roomCode) {
   }
 }
 
+let globalNoticeCountdownTimer = null;
+let globalNoticeUnsubscribe = null;
+let activeTopNoticeData = null;
+
+function initGlobalSiteNoticeListener() {
+  if (!db) return;
+  if (globalNoticeUnsubscribe) return;
+
+  globalNoticeUnsubscribe = db.collection("system_announcements").doc("global_notice")
+    .onSnapshot((docSnap) => {
+      if (!docSnap.exists) {
+        dismissGlobalSiteNotice(false);
+        updateAdminNoticeUI(null);
+        return;
+      }
+
+      const data = docSnap.data();
+      activeTopNoticeData = data;
+      updateAdminNoticeUI(data);
+
+      const now = Date.now();
+      const expiresAt = data.expiresAt || 0;
+      const remainingMs = expiresAt - now;
+
+      if (remainingMs <= 0) {
+        dismissGlobalSiteNotice(false);
+        return;
+      }
+
+      // Check if user dismissed this specific notice ID in this browser session
+      if (sessionStorage.getItem("dismissed_notice_" + data.id)) {
+        return;
+      }
+
+      renderGlobalSiteNoticeBanner(data, remainingMs);
+    }, (err) => {
+      console.warn("Global notice listener error:", err);
+    });
+}
+
+function renderGlobalSiteNoticeBanner(data, remainingMs) {
+  const banner = document.getElementById("globalSiteNoticeBanner");
+  const msgEl = document.getElementById("globalNoticeMessage");
+  const tagEl = document.getElementById("globalNoticeTag");
+  const iconEl = document.getElementById("globalNoticeIcon");
+  const timerEl = document.getElementById("globalNoticeTimer");
+  const progBar = document.getElementById("globalNoticeProgressBar");
+  if (!banner || !msgEl) return;
+
+  if (globalNoticeCountdownTimer) {
+    clearInterval(globalNoticeCountdownTimer);
+    globalNoticeCountdownTimer = null;
+  }
+
+  banner.className = `global-site-notice-banner notice-style-${data.style || 'gold'}`;
+  if (msgEl) msgEl.textContent = data.text || "System Notice";
+  if (tagEl) tagEl.textContent = data.tag || "System Alert";
+  if (iconEl) iconEl.textContent = data.icon || "📢";
+
+  banner.style.display = "block";
+
+  const totalDurationMs = (data.durationSeconds || 15) * 1000;
+  const expiresAt = data.expiresAt || (Date.now() + remainingMs);
+
+  function updateTicker() {
+    const now = Date.now();
+    const leftMs = Math.max(0, expiresAt - now);
+    const leftSec = Math.ceil(leftMs / 1000);
+
+    if (timerEl) timerEl.textContent = `${leftSec}s`;
+    if (progBar) {
+      const pct = Math.max(0, Math.min(100, (leftMs / totalDurationMs) * 100));
+      progBar.style.width = `${pct}%`;
+    }
+
+    if (leftMs <= 0) {
+      dismissGlobalSiteNotice(false);
+    }
+  }
+
+  updateTicker();
+  globalNoticeCountdownTimer = setInterval(updateTicker, 250);
+}
+
+function dismissGlobalSiteNotice(remember = true) {
+  if (globalNoticeCountdownTimer) {
+    clearInterval(globalNoticeCountdownTimer);
+    globalNoticeCountdownTimer = null;
+  }
+  const banner = document.getElementById("globalSiteNoticeBanner");
+  if (banner) {
+    banner.style.display = "none";
+  }
+  if (remember && activeTopNoticeData && activeTopNoticeData.id) {
+    try {
+      sessionStorage.setItem("dismissed_notice_" + activeTopNoticeData.id, "true");
+    } catch (e) {}
+  }
+}
+
+async function clearActiveTopNoticeBanner() {
+  if (!isAdminSession()) return;
+  if (!db) return;
+  try {
+    await db.collection("system_announcements").doc("global_notice").delete();
+    dismissGlobalSiteNotice(false);
+    showStatus("Cleared top website notice banner.");
+  } catch (err) {
+    console.error("Clear banner error:", err);
+    showStatus("Could not clear banner: " + err.message);
+  }
+}
+
+function updateAdminNoticeUI(data) {
+  const summaryEl = document.getElementById("adminActiveNoticeSummary");
+  const clearBtn = document.getElementById("adminClearTopNoticeBtn");
+  if (!summaryEl) return;
+
+  if (!data || !data.expiresAt || data.expiresAt <= Date.now()) {
+    summaryEl.textContent = "No active top notice banner.";
+    if (clearBtn) clearBtn.style.display = "none";
+    return;
+  }
+
+  const leftSec = Math.max(0, Math.ceil((data.expiresAt - Date.now()) / 1000));
+  summaryEl.innerHTML = `<span style="color: #34d399; font-weight:700;">Active Top Banner (${leftSec}s remaining):</span> "${escapeHtml((data.text || '').substring(0, 40))}${data.text && data.text.length > 40 ? '...' : ''}"`;
+  if (clearBtn) clearBtn.style.display = "inline-block";
+}
+
 async function sendAdminBroadcast(e) {
   if (e && e.preventDefault) e.preventDefault();
 
@@ -8720,6 +8869,58 @@ async function sendAdminBroadcast(e) {
 
   if (!rawText) {
     alert("Please enter the announcement text to broadcast.");
+    return;
+  }
+
+  if (!db) {
+    showStatus("Database offline. Broadcast could not be sent.");
+    return;
+  }
+
+  // 1. TOP WEBSITE NOTICE BANNER BROADCAST (ALL SITE VISITORS)
+  if (targetSelect === "top_banner") {
+    const durInput = document.getElementById("adminNoticeDuration");
+    let durSec = parseInt(durInput?.value, 10);
+    if (isNaN(durSec) || durSec <= 0) {
+      durSec = 15; // default to 15 seconds if not specified!
+    }
+
+    let tag = "System Notice";
+    let icon = "📢";
+    let noticeStyle = "info";
+
+    if (style === "dm") {
+      tag = "Admin Decree";
+      icon = "👑";
+      noticeStyle = "gold";
+    } else if (style === "maint") {
+      tag = "Maintenance Alert";
+      icon = "⚠️";
+      noticeStyle = "warning";
+    }
+
+    showStatus(`Broadcasting top website notice for ${durSec}s...`);
+
+    try {
+      const noticePayload = {
+        id: "notice_" + Date.now(),
+        text: rawText,
+        tag: tag,
+        icon: icon,
+        style: noticeStyle,
+        durationSeconds: durSec,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + (durSec * 1000)
+      };
+
+      await db.collection("system_announcements").doc("global_notice").set(noticePayload);
+
+      if (textInput) textInput.value = "";
+      showStatus(`Top website notice live for ${durSec}s!`);
+    } catch (err) {
+      console.error("Top banner broadcast failed:", err);
+      showStatus("Broadcast failed: " + err.message);
+    }
     return;
   }
 
@@ -9075,15 +9276,25 @@ function initAdminPanel() {
     });
   }
 
-  // Broadcast target selector toggle custom room code input
+  // Broadcast target selector toggle custom room code & duration inputs
   const targetSelect = document.getElementById("adminBroadcastTarget");
   if (targetSelect) {
-    targetSelect.addEventListener("change", (e) => {
-      const wrap = document.getElementById("adminCustomRoomCodeWrap");
-      if (wrap) {
-        wrap.style.display = e.target.value === "custom" ? "block" : "none";
+    const updateBroadcastInputs = () => {
+      const val = targetSelect.value;
+      const customWrap = document.getElementById("adminCustomRoomCodeWrap");
+      const durWrap = document.getElementById("adminNoticeDurationWrap");
+      const textInput = document.getElementById("adminBroadcastText");
+
+      if (durWrap) durWrap.style.display = val === "top_banner" ? "block" : "none";
+      if (customWrap) customWrap.style.display = val === "custom" ? "block" : "none";
+      if (textInput) {
+        textInput.placeholder = val === "top_banner"
+          ? "Type notice to display at the top of the website for all visitors..."
+          : "Type system announcement text here...";
       }
-    });
+    };
+    targetSelect.addEventListener("change", updateBroadcastInputs);
+    updateBroadcastInputs();
   }
 
   // Form submit listeners
@@ -9113,6 +9324,7 @@ initPWAAndNetworkStatus();
 initFloatingPartyChatDragAndResize();
 initAdminPanel();
 initSessionPresence();
+initGlobalSiteNoticeListener();
 
 // Check if user opened a 1-click ?room=CODE invite link
 const urlParams = new URLSearchParams(window.location.search);

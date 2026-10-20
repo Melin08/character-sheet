@@ -6508,6 +6508,155 @@ body.theme-parchment .party-status-indicator {
   background: rgba(251, 191, 36, 0.12);
 }
 
+/* ==========================================================================
+   GLOBAL SITE TOP NOTICE BANNER (ADMIN BROADCAST)
+   ========================================================================== */
+
+.global-site-notice-banner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 10001;
+  background: linear-gradient(135deg, rgba(20, 16, 28, 0.98) 0%, rgba(12, 10, 20, 0.98) 100%);
+  border-bottom: 2px solid var(--accent-gold);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.75), 0 0 16px rgba(212, 175, 55, 0.3);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: bannerSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
+}
+
+@keyframes bannerSlideDown {
+  0% { transform: translateY(-100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.global-site-notice-banner.notice-style-warning {
+  border-bottom-color: #f59e0b;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.75), 0 0 16px rgba(245, 158, 11, 0.35);
+}
+.global-site-notice-banner.notice-style-info {
+  border-bottom-color: #38bdf8;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.75), 0 0 16px rgba(56, 189, 248, 0.35);
+}
+
+.global-notice-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.55rem 1.25rem;
+  max-width: 1300px;
+  margin: 0 auto;
+  position: relative;
+  min-height: 42px;
+}
+
+.global-notice-icon {
+  font-size: 1.15rem;
+  filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.5));
+  flex-shrink: 0;
+}
+
+.global-notice-text-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.global-notice-tag {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(212, 175, 55, 0.2);
+  color: var(--accent-gold);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  white-space: nowrap;
+}
+
+.notice-style-warning .global-notice-tag {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+.notice-style-info .global-notice-tag {
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.global-notice-message {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.global-notice-timer {
+  font-size: 0.72rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  color: var(--accent-gold);
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.global-notice-close-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 1.35rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.35rem;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.global-notice-close-btn:hover {
+  color: #ffffff;
+  transform: scale(1.15);
+}
+
+.global-notice-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(90deg, #d4af37, #f59e0b, #ef4444);
+  transition: width 0.2s linear;
+}
+
+.admin-room-item.is-inspecting {
+  border-color: var(--accent-gold) !important;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.25);
+  background: rgba(212, 175, 55, 0.08) !important;
+}
+
+.admin-room-drawer {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 26, 0.95) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  padding: 1rem 1.15rem;
+  margin-bottom: 0.85rem;
+  animation: bannerSlideDown 0.25s ease-out;
+}
+
 @media print {
   body { background: #ffffff !important; color: #000000 !important; padding: 0 !important; }
   .top-command-bar, .codex-navigation-dock, .dice-station-bar, .floating-d20-trigger, .bottom-left-chat-trigger, .sheet-footer, .ambient-glow, .modal-backdrop, .blur-toggle-btn, .live-party-dock, .floating-party-chat, .floating-chat-bubble {
