@@ -1411,6 +1411,7 @@ function saveSheet(quiet = false) {
   saveRoster(roster);
   localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
   syncToLiveCampaign(charRecord);
+  if (typeof sendSessionHeartbeat === "function") sendSessionHeartbeat();
   if (!quiet) showStatus("Saved!");
 }
 
@@ -1708,6 +1709,9 @@ if (auth) {
   auth.onAuthStateChanged(async (user) => {
     currentUser = user;
     updateAuthUI(user);
+    if (typeof sendSessionHeartbeat === "function") {
+      sendSessionHeartbeat(true);
+    }
 
     if (user && !user.isAnonymous && db) {
       try {
@@ -4819,9 +4823,18 @@ function exportCharacterJson() {
     loadAdminCampaigns();
     return;
   }
-  if (e.target.id === "adminRefreshStatsBtn") {
+  if (e.target.id === "adminRefreshStatsBtn" || e.target.id === "adminRefreshUsersBtn") {
     loadAdminOverview();
-    showStatus("Refreshed system metrics!");
+    startAdminPresenceListener();
+    showStatus("Refreshed live user presence!");
+    return;
+  }
+  const presenceFilterBtn = e.target.closest("[data-presence-filter]");
+  if (presenceFilterBtn) {
+    document.querySelectorAll("[data-presence-filter]").forEach((b) => b.classList.remove("active"));
+    presenceFilterBtn.classList.add("active");
+    activePresenceFilter = presenceFilterBtn.dataset.presenceFilter || "all";
+    renderAdminPresenceUI();
     return;
   }
   if (e.target.id === "adminQuickExportDumpBtn" || e.target.id === "adminFullDumpBtn") {
@@ -8100,6 +8113,240 @@ function initFloatingPartyChatDragAndResize() {
    MASTER ADMIN PANEL CONTROLLER (RESTRICTED TO OWNER EMAIL)
    ========================================================================== */
 
+let currentSessionId = sessionStorage.getItem("codex_session_id");
+if (!currentSessionId) {
+  currentSessionId = "sess_" + Date.now() + "_" + Math.random().toString(36).substring(2, 8);
+  try {
+    sessionStorage.setItem("codex_session_id", currentSessionId);
+  } catch (e) {}
+}
+
+let presenceHeartbeatInterval = null;
+let lastHeartbeatSentAt = 0;
+let adminPresenceUnsubscribe = null;
+let adminActivePresenceSessions = [];
+let activePresenceFilter = "all";
+
+function getDeviceDescription() {
+  const ua = navigator.userAgent || "";
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+  const os = /Macintosh|Mac OS X/i.test(ua) ? "Mac" :
+    (/Windows/i.test(ua) ? "Windows" :
+    (/Linux/i.test(ua) ? "Linux" :
+    (/iPhone|iPad|iPod/i.test(ua) ? "iOS" :
+    (/Android/i.test(ua) ? "Android" : "Device"))));
+  return `${isMobile ? "Mobile" : "Desktop"} (${os})`;
+}
+
+async function sendSessionHeartbeat(force = false) {
+  if (!db) return;
+  const now = Date.now();
+  if (!force && now - lastHeartbeatSentAt < 12000) return;
+  lastHeartbeatSentAt = now;
+
+  try {
+    const user = auth?.currentUser;
+    const email = (user && !user.isAnonymous && user.email) ? user.email.trim() : "";
+    const charName = document.getElementById("charName")?.value?.trim() || "";
+    const activeRoom = connectedCampaignRoom || activeDMRoomCode || "";
+    const role = activeDMRoomCode ? "Dungeon Master" : (connectedCampaignRoom ? "Player" : "Stand-alone");
+
+    const sessionData = {
+      sessionId: currentSessionId,
+      uid: user ? user.uid : "guest",
+      email: email,
+      displayName: user?.displayName || charName || (email ? email.split("@")[0] : "Adventurer"),
+      activeCharName: charName,
+      activeRoom: activeRoom,
+      role: role,
+      device: getDeviceDescription(),
+      status: "online",
+      lastSeen: now
+    };
+
+    await db.collection("active_sessions").doc(currentSessionId).set(sessionData, { merge: true });
+  } catch (err) {
+    // Non-blocking background heartbeat
+  }
+}
+
+function initSessionPresence() {
+  sendSessionHeartbeat(true);
+
+  if (!presenceHeartbeatInterval) {
+    presenceHeartbeatInterval = setInterval(() => {
+      sendSessionHeartbeat();
+    }, 28000);
+  }
+
+  // Trigger heartbeat when user returns to tab
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      sendSessionHeartbeat(true);
+    }
+  });
+
+  // Trigger throttled heartbeat on user interactions
+  const throttledActivity = () => {
+    const now = Date.now();
+    if (now - lastHeartbeatSentAt > 15000) {
+      sendSessionHeartbeat();
+    }
+  };
+  window.addEventListener("click", throttledActivity, { passive: true });
+  window.addEventListener("keydown", throttledActivity, { passive: true });
+
+  // On page unload, attempt to remove session or mark offline
+  window.addEventListener("beforeunload", () => {
+    if (db && currentSessionId) {
+      try {
+        db.collection("active_sessions").doc(currentSessionId).delete().catch(() => {});
+      } catch (e) {}
+    }
+  });
+}
+
+function startAdminPresenceListener() {
+  if (!db || !isAdminSession()) return;
+  stopAdminPresenceListener();
+
+  const container = document.getElementById("adminActiveUsersList");
+  if (container && (!adminActivePresenceSessions || adminActivePresenceSessions.length === 0)) {
+    container.innerHTML = `<div class="admin-empty-notice"><span class="codex-spin-icon">⏳</span> Synchronizing live site users...</div>`;
+  }
+
+  adminPresenceUnsubscribe = db.collection("active_sessions")
+    .onSnapshot((snapshot) => {
+      const now = Date.now();
+      const activeCutoff = now - (3.5 * 60 * 1000); // 3.5 minutes
+      const staleCutoff = now - (25 * 60 * 1000);  // 25 minutes
+      const sessions = [];
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (!data) return;
+        const lastSeen = data.lastSeen || 0;
+        if (lastSeen >= activeCutoff && data.status !== "offline") {
+          sessions.push({ id: doc.id, ...data });
+        } else if (lastSeen < staleCutoff) {
+          // Clean up dead sessions older than 25 minutes
+          doc.ref.delete().catch(() => {});
+        }
+      });
+
+      // Sort: Logged-in users with email first, then newest lastSeen
+      sessions.sort((a, b) => {
+        const aHas = Boolean(a.email);
+        const bHas = Boolean(b.email);
+        if (aHas !== bHas) return bHas ? 1 : -1;
+        return (b.lastSeen || 0) - (a.lastSeen || 0);
+      });
+
+      adminActivePresenceSessions = sessions;
+      renderAdminPresenceUI();
+    }, (err) => {
+      console.warn("Admin presence listener error:", err);
+      const listEl = document.getElementById("adminActiveUsersList");
+      if (listEl) {
+        listEl.innerHTML = `<div class="admin-empty-notice" style="color: #f87171;">Could not connect to live presence stream: ${escapeHtml(err.message)}</div>`;
+      }
+    });
+}
+
+function stopAdminPresenceListener() {
+  if (adminPresenceUnsubscribe) {
+    adminPresenceUnsubscribe();
+    adminPresenceUnsubscribe = null;
+  }
+}
+
+function renderAdminPresenceUI() {
+  const onlineStatEl = document.getElementById("adminStatOnlineUsers");
+  const onlineSubEl = document.getElementById("adminStatOnlineSub");
+  const countAllEl = document.getElementById("adminCountAllUsers");
+  const countEmailEl = document.getElementById("adminCountEmailUsers");
+  const countGuestEl = document.getElementById("adminCountGuestUsers");
+  const listContainer = document.getElementById("adminActiveUsersList");
+
+  const sessions = adminActivePresenceSessions || [];
+  const loggedUsers = sessions.filter((s) => Boolean(s.email));
+  const guestUsers = sessions.filter((s) => !s.email);
+
+  const totalCount = sessions.length;
+  const loggedCount = loggedUsers.length;
+  const guestCount = guestUsers.length;
+
+  if (onlineStatEl) onlineStatEl.textContent = totalCount;
+  if (onlineSubEl) {
+    onlineSubEl.textContent = `${loggedCount} logged-in (${loggedCount === 1 ? '1 email' : loggedCount + ' emails'}) &bull; ${guestCount} guest(s)`;
+  }
+  if (countAllEl) countAllEl.textContent = totalCount;
+  if (countEmailEl) countEmailEl.textContent = loggedCount;
+  if (countGuestEl) countGuestEl.textContent = guestCount;
+
+  if (!listContainer) return;
+
+  let filtered = sessions;
+  if (activePresenceFilter === "logged") {
+    filtered = loggedUsers;
+  } else if (activePresenceFilter === "guest") {
+    filtered = guestUsers;
+  }
+
+  if (filtered.length === 0) {
+    if (activePresenceFilter === "logged") {
+      listContainer.innerHTML = `<div class="admin-empty-notice">No users with registered emails are currently active.</div>`;
+    } else if (activePresenceFilter === "guest") {
+      listContainer.innerHTML = `<div class="admin-empty-notice">No guest/anonymous visitors active.</div>`;
+    } else {
+      listContainer.innerHTML = `<div class="admin-empty-notice">No active visitors detected. Waiting for connections...</div>`;
+    }
+    return;
+  }
+
+  const now = Date.now();
+  listContainer.innerHTML = filtered.map((s) => {
+    const isMe = (s.sessionId === currentSessionId || (auth?.currentUser && s.uid === auth.currentUser.uid));
+    const isOwner = Boolean(s.email && s.email.toLowerCase() === PRIMARY_ADMIN_EMAIL.toLowerCase());
+    const isSecondaryAdmin = Boolean(s.email && additionalAdminEmails.map(e => e.toLowerCase()).includes(s.email.toLowerCase()));
+
+    const ageSec = Math.max(0, Math.round((now - (s.lastSeen || now)) / 1000));
+    const isIdle = ageSec > 50;
+    const statusText = isIdle ? `Idle (${Math.round(ageSec / 60)}m ago)` : "Active Now";
+    const statusClass = isIdle ? "idle-now" : "active-now";
+
+    const roomText = s.activeRoom ? `Room: ${s.activeRoom} (${s.role || 'Member'})` : `Solo Session`;
+    const charText = s.activeCharName || s.displayName || "Adventurer";
+    const deviceText = s.device || "Browser";
+
+    return `
+      <div class="admin-user-card ${isMe ? 'is-self' : ''} ${s.email ? 'is-logged' : ''}">
+        <div class="admin-user-main">
+          <div class="admin-user-email-row">
+            ${s.email
+              ? `<span class="admin-user-email">📧 ${escapeHtml(s.email)}</span>`
+              : `<span class="admin-user-guest">👤 Guest Visitor</span>`
+            }
+            ${isOwner ? '<span class="admin-badge-pill" style="color: #fbbf24;">👑 Owner</span>' : ''}
+            ${(!isOwner && isSecondaryAdmin) ? '<span class="admin-badge-pill" style="color: #60a5fa;">🛡️ Admin</span>' : ''}
+            ${(!isOwner && !isSecondaryAdmin && s.email) ? '<span class="admin-badge-pill" style="color: #93c5fd;">Player</span>' : ''}
+            ${isMe ? '<span class="admin-badge-pill" style="color: #34d399;">(You)</span>' : ''}
+          </div>
+          <div class="admin-user-details">
+            <span class="admin-user-char">⚔️ ${escapeHtml(charText)}</span>
+            <span class="admin-user-sep">&bull;</span>
+            <span class="admin-user-room">${escapeHtml(roomText)}</span>
+          </div>
+        </div>
+        <div class="admin-user-meta">
+          <span class="admin-user-device">${escapeHtml(deviceText)}</span>
+          <span class="admin-user-status ${statusClass}">${escapeHtml(statusText)}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
 function openAdminModal() {
   if (!isAdminSession()) {
     showStatus("Access restricted to master administrator.", 3000);
@@ -8111,6 +8358,7 @@ function openAdminModal() {
     modal.classList.add("open");
   }
   loadAdminOverview();
+  startAdminPresenceListener();
 }
 
 function closeAdminModal() {
@@ -8119,6 +8367,7 @@ function closeAdminModal() {
     modal.classList.remove("open");
     modal.style.display = "none";
   }
+  stopAdminPresenceListener();
 }
 
 function switchAdminTab(tabId) {
@@ -8141,11 +8390,16 @@ function switchAdminTab(tabId) {
   });
 
   if (tabId === "adminTabCampaigns") {
+    stopAdminPresenceListener();
     loadAdminCampaigns();
   } else if (tabId === "adminTabOverview") {
     loadAdminOverview();
-  } else if (tabId === "adminTabDiagnostics") {
-    renderAdminEmailsList();
+    startAdminPresenceListener();
+  } else {
+    stopAdminPresenceListener();
+    if (tabId === "adminTabDiagnostics") {
+      renderAdminEmailsList();
+    }
   }
 }
 
@@ -8196,6 +8450,8 @@ function loadAdminOverview() {
   if (dispenserRoom && activeRoom && !dispenserRoom.value) {
     dispenserRoom.value = activeRoom;
   }
+
+  sendSessionHeartbeat(true);
 }
 
 async function loadAdminCampaigns() {
@@ -8856,6 +9112,7 @@ loadAllTraits();
 initPWAAndNetworkStatus();
 initFloatingPartyChatDragAndResize();
 initAdminPanel();
+initSessionPresence();
 
 // Check if user opened a 1-click ?room=CODE invite link
 const urlParams = new URLSearchParams(window.location.search);

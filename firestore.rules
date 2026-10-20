@@ -95,6 +95,12 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isMasterAdmin() {
+      return isAuthenticated() &&
+        'email' in request.auth.token &&
+        request.auth.token.email.lower() == 'ludvigpoulsen08@gmail.com';
+    }
+
     function isRoomCreator(roomCode) {
       return exists(/databases/$(database)/documents/campaigns/$(roomCode)) &&
         (
@@ -192,6 +198,20 @@ service cloud.firestore {
         data.updatedAt is number;
     }
 
+    function isValidActiveSession(data) {
+      return data.keys().hasAll(['sessionId', 'lastSeen']) &&
+        data.sessionId is string && data.sessionId.size() <= 128 &&
+        data.lastSeen is number &&
+        (!('uid' in data) || (data.uid is string && data.uid.size() <= 128)) &&
+        (!('email' in data) || (data.email is string && data.email.size() <= 200)) &&
+        (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+        (!('activeCharName' in data) || (data.activeCharName is string && data.activeCharName.size() <= 100)) &&
+        (!('activeRoom' in data) || (data.activeRoom is string && data.activeRoom.size() <= 64)) &&
+        (!('role' in data) || (data.role is string && data.role.size() <= 64)) &&
+        (!('status' in data) || (data.status is string && data.status.size() <= 32)) &&
+        (!('device' in data) || (data.device is string && data.device.size() <= 100));
+    }
+
     // ===============================================================
     // Collection Security Rules
     // ===============================================================
@@ -276,6 +296,16 @@ service cloud.firestore {
         // Only DM can remove shared handouts from the party repository
         allow delete: if isRoomCreator(roomCode);
       }
+    }
+
+    // 6. Active presence sessions (Live user & email monitoring)
+    match /active_sessions/{sessionId} {
+      // Allow reading active sessions for presence monitoring
+      allow read: if isMasterAdmin() || isAuthenticated();
+      // Allow any visitor (player, DM, or guest) to write/refresh their own session heartbeat
+      allow create, update: if isValidActiveSession(request.resource.data);
+      // Allow removing session on disconnect/unload/admin cleanup
+      allow delete: if true;
     }
 
     // Default deny for all other unspecified paths
