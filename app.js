@@ -1575,8 +1575,11 @@ function switchMainTab(targetId) {
     if (p.id === targetId) p.classList.add("active");
     else p.classList.remove("active");
   });
-  if (targetId === "tab-owlbear" && typeof updateOwlbearVitalsHUD === "function") {
-    updateOwlbearVitalsHUD();
+  if (targetId === "tab-owlbear") {
+    if (typeof updateOwlbearVitalsHUD === "function") updateOwlbearVitalsHUD();
+    if (typeof resizeAndRenderOwlbearCanvas === "function") {
+      requestAnimationFrame(() => resizeAndRenderOwlbearCanvas());
+    }
   }
 }
 
@@ -7191,7 +7194,7 @@ function renderHandoutsGrid() {
   }
 
   // When in a party: Only show handouts belonging to the active party room (filter out system documents)
-  const roomHandouts = partyRoomHandouts.filter((h) => h && h.id !== "global_notice" && h.type !== "system");
+  const roomHandouts = partyRoomHandouts.filter((h) => h && h.id !== "global_notice" && h.id !== "owlbear_vtt" && h.id !== "owlbear_vtt_state" && h.type !== "system");
 
   // Only handouts the current player is allowed to see
   const visibleHandouts = roomHandouts.filter((h) => canISeeHandout(h));
@@ -8429,6 +8432,13 @@ function startPartyHandoutsListener(roomCode) {
               setOwlbearRoomUrl(parsed.url, false);
             }
           } catch (e) {}
+          return;
+        }
+        if (doc.id === "owlbear_vtt_state" || d.id === "owlbear_vtt_state") {
+          if (typeof applyRemoteOwlbearVttState === "function") {
+            applyRemoteOwlbearVttState(d);
+          }
+          return;
         }
         roomList.push(d);
       });
@@ -10185,19 +10195,105 @@ function initAdminPanel() {
 }
 
 /* ==========================================================================
-   OWLBEAR RODEO VTT INTEGRATION & BATTLE MAP CONTROLLER
+   OWLBEAR RODEO VTT INTEGRATION & NATIVE BATTLE MAP ENGINE
    ========================================================================== */
 
 const OWLBEAR_ROOM_KEY = "codex_owlbear_room_url";
+const OWLBEAR_STATE_PREFIX = "codex_owlbear_vtt_state_";
+
+const VTT_SCENE_META = {
+  forest_ambush: { title: "🌲 Forest Road Ambush", cols: 26, rows: 18 },
+  dungeon_crypt: { title: "💀 Crypt of the Lich King", cols: 26, rows: 18 },
+  tavern_inn: { title: "🍺 The Gilded Gryphon Inn", cols: 24, rows: 16 },
+  magma_cavern: { title: "🌋 Dragon's Magma Lair", cols: 28, rows: 18 },
+  arcane_sanctum: { title: "✨ Astral Arcane Sanctum", cols: 24, rows: 18 },
+  pirate_galleon: { title: "⛵ High Seas Galleon", cols: 28, rows: 18 },
+  parchment_mat: { title: "📜 Classic Parchment Grid", cols: 26, rows: 18 }
+};
+
+const VTT_PRESET_TOKENS = {
+  owlbear: { name: "Owlbear", icon: "🦉", size: 2, hp: 59, ac: 13, color: "#d97706" },
+  dragon: { name: "Red Dragon", icon: "🐉", size: 3, hp: 178, ac: 18, color: "#dc2626" },
+  goblin: { name: "Goblin", icon: "👺", size: 1, hp: 7, ac: 15, color: "#16a34a" },
+  skeleton: { name: "Skeleton", icon: "💀", size: 1, hp: 13, ac: 13, color: "#94a3b8" },
+  orc: { name: "Orc Brute", icon: "👹", size: 1, hp: 15, ac: 13, color: "#ea580c" },
+  bandit: { name: "Bandit", icon: "🗡️", size: 1, hp: 11, ac: 12, color: "#b91c1c" },
+  wolf: { name: "Dire Wolf", icon: "🐺", size: 2, hp: 37, ac: 14, color: "#64748b" },
+  beholder: { name: "Beholder", icon: "👁️", size: 2, hp: 180, ac: 18, color: "#9333ea" },
+  lich: { name: "Lich", icon: "🧙‍♂️", size: 1, hp: 135, ac: 17, color: "#7c3aed" },
+  knight: { name: "Knight", icon: "🛡️", size: 1, hp: 52, ac: 18, color: "#3b82f6" },
+  mimic: { name: "Mimic", icon: "📦", size: 1, hp: 58, ac: 12, color: "#a16207" },
+  cultist: { name: "Cultist", icon: "🕯️", size: 1, hp: 9, ac: 12, color: "#be123c" },
+  chest: { name: "Loot Chest", icon: "💰", size: 1, hp: 20, ac: 10, color: "#eab308" },
+  campfire: { name: "Campfire", icon: "🔥", size: 1, hp: 10, ac: 10, color: "#f97316" },
+  trap: { name: "Hazard Trap", icon: "⚙️", size: 1, hp: 15, ac: 12, color: "#ef4444" },
+  portal: { name: "Arcane Portal", icon: "🌀", size: 2, hp: 50, ac: 15, color: "#06b6d4" }
+};
+
+let vttActiveMode = "native"; // 'native' | 'stream' | 'iframe'
+let vttCurrentTool = "select"; // 'select' | 'pan' | 'measure' | 'ping' | 'draw' | 'aoe' | 'fog'
+let vttDrawColor = "#d4af37";
+let vttAoeShape = "sphere_20";
+let vttFogBrushMode = "reveal"; // 'reveal' | 'hide'
+
+let vttCamera = { x: 40, y: 30, zoom: 1.0, gridSize: 48 };
+let vttShowGrid = true;
+let vttSnapToGrid = true;
+let vttSelectedTokenId = null;
+let vttDraggingToken = null;
+let vttDragOffset = { x: 0, y: 0 };
+let vttIsPanning = false;
+let vttPanStart = { x: 0, y: 0 };
+let vttSpacePressed = false;
+
+let vttActiveMeasure = null; // { x1, y1, x2, y2 } in grid coords
+let vttActiveDrawStroke = null;
+let vttActiveAoeDraft = null;
+let vttActiveFogRect = null;
+let vttPings = []; // [{ x, y, color, createdAt }]
+let vttAnimFrameId = null;
+
+let vttImageCache = {};
+let vttRoomUnsubscribe = null;
+let vttActiveSyncRoomId = "";
+let vttLastLocalUpdateTs = 0;
+let vttSyncDebounceTimer = null;
+let vttMediaStream = null;
+
+let vttState = {
+  scene: "forest_ambush",
+  customMapUrl: "",
+  fogEnabled: false,
+  fogRects: [], // [{ x, y, w, h, mode: 'reveal'|'hide' }] in grid coords
+  drawings: [], // [{ color, points: [{x,y}] }]
+  aoes: [],     // [{ id, shape, x1, y1, x2, y2, color }]
+  tokens: []
+};
 
 function normalizeOwlbearUrl(raw) {
   if (!raw) return "";
   let clean = raw.trim();
   if (!clean) return "";
-  if (!/^https?:\/\//i.test(clean)) {
-    clean = "https://" + clean;
+  if (/^(https?:\/\/)/i.test(clean)) return clean;
+  if (clean.includes("owlbear.rodeo") || clean.includes("owlbear.app")) {
+    return "https://" + clean;
   }
   return clean;
+}
+
+function extractOwlbearRoomId(rawUrl) {
+  if (!rawUrl) return "";
+  const clean = rawUrl.trim();
+  if (!clean) return "";
+  const roomMatch = clean.match(/\/room\/([a-zA-Z0-9_-]+)/i);
+  if (roomMatch && roomMatch[1]) {
+    return "OBR-" + roomMatch[1].replace(/[^a-zA-Z0-9]/g, "").slice(0, 20).toUpperCase();
+  }
+  const alnum = clean.replace(/^https?:\/\/(www\.)?owlbear\.(rodeo|app)\/?/i, "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  if (alnum.length >= 2) {
+    return "OBR-" + alnum.slice(0, 20);
+  }
+  return "OBR-TABLETOP";
 }
 
 function getStoredOwlbearUrl() {
@@ -10214,10 +10310,6 @@ function updateOwlbearVitalsHUD() {
   const percEl = document.getElementById("owlbearPercDisplay");
   const inspEl = document.getElementById("owlbearInspDisplay");
 
-  const hubHpEl = document.getElementById("owlbearHubHp");
-  const hubAcEl = document.getElementById("owlbearHubAc");
-  const hubPercEl = document.getElementById("owlbearHubPerc");
-
   const curHp = document.getElementById("curHp")?.value || 0;
   const maxHp = document.getElementById("maxHp")?.value || 0;
   const ac = document.getElementById("armorClass")?.value || 10;
@@ -10231,10 +10323,34 @@ function updateOwlbearVitalsHUD() {
     inspEl.textContent = hasInsp ? "Yes" : "No";
     inspEl.style.color = hasInsp ? "#c084fc" : "var(--text-dim)";
   }
+}
 
-  if (hubHpEl) hubHpEl.textContent = `${curHp}/${maxHp}`;
-  if (hubAcEl) hubAcEl.textContent = ac;
-  if (hubPercEl) hubPercEl.textContent = perc;
+function switchOwlbearViewMode(mode) {
+  vttActiveMode = mode || "native";
+  document.querySelectorAll(".owlbear-mode-pill").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.vttMode === vttActiveMode);
+  });
+
+  const nativeLayer = document.getElementById("owlbearNativeVttLayer");
+  const streamLayer = document.getElementById("owlbearStreamLayer");
+  const iframeWrapper = document.getElementById("owlbearIframeWrapper");
+  const iframe = document.getElementById("owlbearIframe");
+
+  if (nativeLayer) nativeLayer.style.display = vttActiveMode === "native" ? "block" : "none";
+  if (streamLayer) streamLayer.style.display = vttActiveMode === "stream" ? "flex" : "none";
+  if (iframeWrapper) iframeWrapper.style.display = vttActiveMode === "iframe" ? "flex" : "none";
+
+  if (vttActiveMode === "iframe" && iframe) {
+    const raw = getStoredOwlbearUrl();
+    const targetUrl = /^https?:\/\//i.test(raw) ? raw : "https://www.owlbear.rodeo";
+    if (iframe.src !== targetUrl) {
+      iframe.src = targetUrl;
+    }
+  }
+
+  if (vttActiveMode === "native") {
+    requestAnimationFrame(() => resizeAndRenderOwlbearCanvas());
+  }
 }
 
 function setOwlbearRoomUrl(rawUrl, broadcast = true) {
@@ -10256,35 +10372,41 @@ function setOwlbearRoomUrl(rawUrl, broadcast = true) {
   const statusText = document.getElementById("owlbearStatusText");
   const navBadge = document.getElementById("owlbearNavBadge");
   const leaveBtn = document.getElementById("owlbearLeaveBtn");
+  const modeSwitcher = document.getElementById("owlbearModeSwitcher");
   const activeUrlDisplay = document.getElementById("owlbearActiveUrlDisplay");
-  const deckHub = document.getElementById("owlbearDeckHub");
-  const iframeWrapper = document.getElementById("owlbearIframeWrapper");
 
   if (input) input.value = cleanUrl;
   if (wizardInput) wizardInput.value = cleanUrl;
 
   if (cleanUrl) {
-    if (iframe && iframe.src !== cleanUrl) {
-      iframe.src = cleanUrl;
-    }
+    const roomId = extractOwlbearRoomId(cleanUrl);
     if (activeUrlDisplay) {
-      activeUrlDisplay.textContent = cleanUrl;
+      activeUrlDisplay.textContent = cleanUrl.length > 42 ? `${roomId} (${cleanUrl})` : cleanUrl;
       activeUrlDisplay.title = cleanUrl;
     }
     if (emptyState) emptyState.style.display = "none";
     if (activeContainer) activeContainer.style.display = "flex";
-    if (deckHub) deckHub.style.display = "flex";
-    if (iframeWrapper) iframeWrapper.style.display = "none";
     if (leaveBtn) leaveBtn.style.display = "inline-flex";
+    if (modeSwitcher) modeSwitcher.style.display = "inline-flex";
     if (statusPill) statusPill.classList.add("is-active");
-    if (statusText) statusText.textContent = "Room Loaded";
+    if (statusText) statusText.textContent = `Active (${roomId})`;
     if (navBadge) navBadge.style.display = "inline-block";
+
+    loadOwlbearRoomState(roomId);
+    switchOwlbearViewMode(vttActiveMode || "native");
   } else {
+    stopOwlbearStream();
+    if (vttRoomUnsubscribe) {
+      vttRoomUnsubscribe();
+      vttRoomUnsubscribe = null;
+    }
+    vttActiveSyncRoomId = "";
     if (iframe) iframe.src = "";
     if (activeUrlDisplay) activeUrlDisplay.textContent = "";
     if (emptyState) emptyState.style.display = "flex";
     if (activeContainer) activeContainer.style.display = "none";
     if (leaveBtn) leaveBtn.style.display = "none";
+    if (modeSwitcher) modeSwitcher.style.display = "none";
     if (statusPill) statusPill.classList.remove("is-active");
     if (statusText) statusText.textContent = "No Room Loaded";
     if (navBadge) navBadge.style.display = "none";
@@ -10300,14 +10422,14 @@ function setOwlbearRoomUrl(rawUrl, broadcast = true) {
 function leaveOwlbearRoom() {
   if (confirm("Disconnect and leave this Owlbear battle map?")) {
     setOwlbearRoomUrl("", false);
-    showStatus("Disconnected from Owlbear battle map.");
+    showStatus("Left Owlbear battle map.");
   }
 }
 
 function copyOwlbearRoomUrl() {
   const url = normalizeOwlbearUrl(document.getElementById("owlbearRoomUrlInput")?.value || getStoredOwlbearUrl());
   if (!url) {
-    showStatus("No active Owlbear room URL to copy.");
+    showStatus("No active Owlbear room link to copy.");
     return;
   }
   if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -10318,26 +10440,6 @@ function copyOwlbearRoomUrl() {
     });
   } else {
     prompt("Copy Owlbear room link:", url);
-  }
-}
-
-function toggleOwlbearIframeMode() {
-  const hub = document.getElementById("owlbearDeckHub");
-  const iframeWrapper = document.getElementById("owlbearIframeWrapper");
-  const toggleBtn = document.getElementById("owlbearToggleIframeModeBtn");
-  if (!hub || !iframeWrapper) return;
-
-  const isIframeVisible = iframeWrapper.style.display !== "none";
-  if (isIframeVisible) {
-    iframeWrapper.style.display = "none";
-    hub.style.display = "flex";
-    if (toggleBtn) toggleBtn.textContent = "🖥️ Toggle In-Page Frame";
-    showStatus("Switched to Battle Deck Hub mode.");
-  } else {
-    iframeWrapper.style.display = "flex";
-    hub.style.display = "none";
-    if (toggleBtn) toggleBtn.textContent = "🗺️ Back to Battle Deck Hub";
-    showStatus("Switched to in-page frame mode.");
   }
 }
 
@@ -10355,34 +10457,9 @@ async function broadcastOwlbearUrlToParty(roomUrl) {
       isShared: true,
       updatedAt: Date.now()
     }, { merge: true });
-    showStatus("Shared Owlbear Rodeo battle map with party!");
   } catch (err) {
     console.warn("Could not broadcast Owlbear URL to party:", err);
   }
-}
-
-function openOwlbearCompanionWindow() {
-  let url = normalizeOwlbearUrl(document.getElementById("owlbearRoomUrlInput")?.value || getStoredOwlbearUrl());
-  if (!url) {
-    url = "https://www.owlbear.rodeo";
-  }
-
-  const width = Math.min(1280, Math.floor(window.screen.availWidth * 0.72));
-  const height = Math.min(900, Math.floor(window.screen.availHeight * 0.92));
-  const left = Math.max(0, window.screen.availWidth - width);
-  const top = Math.max(0, Math.floor((window.screen.availHeight - height) / 2));
-
-  window.open(
-    url,
-    "owlbear_vtt_companion",
-    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=no,location=no,toolbar=no,menubar=no`
-  );
-  showStatus("Launched Owlbear Rodeo companion window!");
-}
-
-function openOwlbearExternalTab() {
-  const url = normalizeOwlbearUrl(document.getElementById("owlbearRoomUrlInput")?.value || getStoredOwlbearUrl()) || "https://www.owlbear.rodeo";
-  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 function toggleOwlbearTheaterMode() {
@@ -10391,10 +10468,1595 @@ function toggleOwlbearTheaterMode() {
   if (label) {
     label.textContent = isActive ? "Exit Theater" : "Theater Mode";
   }
+  requestAnimationFrame(() => resizeAndRenderOwlbearCanvas());
   showStatus(isActive ? "Theater Mode: Fullscreen map view enabled." : "Exited Theater Mode.");
 }
 
+/* --------------------------------------------------------------------------
+   STATE PERSISTENCE & REAL-TIME FIREBASE MULTIPLAYER SYNC
+   -------------------------------------------------------------------------- */
+
+function getDefaultTokensForNewMap() {
+  const charName = document.getElementById("charName")?.value?.trim() || "Hero";
+  const curHp = parseInt(document.getElementById("curHp")?.value, 10) || 24;
+  const maxHp = parseInt(document.getElementById("maxHp")?.value, 10) || 24;
+  const ac = parseInt(document.getElementById("armorClass")?.value, 10) || 16;
+  const avatar = currentAvatarDataUrl || "";
+
+  return [
+    {
+      id: "tok_hero_" + (activeCharId || "main"),
+      charId: activeCharId || "main",
+      name: charName,
+      icon: "⚔️",
+      avatar: avatar,
+      x: 8,
+      y: 9,
+      size: 1,
+      hpCur: curHp,
+      hpMax: maxHp,
+      ac: ac,
+      color: "#d4af37",
+      conditions: []
+    },
+    {
+      id: "tok_owlbear_1",
+      name: "Wild Owlbear",
+      icon: "🦉",
+      avatar: "",
+      x: 15,
+      y: 8,
+      size: 2,
+      hpCur: 59,
+      hpMax: 59,
+      ac: 13,
+      color: "#d97706",
+      conditions: []
+    },
+    {
+      id: "tok_goblin_1",
+      name: "Goblin Scout",
+      icon: "👺",
+      avatar: "",
+      x: 13,
+      y: 6,
+      size: 1,
+      hpCur: 7,
+      hpMax: 7,
+      ac: 15,
+      color: "#16a34a",
+      conditions: []
+    }
+  ];
+}
+
+function loadOwlbearRoomState(roomId) {
+  const syncRoom = (activeDMRoomCode || connectedCampaignRoom || roomId || "OBR-TABLETOP").trim().toUpperCase();
+  vttActiveSyncRoomId = syncRoom;
+
+  // Load local cached state for instant startup
+  try {
+    const raw = localStorage.getItem(OWLBEAR_STATE_PREFIX + syncRoom);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        vttState.scene = parsed.scene || "forest_ambush";
+        vttState.customMapUrl = parsed.customMapUrl || "";
+        vttState.fogEnabled = Boolean(parsed.fogEnabled);
+        vttState.fogRects = Array.isArray(parsed.fogRects) ? parsed.fogRects : [];
+        vttState.drawings = Array.isArray(parsed.drawings) ? parsed.drawings : [];
+        vttState.aoes = Array.isArray(parsed.aoes) ? parsed.aoes : [];
+        vttState.tokens = Array.isArray(parsed.tokens) && parsed.tokens.length > 0 ? parsed.tokens : getDefaultTokensForNewMap();
+      }
+    } else {
+      vttState = {
+        scene: "forest_ambush",
+        customMapUrl: "",
+        fogEnabled: false,
+        fogRects: [],
+        drawings: [],
+        aoes: [],
+        tokens: getDefaultTokensForNewMap()
+      };
+    }
+  } catch (e) {
+    vttState.tokens = getDefaultTokensForNewMap();
+  }
+
+  syncVttUiControlsFromState();
+  renderVttActiveTokensList();
+  requestAnimationFrame(() => {
+    resetVttCameraToFit();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  startOwlbearDedicatedRoomListener(syncRoom);
+}
+
+async function startOwlbearDedicatedRoomListener(syncRoom) {
+  if (!db || !syncRoom) return;
+  if (vttRoomUnsubscribe) {
+    vttRoomUnsubscribe();
+    vttRoomUnsubscribe = null;
+  }
+
+  try {
+    const campRef = db.collection("campaigns").doc(syncRoom);
+    const snap = await campRef.get();
+    if (!snap.exists) {
+      await campRef.set({
+        creatorUid: auth?.currentUser?.uid || "local",
+        createdAt: Date.now()
+      });
+    }
+  } catch (e) {}
+
+  vttRoomUnsubscribe = db.collection("campaigns").doc(syncRoom).collection("handouts").doc("owlbear_vtt_state")
+    .onSnapshot((doc) => {
+      if (!doc.exists) return;
+      applyRemoteOwlbearVttState(doc.data());
+    }, (err) => {
+      console.warn("Owlbear VTT room sync error:", err);
+    });
+}
+
+function applyRemoteOwlbearVttState(docData) {
+  if (!docData || !docData.content) return;
+  if (docData.updatedAt && docData.updatedAt <= vttLastLocalUpdateTs) return;
+  if (vttDraggingToken) return; // Don't interrupt active local token drag
+
+  try {
+    const parsed = JSON.parse(docData.content);
+    if (!parsed || typeof parsed !== "object") return;
+
+    vttState.scene = parsed.scene || "forest_ambush";
+    vttState.customMapUrl = docData.imageUrl || parsed.customMapUrl || "";
+    vttState.fogEnabled = Boolean(parsed.fogEnabled);
+    vttState.fogRects = Array.isArray(parsed.fogRects) ? parsed.fogRects : [];
+    vttState.drawings = Array.isArray(parsed.drawings) ? parsed.drawings : [];
+    vttState.aoes = Array.isArray(parsed.aoes) ? parsed.aoes : [];
+    if (Array.isArray(parsed.tokens)) {
+      vttState.tokens = parsed.tokens;
+    }
+
+    if (parsed.lastPing && parsed.lastPing.createdAt && (Date.now() - parsed.lastPing.createdAt < 4000)) {
+      const exists = vttPings.some((p) => p.createdAt === parsed.lastPing.createdAt);
+      if (!exists) {
+        vttPings.push(parsed.lastPing);
+        startVttPingLoop();
+      }
+    }
+
+    try {
+      localStorage.setItem(OWLBEAR_STATE_PREFIX + vttActiveSyncRoomId, JSON.stringify(vttState));
+    } catch (e) {}
+
+    syncVttUiControlsFromState();
+    renderVttActiveTokensList();
+    updateSelectedTokenPopoverUI();
+    renderOwlbearCanvas();
+  } catch (err) {
+    console.warn("Could not parse remote Owlbear state:", err);
+  }
+}
+
+function saveAndSyncOwlbearState(extraPayload = {}) {
+  const syncRoom = vttActiveSyncRoomId || extractOwlbearRoomId(getStoredOwlbearUrl()) || "OBR-TABLETOP";
+  const now = Date.now();
+  vttLastLocalUpdateTs = now;
+
+  try {
+    localStorage.setItem(OWLBEAR_STATE_PREFIX + syncRoom, JSON.stringify(vttState));
+  } catch (e) {}
+
+  if (!db || !syncRoom) return;
+
+  if (vttSyncDebounceTimer) clearTimeout(vttSyncDebounceTimer);
+  vttSyncDebounceTimer = setTimeout(async () => {
+    try {
+      // Keep token avatars lightweight for 50k content rule
+      const compactTokens = vttState.tokens.map((t) => ({
+        id: t.id,
+        charId: t.charId || "",
+        name: (t.name || "Token").slice(0, 50),
+        icon: t.icon || "⚔️",
+        avatar: (t.avatar && t.avatar.length < 18000) ? t.avatar : "",
+        x: Math.round(t.x * 100) / 100,
+        y: Math.round(t.y * 100) / 100,
+        size: t.size || 1,
+        hpCur: t.hpCur ?? 10,
+        hpMax: t.hpMax ?? 10,
+        ac: t.ac ?? 10,
+        color: t.color || "#d4af37",
+        conditions: Array.isArray(t.conditions) ? t.conditions : []
+      }));
+
+      const payloadObj = {
+        scene: vttState.scene,
+        fogEnabled: Boolean(vttState.fogEnabled),
+        fogRects: (vttState.fogRects || []).slice(-60),
+        drawings: (vttState.drawings || []).slice(-40),
+        aoes: (vttState.aoes || []).slice(-25),
+        tokens: compactTokens,
+        ...extraPayload
+      };
+
+      const contentStr = JSON.stringify(payloadObj);
+      const customImg = (vttState.customMapUrl && vttState.customMapUrl.length <= 480000) ? vttState.customMapUrl : "";
+
+      await db.collection("campaigns").doc(syncRoom).collection("handouts").doc("owlbear_vtt_state").set({
+        id: "owlbear_vtt_state",
+        title: "Owlbear VTT Live State",
+        type: "map",
+        author: document.getElementById("charName")?.value?.trim() || "Adventurer",
+        imageUrl: customImg,
+        content: contentStr.slice(0, 49500),
+        isShared: true,
+        updatedAt: Date.now()
+      });
+    } catch (err) {
+      console.warn("Could not sync Owlbear state to Firestore:", err);
+    }
+  }, 120);
+}
+
+/* --------------------------------------------------------------------------
+   PROCEDURAL FANTASY BATTLEMAP RENDERER + CANVAS ENGINE
+   -------------------------------------------------------------------------- */
+
+function getVttMapDimensions() {
+  const meta = VTT_SCENE_META[vttState.scene] || VTT_SCENE_META.forest_ambush;
+  return {
+    cols: meta.cols,
+    rows: meta.rows,
+    width: meta.cols * vttCamera.gridSize,
+    height: meta.rows * vttCamera.gridSize
+  };
+}
+
+function resetVttCameraToFit() {
+  const canvas = document.getElementById("owlbearMapCanvas");
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+
+  const dims = getVttMapDimensions();
+  const availW = Math.max(300, rect.width - 280);
+  const availH = Math.max(300, rect.height - 40);
+  const scaleX = availW / dims.width;
+  const scaleY = availH / dims.height;
+  vttCamera.zoom = Math.min(1.25, Math.max(0.45, Math.min(scaleX, scaleY) * 0.92));
+  vttCamera.x = Math.max(54, (availW - dims.width * vttCamera.zoom) / 2 + 28);
+  vttCamera.y = Math.max(16, (availH - dims.height * vttCamera.zoom) / 2);
+  updateVttZoomLabel();
+}
+
+function updateVttZoomLabel() {
+  const lbl = document.getElementById("vttZoomLabel");
+  if (lbl) lbl.textContent = `${Math.round(vttCamera.zoom * 100)}%`;
+}
+
+function screenToWorld(sx, sy) {
+  return {
+    x: (sx - vttCamera.x) / vttCamera.zoom,
+    y: (sy - vttCamera.y) / vttCamera.zoom
+  };
+}
+
+function screenToGrid(sx, sy) {
+  const w = screenToWorld(sx, sy);
+  return {
+    gx: w.x / vttCamera.gridSize,
+    gy: w.y / vttCamera.gridSize
+  };
+}
+
+function getCachedVttImage(url) {
+  if (!url) return null;
+  if (vttImageCache[url]) {
+    return vttImageCache[url].loaded ? vttImageCache[url].img : null;
+  }
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  vttImageCache[url] = { img, loaded: false };
+  img.onload = () => {
+    vttImageCache[url].loaded = true;
+    renderOwlbearCanvas();
+  };
+  img.src = url;
+  return null;
+}
+
+function drawProceduralBattlemap(ctx, scene, cols, rows, gs) {
+  const W = cols * gs;
+  const H = rows * gs;
+
+  if (vttState.customMapUrl) {
+    const customImg = getCachedVttImage(vttState.customMapUrl);
+    if (customImg) {
+      ctx.drawImage(customImg, 0, 0, W, H);
+      return;
+    }
+  }
+
+  if (scene === "forest_ambush") {
+    // Rich woodland grass
+    const grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, "#192f1e");
+    grad.addColorStop(0.5, "#213c26");
+    grad.addColorStop(1, "#16291a");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Winding dirt road (horizontal)
+    ctx.fillStyle = "#5c4632";
+    ctx.beginPath();
+    ctx.moveTo(0, 7.5 * gs);
+    ctx.bezierCurveTo(8 * gs, 6.5 * gs, 16 * gs, 9.5 * gs, W, 8 * gs);
+    ctx.lineTo(W, 10.5 * gs);
+    ctx.bezierCurveTo(16 * gs, 12 * gs, 8 * gs, 9 * gs, 0, 10 * gs);
+    ctx.closePath();
+    ctx.fill();
+
+    // River cutting north-south
+    ctx.fillStyle = "#1d4ed8";
+    ctx.globalAlpha = 0.78;
+    ctx.beginPath();
+    ctx.moveTo(17 * gs, 0);
+    ctx.bezierCurveTo(15.5 * gs, 6 * gs, 18.5 * gs, 12 * gs, 16.5 * gs, H);
+    ctx.lineTo(19 * gs, H);
+    ctx.bezierCurveTo(21 * gs, 12 * gs, 18 * gs, 6 * gs, 19.5 * gs, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Wooden Bridge at intersection
+    ctx.fillStyle = "#784f2b";
+    ctx.strokeStyle = "#3e2723";
+    ctx.lineWidth = 3;
+    ctx.fillRect(16.2 * gs, 8.1 * gs, 3.6 * gs, 2.4 * gs);
+    ctx.strokeRect(16.2 * gs, 8.1 * gs, 3.6 * gs, 2.4 * gs);
+    for (let bx = 16.5; bx < 19.6; bx += 0.45) {
+      ctx.beginPath();
+      ctx.moveTo(bx * gs, 8.1 * gs);
+      ctx.lineTo(bx * gs, 10.5 * gs);
+      ctx.stroke();
+    }
+
+    // Boulders
+    const rocks = [[6, 5, 0.9], [11, 12, 1.1], [22, 6, 1.0], [14, 4, 0.7], [8, 13, 0.8]];
+    ctx.fillStyle = "#475569";
+    ctx.strokeStyle = "#1e293b";
+    rocks.forEach(([rx, ry, r]) => {
+      ctx.beginPath();
+      ctx.arc(rx * gs, ry * gs, r * gs, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+
+    // Tree canopies
+    const trees = [
+      [3, 3, 1.6], [7, 2.5, 1.4], [12, 2.2, 1.5], [22, 3, 1.7], [24, 5, 1.3],
+      [2.5, 14, 1.6], [6, 15.5, 1.5], [13, 15, 1.4], [22, 14.5, 1.7], [24.5, 12.5, 1.3]
+    ];
+    trees.forEach(([tx, ty, tr]) => {
+      ctx.fillStyle = "rgba(10, 22, 12, 0.55)";
+      ctx.beginPath();
+      ctx.arc(tx * gs + 6, ty * gs + 6, tr * gs, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#15803d";
+      ctx.strokeStyle = "#052e16";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(tx * gs, ty * gs, tr * gs, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#22c55e";
+      ctx.globalAlpha = 0.25;
+      ctx.beginPath();
+      ctx.arc((tx - 0.3) * gs, (ty - 0.3) * gs, tr * 0.55 * gs, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+  } else if (scene === "dungeon_crypt") {
+    // Stone Dungeon
+    ctx.fillStyle = "#11131a";
+    ctx.fillRect(0, 0, W, H);
+
+    // Carved stone rooms
+    ctx.fillStyle = "#262936";
+    ctx.strokeStyle = "#475569";
+    ctx.lineWidth = 4;
+    // West Entry Hall
+    ctx.fillRect(2 * gs, 6 * gs, 6 * gs, 6 * gs);
+    ctx.strokeRect(2 * gs, 6 * gs, 6 * gs, 6 * gs);
+    // Corridor
+    ctx.fillRect(8 * gs, 8 * gs, 3 * gs, 2 * gs);
+    // Grand Crypt Chamber
+    ctx.fillRect(11 * gs, 2 * gs, 13 * gs, 14 * gs);
+    ctx.strokeRect(11 * gs, 2 * gs, 13 * gs, 14 * gs);
+
+    // Glowing Arcane Ritual Circle in Crypt center
+    const cx = 17.5 * gs;
+    const cy = 9 * gs;
+    const rGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, 3 * gs);
+    rGrad.addColorStop(0, "rgba(212, 175, 55, 0.32)");
+    rGrad.addColorStop(0.6, "rgba(168, 85, 247, 0.18)");
+    rGrad.addColorStop(1, "transparent");
+    ctx.fillStyle = rGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3 * gs, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(212, 175, 55, 0.65)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 2.2 * gs, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 1.6 * gs, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Stone Pillars
+    const pillars = [[13, 4], [22, 4], [13, 14], [22, 14], [16, 4], [19, 4], [16, 14], [19, 14]];
+    pillars.forEach(([px, py]) => {
+      ctx.fillStyle = "#475569";
+      ctx.strokeStyle = "#0f172a";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px * gs, py * gs, 0.45 * gs, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+
+    // Sarcophagi / Altar
+    ctx.fillStyle = "#334155";
+    ctx.strokeStyle = "#d4af37";
+    ctx.lineWidth = 2;
+    ctx.fillRect(21 * gs, 8 * gs, 2 * gs, 2 * gs);
+    ctx.strokeRect(21 * gs, 8 * gs, 2 * gs, 2 * gs);
+  } else if (scene === "tavern_inn") {
+    ctx.fillStyle = "#3b2314";
+    ctx.fillRect(0, 0, W, H);
+
+    // Wood plank lines
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.28)";
+    ctx.lineWidth = 1;
+    for (let y = 0; y < H; y += gs * 0.5) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+
+    // Outer stone walls
+    ctx.strokeStyle = "#78553a";
+    ctx.lineWidth = 8;
+    ctx.strokeRect(gs, gs, W - 2 * gs, H - 2 * gs);
+
+    // Hearth Fireplace (North wall)
+    ctx.fillStyle = "#475569";
+    ctx.fillRect(10 * gs, gs, 4 * gs, 1.2 * gs);
+    const fireGrad = ctx.createRadialGradient(12 * gs, 2 * gs, 4, 12 * gs, 2.5 * gs, 3.5 * gs);
+    fireGrad.addColorStop(0, "rgba(251, 146, 60, 0.65)");
+    fireGrad.addColorStop(1, "transparent");
+    ctx.fillStyle = fireGrad;
+    ctx.beginPath();
+    ctx.arc(12 * gs, 2.5 * gs, 3.5 * gs, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bar Counter
+    ctx.fillStyle = "#5c341d";
+    ctx.strokeStyle = "#271409";
+    ctx.lineWidth = 3;
+    ctx.fillRect(17 * gs, 3 * gs, 4 * gs, 1.2 * gs);
+    ctx.strokeRect(17 * gs, 3 * gs, 4 * gs, 1.2 * gs);
+    ctx.fillRect(17 * gs, 3 * gs, 1.2 * gs, 5 * gs);
+    ctx.strokeRect(17 * gs, 3 * gs, 1.2 * gs, 5 * gs);
+
+    // Banquet Tables
+    const tables = [[4, 5, 3, 2], [4, 10, 3, 2], [10, 6, 4, 2], [10, 11, 4, 2], [17, 10, 3, 2]];
+    ctx.fillStyle = "#6e4226";
+    tables.forEach(([tx, ty, tw, th]) => {
+      ctx.fillRect(tx * gs, ty * gs, tw * gs, th * gs);
+      ctx.strokeRect(tx * gs, ty * gs, tw * gs, th * gs);
+    });
+  } else if (scene === "magma_cavern") {
+    // Lava background
+    const lavaGrad = ctx.createRadialGradient(W / 2, H / 2, gs, W / 2, H / 2, W * 0.7);
+    lavaGrad.addColorStop(0, "#ea580c");
+    lavaGrad.addColorStop(0.5, "#b91c1c");
+    lavaGrad.addColorStop(1, "#450a0a");
+    ctx.fillStyle = lavaGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Obsidian islands
+    ctx.fillStyle = "#1e1b24";
+    ctx.strokeStyle = "#f97316";
+    ctx.lineWidth = 3;
+
+    // West Island
+    ctx.beginPath();
+    ctx.ellipse(6 * gs, 9 * gs, 4.5 * gs, 5 * gs, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Bridge
+    ctx.fillRect(10 * gs, 8 * gs, 5 * gs, 2 * gs);
+
+    // East Dragon Lair Island
+    ctx.beginPath();
+    ctx.ellipse(20 * gs, 9 * gs, 6 * gs, 6.5 * gs, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Gold Hoard Pile
+    const goldGrad = ctx.createRadialGradient(22 * gs, 9 * gs, 4, 22 * gs, 9 * gs, 2.5 * gs);
+    goldGrad.addColorStop(0, "rgba(250, 204, 21, 0.85)");
+    goldGrad.addColorStop(0.7, "rgba(202, 138, 4, 0.45)");
+    goldGrad.addColorStop(1, "transparent");
+    ctx.fillStyle = goldGrad;
+    ctx.beginPath();
+    ctx.arc(22 * gs, 9 * gs, 2.5 * gs, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (scene === "arcane_sanctum") {
+    ctx.fillStyle = "#070512";
+    ctx.fillRect(0, 0, W, H);
+
+    const cx = W / 2;
+    const cy = H / 2;
+    const platGrad = ctx.createRadialGradient(cx, cy, gs, cx, cy, 7.5 * gs);
+    platGrad.addColorStop(0, "#1e1b4b");
+    platGrad.addColorStop(0.8, "#0f172a");
+    platGrad.addColorStop(1, "#070512");
+    ctx.fillStyle = platGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 7.5 * gs, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.5)";
+    ctx.lineWidth = 3;
+    [7.2, 5.2, 3.0, 1.2].forEach((r) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * gs, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+  } else if (scene === "pirate_galleon") {
+    // Ocean
+    ctx.fillStyle = "#0c2d48";
+    ctx.fillRect(0, 0, W, H);
+
+    // Ship Hull
+    ctx.fillStyle = "#5c3a21";
+    ctx.strokeStyle = "#2b180a";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(4 * gs, 9 * gs);
+    ctx.quadraticCurveTo(8 * gs, 4.5 * gs, 22 * gs, 5 * gs);
+    ctx.lineTo(24 * gs, 9 * gs);
+    ctx.lineTo(22 * gs, 13 * gs);
+    ctx.quadraticCurveTo(8 * gs, 13.5 * gs, 4 * gs, 9 * gs);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 3 Masts
+    ctx.fillStyle = "#3e2723";
+    [9, 14, 19].forEach((mx) => {
+      ctx.beginPath();
+      ctx.arc(mx * gs, 9 * gs, 0.55 * gs, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+  } else {
+    // Parchment Mat
+    ctx.fillStyle = "#d9c5a0";
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "#8c6d46";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, W - 8, H - 8);
+  }
+}
+
+function resizeAndRenderOwlbearCanvas() {
+  const canvas = document.getElementById("owlbearMapCanvas");
+  if (!canvas) return;
+  const parent = canvas.parentElement;
+  if (!parent) return;
+
+  const rect = parent.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
+    canvas.width = Math.floor(rect.width * dpr);
+    canvas.height = Math.floor(rect.height * dpr);
+  }
+
+  renderOwlbearCanvas();
+}
+
+function renderOwlbearCanvas() {
+  const canvas = document.getElementById("owlbearMapCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const viewW = canvas.width / dpr;
+  const viewH = canvas.height / dpr;
+
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Outer Tabletop Void Background (Owlbear dark slate with subtle dots)
+  ctx.fillStyle = "#090710";
+  ctx.fillRect(0, 0, viewW, viewH);
+
+  // Apply Camera Pan & Zoom
+  ctx.translate(vttCamera.x, vttCamera.y);
+  ctx.scale(vttCamera.zoom, vttCamera.zoom);
+
+  const dims = getVttMapDimensions();
+  const gs = vttCamera.gridSize;
+
+  // Map Drop Shadow
+  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+  ctx.fillRect(8, 10, dims.width, dims.height);
+
+  // 1. Draw Battlemap Scene
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, dims.width, dims.height);
+  ctx.clip();
+  drawProceduralBattlemap(ctx, vttState.scene, dims.cols, dims.rows, gs);
+
+  // 2. Draw Tactical Grid Overlay
+  if (vttShowGrid) {
+    const isParchment = vttState.scene === "parchment_mat";
+    ctx.strokeStyle = isParchment ? "rgba(70, 45, 20, 0.28)" : "rgba(255, 255, 255, 0.14)";
+    ctx.lineWidth = 1 / vttCamera.zoom;
+
+    ctx.beginPath();
+    for (let c = 0; c <= dims.cols; c++) {
+      ctx.moveTo(c * gs, 0);
+      ctx.lineTo(c * gs, dims.height);
+    }
+    for (let r = 0; r <= dims.rows; r++) {
+      ctx.moveTo(0, r * gs);
+      ctx.lineTo(dims.width, r * gs);
+    }
+    ctx.stroke();
+  }
+
+  // 3. Draw Spell AoE Templates
+  const allAoes = [...(vttState.aoes || [])];
+  if (vttActiveAoeDraft) allAoes.push(vttActiveAoeDraft);
+  allAoes.forEach((aoe) => drawVttAoeTemplate(ctx, aoe, gs));
+
+  // 4. Draw Freehand Ink Strokes
+  const allDrawings = [...(vttState.drawings || [])];
+  if (vttActiveDrawStroke) allDrawings.push(vttActiveDrawStroke);
+  allDrawings.forEach((stroke) => {
+    if (!stroke.points || stroke.points.length < 2) return;
+    ctx.strokeStyle = stroke.color || "#d4af37";
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(stroke.points[0].x * gs, stroke.points[0].y * gs);
+    for (let i = 1; i < stroke.points.length; i++) {
+      ctx.lineTo(stroke.points[i].x * gs, stroke.points[i].y * gs);
+    }
+    ctx.stroke();
+  });
+
+  // 5. Draw Tokens
+  (vttState.tokens || []).forEach((tok) => {
+    drawVttToken(ctx, tok, gs);
+  });
+
+  // 6. Draw Fog of War
+  if (vttState.fogEnabled) {
+    drawVttFogOfWar(ctx, dims.width, dims.height, gs);
+  }
+  if (vttActiveFogRect) {
+    ctx.strokeStyle = vttFogBrushMode === "reveal" ? "#4ade80" : "#f87171";
+    ctx.lineWidth = 2 / vttCamera.zoom;
+    ctx.setLineDash([6, 4]);
+    const rx = Math.min(vttActiveFogRect.x1, vttActiveFogRect.x2) * gs;
+    const ry = Math.min(vttActiveFogRect.y1, vttActiveFogRect.y2) * gs;
+    const rw = Math.abs(vttActiveFogRect.x2 - vttActiveFogRect.x1) * gs;
+    const rh = Math.abs(vttActiveFogRect.y2 - vttActiveFogRect.y1) * gs;
+    ctx.strokeRect(rx, ry, rw, rh);
+    ctx.setLineDash([]);
+  }
+
+  // 7. Draw Active Ruler Measurement
+  if (vttActiveMeasure) {
+    drawVttRuler(ctx, vttActiveMeasure, gs);
+  }
+
+  // 8. Draw Animated Pings
+  const now = Date.now();
+  vttPings = vttPings.filter((p) => now - p.createdAt < 2800);
+  vttPings.forEach((p) => {
+    const age = (now - p.createdAt) / 2800;
+    const px = p.x * gs;
+    const py = p.y * gs;
+    for (let ring = 0; ring < 3; ring++) {
+      const rAge = (age * 2 + ring * 0.33) % 1;
+      ctx.strokeStyle = p.color || "#d4af37";
+      ctx.globalAlpha = (1 - rAge) * 0.85;
+      ctx.lineWidth = 3 / vttCamera.zoom;
+      ctx.beginPath();
+      ctx.arc(px, py, rAge * gs * 2.2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  });
+
+  ctx.restore();
+
+  // Map Border Frame
+  ctx.strokeStyle = "rgba(212, 175, 55, 0.45)";
+  ctx.lineWidth = 2 / vttCamera.zoom;
+  ctx.strokeRect(0, 0, dims.width, dims.height);
+
+  ctx.restore();
+}
+
+function drawVttAoeTemplate(ctx, aoe, gs) {
+  const x1 = aoe.x1 * gs;
+  const y1 = aoe.y1 * gs;
+  const x2 = aoe.x2 * gs;
+  const y2 = aoe.y2 * gs;
+  const color = aoe.color || "#f97316";
+
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+
+  if (aoe.shape.startsWith("sphere_")) {
+    const feet = parseInt(aoe.shape.split("_")[1], 10) || 20;
+    const radiusSq = feet / 5;
+    const r = radiusSq * gs;
+    ctx.globalAlpha = 0.24;
+    ctx.beginPath();
+    ctx.arc(x1, y1, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.85;
+    ctx.stroke();
+    drawCanvasBadge(ctx, x1, y1, `${feet}ft Sphere`);
+  } else if (aoe.shape.startsWith("cube_")) {
+    const feet = parseInt(aoe.shape.split("_")[1], 10) || 15;
+    const side = (feet / 5) * gs;
+    ctx.globalAlpha = 0.24;
+    ctx.fillRect(x1 - side / 2, y1 - side / 2, side, side);
+    ctx.globalAlpha = 0.85;
+    ctx.strokeRect(x1 - side / 2, y1 - side / 2, side, side);
+    drawCanvasBadge(ctx, x1, y1, `${feet}ft Cube`);
+  } else if (aoe.shape.startsWith("cone_")) {
+    const feet = parseInt(aoe.shape.split("_")[1], 10) || 15;
+    const len = (feet / 5) * gs;
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const halfSpread = Math.atan(0.5); // 5e 53-degree cone (width = distance)
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.arc(x1, y1, len, angle - halfSpread, angle + halfSpread);
+    ctx.closePath();
+    ctx.globalAlpha = 0.26;
+    ctx.fill();
+    ctx.globalAlpha = 0.9;
+    ctx.stroke();
+    drawCanvasBadge(ctx, x1 + Math.cos(angle) * len * 0.6, y1 + Math.sin(angle) * len * 0.6, `${feet}ft Cone`);
+  } else if (aoe.shape.startsWith("line_")) {
+    const feet = parseInt(aoe.shape.split("_")[1], 10) || 30;
+    const len = (feet / 5) * gs;
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    ctx.translate(x1, y1);
+    ctx.rotate(angle);
+    ctx.globalAlpha = 0.26;
+    ctx.fillRect(0, -gs / 2, len, gs);
+    ctx.globalAlpha = 0.9;
+    ctx.strokeRect(0, -gs / 2, len, gs);
+  }
+  ctx.restore();
+}
+
+function drawVttToken(ctx, tok, gs) {
+  const sizeSq = parseFloat(tok.size) || 1;
+  const diameter = sizeSq * gs;
+  const radius = diameter * 0.44;
+  const cx = (tok.x + sizeSq / 2) * gs;
+  const cy = (tok.y + sizeSq / 2) * gs;
+  const isSelected = tok.id === vttSelectedTokenId;
+  const conds = Array.isArray(tok.conditions) ? tok.conditions : [];
+
+  ctx.save();
+  if (conds.includes("hidden")) {
+    ctx.globalAlpha = 0.48;
+  }
+
+  // Selection Halo
+  if (isSelected) {
+    ctx.strokeStyle = "#4ade80";
+    ctx.lineWidth = 3.5;
+    ctx.setLineDash([5, 3]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Drop Shadow
+  ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+  ctx.beginPath();
+  ctx.arc(cx + 2, cy + 3, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Token Base Circle Fill
+  ctx.fillStyle = "#181326";
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Avatar or Icon
+  const avatarImg = tok.avatar ? getCachedVttImage(tok.avatar) : null;
+  if (avatarImg) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - 3, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(avatarImg, cx - radius, cy - radius, radius * 2, radius * 2);
+    ctx.restore();
+  } else {
+    ctx.font = `${Math.round(radius * 1.05)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(tok.icon || "⚔️", cx, cy + 1);
+  }
+
+  // Colored Metallic Ring
+  ctx.strokeStyle = tok.color || "#d4af37";
+  ctx.lineWidth = Math.max(3, radius * 0.14);
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius - 1.5, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Dead overlay
+  if (conds.includes("dead") || (tok.hpMax > 0 && tok.hpCur <= 0)) {
+    ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(cx - radius * 0.6, cy - radius * 0.6);
+    ctx.lineTo(cx + radius * 0.6, cy + radius * 0.6);
+    ctx.moveTo(cx + radius * 0.6, cy - radius * 0.6);
+    ctx.lineTo(cx - radius * 0.6, cy + radius * 0.6);
+    ctx.stroke();
+  }
+
+  // Condition Badges around top-right of token
+  const condEmojiMap = {
+    bloodied: "🩸",
+    poisoned: "☠️",
+    concentrating: "💠",
+    hexed: "🔮",
+    blessed: "✨",
+    prone: "⛓️",
+    hidden: "👁️"
+  };
+  let badgeIdx = 0;
+  conds.forEach((c) => {
+    if (!condEmojiMap[c]) return;
+    const angle = -Math.PI / 3 + badgeIdx * 0.48;
+    const bx = cx + Math.cos(angle) * (radius + 2);
+    const by = cy + Math.sin(angle) * (radius + 2);
+    ctx.fillStyle = "rgba(10, 8, 16, 0.9)";
+    ctx.beginPath();
+    ctx.arc(bx, by, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(condEmojiMap[c], bx, by);
+    badgeIdx++;
+  });
+
+  // HP Bar (Above Token)
+  if (tok.hpMax > 0) {
+    const barW = Math.max(38, diameter * 0.82);
+    const barH = 7;
+    const barX = cx - barW / 2;
+    const barY = cy - radius - 12;
+    const pct = Math.max(0, Math.min(1, (tok.hpCur ?? tok.hpMax) / tok.hpMax));
+
+    ctx.fillStyle = "rgba(8, 6, 14, 0.88)";
+    ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+
+    ctx.fillStyle = pct > 0.5 ? "#22c55e" : pct > 0.25 ? "#eab308" : "#ef4444";
+    ctx.fillRect(barX, barY, barW * pct, barH);
+  }
+
+  // Token Nameplate (Below Token)
+  if (tok.name) {
+    ctx.font = "bold 11px 'Inter', sans-serif";
+    const textW = ctx.measureText(tok.name).width;
+    const padX = 6;
+    const pillW = textW + padX * 2;
+    const pillH = 16;
+    const pillX = cx - pillW / 2;
+    const pillY = cy + radius + 4;
+
+    ctx.fillStyle = "rgba(10, 8, 18, 0.88)";
+    ctx.strokeStyle = isSelected ? "#4ade80" : "rgba(212, 175, 55, 0.4)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(pillX, pillY, pillW, pillH, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#f8fafc";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(tok.name, cx, pillY + pillH / 2);
+  }
+
+  ctx.restore();
+}
+
+function drawVttFogOfWar(ctx, mapW, mapH, gs) {
+  ctx.save();
+  // Create offscreen or path clipping for fog
+  ctx.fillStyle = "rgba(6, 5, 11, 0.92)";
+  ctx.fillRect(0, 0, mapW, mapH);
+
+  (vttState.fogRects || []).forEach((r) => {
+    const rx = r.x * gs;
+    const ry = r.y * gs;
+    const rw = r.w * gs;
+    const rh = r.h * gs;
+    if (r.mode === "reveal") {
+      ctx.clearRect(rx, ry, rw, rh);
+      // Redraw underlying scene + tokens inside revealed rect?
+      // Wait: clearRect on main canvas would erase map! Instead, let's use an offscreen canvas for Fog of War!
+    }
+  });
+  ctx.restore();
+}
+
+let vttFogOffscreenCanvas = null;
+function renderFogLayerWithOffscreen(ctx, mapW, mapH, gs) {
+  if (!vttFogOffscreenCanvas) {
+    vttFogOffscreenCanvas = document.createElement("canvas");
+  }
+  if (vttFogOffscreenCanvas.width !== mapW || vttFogOffscreenCanvas.height !== mapH) {
+    vttFogOffscreenCanvas.width = mapW;
+    vttFogOffscreenCanvas.height = mapH;
+  }
+  const fctx = vttFogOffscreenCanvas.getContext("2d");
+  fctx.clearRect(0, 0, mapW, mapH);
+  fctx.fillStyle = "rgba(7, 5, 12, 0.9)";
+  fctx.fillRect(0, 0, mapW, mapH);
+
+  (vttState.fogRects || []).forEach((r) => {
+    const rx = r.x * gs;
+    const ry = r.y * gs;
+    const rw = r.w * gs;
+    const rh = r.h * gs;
+    if (r.mode === "reveal") {
+      fctx.clearRect(rx, ry, rw, rh);
+    } else {
+      fctx.fillStyle = "rgba(7, 5, 12, 0.9)";
+      fctx.fillRect(rx, ry, rw, rh);
+    }
+  });
+
+  ctx.drawImage(vttFogOffscreenCanvas, 0, 0);
+}
+
+// Override drawVttFogOfWar with proper offscreen compositing so revealed areas show the map & tokens underneath!
+drawVttFogOfWar = renderFogLayerWithOffscreen;
+
+function drawVttRuler(ctx, m, gs) {
+  const x1 = m.x1 * gs;
+  const y1 = m.y1 * gs;
+  const x2 = m.x2 * gs;
+  const y2 = m.y2 * gs;
+
+  const dxSq = Math.abs(m.x2 - m.x1);
+  const dySq = Math.abs(m.y2 - m.y1);
+  // D&D 5e grid distance (Chebyshev / max axis or Euclidean)
+  const euclidSq = Math.hypot(dxSq, dySq);
+  const feet = Math.round(euclidSq * 5);
+  const squares = (Math.round(euclidSq * 10) / 10).toFixed(1);
+
+  ctx.save();
+  ctx.strokeStyle = "#facc15";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 5]);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = "#facc15";
+  ctx.beginPath();
+  ctx.arc(x1, y1, 5, 0, Math.PI * 2);
+  ctx.arc(x2, y2, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  drawCanvasBadge(ctx, (x1 + x2) / 2, (y1 + y2) / 2 - 16, `📏 ${feet} ft (${squares} sq)`);
+  ctx.restore();
+}
+
+function drawCanvasBadge(ctx, x, y, text) {
+  ctx.save();
+  ctx.font = "bold 12px 'JetBrains Mono', monospace";
+  const w = ctx.measureText(text).width + 14;
+  const h = 22;
+  ctx.fillStyle = "rgba(12, 10, 20, 0.92)";
+  ctx.strokeStyle = "#d4af37";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y - h / 2, w, h, 6);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#facc15";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+function startVttPingLoop() {
+  if (vttAnimFrameId) return;
+  const step = () => {
+    renderOwlbearCanvas();
+    if (vttPings.length > 0) {
+      vttAnimFrameId = requestAnimationFrame(step);
+    } else {
+      vttAnimFrameId = null;
+    }
+  };
+  vttAnimFrameId = requestAnimationFrame(step);
+}
+
+/* --------------------------------------------------------------------------
+   TOKEN MANAGEMENT, PARTY SPAWNING & CONTEXT POPOVER
+   -------------------------------------------------------------------------- */
+
+function findTokenAtGridPos(gx, gy) {
+  const list = vttState.tokens || [];
+  for (let i = list.length - 1; i >= 0; i--) {
+    const t = list[i];
+    const sz = parseFloat(t.size) || 1;
+    if (gx >= t.x && gx <= t.x + sz && gy >= t.y && gy <= t.y + sz) {
+      return t;
+    }
+  }
+  return null;
+}
+
+function selectVttToken(tokenId) {
+  vttSelectedTokenId = tokenId;
+  updateSelectedTokenPopoverUI();
+  renderVttActiveTokensList();
+  renderOwlbearCanvas();
+}
+
+function updateSelectedTokenPopoverUI() {
+  const pop = document.getElementById("vttTokenPopover");
+  if (!pop) return;
+  const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
+  if (!tok) {
+    pop.style.display = "none";
+    return;
+  }
+
+  pop.style.display = "flex";
+  const nameIn = document.getElementById("vttTokNameInput");
+  const hpCurIn = document.getElementById("vttTokHpCur");
+  const hpMaxIn = document.getElementById("vttTokHpMax");
+  const acIn = document.getElementById("vttTokAcInput");
+  const sizeSel = document.getElementById("vttTokSizeSelect");
+
+  if (nameIn && document.activeElement !== nameIn) nameIn.value = tok.name || "";
+  if (hpCurIn && document.activeElement !== hpCurIn) hpCurIn.value = tok.hpCur ?? 10;
+  if (hpMaxIn && document.activeElement !== hpMaxIn) hpMaxIn.value = tok.hpMax ?? 10;
+  if (acIn && document.activeElement !== acIn) acIn.value = tok.ac ?? 10;
+  if (sizeSel) sizeSel.value = String(tok.size || 1);
+
+  const conds = Array.isArray(tok.conditions) ? tok.conditions : [];
+  document.querySelectorAll("#vttTokConditionsRow .vtt-cond-btn").forEach((btn) => {
+    btn.classList.toggle("active", conds.includes(btn.dataset.cond));
+  });
+}
+
+function renderVttActiveTokensList() {
+  const container = document.getElementById("vttActiveTokensList");
+  if (!container) return;
+  const tokens = vttState.tokens || [];
+  if (tokens.length === 0) {
+    container.innerHTML = `<span style="font-size:0.7rem; color:var(--text-dim);">No tokens on map. Click a creature above to spawn!</span>`;
+    return;
+  }
+
+  container.innerHTML = tokens.map((t) => `
+    <div class="vtt-active-token-item ${t.id === vttSelectedTokenId ? "selected" : ""}" data-token-id="${escapeHtml(t.id)}">
+      <div style="display:flex; align-items:center; gap:0.35rem; min-width:0;">
+        <span>${escapeHtml(t.icon || "⚔️")}</span>
+        <strong style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-main);">${escapeHtml(t.name || "Token")}</strong>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.4rem; font-family:'JetBrains Mono',monospace; font-size:0.68rem;">
+        <span style="color:#4ade80;">${t.hpCur ?? 0}/${t.hpMax ?? 0}</span>
+        <span style="color:var(--accent-gold);">AC ${t.ac ?? 10}</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+function spawnMyCharacterTokenOnVtt() {
+  if (!getStoredOwlbearUrl()) {
+    setOwlbearRoomUrl(activeDMRoomCode || connectedCampaignRoom || "OBR-TABLETOP", true);
+  }
+
+  const charName = document.getElementById("charName")?.value?.trim() || "Hero";
+  const curHp = parseInt(document.getElementById("curHp")?.value, 10) || 20;
+  const maxHp = parseInt(document.getElementById("maxHp")?.value, 10) || 20;
+  const ac = parseInt(document.getElementById("armorClass")?.value, 10) || 15;
+  const myId = "tok_hero_" + (activeCharId || "main");
+
+  const existing = (vttState.tokens || []).find((t) => t.id === myId || (t.charId && t.charId === activeCharId));
+  if (existing) {
+    existing.name = charName;
+    existing.hpCur = curHp;
+    existing.hpMax = maxHp;
+    existing.ac = ac;
+    if (currentAvatarDataUrl) existing.avatar = currentAvatarDataUrl;
+    selectVttToken(existing.id);
+    saveAndSyncOwlbearState();
+    showStatus(`Updated ${charName}'s token on the battle map!`);
+    return;
+  }
+
+  const newTok = {
+    id: myId,
+    charId: activeCharId || "main",
+    name: charName,
+    icon: "⚔️",
+    avatar: currentAvatarDataUrl || "",
+    x: 6 + Math.floor(Math.random() * 4),
+    y: 7 + Math.floor(Math.random() * 4),
+    size: 1,
+    hpCur: curHp,
+    hpMax: maxHp,
+    ac: ac,
+    color: "#d4af37",
+    conditions: []
+  };
+
+  vttState.tokens.push(newTok);
+  selectVttToken(newTok.id);
+  saveAndSyncOwlbearState();
+  showStatus(`Spawned ${charName} onto the battle map!`);
+}
+
+function spawnCampaignPartyOnVtt() {
+  if (!getStoredOwlbearUrl()) {
+    setOwlbearRoomUrl(activeDMRoomCode || connectedCampaignRoom || "OBR-TABLETOP", true);
+  }
+
+  const members = Array.isArray(livePartyMembers) && livePartyMembers.length > 0 ? livePartyMembers : [];
+  if (members.length === 0) {
+    spawnMyCharacterTokenOnVtt();
+    return;
+  }
+
+  const partyColors = ["#d4af37", "#38bdf8", "#4ade80", "#c084fc", "#f472b6", "#fb923c"];
+  let added = 0;
+
+  members.forEach((m, idx) => {
+    if (!m || !m.id) return;
+    const tokId = "tok_hero_" + m.id;
+    let tok = vttState.tokens.find((t) => t.id === tokId || t.charId === m.id);
+    if (tok) {
+      tok.name = m.name || "Hero";
+      tok.hpCur = m.hp?.cur ?? 20;
+      tok.hpMax = m.hp?.max ?? 20;
+      tok.ac = m.ac ?? 15;
+      if (m.avatar) tok.avatar = m.avatar;
+    } else {
+      vttState.tokens.push({
+        id: tokId,
+        charId: m.id,
+        name: m.name || "Hero",
+        icon: "🛡️",
+        avatar: m.avatar || "",
+        x: 5 + (idx % 3) * 2,
+        y: 6 + Math.floor(idx / 3) * 2,
+        size: 1,
+        hpCur: m.hp?.cur ?? 20,
+        hpMax: m.hp?.max ?? 20,
+        ac: m.ac ?? 15,
+        color: partyColors[idx % partyColors.length],
+        conditions: []
+      });
+      added++;
+    }
+  });
+
+  renderVttActiveTokensList();
+  renderOwlbearCanvas();
+  saveAndSyncOwlbearState();
+  showStatus(added > 0 ? `Dropped ${added} party member(s) onto the battle map!` : "Synced all party tokens on the battle map!");
+}
+
+function spawnPresetTokenOnVtt(presetKey) {
+  const preset = VTT_PRESET_TOKENS[presetKey];
+  if (!preset) return;
+
+  const sameCount = (vttState.tokens || []).filter((t) => (t.name || "").startsWith(preset.name)).length;
+  const label = sameCount > 0 ? `${preset.name} ${sameCount + 1}` : preset.name;
+
+  const newTok = {
+    id: `tok_${presetKey}_${Date.now()}_${Math.floor(Math.random() * 999)}`,
+    name: label,
+    icon: preset.icon,
+    avatar: "",
+    x: 11 + Math.floor(Math.random() * 5),
+    y: 6 + Math.floor(Math.random() * 5),
+    size: preset.size || 1,
+    hpCur: preset.hp,
+    hpMax: preset.hp,
+    ac: preset.ac,
+    color: preset.color,
+    conditions: []
+  };
+
+  vttState.tokens.push(newTok);
+  selectVttToken(newTok.id);
+  saveAndSyncOwlbearState();
+  showStatus(`Spawned ${label} on map!`);
+}
+
+function syncVttUiControlsFromState() {
+  const sceneMeta = VTT_SCENE_META[vttState.scene] || VTT_SCENE_META.forest_ambush;
+  const sceneLabel = document.getElementById("vttActiveSceneLabel");
+  if (sceneLabel) {
+    sceneLabel.textContent = vttState.customMapUrl ? "🗺️ Custom Battlemap" : sceneMeta.title;
+  }
+
+  document.querySelectorAll("#vttSceneList .vtt-scene-card").forEach((card) => {
+    card.classList.toggle("active", !vttState.customMapUrl && card.dataset.scene === vttState.scene);
+  });
+
+  const fogCb = document.getElementById("vttFogEnabledCheckbox");
+  if (fogCb) fogCb.checked = Boolean(vttState.fogEnabled);
+}
+
+function setVttTool(toolName) {
+  vttCurrentTool = toolName || "select";
+  document.querySelectorAll("#vttLeftDock .vtt-tool-btn[data-vtt-tool]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.vttTool === vttCurrentTool);
+  });
+
+  const canvas = document.getElementById("owlbearMapCanvas");
+  if (canvas) {
+    canvas.className = `owlbear-vtt-canvas tool-${vttCurrentTool}`;
+  }
+
+  const subBar = document.getElementById("vttSubToolbar");
+  const drawGrp = document.getElementById("vttSubDrawGroup");
+  const aoeGrp = document.getElementById("vttSubAoeGroup");
+  const fogGrp = document.getElementById("vttSubFogGroup");
+
+  if (subBar) {
+    const showSub = vttCurrentTool === "draw" || vttCurrentTool === "aoe" || vttCurrentTool === "fog";
+    subBar.style.display = showSub ? "flex" : "none";
+    if (drawGrp) drawGrp.style.display = vttCurrentTool === "draw" ? "flex" : "none";
+    if (aoeGrp) aoeGrp.style.display = vttCurrentTool === "aoe" ? "flex" : "none";
+    if (fogGrp) fogGrp.style.display = vttCurrentTool === "fog" ? "flex" : "none";
+  }
+}
+
+/* --------------------------------------------------------------------------
+   MODE 2: LIVE OWLBEAR.RODEO TAB STREAM (navigator.mediaDevices.getDisplayMedia)
+   -------------------------------------------------------------------------- */
+
+async function startOwlbearStream() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    alert("Your browser does not support native tab streaming (getDisplayMedia). Use the Native VTT mode instead!");
+    return;
+  }
+  try {
+    stopOwlbearStream();
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        displaySurface: "browser",
+        frameRate: { ideal: 60, max: 60 }
+      },
+      audio: false
+    });
+    vttMediaStream = stream;
+    const videoEl = document.getElementById("owlbearStreamVideo");
+    const placeholderEl = document.getElementById("owlbearStreamPlaceholder");
+    const stopBtn = document.getElementById("owlbearStopStreamBtn");
+
+    if (videoEl) {
+      videoEl.srcObject = stream;
+      videoEl.style.display = "block";
+      videoEl.play().catch(() => {});
+    }
+    if (placeholderEl) placeholderEl.style.display = "none";
+    if (stopBtn) stopBtn.style.display = "inline-flex";
+
+    const track = stream.getVideoTracks()[0];
+    if (track) {
+      track.addEventListener("ended", () => {
+        stopOwlbearStream();
+      });
+    }
+    showStatus("Streaming Owlbear Rodeo tab live at 60fps!");
+  } catch (err) {
+    console.warn("Tab stream cancelled or denied:", err);
+  }
+}
+
+function stopOwlbearStream() {
+  if (vttMediaStream) {
+    vttMediaStream.getTracks().forEach((t) => t.stop());
+    vttMediaStream = null;
+  }
+  const videoEl = document.getElementById("owlbearStreamVideo");
+  const placeholderEl = document.getElementById("owlbearStreamPlaceholder");
+  const stopBtn = document.getElementById("owlbearStopStreamBtn");
+  if (videoEl) {
+    videoEl.srcObject = null;
+    videoEl.style.display = "none";
+  }
+  if (placeholderEl) placeholderEl.style.display = "flex";
+  if (stopBtn) stopBtn.style.display = "none";
+}
+
+function openExternalOwlbearRoomTab() {
+  const raw = document.getElementById("owlbearRoomUrlInput")?.value || getStoredOwlbearUrl();
+  const target = /^https?:\/\//i.test(raw) ? raw : "https://www.owlbear.rodeo";
+  window.open(target, "_blank", "noopener,noreferrer");
+}
+
+/* --------------------------------------------------------------------------
+   CANVAS POINTER / WHEEL / KEYBOARD INTERACTION LISTENERS
+   -------------------------------------------------------------------------- */
+
+function initOwlbearCanvasListeners() {
+  const canvas = document.getElementById("owlbearMapCanvas");
+  if (!canvas) return;
+
+  const getPointerCoords = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const sx = clientX - rect.left;
+    const sy = clientY - rect.top;
+    const g = screenToGrid(sx, sy);
+    return { sx, sy, gx: g.gx, gy: g.gy };
+  };
+
+  canvas.addEventListener("mousedown", (e) => {
+    const { sx, sy, gx, gy } = getPointerCoords(e);
+
+    // Middle-click, right-click, Spacebar, or Pan tool -> Panning
+    if (e.button === 1 || e.button === 2 || vttSpacePressed || vttCurrentTool === "pan") {
+      e.preventDefault();
+      vttIsPanning = true;
+      vttPanStart = { x: sx - vttCamera.x, y: sy - vttCamera.y };
+      return;
+    }
+
+    if (vttCurrentTool === "select") {
+      const hitTok = findTokenAtGridPos(gx, gy);
+      if (hitTok) {
+        selectVttToken(hitTok.id);
+        vttDraggingToken = hitTok;
+        vttDragOffset = { x: gx - hitTok.x, y: gy - hitTok.y };
+      } else {
+        selectVttToken(null);
+        vttIsPanning = true;
+        vttPanStart = { x: sx - vttCamera.x, y: sy - vttCamera.y };
+      }
+    } else if (vttCurrentTool === "measure") {
+      vttActiveMeasure = { x1: gx, y1: gy, x2: gx, y2: gy };
+      renderOwlbearCanvas();
+    } else if (vttCurrentTool === "ping") {
+      const pingObj = { x: gx, y: gy, color: "#facc15", createdAt: Date.now() };
+      vttPings.push(pingObj);
+      startVttPingLoop();
+      saveAndSyncOwlbearState({ lastPing: pingObj });
+    } else if (vttCurrentTool === "draw") {
+      vttActiveDrawStroke = { color: vttDrawColor, points: [{ x: gx, y: gy }] };
+      renderOwlbearCanvas();
+    } else if (vttCurrentTool === "aoe") {
+      vttActiveAoeDraft = {
+        id: "aoe_" + Date.now(),
+        shape: vttAoeShape,
+        x1: Math.round(gx * 2) / 2,
+        y1: Math.round(gy * 2) / 2,
+        x2: gx + 2,
+        y2: gy,
+        color: vttDrawColor
+      };
+      renderOwlbearCanvas();
+    } else if (vttCurrentTool === "fog") {
+      if (!vttState.fogEnabled) {
+        vttState.fogEnabled = true;
+        syncVttUiControlsFromState();
+      }
+      vttActiveFogRect = { x1: gx, y1: gy, x2: gx, y2: gy };
+      renderOwlbearCanvas();
+    }
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!vttIsPanning && !vttDraggingToken && !vttActiveMeasure && !vttActiveDrawStroke && !vttActiveAoeDraft && !vttActiveFogRect) {
+      return;
+    }
+    const { sx, sy, gx, gy } = getPointerCoords(e);
+
+    if (vttIsPanning) {
+      vttCamera.x = sx - vttPanStart.x;
+      vttCamera.y = sy - vttPanStart.y;
+      renderOwlbearCanvas();
+    } else if (vttDraggingToken) {
+      vttDraggingToken.x = gx - vttDragOffset.x;
+      vttDraggingToken.y = gy - vttDragOffset.y;
+      renderOwlbearCanvas();
+    } else if (vttActiveMeasure) {
+      vttActiveMeasure.x2 = gx;
+      vttActiveMeasure.y2 = gy;
+      renderOwlbearCanvas();
+    } else if (vttActiveDrawStroke) {
+      const pts = vttActiveDrawStroke.points;
+      const last = pts[pts.length - 1];
+      if (!last || Math.hypot(gx - last.x, gy - last.y) > 0.12) {
+        pts.push({ x: Math.round(gx * 20) / 20, y: Math.round(gy * 20) / 20 });
+        renderOwlbearCanvas();
+      }
+    } else if (vttActiveAoeDraft) {
+      vttActiveAoeDraft.x2 = gx;
+      vttActiveAoeDraft.y2 = gy;
+      renderOwlbearCanvas();
+    } else if (vttActiveFogRect) {
+      vttActiveFogRect.x2 = gx;
+      vttActiveFogRect.y2 = gy;
+      renderOwlbearCanvas();
+    }
+  });
+
+  window.addEventListener("mouseup", (e) => {
+    if (vttIsPanning) {
+      vttIsPanning = false;
+    }
+    if (vttDraggingToken) {
+      if (vttSnapToGrid && !e.shiftKey) {
+        vttDraggingToken.x = Math.round(vttDraggingToken.x * 2) / 2;
+        vttDraggingToken.y = Math.round(vttDraggingToken.y * 2) / 2;
+      }
+      vttDraggingToken = null;
+      renderOwlbearCanvas();
+      saveAndSyncOwlbearState();
+    }
+    if (vttActiveMeasure) {
+      vttActiveMeasure = null;
+      renderOwlbearCanvas();
+    }
+    if (vttActiveDrawStroke) {
+      if (vttActiveDrawStroke.points.length > 1) {
+        vttState.drawings.push(vttActiveDrawStroke);
+        saveAndSyncOwlbearState();
+      }
+      vttActiveDrawStroke = null;
+      renderOwlbearCanvas();
+    }
+    if (vttActiveAoeDraft) {
+      vttState.aoes.push(vttActiveAoeDraft);
+      vttActiveAoeDraft = null;
+      renderOwlbearCanvas();
+      saveAndSyncOwlbearState();
+    }
+    if (vttActiveFogRect) {
+      const rx = Math.min(vttActiveFogRect.x1, vttActiveFogRect.x2);
+      const ry = Math.min(vttActiveFogRect.y1, vttActiveFogRect.y2);
+      const rw = Math.abs(vttActiveFogRect.x2 - vttActiveFogRect.x1);
+      const rh = Math.abs(vttActiveFogRect.y2 - vttActiveFogRect.y1);
+      if (rw > 0.2 && rh > 0.2) {
+        vttState.fogRects.push({
+          x: Math.round(rx * 10) / 10,
+          y: Math.round(ry * 10) / 10,
+          w: Math.round(rw * 10) / 10,
+          h: Math.round(rh * 10) / 10,
+          mode: vttFogBrushMode
+        });
+        saveAndSyncOwlbearState();
+      }
+      vttActiveFogRect = null;
+      renderOwlbearCanvas();
+    }
+  });
+
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    const zoomFactor = e.deltaY < 0 ? 1.12 : 0.89;
+    const nextZoom = Math.min(3.0, Math.max(0.3, vttCamera.zoom * zoomFactor));
+
+    vttCamera.x = mx - (mx - vttCamera.x) * (nextZoom / vttCamera.zoom);
+    vttCamera.y = my - (my - vttCamera.y) * (nextZoom / vttCamera.zoom);
+    vttCamera.zoom = nextZoom;
+
+    updateVttZoomLabel();
+    renderOwlbearCanvas();
+  }, { passive: false });
+
+  window.addEventListener("resize", () => {
+    const tab = document.getElementById("tab-owlbear");
+    if (tab && tab.classList.contains("active")) {
+      resizeAndRenderOwlbearCanvas();
+    }
+  });
+
+  window.addEventListener("keydown", (e) => {
+    const tab = document.getElementById("tab-owlbear");
+    if (!tab || !tab.classList.contains("active")) return;
+    const tag = (e.target?.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+    if (e.code === "Space") {
+      vttSpacePressed = true;
+    } else if (e.key === "v" || e.key === "V") {
+      setVttTool("select");
+    } else if (e.key === "h" || e.key === "H") {
+      setVttTool("pan");
+    } else if (e.key === "m" || e.key === "M") {
+      setVttTool("measure");
+    } else if (e.key === "p" || e.key === "P") {
+      setVttTool("ping");
+    } else if (e.key === "d" || e.key === "D") {
+      setVttTool("draw");
+    } else if (e.key === "a" || e.key === "A") {
+      setVttTool("aoe");
+    } else if (e.key === "f" || e.key === "F") {
+      setVttTool("fog");
+    } else if (e.key === "g" || e.key === "G") {
+      vttShowGrid = !vttShowGrid;
+      document.getElementById("vttToggleGridBtn")?.classList.toggle("active", vttShowGrid);
+      renderOwlbearCanvas();
+    } else if ((e.key === "Delete" || e.key === "Backspace") && vttSelectedTokenId) {
+      vttState.tokens = (vttState.tokens || []).filter((t) => t.id !== vttSelectedTokenId);
+      selectVttToken(null);
+      saveAndSyncOwlbearState();
+    }
+  });
+
+  window.addEventListener("keyup", (e) => {
+    if (e.code === "Space") vttSpacePressed = false;
+  });
+}
+
+/* --------------------------------------------------------------------------
+   MAIN VTT CONTROLLER INITIALIZATION
+   -------------------------------------------------------------------------- */
+
 function initOwlbearVTT() {
+  initOwlbearCanvasListeners();
+
   const savedUrl = getStoredOwlbearUrl();
   if (savedUrl) {
     setOwlbearRoomUrl(savedUrl, false);
@@ -10404,30 +12066,23 @@ function initOwlbearVTT() {
   const input = document.getElementById("owlbearRoomUrlInput");
   const leaveBtn = document.getElementById("owlbearLeaveBtn");
   const activeLeaveBtn = document.getElementById("owlbearActiveLeaveBtn");
-  const hubLeaveBtn = document.getElementById("owlbearHubLeaveBtn");
   const copyBtn = document.getElementById("owlbearCopyRoomUrlBtn");
-  const toggleFrameBtn = document.getElementById("owlbearToggleIframeModeBtn");
-  const hubLaunchBtn = document.getElementById("owlbearLaunchHubBtn");
-  const activePopoutBtn = document.getElementById("owlbearActivePopoutBtn");
-  const activeExternalBtn = document.getElementById("owlbearActiveExternalBtn");
-
   const wizardBtn = document.getElementById("owlbearWizardConnectBtn");
   const wizardInput = document.getElementById("owlbearWizardRoomInput");
   const clearBtn = document.getElementById("owlbearClearInputBtn");
-  const popoutBtn = document.getElementById("owlbearPopoutBtn");
-  const externalBtn = document.getElementById("owlbearExternalBtn");
   const theaterBtn = document.getElementById("owlbearTheaterToggleBtn");
   const demoBtn = document.getElementById("owlbearUseDemoRoomBtn");
 
+  // Connect / Load Map (Natively in-tab!)
   if (loadBtn && input) {
     loadBtn.addEventListener("click", () => {
       const url = input.value.trim();
       if (!url) {
-        leaveOwlbearRoom();
+        setOwlbearRoomUrl(activeDMRoomCode || connectedCampaignRoom || "OBR-TABLETOP", true);
+        showStatus("Launched native Owlbear battle map!");
       } else {
         setOwlbearRoomUrl(url, true);
-        openOwlbearCompanionWindow();
-        showStatus("Connected to Owlbear Rodeo room!");
+        showStatus("Connected to Owlbear battle map in-tab!");
       }
     });
     input.addEventListener("keydown", (e) => {
@@ -10440,14 +12095,9 @@ function initOwlbearVTT() {
 
   if (wizardBtn && wizardInput) {
     wizardBtn.addEventListener("click", () => {
-      const url = wizardInput.value.trim();
-      if (url) {
-        setOwlbearRoomUrl(url, true);
-        openOwlbearCompanionWindow();
-        showStatus("Connected to Owlbear Rodeo room!");
-      } else {
-        alert("Please paste a valid Owlbear Rodeo room link (e.g. https://www.owlbear.rodeo/room/...)");
-      }
+      const url = wizardInput.value.trim() || activeDMRoomCode || connectedCampaignRoom || "OBR-TABLETOP";
+      setOwlbearRoomUrl(url, true);
+      showStatus("Connected to Owlbear battle map!");
     });
     wizardInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -10457,24 +12107,20 @@ function initOwlbearVTT() {
     });
   }
 
-  // Leave map actions
+  if (demoBtn) {
+    demoBtn.addEventListener("click", () => {
+      const defaultRoom = activeDMRoomCode || connectedCampaignRoom || "https://www.owlbear.rodeo/room/codex-battlemap/Tabletop";
+      setOwlbearRoomUrl(defaultRoom, true);
+      showStatus("Launched interactive Owlbear battle map!");
+    });
+  }
+
+  // Leave Map Buttons
   if (leaveBtn) leaveBtn.addEventListener("click", leaveOwlbearRoom);
   if (activeLeaveBtn) activeLeaveBtn.addEventListener("click", leaveOwlbearRoom);
-  if (hubLeaveBtn) hubLeaveBtn.addEventListener("click", leaveOwlbearRoom);
 
-  // Companion window & external tab actions
-  if (popoutBtn) popoutBtn.addEventListener("click", openOwlbearCompanionWindow);
-  if (hubLaunchBtn) hubLaunchBtn.addEventListener("click", openOwlbearCompanionWindow);
-  if (activePopoutBtn) activePopoutBtn.addEventListener("click", openOwlbearCompanionWindow);
-  if (externalBtn) externalBtn.addEventListener("click", openOwlbearExternalTab);
-  if (activeExternalBtn) activeExternalBtn.addEventListener("click", openOwlbearExternalTab);
-
-  // Copy Room URL
+  // Copy Link & Clear Input
   if (copyBtn) copyBtn.addEventListener("click", copyOwlbearRoomUrl);
-
-  // Toggle in-page frame mode
-  if (toggleFrameBtn) toggleFrameBtn.addEventListener("click", toggleOwlbearIframeMode);
-
   if (clearBtn && input) {
     clearBtn.addEventListener("click", () => {
       input.value = "";
@@ -10484,16 +12130,366 @@ function initOwlbearVTT() {
 
   if (theaterBtn) theaterBtn.addEventListener("click", toggleOwlbearTheaterMode);
 
-  if (demoBtn) {
-    demoBtn.addEventListener("click", () => {
-      const demoUrl = "https://www.owlbear.rodeo";
-      setOwlbearRoomUrl(demoUrl, false);
-      openOwlbearCompanionWindow();
-      showStatus("Loaded Owlbear Rodeo lobby. Paste a specific room link anytime!");
+  // Mode Switcher Pills (Native VTT | Live Tab Stream | Direct Iframe)
+  document.querySelectorAll(".owlbear-mode-pill").forEach((pill) => {
+    pill.addEventListener("click", () => {
+      switchOwlbearViewMode(pill.dataset.vttMode);
     });
-  }
+  });
 
-  // Quick Tactical Actions in Control Strip
+  // Left Tool Dock Buttons
+  document.querySelectorAll("#vttLeftDock .vtt-tool-btn[data-vtt-tool]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setVttTool(btn.dataset.vttTool);
+    });
+  });
+
+  document.getElementById("vttToggleGridBtn")?.addEventListener("click", (e) => {
+    vttShowGrid = !vttShowGrid;
+    e.currentTarget.classList.toggle("active", vttShowGrid);
+    renderOwlbearCanvas();
+  });
+
+  document.getElementById("vttToggleSnapBtn")?.addEventListener("click", (e) => {
+    vttSnapToGrid = !vttSnapToGrid;
+    e.currentTarget.classList.toggle("active", vttSnapToGrid);
+    showStatus(vttSnapToGrid ? "Snap-to-Grid enabled." : "Free token movement enabled.");
+  });
+
+  document.getElementById("vttClearDrawingsBtn")?.addEventListener("click", () => {
+    vttState.drawings = [];
+    vttState.aoes = [];
+    renderOwlbearCanvas();
+    saveAndSyncOwlbearState();
+    showStatus("Cleared all drawings & spell AoE templates.");
+  });
+
+  document.getElementById("vttResetViewBtn")?.addEventListener("click", () => {
+    resetVttCameraToFit();
+    renderOwlbearCanvas();
+  });
+
+  // Zoom Buttons
+  document.getElementById("vttZoomInBtn")?.addEventListener("click", () => {
+    vttCamera.zoom = Math.min(3.0, vttCamera.zoom * 1.2);
+    updateVttZoomLabel();
+    renderOwlbearCanvas();
+  });
+  document.getElementById("vttZoomOutBtn")?.addEventListener("click", () => {
+    vttCamera.zoom = Math.max(0.3, vttCamera.zoom / 1.2);
+    updateVttZoomLabel();
+    renderOwlbearCanvas();
+  });
+
+  // Sub-Toolbar Options (Draw Color, AoE Shape, Fog Controls)
+  document.querySelectorAll("#vttSubDrawGroup .vtt-color-swatch").forEach((sw) => {
+    sw.addEventListener("click", () => {
+      vttDrawColor = sw.dataset.color || "#d4af37";
+      document.querySelectorAll("#vttSubDrawGroup .vtt-color-swatch").forEach((s) => s.classList.remove("active"));
+      sw.classList.add("active");
+    });
+  });
+
+  document.getElementById("vttUndoDrawingBtn")?.addEventListener("click", () => {
+    if (vttState.drawings.length > 0) {
+      vttState.drawings.pop();
+      renderOwlbearCanvas();
+      saveAndSyncOwlbearState();
+    }
+  });
+
+  document.getElementById("vttAoeShapeSelect")?.addEventListener("change", (e) => {
+    vttAoeShape = e.target.value;
+  });
+
+  document.getElementById("vttFogEnabledCheckbox")?.addEventListener("change", (e) => {
+    vttState.fogEnabled = e.target.checked;
+    if (vttState.fogEnabled && (!vttState.fogRects || vttState.fogRects.length === 0)) {
+      // Reveal a starter area around hero spawn so user immediately sees how fog works
+      vttState.fogRects = [{ x: 5, y: 5, w: 8, h: 8, mode: "reveal" }];
+    }
+    renderOwlbearCanvas();
+    saveAndSyncOwlbearState();
+  });
+
+  document.getElementById("vttFogModeRevealBtn")?.addEventListener("click", (e) => {
+    vttFogBrushMode = "reveal";
+    e.currentTarget.className = "btn btn-gold-subtle btn-xs active";
+    const hideBtn = document.getElementById("vttFogModeHideBtn");
+    if (hideBtn) hideBtn.className = "btn btn-outline btn-xs";
+  });
+
+  document.getElementById("vttFogModeHideBtn")?.addEventListener("click", (e) => {
+    vttFogBrushMode = "hide";
+    e.currentTarget.className = "btn btn-gold-subtle btn-xs active";
+    const revBtn = document.getElementById("vttFogModeRevealBtn");
+    if (revBtn) revBtn.className = "btn btn-outline btn-xs";
+  });
+
+  document.getElementById("vttFogCoverAllBtn")?.addEventListener("click", () => {
+    vttState.fogEnabled = true;
+    vttState.fogRects = [];
+    syncVttUiControlsFromState();
+    renderOwlbearCanvas();
+    saveAndSyncOwlbearState();
+  });
+
+  document.getElementById("vttFogResetBtn")?.addEventListener("click", () => {
+    vttState.fogEnabled = false;
+    vttState.fogRects = [];
+    syncVttUiControlsFromState();
+    renderOwlbearCanvas();
+    saveAndSyncOwlbearState();
+  });
+
+  // Token Context Popover Controls
+  document.getElementById("vttTokCloseBtn")?.addEventListener("click", () => selectVttToken(null));
+
+  document.getElementById("vttTokNameInput")?.addEventListener("input", (e) => {
+    const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
+    if (!tok) return;
+    tok.name = e.target.value;
+    renderVttActiveTokensList();
+    renderOwlbearCanvas();
+    saveAndSyncOwlbearState();
+  });
+
+  document.querySelectorAll(".vtt-hp-step-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
+      if (!tok) return;
+      const delta = parseInt(btn.dataset.hpDelta, 10) || 0;
+      tok.hpCur = Math.max(0, Math.min(tok.hpMax || 999, (tok.hpCur ?? 0) + delta));
+      updateSelectedTokenPopoverUI();
+      renderVttActiveTokensList();
+      renderOwlbearCanvas();
+      saveAndSyncOwlbearState();
+    });
+  });
+
+  document.getElementById("vttTokHpCur")?.addEventListener("change", (e) => {
+    const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
+    if (!tok) return;
+    tok.hpCur = parseInt(e.target.value, 10) || 0;
+    renderVttActiveTokensList();
+    renderOwlbearCanvas();
+    saveAndSyncOwlbearState();
+  });
+
+  document.getElementById("vttTokHpMax")?.addEventListener("change", (e) => {
+    const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
+    if (!tok) return;
+    tok.hpMax = Math.max(1, parseInt(e.target.value, 10) || 1);
+    renderVttActiveTokensList();
+    renderOwlbearCanvas();
+    saveAndSyncOwlbearState();
+  });
+
+  document.getElementById("vttTokAcInput")?.addEventListener("change", (e) => {
+    const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
+    if (!tok) return;
+    tok.ac = parseInt(e.target.value, 10) || 10;
+    renderVttActiveTokensList();
+    renderOwlbearCanvas();
+    saveAndSyncOwlbearState();
+  });
+
+  document.getElementById("vttTokSizeSelect")?.addEventListener("change", (e) => {
+    const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
+    if (!tok) return;
+    tok.size = parseFloat(e.target.value) || 1;
+    renderOwlbearCanvas();
+    saveAndSyncOwlbearState();
+  });
+
+  document.querySelectorAll("#vttTokConditionsRow .vtt-cond-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
+      if (!tok) return;
+      if (!Array.isArray(tok.conditions)) tok.conditions = [];
+      const c = btn.dataset.cond;
+      if (tok.conditions.includes(c)) {
+        tok.conditions = tok.conditions.filter((x) => x !== c);
+      } else {
+        tok.conditions.push(c);
+      }
+      updateSelectedTokenPopoverUI();
+      renderOwlbearCanvas();
+      saveAndSyncOwlbearState();
+    });
+  });
+
+  document.getElementById("vttTokDupBtn")?.addEventListener("click", () => {
+    const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
+    if (!tok) return;
+    const copy = {
+      ...tok,
+      id: `tok_dup_${Date.now()}`,
+      charId: "",
+      name: `${tok.name} Copy`,
+      x: tok.x + 1,
+      y: tok.y + 1,
+      conditions: [...(tok.conditions || [])]
+    };
+    vttState.tokens.push(copy);
+    selectVttToken(copy.id);
+    saveAndSyncOwlbearState();
+  });
+
+  document.getElementById("vttTokDelBtn")?.addEventListener("click", () => {
+    if (!vttSelectedTokenId) return;
+    vttState.tokens = (vttState.tokens || []).filter((t) => t.id !== vttSelectedTokenId);
+    selectVttToken(null);
+    saveAndSyncOwlbearState();
+  });
+
+  // Right Drawer Toggle & Tabs
+  const drawer = document.getElementById("vttRightDrawer");
+  document.getElementById("vttDrawerToggleBtn")?.addEventListener("click", () => {
+    drawer?.classList.toggle("open");
+  });
+  document.getElementById("vttDrawerCloseBtn")?.addEventListener("click", () => {
+    drawer?.classList.remove("open");
+  });
+
+  document.querySelectorAll(".vtt-drawer-tab").forEach((tabBtn) => {
+    tabBtn.addEventListener("click", () => {
+      const target = tabBtn.dataset.drawerTab;
+      document.querySelectorAll(".vtt-drawer-tab").forEach((b) => b.classList.toggle("active", b === tabBtn));
+      const tokPane = document.getElementById("vttDrawerPaneTokens");
+      const mapPane = document.getElementById("vttDrawerPaneMaps");
+      if (tokPane) tokPane.style.display = target === "tokens" ? "flex" : "none";
+      if (mapPane) mapPane.style.display = target === "maps" ? "flex" : "none";
+    });
+  });
+
+  // Spawning Tokens
+  document.getElementById("vttSpawnSelfBtn")?.addEventListener("click", spawnMyCharacterTokenOnVtt);
+  document.getElementById("owlbearDropMyTokenBtn")?.addEventListener("click", spawnMyCharacterTokenOnVtt);
+  document.getElementById("vttSpawnPartyBtn")?.addEventListener("click", spawnCampaignPartyOnVtt);
+  document.getElementById("owlbearSyncPartyTokensBtn")?.addEventListener("click", spawnCampaignPartyOnVtt);
+
+  document.querySelectorAll("#vttPresetTokensGrid .vtt-preset-token-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      spawnPresetTokenOnVtt(btn.dataset.preset);
+    });
+  });
+
+  document.getElementById("vttAddCustomTokBtn")?.addEventListener("click", () => {
+    const name = document.getElementById("vttCustomTokName")?.value?.trim() || "Custom Token";
+    const hp = parseInt(document.getElementById("vttCustomTokHp")?.value, 10) || 25;
+    const size = parseFloat(document.getElementById("vttCustomTokSize")?.value) || 1;
+    const color = document.getElementById("vttCustomTokColor")?.value || "#ef4444";
+    const imgUrl = document.getElementById("vttCustomTokImg")?.value?.trim() || "";
+
+    const newTok = {
+      id: `tok_custom_${Date.now()}`,
+      name,
+      icon: "⚔️",
+      avatar: imgUrl,
+      x: 10,
+      y: 8,
+      size,
+      hpCur: hp,
+      hpMax: hp,
+      ac: 14,
+      color,
+      conditions: []
+    };
+    vttState.tokens.push(newTok);
+    selectVttToken(newTok.id);
+    saveAndSyncOwlbearState();
+    showStatus(`Spawned ${name} on map!`);
+  });
+
+  document.getElementById("vttClearAllTokensBtn")?.addEventListener("click", () => {
+    if (confirm("Remove all tokens from the battle map?")) {
+      vttState.tokens = [];
+      selectVttToken(null);
+      saveAndSyncOwlbearState();
+    }
+  });
+
+  document.getElementById("vttActiveTokensList")?.addEventListener("click", (e) => {
+    const item = e.target.closest(".vtt-active-token-item");
+    if (!item) return;
+    selectVttToken(item.dataset.tokenId);
+  });
+
+  // Switching Battlemap Scenes
+  document.querySelectorAll("#vttSceneList .vtt-scene-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      const sceneKey = card.dataset.scene;
+      if (!sceneKey) return;
+      vttState.scene = sceneKey;
+      vttState.customMapUrl = "";
+      syncVttUiControlsFromState();
+      renderOwlbearCanvas();
+      saveAndSyncOwlbearState();
+      showStatus(`Switched battlemap to ${VTT_SCENE_META[sceneKey]?.title || sceneKey}!`);
+    });
+  });
+
+  document.getElementById("vttApplyMapUrlBtn")?.addEventListener("click", () => {
+    const url = document.getElementById("vttCustomMapUrlInput")?.value?.trim() || "";
+    if (!url) return;
+    vttState.customMapUrl = url;
+    syncVttUiControlsFromState();
+    renderOwlbearCanvas();
+    saveAndSyncOwlbearState();
+    showStatus("Applied custom battlemap image!");
+  });
+
+  document.getElementById("vttUploadMapInput")?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const off = document.createElement("canvas");
+        const maxDim = 1400;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+          else { w = Math.round((w * maxDim) / h); h = maxDim; }
+        }
+        off.width = w;
+        off.height = h;
+        off.getContext("2d").drawImage(img, 0, 0, w, h);
+        vttState.customMapUrl = off.toDataURL("image/jpeg", 0.78);
+        syncVttUiControlsFromState();
+        renderOwlbearCanvas();
+        saveAndSyncOwlbearState();
+        showStatus("Uploaded custom battlemap!");
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Live Tab Stream Controls (Mode 2)
+  document.getElementById("owlbearOpenForStreamBtn")?.addEventListener("click", openExternalOwlbearRoomTab);
+  document.getElementById("owlbearStreamOpenHeroBtn")?.addEventListener("click", openExternalOwlbearRoomTab);
+  document.getElementById("owlbearStartStreamBtn")?.addEventListener("click", startOwlbearStream);
+  document.getElementById("owlbearStreamStartHeroBtn")?.addEventListener("click", startOwlbearStream);
+  document.getElementById("owlbearStopStreamBtn")?.addEventListener("click", stopOwlbearStream);
+
+  // Direct Iframe Controls (Mode 3)
+  document.getElementById("owlbearReloadIframeBtn")?.addEventListener("click", () => {
+    const iframe = document.getElementById("owlbearIframe");
+    if (iframe) {
+      const cur = iframe.src;
+      iframe.src = "";
+      setTimeout(() => { iframe.src = cur; }, 60);
+    }
+  });
+  document.getElementById("owlbearSwitchToNativeBtn")?.addEventListener("click", () => {
+    switchOwlbearViewMode("native");
+  });
+
+  // Quick Combat Rolls in Tactical Strip
   const initBtn = document.getElementById("owlbearRollInitBtn");
   if (initBtn) {
     initBtn.addEventListener("click", () => {
@@ -10505,29 +12501,6 @@ function initOwlbearVTT() {
   const atkBtn = document.getElementById("owlbearRollAtkBtn");
   if (atkBtn) {
     atkBtn.addEventListener("click", () => {
-      const firstWpn = (Array.isArray(myCharacterWeapons) && myCharacterWeapons[0]) ? myCharacterWeapons[0] : null;
-      if (firstWpn && firstWpn.name) {
-        const numMatch = String(firstWpn.atk || "").match(/[+-]?\d+/);
-        const bonus = numMatch ? parseInt(numMatch[0], 10) : 0;
-        performD20Roll(bonus, `${firstWpn.name} Atk`);
-      } else {
-        performD20Roll(0, "Unarmed Strike");
-      }
-    });
-  }
-
-  // Quick Tactical Actions in Battle Deck Hub
-  const hubInitBtn = document.getElementById("owlbearHubInitBtn");
-  if (hubInitBtn) {
-    hubInitBtn.addEventListener("click", () => {
-      const bonus = parseInt(document.getElementById("initiativeDisplay")?.textContent, 10) || 0;
-      performD20Roll(bonus, "Initiative");
-    });
-  }
-
-  const hubAtkBtn = document.getElementById("owlbearHubAtkBtn");
-  if (hubAtkBtn) {
-    hubAtkBtn.addEventListener("click", () => {
       const firstWpn = (Array.isArray(myCharacterWeapons) && myCharacterWeapons[0]) ? myCharacterWeapons[0] : null;
       if (firstWpn && firstWpn.name) {
         const numMatch = String(firstWpn.atk || "").match(/[+-]?\d+/);

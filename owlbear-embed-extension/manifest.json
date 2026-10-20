@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Codex Owlbear Rodeo Embed Unblocker",
+  "version": "1.0.0",
+  "description": "Allows Owlbear Rodeo battle maps to run natively inside an iframe on the D&D 5e Character Sheet website by removing X-Frame-Options restrictions.",
+  "permissions": [
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "*://*.owlbear.rodeo/*",
+    "*://*.owlbear.app/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "owlbear_iframe_rules",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  }
+}
