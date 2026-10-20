@@ -8495,7 +8495,7 @@ function initPWAAndNetworkStatus() {
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=78", { updateViaCache: "none" }).then((reg) => {
+      navigator.serviceWorker.register("./sw.js?v=79", { updateViaCache: "none" }).then((reg) => {
         reg.update().catch(() => {});
         console.log("5e Sheet Service Worker registered:", reg.scope);
       }).catch((err) => {
@@ -10397,6 +10397,15 @@ function switchOwlbearViewMode(mode) {
 
   if (vttActiveMode === "native") {
     requestAnimationFrame(() => resizeAndRenderOwlbearCanvas());
+  } else if (vttActiveMode === "stream") {
+    requestAnimationFrame(() => {
+      if (typeof resizeAndRenderStreamOverlayCanvas === "function") {
+        resizeAndRenderStreamOverlayCanvas();
+      }
+      if (typeof sendStreamRemoteInput === "function") {
+        sendStreamRemoteInput({ action: "ping_bridge" });
+      }
+    });
   }
 }
 
@@ -11886,35 +11895,236 @@ function setVttTool(toolName) {
 }
 
 /* --------------------------------------------------------------------------
-   MODE 2: LIVE OWLBEAR.RODEO TAB STREAM (navigator.mediaDevices.getDisplayMedia)
+   MODE 2: INTERACTIVE CONTROLLABLE LIVE TAB STREAM
+   (CaptureController + Remote Pointer/Key Bridge + Tactical Stream Overlay)
    -------------------------------------------------------------------------- */
+
+let vttStreamControlMode = "remote"; // "remote" | "overlay" | "panzoom"
+let vttCaptureController = null;
+let vttExternalOwlbearWin = null;
+let vttStreamRemoteBc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("owlbear_stream_remote_control") : null;
+let vttStreamBridgeConnected = false;
+let vttStreamLocalCamera = { x: 0, y: 0, zoom: 1.0 };
+let vttStreamOverlayTool = "select"; // "select" | "measure" | "ping" | "draw" | "aoe"
+let vttStreamRemoteDragging = false;
+let vttStreamPanDragging = false;
+let vttStreamPanStart = { x: 0, y: 0 };
+let vttStreamCursorRipples = [];
+let vttStreamDragTrail = [];
+let vttStreamAnimId = null;
+
+if (vttStreamRemoteBc) {
+  vttStreamRemoteBc.onmessage = (ev) => {
+    if (ev.data && ev.data.type === "OBR_STREAM_BRIDGE_READY") {
+      markStreamBridgeConnected(ev.data.via || "broadcast");
+    }
+  };
+}
+
+function markStreamBridgeConnected(via = "bridge") {
+  vttStreamBridgeConnected = true;
+  const badge = document.getElementById("owlbearStreamBridgeBadge");
+  if (badge) {
+    badge.textContent = "🟢 Remote Click/Drag Active";
+    badge.style.background = "rgba(74, 222, 128, 0.18)";
+    badge.style.color = "#4ade80";
+    badge.style.borderColor = "rgba(74, 222, 128, 0.45)";
+  }
+  const hint = document.getElementById("owlbearStreamCtrlHintTag");
+  if (hint && vttStreamControlMode === "remote") {
+    hint.textContent = `🟢 Full Remote Control (${via})`;
+  }
+}
+
+function setStreamControlMode(mode) {
+  vttStreamControlMode = mode || "remote";
+  document.querySelectorAll("#owlbearStreamCtrlModes .stream-ctrl-pill").forEach((pill) => {
+    pill.classList.toggle("active", pill.dataset.streamCtrl === vttStreamControlMode);
+  });
+
+  const overlayDock = document.getElementById("owlbearStreamOverlayDock");
+  if (overlayDock) {
+    overlayDock.style.display = vttStreamControlMode === "overlay" ? "flex" : "none";
+  }
+
+  const overlayCanvas = document.getElementById("owlbearStreamOverlayCanvas");
+  if (overlayCanvas) {
+    overlayCanvas.style.display = "block";
+    overlayCanvas.style.cursor =
+      vttStreamControlMode === "panzoom" ? "grab" :
+      vttStreamControlMode === "overlay" && vttStreamOverlayTool === "select" ? "default" :
+      "crosshair";
+  }
+
+  const hint = document.getElementById("owlbearStreamCtrlHintTag");
+  if (hint) {
+    if (vttStreamControlMode === "remote") {
+      hint.textContent = vttStreamBridgeConnected
+        ? "🟢 Full Remote Click/Drag Active"
+        : "🖱️ Remote Control (Wheel + Bridge)";
+    } else if (vttStreamControlMode === "overlay") {
+      hint.textContent = "♟️ 5e Tactical Overlay Active";
+    } else {
+      hint.textContent = "🔍 Drag to Pan • Scroll to Zoom";
+    }
+  }
+
+  resizeAndRenderStreamOverlayCanvas();
+}
+
+function setStreamOverlayTool(tool) {
+  vttStreamOverlayTool = tool || "select";
+  document.querySelectorAll("#owlbearStreamOverlayDock .vtt-tool-btn[data-stream-tool]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.streamTool === vttStreamOverlayTool);
+  });
+}
+
+function applyStreamLocalTransform() {
+  const wrap = document.getElementById("owlbearStreamTransformWrap");
+  if (wrap) {
+    wrap.style.transform = `translate(${vttStreamLocalCamera.x}px, ${vttStreamLocalCamera.y}px) scale(${vttStreamLocalCamera.zoom})`;
+  }
+  const lbl = document.getElementById("owlbearStreamZoomLabel");
+  if (lbl) {
+    lbl.textContent = `${Math.round(vttStreamLocalCamera.zoom * 100)}%`;
+  }
+}
+
+function getStreamNormalizedCoords(e) {
+  const videoEl = document.getElementById("owlbearStreamVideo");
+  const stageEl = document.getElementById("owlbearStreamStage");
+  const targetBox = (videoEl && videoEl.style.display !== "none" ? videoEl : stageEl)?.getBoundingClientRect();
+  if (!targetBox || !targetBox.width || !targetBox.height) {
+    return { nx: 0.5, ny: 0.5, sx: 0, sy: 0 };
+  }
+
+  const clientX = e.touches?.[0]?.clientX ?? e.changedTouches?.[0]?.clientX ?? e.clientX;
+  const clientY = e.touches?.[0]?.clientY ?? e.changedTouches?.[0]?.clientY ?? e.clientY;
+
+  const vw = (videoEl && videoEl.videoWidth) ? videoEl.videoWidth : targetBox.width;
+  const vh = (videoEl && videoEl.videoHeight) ? videoEl.videoHeight : targetBox.height;
+  const videoRatio = vw / vh;
+  const boxRatio = targetBox.width / targetBox.height;
+
+  let renderW = targetBox.width;
+  let renderH = targetBox.height;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (boxRatio > videoRatio) {
+    renderW = targetBox.height * videoRatio;
+    offsetX = (targetBox.width - renderW) / 2;
+  } else {
+    renderH = targetBox.width / videoRatio;
+    offsetY = (targetBox.height - renderH) / 2;
+  }
+
+  const localX = clientX - targetBox.left - offsetX;
+  const localY = clientY - targetBox.top - offsetY;
+
+  const nx = Math.max(0, Math.min(1, localX / Math.max(1, renderW)));
+  const ny = Math.max(0, Math.min(1, localY / Math.max(1, renderH)));
+
+  const canvas = document.getElementById("owlbearStreamOverlayCanvas");
+  const cRect = canvas ? canvas.getBoundingClientRect() : targetBox;
+  const sx = (clientX - cRect.left) / (vttStreamLocalCamera.zoom || 1);
+  const sy = (clientY - cRect.top) / (vttStreamLocalCamera.zoom || 1);
+
+  return { nx, ny, sx, sy };
+}
+
+function sendStreamRemoteInput(payload) {
+  const pkt = {
+    source: "codex-sheet",
+    type: "OBR_REMOTE_INPUT",
+    replyOrigin: window.location.origin,
+    timestamp: Date.now(),
+    ...payload
+  };
+
+  // 1. Direct Window Handle (if opened via "1. Open Owlbear Room Tab")
+  if (vttExternalOwlbearWin && !vttExternalOwlbearWin.closed) {
+    try {
+      vttExternalOwlbearWin.postMessage(pkt, "*");
+    } catch (e) {}
+  }
+
+  // 2. BroadcastChannel (reaches same-origin ./owlbear/, relay iframe, or OBR 2.0 SDK extension)
+  if (vttStreamRemoteBc) {
+    try {
+      vttStreamRemoteBc.postMessage(pkt);
+    } catch (e) {}
+  }
+
+  // 3. Chrome Extension Content Script Bridge (owlbear-embed-extension v2.0)
+  try {
+    window.postMessage(pkt, "*");
+  } catch (e) {}
+}
 
 async function startOwlbearStream() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-    alert("Your browser does not support native tab streaming (getDisplayMedia). Use the Native VTT mode instead!");
+    alert("Your browser does not support native tab streaming (getDisplayMedia). Use the Owlbear Rodeo mode instead!");
     return;
   }
   try {
     stopOwlbearStream();
-    const stream = await navigator.mediaDevices.getDisplayMedia({
+
+    // Use Chromium CaptureController for native zero-install wheel forwarding & tab zoom
+    vttCaptureController = typeof CaptureController !== "undefined" ? new CaptureController() : null;
+    const displayMediaOpts = {
       video: {
         displaySurface: "browser",
         frameRate: { ideal: 60, max: 60 }
       },
       audio: false
-    });
+    };
+    if (vttCaptureController) {
+      displayMediaOpts.controller = vttCaptureController;
+    }
+
+    const stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOpts);
     vttMediaStream = stream;
+
+    if (vttCaptureController) {
+      try {
+        if (typeof vttCaptureController.setFocusBehavior === "function") {
+          vttCaptureController.setFocusBehavior("no-focus-change");
+        }
+      } catch (e) {}
+    }
+
     const videoEl = document.getElementById("owlbearStreamVideo");
+    const overlayCanvas = document.getElementById("owlbearStreamOverlayCanvas");
     const placeholderEl = document.getElementById("owlbearStreamPlaceholder");
     const stopBtn = document.getElementById("owlbearStopStreamBtn");
+    const zoomPill = document.getElementById("owlbearStreamZoomPill");
 
     if (videoEl) {
       videoEl.srcObject = stream;
       videoEl.style.display = "block";
       videoEl.play().catch(() => {});
+
+      // Enable native Chromium wheel forwarding from the stream stage directly to the captured tab
+      if (vttCaptureController && typeof vttCaptureController.forwardWheel === "function") {
+        try {
+          const stageEl = document.getElementById("owlbearStreamStage") || videoEl;
+          await vttCaptureController.forwardWheel(stageEl);
+        } catch (e) {}
+      }
     }
+
+    if (overlayCanvas) overlayCanvas.style.display = "block";
     if (placeholderEl) placeholderEl.style.display = "none";
     if (stopBtn) stopBtn.style.display = "inline-flex";
+    if (zoomPill) zoomPill.style.display = "inline-flex";
+
+    setStreamControlMode(vttStreamControlMode);
+    resizeAndRenderStreamOverlayCanvas();
+
+    // Ping remote bridges to update live status badge
+    sendStreamRemoteInput({ action: "ping_bridge" });
+    window.postMessage({ source: "codex-sheet", type: "OBR_CHECK_BRIDGE" }, "*");
 
     const track = stream.getVideoTracks()[0];
     if (track) {
@@ -11922,7 +12132,7 @@ async function startOwlbearStream() {
         stopOwlbearStream();
       });
     }
-    showStatus("Streaming Owlbear Rodeo tab live at 60fps!");
+    showStatus("Streaming Owlbear Rodeo at 60fps — Click, drag, or scroll on the stream to control!");
   } catch (err) {
     console.warn("Tab stream cancelled or denied:", err);
   }
@@ -11933,21 +12143,492 @@ function stopOwlbearStream() {
     vttMediaStream.getTracks().forEach((t) => t.stop());
     vttMediaStream = null;
   }
+  vttCaptureController = null;
   const videoEl = document.getElementById("owlbearStreamVideo");
   const placeholderEl = document.getElementById("owlbearStreamPlaceholder");
   const stopBtn = document.getElementById("owlbearStopStreamBtn");
+  const zoomPill = document.getElementById("owlbearStreamZoomPill");
   if (videoEl) {
     videoEl.srcObject = null;
     videoEl.style.display = "none";
   }
   if (placeholderEl) placeholderEl.style.display = "flex";
   if (stopBtn) stopBtn.style.display = "none";
+  if (zoomPill) zoomPill.style.display = "none";
 }
 
 function openExternalOwlbearRoomTab() {
   const raw = document.getElementById("owlbearRoomUrlInput")?.value || getStoredOwlbearUrl();
   const target = /^https?:\/\//i.test(raw) ? raw : "https://www.owlbear.rodeo";
-  window.open(target, "_blank", "noopener,noreferrer");
+  // Keep window reference so postMessage can send pointer/wheel/key events directly to the tab
+  vttExternalOwlbearWin = window.open(target, "OwlbearRodeoLiveRoom");
+}
+
+function resizeAndRenderStreamOverlayCanvas() {
+  const canvas = document.getElementById("owlbearStreamOverlayCanvas");
+  const stage = document.getElementById("owlbearStreamStage");
+  if (!canvas || !stage) return;
+  const rect = stage.getBoundingClientRect();
+  if (rect.width > 0 && rect.height > 0) {
+    if (canvas.width !== Math.round(rect.width) || canvas.height !== Math.round(rect.height)) {
+      canvas.width = Math.round(rect.width);
+      canvas.height = Math.round(rect.height);
+    }
+  }
+  renderOwlbearStreamOverlayCanvas();
+}
+
+function renderOwlbearStreamOverlayCanvas() {
+  const canvas = document.getElementById("owlbearStreamOverlayCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const now = Date.now();
+  const gs = 48; // 48px per 5ft square on overlay
+
+  // 1. If Tactical Overlay mode is active (or has items), render drawings, AoEs, tokens, ruler, pings
+  if (vttStreamControlMode === "overlay") {
+    // Subtle tactical grid guide
+    ctx.save();
+    ctx.strokeStyle = "rgba(212, 175, 55, 0.14)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= W; x += gs) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y <= H; y += gs) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Drawings
+    [...(vttState.drawings || []), ...(vttActiveDrawStroke ? [vttActiveDrawStroke] : [])].forEach((d) => {
+      if (!d.points || d.points.length < 2) return;
+      ctx.save();
+      ctx.strokeStyle = d.color || "#d4af37";
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      d.points.forEach((pt, idx) => {
+        if (idx === 0) ctx.moveTo(pt.x * gs, pt.y * gs);
+        else ctx.lineTo(pt.x * gs, pt.y * gs);
+      });
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // AoEs
+    [...(vttState.aoes || []), ...(vttActiveAoeDraft ? [vttActiveAoeDraft] : [])].forEach((aoe) => {
+      drawVttAoeTemplate(ctx, aoe, gs);
+    });
+
+    // Tokens
+    (vttState.tokens || []).forEach((tok) => {
+      drawVttToken(ctx, tok, gs);
+    });
+
+    // Ruler
+    if (vttActiveMeasure) {
+      drawVttRuler(ctx, vttActiveMeasure, gs);
+    }
+
+    // Pings
+    vttPings = vttPings.filter((p) => now - p.createdAt < 2600);
+    vttPings.forEach((p) => {
+      const age = (now - p.createdAt) / 2600;
+      const px = p.x * gs;
+      const py = p.y * gs;
+      for (let ring = 0; ring < 3; ring++) {
+        const rAge = (age * 2 + ring * 0.33) % 1;
+        ctx.save();
+        ctx.strokeStyle = p.color || "#d4af37";
+        ctx.globalAlpha = (1 - rAge) * 0.85;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(px, py, rAge * gs * 2, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    });
+  }
+
+  // 2. Render Remote Control Drag Trail & Click Ripples
+  if (vttStreamDragTrail.length > 1) {
+    ctx.save();
+    ctx.strokeStyle = "rgba(212, 175, 55, 0.75)";
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    vttStreamDragTrail.forEach((pt, idx) => {
+      if (idx === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    });
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  vttStreamCursorRipples = vttStreamCursorRipples.filter((r) => now - r.ts < 650);
+  vttStreamCursorRipples.forEach((r) => {
+    const progress = (now - r.ts) / 650;
+    ctx.save();
+    ctx.strokeStyle = r.color || "#d4af37";
+    ctx.globalAlpha = (1 - progress) * 0.9;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, 6 + progress * 24, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  if (vttStreamCursorRipples.length > 0 || (vttStreamControlMode === "overlay" && vttPings.length > 0)) {
+    if (!vttStreamAnimId) {
+      vttStreamAnimId = requestAnimationFrame(() => {
+        vttStreamAnimId = null;
+        renderOwlbearStreamOverlayCanvas();
+      });
+    }
+  }
+}
+
+function getOneClickStreamControllerSnippet() {
+  const relayUrl = new URL("./owlbear/stream-relay.html", window.location.href).href;
+  const receiverUrl = new URL("./owlbear/stream-remote-receiver.js", window.location.href).href;
+  return `(function(){if(!document.getElementById('codex-stream-relay')){var f=document.createElement('iframe');f.id='codex-stream-relay';f.src=${JSON.stringify(relayUrl)};f.style.cssText='display:none;width:0;height:0;border:0;';document.body.appendChild(f);}var s=document.createElement('script');s.src=${JSON.stringify(receiverUrl)};document.head.appendChild(s);})();`;
+}
+
+function initOwlbearStreamControlListeners() {
+  const stage = document.getElementById("owlbearStreamStage");
+  const overlayCanvas = document.getElementById("owlbearStreamOverlayCanvas");
+  if (!stage || !overlayCanvas) return;
+
+  // Populate Owlbear 2.0 Extension Manifest URL & Bookmarklet href
+  const extInput = document.getElementById("owlbearObr2ExtUrlInput");
+  if (extInput) {
+    try {
+      extInput.value = new URL("./owlbear/obr-extension-manifest.json", window.location.href).href;
+    } catch (e) {}
+  }
+  const bmLink = document.getElementById("owlbearRemoteBookmarkletLink");
+  if (bmLink) {
+    bmLink.href = "javascript:" + encodeURIComponent(getOneClickStreamControllerSnippet());
+    bmLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      navigator.clipboard?.writeText(getOneClickStreamControllerSnippet()).catch(() => {});
+      showStatus("Drag this button to your Bookmarks Bar (or copied script to clipboard)!");
+    });
+  }
+
+  document.getElementById("owlbearCopyRemoteScriptBtn")?.addEventListener("click", () => {
+    const snippet = getOneClickStreamControllerSnippet();
+    navigator.clipboard?.writeText(snippet).then(() => {
+      showStatus("Copied 1-Click Stream Controller script! Paste it into the Owlbear tab console (F12).");
+    }).catch(() => {});
+  });
+
+  document.getElementById("owlbearCopyObr2ExtUrlBtn")?.addEventListener("click", () => {
+    const url = extInput?.value || new URL("./owlbear/obr-extension-manifest.json", window.location.href).href;
+    navigator.clipboard?.writeText(url).then(() => {
+      showStatus("Copied Owlbear 2.0 Extension Manifest URL!");
+    }).catch(() => {});
+  });
+
+  const bridgePop = document.getElementById("owlbearStreamBridgePopover");
+  document.getElementById("owlbearStreamBridgeHelpBtn")?.addEventListener("click", () => {
+    if (bridgePop) {
+      bridgePop.style.display = bridgePop.style.display === "none" ? "block" : "none";
+    }
+  });
+  document.getElementById("owlbearStreamBridgeCloseBtn")?.addEventListener("click", () => {
+    if (bridgePop) bridgePop.style.display = "none";
+  });
+
+  // Stream Control Mode Switcher Pills
+  document.querySelectorAll("#owlbearStreamCtrlModes .stream-ctrl-pill").forEach((pill) => {
+    pill.addEventListener("click", () => {
+      setStreamControlMode(pill.dataset.streamCtrl);
+    });
+  });
+
+  // Stream Overlay Tool Buttons
+  document.querySelectorAll("#owlbearStreamOverlayDock .vtt-tool-btn[data-stream-tool]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      setStreamOverlayTool(btn.dataset.streamTool);
+    });
+  });
+
+  document.getElementById("owlbearStreamSpawnSelfBtn")?.addEventListener("click", () => {
+    spawnMyCharacterTokenOnVtt();
+    if (vttStreamRemoteBc) {
+      const myName = document.getElementById("charName")?.value?.trim() || "Adventurer";
+      vttStreamRemoteBc.postMessage({
+        type: "OBR_SPAWN_TOKEN",
+        token: { name: myName, avatar: myCharacterAvatar || "" }
+      });
+    }
+    renderOwlbearStreamOverlayCanvas();
+  });
+
+  document.getElementById("owlbearStreamSpawnPartyBtn")?.addEventListener("click", () => {
+    spawnCampaignPartyOnVtt();
+    renderOwlbearStreamOverlayCanvas();
+  });
+
+  document.getElementById("owlbearStreamClearOverlayBtn")?.addEventListener("click", () => {
+    vttState.drawings = [];
+    vttState.aoes = [];
+    renderOwlbearStreamOverlayCanvas();
+    saveAndSyncOwlbearState();
+    showStatus("Cleared stream overlay drawings & spell AoEs.");
+  });
+
+  // Stream Zoom Buttons (CaptureController + Local Stream Zoom)
+  document.getElementById("owlbearStreamZoomInBtn")?.addEventListener("click", () => {
+    if (vttStreamControlMode === "remote" && vttCaptureController && typeof vttCaptureController.increaseZoomLevel === "function") {
+      try { vttCaptureController.increaseZoomLevel(); } catch (e) {}
+    }
+    vttStreamLocalCamera.zoom = Math.min(4.0, Math.round((vttStreamLocalCamera.zoom + 0.2) * 100) / 100);
+    applyStreamLocalTransform();
+  });
+
+  document.getElementById("owlbearStreamZoomOutBtn")?.addEventListener("click", () => {
+    if (vttStreamControlMode === "remote" && vttCaptureController && typeof vttCaptureController.decreaseZoomLevel === "function") {
+      try { vttCaptureController.decreaseZoomLevel(); } catch (e) {}
+    }
+    vttStreamLocalCamera.zoom = Math.max(0.5, Math.round((vttStreamLocalCamera.zoom - 0.2) * 100) / 100);
+    applyStreamLocalTransform();
+  });
+
+  document.getElementById("owlbearStreamZoomResetBtn")?.addEventListener("click", () => {
+    if (vttStreamControlMode === "remote" && vttCaptureController && typeof vttCaptureController.resetZoomLevel === "function") {
+      try { vttCaptureController.resetZoomLevel(); } catch (e) {}
+    }
+    vttStreamLocalCamera = { x: 0, y: 0, zoom: 1.0 };
+    applyStreamLocalTransform();
+  });
+
+  // Pointer & Wheel Events on the Stream Canvas
+  overlayCanvas.addEventListener("mousedown", (e) => {
+    stage.focus({ preventScroll: true });
+    const { nx, ny, sx, sy } = getStreamNormalizedCoords(e);
+    const gs = 48;
+    const gx = sx / gs;
+    const gy = sy / gs;
+
+    if (vttStreamControlMode === "remote") {
+      vttStreamRemoteDragging = true;
+      vttStreamDragTrail = [{ x: sx, y: sy }];
+      vttStreamCursorRipples.push({ x: sx, y: sy, color: "#d4af37", ts: Date.now() });
+      renderOwlbearStreamOverlayCanvas();
+      sendStreamRemoteInput({
+        action: "mousedown",
+        nx,
+        ny,
+        button: e.button,
+        buttons: e.buttons || (1 << e.button),
+        shiftKey: e.shiftKey,
+        ctrlKey: e.ctrlKey,
+        altKey: e.altKey,
+        metaKey: e.metaKey
+      });
+    } else if (vttStreamControlMode === "panzoom") {
+      vttStreamPanDragging = true;
+      vttStreamPanStart = { x: e.clientX - vttStreamLocalCamera.x, y: e.clientY - vttStreamLocalCamera.y };
+      overlayCanvas.style.cursor = "grabbing";
+    } else if (vttStreamControlMode === "overlay") {
+      if (vttStreamOverlayTool === "select") {
+        const hitTok = findTokenAtGridPos(gx, gy);
+        if (hitTok) {
+          selectVttToken(hitTok.id);
+          vttDraggingToken = hitTok;
+          vttDragOffset = { x: gx - hitTok.x, y: gy - hitTok.y };
+        }
+      } else if (vttStreamOverlayTool === "measure") {
+        vttActiveMeasure = { x1: gx, y1: gy, x2: gx, y2: gy };
+      } else if (vttStreamOverlayTool === "ping") {
+        const pingObj = { x: gx, y: gy, color: "#facc15", createdAt: Date.now() };
+        vttPings.push(pingObj);
+        saveAndSyncOwlbearState({ lastPing: pingObj });
+      } else if (vttStreamOverlayTool === "draw") {
+        vttActiveDrawStroke = { color: vttDrawColor || "#d4af37", points: [{ x: gx, y: gy }] };
+      } else if (vttStreamOverlayTool === "aoe") {
+        vttActiveAoeDraft = {
+          id: "aoe_stream_" + Date.now(),
+          shape: vttAoeShape || "sphere_20",
+          x1: gx,
+          y1: gy,
+          x2: gx + 2,
+          y2: gy,
+          color: "#f97316"
+        };
+      }
+      renderOwlbearStreamOverlayCanvas();
+    }
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    const streamLayer = document.getElementById("owlbearStreamLayer");
+    if (!streamLayer || streamLayer.style.display === "none") return;
+
+    if (vttStreamControlMode === "remote" && vttStreamRemoteDragging) {
+      const { nx, ny, sx, sy } = getStreamNormalizedCoords(e);
+      vttStreamDragTrail.push({ x: sx, y: sy });
+      if (vttStreamDragTrail.length > 35) vttStreamDragTrail.shift();
+      renderOwlbearStreamOverlayCanvas();
+      sendStreamRemoteInput({
+        action: "mousemove",
+        nx,
+        ny,
+        button: e.button,
+        buttons: e.buttons || 1,
+        shiftKey: e.shiftKey,
+        ctrlKey: e.ctrlKey,
+        altKey: e.altKey,
+        metaKey: e.metaKey
+      });
+    } else if (vttStreamControlMode === "panzoom" && vttStreamPanDragging) {
+      vttStreamLocalCamera.x = e.clientX - vttStreamPanStart.x;
+      vttStreamLocalCamera.y = e.clientY - vttStreamPanStart.y;
+      applyStreamLocalTransform();
+    } else if (vttStreamControlMode === "overlay") {
+      if (!vttDraggingToken && !vttActiveMeasure && !vttActiveDrawStroke && !vttActiveAoeDraft) return;
+      const { sx, sy } = getStreamNormalizedCoords(e);
+      const gs = 48;
+      const gx = sx / gs;
+      const gy = sy / gs;
+      if (vttDraggingToken) {
+        vttDraggingToken.x = gx - vttDragOffset.x;
+        vttDraggingToken.y = gy - vttDragOffset.y;
+      } else if (vttActiveMeasure) {
+        vttActiveMeasure.x2 = gx;
+        vttActiveMeasure.y2 = gy;
+      } else if (vttActiveDrawStroke) {
+        vttActiveDrawStroke.points.push({ x: Math.round(gx * 20) / 20, y: Math.round(gy * 20) / 20 });
+      } else if (vttActiveAoeDraft) {
+        vttActiveAoeDraft.x2 = gx;
+        vttActiveAoeDraft.y2 = gy;
+      }
+      renderOwlbearStreamOverlayCanvas();
+    }
+  });
+
+  window.addEventListener("mouseup", (e) => {
+    if (vttStreamRemoteDragging) {
+      vttStreamRemoteDragging = false;
+      vttStreamDragTrail = [];
+      const { nx, ny, sx, sy } = getStreamNormalizedCoords(e);
+      vttStreamCursorRipples.push({ x: sx, y: sy, color: "#4ade80", ts: Date.now() });
+      renderOwlbearStreamOverlayCanvas();
+      sendStreamRemoteInput({
+        action: "mouseup",
+        nx,
+        ny,
+        button: e.button,
+        buttons: 0,
+        shiftKey: e.shiftKey,
+        ctrlKey: e.ctrlKey,
+        altKey: e.altKey,
+        metaKey: e.metaKey
+      });
+    }
+    if (vttStreamPanDragging) {
+      vttStreamPanDragging = false;
+      overlayCanvas.style.cursor = "grab";
+    }
+    if (vttStreamControlMode === "overlay") {
+      if (vttDraggingToken) {
+        vttDraggingToken = null;
+        saveAndSyncOwlbearState();
+      }
+      if (vttActiveMeasure) {
+        vttActiveMeasure = null;
+      }
+      if (vttActiveDrawStroke) {
+        if (vttActiveDrawStroke.points.length > 1) {
+          vttState.drawings.push(vttActiveDrawStroke);
+          saveAndSyncOwlbearState();
+        }
+        vttActiveDrawStroke = null;
+      }
+      if (vttActiveAoeDraft) {
+        vttState.aoes.push(vttActiveAoeDraft);
+        vttActiveAoeDraft = null;
+        saveAndSyncOwlbearState();
+      }
+      renderOwlbearStreamOverlayCanvas();
+    }
+  });
+
+  overlayCanvas.addEventListener("dblclick", (e) => {
+    if (vttStreamControlMode !== "remote") return;
+    const { nx, ny } = getStreamNormalizedCoords(e);
+    sendStreamRemoteInput({ action: "dblclick", nx, ny, button: e.button });
+  });
+
+  overlayCanvas.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+  });
+
+  overlayCanvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const { nx, ny, sx, sy } = getStreamNormalizedCoords(e);
+    if (vttStreamControlMode === "remote") {
+      vttStreamCursorRipples.push({ x: sx, y: sy, color: "#38bdf8", ts: Date.now() });
+      renderOwlbearStreamOverlayCanvas();
+      sendStreamRemoteInput({
+        action: "wheel",
+        nx,
+        ny,
+        deltaX: e.deltaX,
+        deltaY: e.deltaY,
+        shiftKey: e.shiftKey,
+        ctrlKey: e.ctrlKey,
+        altKey: e.altKey,
+        metaKey: e.metaKey
+      });
+    } else {
+      const factor = e.deltaY < 0 ? 1.12 : 0.89;
+      vttStreamLocalCamera.zoom = Math.min(4.0, Math.max(0.5, Math.round(vttStreamLocalCamera.zoom * factor * 100) / 100));
+      applyStreamLocalTransform();
+    }
+  }, { passive: false });
+
+  stage.addEventListener("keydown", (e) => {
+    if (vttStreamControlMode !== "remote") return;
+    sendStreamRemoteInput({
+      action: "keydown",
+      key: e.key,
+      code: e.code,
+      shiftKey: e.shiftKey,
+      ctrlKey: e.ctrlKey,
+      altKey: e.altKey,
+      metaKey: e.metaKey
+    });
+  });
+
+  stage.addEventListener("keyup", (e) => {
+    if (vttStreamControlMode !== "remote") return;
+    sendStreamRemoteInput({
+      action: "keyup",
+      key: e.key,
+      code: e.code,
+      shiftKey: e.shiftKey,
+      ctrlKey: e.ctrlKey,
+      altKey: e.altKey,
+      metaKey: e.metaKey
+    });
+  });
+
+  window.addEventListener("message", (ev) => {
+    if (!ev.data || typeof ev.data !== "object") return;
+    if (ev.data.type === "OBR_STREAM_BRIDGE_READY") {
+      markStreamBridgeConnected(ev.data.via || "window");
+    } else if (ev.data.type === "OBR_EXTENSION_INSTALLED" || (ev.data.type === "OBR_EXTENSION_STATUS" && ev.data.extensionInstalled)) {
+      markStreamBridgeConnected("extension");
+    }
+  });
 }
 
 /* --------------------------------------------------------------------------
@@ -12132,6 +12813,9 @@ function initOwlbearCanvasListeners() {
     const tab = document.getElementById("tab-owlbear");
     if (tab && tab.classList.contains("active")) {
       resizeAndRenderOwlbearCanvas();
+      if (typeof resizeAndRenderStreamOverlayCanvas === "function") {
+        resizeAndRenderStreamOverlayCanvas();
+      }
     }
   });
 
@@ -12179,6 +12863,9 @@ function initOwlbearCanvasListeners() {
 
 function initOwlbearVTT() {
   initOwlbearCanvasListeners();
+  if (typeof initOwlbearStreamControlListeners === "function") {
+    initOwlbearStreamControlListeners();
+  }
 
   const loadBtn = document.getElementById("owlbearLoadBtn");
   const input = document.getElementById("owlbearRoomUrlInput");

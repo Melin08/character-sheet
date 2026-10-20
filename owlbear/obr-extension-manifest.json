@@ -1,0 +1,15 @@
+{
+  "name": "Adventurer Codex 5e Stream Controller",
+  "version": "2.0.0",
+  "manifest_version": 1,
+  "author": "Adventurer Codex",
+  "icon": "./logo192.png",
+  "description": "Connects your Owlbear Rodeo 2.0 room to the Adventurer Codex 5e Sheet so you can control the map, pan/zoom, and drop 5e character tokens directly from the Live Tab Stream.",
+  "action": {
+    "title": "5e Stream Controller",
+    "icon": "./logo192.png",
+    "popover": "./obr-extension.html",
+    "height": 220,
+    "width": 280
+  }
+}

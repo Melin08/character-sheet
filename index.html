@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=MedievalSharp&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=81" />
+  <link rel="stylesheet" href="style.css?v=82" />
 </head>
 <body id="top" class="theme-nexus">
 
@@ -1862,33 +1862,112 @@
             </div>
 
             <!-- ========================================================= -->
-            <!-- MODE 2: LIVE OWLBEAR.RODEO TAB STREAM (getDisplayMedia)   -->
+            <!-- MODE 2: LIVE OWLBEAR.RODEO TAB STREAM (INTERACTIVE)       -->
             <!-- ========================================================= -->
             <div class="owlbear-stream-layer" id="owlbearStreamLayer" style="display: none;">
               <div class="owlbear-stream-toolbar">
                 <div class="stream-toolbar-left">
-                  <span class="banner-badge">📺 60FPS Native Tab Stream</span>
-                  <span>Stream your open <code>owlbear.rodeo</code> browser tab directly inside this viewport with zero iframe blocks:</span>
+                  <span class="banner-badge" id="owlbearStreamBridgeBadge" title="Remote input status for the streamed Owlbear tab">🕹️ Controllable Stream</span>
+                  <div class="owlbear-stream-ctrl-modes" id="owlbearStreamCtrlModes" role="group" aria-label="Stream Interaction Mode">
+                    <button type="button" class="stream-ctrl-pill active" data-stream-ctrl="remote" title="Click, drag, scroll &amp; press keys on the stream to remotely control the Owlbear tab">
+                      🖱️ Remote Control Tab
+                    </button>
+                    <button type="button" class="stream-ctrl-pill" data-stream-ctrl="overlay" title="Place &amp; move 5e tokens, rulers, pings, and spell AoEs directly on top of the live video stream">
+                      ♟️ Tactical Overlay
+                    </button>
+                    <button type="button" class="stream-ctrl-pill" data-stream-ctrl="panzoom" title="Drag to pan and scroll to zoom the live video stream locally">
+                      🔍 Stream Pan &amp; Zoom
+                    </button>
+                  </div>
                 </div>
                 <div class="stream-toolbar-actions">
                   <button type="button" class="btn btn-outline btn-xs" id="owlbearOpenForStreamBtn">1. Open Owlbear Room Tab ↗</button>
-                  <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearStartStreamBtn">2. 🎥 Connect &amp; Stream Tab Here</button>
+                  <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearStartStreamBtn">2. 🎥 Connect &amp; Stream Tab</button>
+                  <button type="button" class="btn btn-outline btn-xs" id="owlbearStreamBridgeHelpBtn" title="Connect full click, token drag &amp; keyboard control to an external owlbear.rodeo tab">⚡ Connect Click/Drag Bridge</button>
                   <button type="button" class="btn red btn-xs" id="owlbearStopStreamBtn" style="display:none;">⏹ Stop Stream</button>
                 </div>
               </div>
-              <div class="owlbear-stream-stage">
-                <video id="owlbearStreamVideo" class="owlbear-stream-video" autoplay playsinline muted></video>
+
+              <div class="owlbear-stream-stage" id="owlbearStreamStage" tabindex="0">
+                <div class="owlbear-stream-transform-wrap" id="owlbearStreamTransformWrap">
+                  <video id="owlbearStreamVideo" class="owlbear-stream-video" autoplay playsinline muted></video>
+                  <canvas id="owlbearStreamOverlayCanvas" class="owlbear-stream-overlay-canvas"></canvas>
+                </div>
+
+                <!-- Floating Stream Tactical Overlay Tool Dock (shown in Overlay mode or when streaming) -->
+                <div class="vtt-left-dock owlbear-stream-overlay-dock" id="owlbearStreamOverlayDock" style="display: none;">
+                  <button type="button" class="vtt-tool-btn active" data-stream-tool="select" title="Select &amp; Move Overlay Tokens on Stream">↖️</button>
+                  <button type="button" class="vtt-tool-btn" data-stream-tool="measure" title="5e Distance Ruler on Stream (5ft/sq)">📏</button>
+                  <button type="button" class="vtt-tool-btn" data-stream-tool="ping" title="Laser Ping on Stream (Synced with Party)">🎯</button>
+                  <button type="button" class="vtt-tool-btn" data-stream-tool="draw" title="Freehand Draw on Stream">✏️</button>
+                  <button type="button" class="vtt-tool-btn" data-stream-tool="aoe" title="20ft Fireball / Spell AoE on Stream">🔥</button>
+                  <div class="vtt-dock-divider"></div>
+                  <button type="button" class="vtt-tool-btn" id="owlbearStreamSpawnSelfBtn" title="Drop My Character Token onto Stream">⚡</button>
+                  <button type="button" class="vtt-tool-btn" id="owlbearStreamSpawnPartyBtn" title="Drop Party Tokens onto Stream">👥</button>
+                  <button type="button" class="vtt-tool-btn" id="owlbearStreamClearOverlayBtn" title="Clear Stream Drawings &amp; AoEs">🗑️</button>
+                </div>
+
+                <!-- Floating Stream Zoom & CaptureController HUD -->
+                <div class="vtt-zoom-pill owlbear-stream-zoom-pill" id="owlbearStreamZoomPill" style="display: none;">
+                  <button type="button" class="vtt-zoom-btn" id="owlbearStreamZoomOutBtn" title="Zoom Out Stream / Captured Tab">&minus;</button>
+                  <span id="owlbearStreamZoomLabel" class="vtt-zoom-label">100%</span>
+                  <button type="button" class="vtt-zoom-btn" id="owlbearStreamZoomInBtn" title="Zoom In Stream / Captured Tab">&plus;</button>
+                  <button type="button" class="btn btn-ghost btn-xs" id="owlbearStreamZoomResetBtn" style="padding:0 0.35rem; font-size:0.65rem;">Reset</button>
+                  <span class="vtt-scale-tag" id="owlbearStreamCtrlHintTag">🖱️ Click/Drag &amp; Wheel Active</span>
+                </div>
+
+                <!-- Remote Click/Drag Bridge Setup Popover -->
+                <div class="owlbear-stream-bridge-popover" id="owlbearStreamBridgePopover" style="display: none;">
+                  <div class="vtt-tok-pop-header">
+                    <strong style="color:var(--accent-gold); font-family:'Cinzel',serif; font-size:0.82rem;">⚡ Make External Owlbear.rodeo Tab Controllable</strong>
+                    <button type="button" id="owlbearStreamBridgeCloseBtn" class="vtt-tok-close-btn">&times;</button>
+                  </div>
+                  <p style="font-size:0.73rem; color:var(--text-dim); margin:0.25rem 0 0.5rem 0; line-height:1.45;">
+                    Mouse wheel zooming works automatically in Chrome/Edge via <code>CaptureController</code>. To also forward <strong>mouse clicks, token drags, panning, and keyboard shortcuts</strong> into an external <code>owlbear.rodeo</code> tab, use any of these 3 methods:
+                  </p>
+                  <div class="stream-bridge-methods-list">
+                    <div class="stream-bridge-method-card">
+                      <div>
+                        <strong>Method 1: 1-Click Remote Controller Script / Bookmarklet (Instant)</strong>
+                        <span>Copy &amp; paste once into the <code>owlbear.rodeo</code> tab console (<code>F12</code>), or drag the button below to your Bookmarks Bar and click it on the Owlbear tab:</span>
+                      </div>
+                      <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.3rem;">
+                        <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearCopyRemoteScriptBtn">📋 Copy 1-Click Controller Script</button>
+                        <a id="owlbearRemoteBookmarkletLink" href="#" class="btn btn-outline btn-xs" title="Drag me to your Bookmarks Bar, then click me while on the Owlbear Rodeo tab!">🦉 Drag to Bookmarks: Control Owlbear</a>
+                      </div>
+                    </div>
+
+                    <div class="stream-bridge-method-card">
+                      <div>
+                        <strong>Method 2: Owlbear Rodeo 2.0 Native Extension URL (Permanent)</strong>
+                        <span>In Owlbear Rodeo 2.0, click <strong>Extensions (🧩) &rarr; Add Extension</strong> and paste this manifest URL to control camera pan/zoom &amp; tokens via the official OBR SDK:</span>
+                      </div>
+                      <div style="display:flex; gap:0.4rem; align-items:center; margin-top:0.3rem;">
+                        <input type="text" id="owlbearObr2ExtUrlInput" class="vtt-drawer-input" readonly style="flex:1; font-family:'JetBrains Mono',monospace; font-size:0.68rem;" />
+                        <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearCopyObr2ExtUrlBtn">📋 Copy URL</button>
+                      </div>
+                    </div>
+
+                    <div class="stream-bridge-method-card">
+                      <div>
+                        <strong>Method 3: Bundled Chrome Extension v2.0 (Zero-Click Automatic)</strong>
+                        <span>Load the <code>owlbear-embed-extension</code> folder in <code>chrome://extensions</code> (Developer Mode &rarr; Load Unpacked). It automatically forwards all stream clicks, drags &amp; keys to any open Owlbear tab!</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="owlbear-stream-placeholder" id="owlbearStreamPlaceholder">
                   <div class="hub-radar-circle" style="margin-bottom:0.75rem;">
                     <span style="font-size:2rem;">📺</span>
                   </div>
-                  <h4 style="color:var(--accent-gold); font-family:'Cinzel',serif; margin:0 0 0.4rem 0;">Stream Owlbear.rodeo Directly In-Tab</h4>
-                  <p style="font-size:0.8rem; color:var(--text-dim); max-width:480px; margin:0 0 1rem 0;">
-                    Click <strong>"1. Open Owlbear Room Tab"</strong>, then click <strong>"2. Connect &amp; Stream Tab Here"</strong> and select the Owlbear tab to render the live 3D map directly inside this page!
+                  <h4 style="color:var(--accent-gold); font-family:'Cinzel',serif; margin:0 0 0.4rem 0;">Controllable 60FPS Owlbear Tab Stream</h4>
+                  <p style="font-size:0.8rem; color:var(--text-dim); max-width:520px; margin:0 0 1rem 0;">
+                    Stream your open <code>owlbear.rodeo</code> tab directly inside this viewport and <strong>control the map directly from the stream</strong> using mouse clicks, token drags, wheel zoom (via native <code>CaptureController</code>), or the interactive <strong>5e Tactical Overlay</strong>!
                   </p>
                   <div style="display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center;">
                     <button type="button" class="btn btn-outline btn-sm" id="owlbearStreamOpenHeroBtn">1. Open Room in Background Tab ↗</button>
-                    <button type="button" class="btn btn-gold-subtle btn-sm" id="owlbearStreamStartHeroBtn">2. 🎥 Select Owlbear Tab to Stream</button>
+                    <button type="button" class="btn btn-gold-subtle btn-sm" id="owlbearStreamStartHeroBtn">2. 🎥 Select Owlbear Tab to Stream &amp; Control</button>
                   </div>
                 </div>
               </div>
@@ -3044,6 +3123,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=78"></script>
+  <script src="app.js?v=79"></script>
 </body>
 </html>

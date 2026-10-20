@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Adventurer Codex 5e Stream Bridge</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 12px;
+      background: #14111d;
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(74, 222, 128, 0.16);
+      color: #4ade80;
+      border: 1px solid rgba(74, 222, 128, 0.4);
+      font-weight: 700;
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+    h4 {
+      margin: 0 0 6px 0;
+      color: #d4af37;
+      font-size: 14px;
+    }
+    p {
+      margin: 0;
+      color: #94a3b8;
+      line-height: 1.4;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="badge" id="statusBadge">🟢 Connected to 5e Sheet</div>
+  <h4>Adventurer Codex Stream Bridge</h4>
+  <p id="statusDesc">Listening for live stream pan, zoom, and token controls from your 5e Character Sheet tab.</p>
+
+  <script type="module">
+    import OBR, { buildImage } from "https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3.0.1/+esm";
+
+    const bc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("owlbear_stream_remote_control") : null;
+    let isDragging = false;
+    let dragStartNorm = null;
+    let dragStartViewportPos = null;
+    let draggingItemId = null;
+
+    OBR.onReady(async () => {
+      if (bc) {
+        bc.postMessage({ type: "OBR_STREAM_BRIDGE_READY", via: "obr-sdk-extension", timestamp: Date.now() });
+      }
+
+      if (bc) {
+        bc.onmessage = async (ev) => {
+          const pkt = ev.data;
+          if (!pkt) return;
+
+          if (pkt.type === "OBR_REMOTE_INPUT") {
+            await handleSdkStreamInput(pkt);
+          } else if (pkt.type === "OBR_SPAWN_TOKEN" && pkt.token) {
+            await spawnTokenInObr2(pkt.token);
+          }
+        };
+      }
+    });
+
+    async function handleSdkStreamInput(pkt) {
+      try {
+        const vpW = await OBR.viewport.getWidth();
+        const vpH = await OBR.viewport.getHeight();
+        const screenPt = { x: (pkt.nx ?? 0.5) * vpW, y: (pkt.ny ?? 0.5) * vpH };
+
+        if (pkt.action === "wheel") {
+          const curScale = await OBR.viewport.getScale();
+          const curPos = await OBR.viewport.getPosition();
+          const factor = (pkt.deltaY || 0) < 0 ? 1.14 : 0.88;
+          const nextScale = Math.max(0.05, Math.min(20, curScale * factor));
+          const nextX = screenPt.x - (screenPt.x - curPos.x) * (nextScale / curScale);
+          const nextY = screenPt.y - (screenPt.y - curPos.y) * (nextScale / curScale);
+          await OBR.viewport.setScale(nextScale);
+          await OBR.viewport.setPosition({ x: nextX, y: nextY });
+        } else if (pkt.action === "mousedown") {
+          isDragging = true;
+          dragStartNorm = screenPt;
+          dragStartViewportPos = await OBR.viewport.getPosition();
+          const worldPt = await OBR.viewport.inverseTransformPoint(screenPt);
+
+          // Check if user clicked on a token item
+          const items = await OBR.scene.items.getItems((it) => it.layer === "CHARACTER" || it.layer === "MOUNT" || it.layer === "PROP");
+          let hit = null;
+          for (const it of items) {
+            const d = Math.hypot((it.position?.x || 0) - worldPt.x, (it.position?.y || 0) - worldPt.y);
+            if (d < 90) {
+              hit = it;
+              break;
+            }
+          }
+          draggingItemId = hit ? hit.id : null;
+          if (draggingItemId) {
+            await OBR.player.select([draggingItemId]);
+          }
+        } else if (pkt.action === "mousemove" && isDragging && pkt.buttons > 0) {
+          if (draggingItemId) {
+            const worldPt = await OBR.viewport.inverseTransformPoint(screenPt);
+            await OBR.scene.items.updateItems([draggingItemId], (items) => {
+              for (const item of items) {
+                item.position = worldPt;
+              }
+            });
+          } else if (dragStartNorm && dragStartViewportPos) {
+            const dx = screenPt.x - dragStartNorm.x;
+            const dy = screenPt.y - dragStartNorm.y;
+            await OBR.viewport.setPosition({
+              x: dragStartViewportPos.x + dx,
+              y: dragStartViewportPos.y + dy
+            });
+          }
+        } else if (pkt.action === "mouseup") {
+          isDragging = false;
+          draggingItemId = null;
+          dragStartNorm = null;
+        }
+      } catch (e) {}
+    }
+
+    async function spawnTokenInObr2(tok) {
+      try {
+        const vpW = await OBR.viewport.getWidth();
+        const vpH = await OBR.viewport.getHeight();
+        const centerWorld = await OBR.viewport.inverseTransformPoint({ x: vpW / 2, y: vpH / 2 });
+        const imgUrl = tok.avatar && tok.avatar.startsWith("http")
+          ? tok.avatar
+          : new URL("./logo192.png", window.location.href).href;
+        const item = buildImage(
+          { height: 150, width: 150, url: imgUrl, mime: "image/png" },
+          { dpi: 150, offset: { x: 75, y: 75 } }
+        )
+          .position(centerWorld)
+          .layer("CHARACTER")
+          .name(tok.name || "Hero")
+          .plainText(tok.name || "Hero")
+          .build();
+        await OBR.scene.items.addItems([item]);
+      } catch (e) {}
+    }
+  </script>
+</body>
+</html>
