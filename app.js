@@ -11647,9 +11647,6 @@ function drawMapTokens(ctx, state) {
 
     // Render name label unrotated
     drawTokenNameLabel(ctx, token, cx, cy, radius);
-
-    // Render condition badge pills above token
-    drawTokenConditionBadges(ctx, token, cx, cy, radius);
   });
 }
 
@@ -11657,81 +11654,135 @@ function drawTokenStatusRings(ctx, token, radius) {
   const condRings = (token.conditions || []).map(c => {
     const meta = MAP_CONDITIONS[c];
     return {
+      type: "condition",
+      key: c,
       color: meta ? meta.color : "#d4af37",
-      label: meta ? meta.abbr : c.slice(0, 3).toUpperCase()
+      label: meta ? meta.label.toUpperCase() : c.toUpperCase(),
+      abbr: meta ? meta.abbr : c.slice(0, 3).toUpperCase()
     };
   });
-  const customRings = (token.rings || []).map(r => ({ color: r, label: "" }));
+  const customRings = (token.rings || []).map(r => ({
+    type: "color",
+    color: r,
+    label: "",
+    abbr: ""
+  }));
   const allRings = [...condRings, ...customRings];
   if (allRings.length === 0) return;
 
+  const hasCondition = allRings.some(r => r.type === "condition" && r.label);
+  const ringWidth = hasCondition
+    ? Math.max(9, Math.min(14, radius * 0.26))
+    : Math.max(4, Math.min(6, radius * 0.16));
+  const ringRadius = radius + ringWidth / 2 + 2;
+
   ctx.save();
-  const ringWidth = Math.max(3.5, Math.min(6, radius * 0.16));
-  const ringRadius = radius + ringWidth / 2 + 1.5;
 
   if (allRings.length === 1) {
+    const item = allRings[0];
     ctx.beginPath();
     ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = allRings[0].color;
+    ctx.strokeStyle = item.color;
     ctx.lineWidth = ringWidth;
-    ctx.shadowColor = allRings[0].color;
-    ctx.shadowBlur = 6;
+    ctx.shadowColor = item.color;
+    ctx.shadowBlur = 8;
     ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    if (item.type === "condition" && item.label) {
+      // Condition name stretches along the top arc of the ring
+      const startAngle = -Math.PI * 0.82;
+      const endAngle = -Math.PI * 0.18;
+      drawCurvedRingText(ctx, item.label, ringRadius, startAngle, endAngle);
+    }
   } else {
     // Segmented glowing arcs around the token perimeter
     const segAngle = (Math.PI * 2) / allRings.length;
+    // Align base angle so the first segment is centered at the top (12 o'clock)
+    const baseAngle = -Math.PI / 2 - segAngle / 2;
     const gap = 0.08;
+
     allRings.forEach((item, idx) => {
-      const startAngle = idx * segAngle + gap;
-      const endAngle = (idx + 1) * segAngle - gap;
+      const startAngle = baseAngle + idx * segAngle + gap;
+      const endAngle = baseAngle + (idx + 1) * segAngle - gap;
+
       ctx.beginPath();
       ctx.arc(0, 0, ringRadius, startAngle, endAngle);
       ctx.strokeStyle = item.color;
       ctx.lineWidth = ringWidth;
       ctx.shadowColor = item.color;
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = 8;
       ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      if (item.type === "condition" && item.label) {
+        drawCurvedRingText(ctx, item.label, ringRadius, startAngle, endAngle);
+      }
     });
   }
+
   ctx.restore();
 }
 
-function drawTokenConditionBadges(ctx, token, cx, cy, radius) {
-  const conditions = token.conditions;
-  if (!Array.isArray(conditions) || conditions.length === 0) return;
+function drawCurvedRingText(ctx, text, ringRadius, startAngle, endAngle) {
+  if (!text || typeof text !== "string") return;
+  const chars = text.split("");
+  const n = chars.length;
+  if (n === 0) return;
+
+  // Normalize arcSpan to (0, 2PI]
+  let arcSpan = endAngle - startAngle;
+  while (arcSpan <= 0) arcSpan += Math.PI * 2;
+  while (arcSpan > Math.PI * 2) arcSpan -= Math.PI * 2;
+  const midAngle = startAngle + arcSpan / 2;
+
+  // In canvas coordinates, angles with sin(midAngle) >= 0.05 are in the bottom half.
+  // In the bottom half, we reverse the character placement direction so the word reads left-to-right!
+  const isBottom = Math.sin(midAngle) >= 0.05;
+
+  const pad = Math.min(0.24, arcSpan * 0.12);
+  const usableSpan = Math.max(0.1, arcSpan - pad * 2);
+  const step = n > 1 ? usableSpan / (n - 1) : 0;
 
   ctx.save();
-  ctx.font = "bold 8px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  const fontSize = Math.max(7.5, Math.min(10.5, ringRadius * 0.22));
+  ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  const badgeH = 13;
-  const badgePad = 4;
-  const badges = conditions.map(c => {
-    const meta = MAP_CONDITIONS[c] || { color: "#d4af37", abbr: c.slice(0, 3).toUpperCase() };
-    const w = ctx.measureText(meta.abbr).width + badgePad * 2;
-    return { ...meta, w };
-  });
+  for (let i = 0; i < n; i++) {
+    const ch = chars[i];
+    let charAngle, rot;
 
-  const totalW = badges.reduce((sum, b) => sum + b.w + 3, -3);
-  let startX = cx - totalW / 2;
-  const badgeY = cy - radius - 15;
+    if (!isBottom) {
+      // Top half: left-to-right is clockwise (increasing angle)
+      charAngle = (startAngle + pad) + i * step;
+      rot = charAngle + Math.PI / 2;
+    } else {
+      // Bottom half: left-to-right is counter-clockwise (decreasing angle, from left near PI towards right near 0)
+      charAngle = (endAngle - pad) - i * step;
+      rot = charAngle - Math.PI / 2;
+    }
 
-  badges.forEach(b => {
-    ctx.fillStyle = b.color;
-    ctx.beginPath();
-    ctx.roundRect(startX, badgeY, b.w, badgeH, 4);
-    ctx.fill();
+    const cx = Math.cos(charAngle) * ringRadius;
+    const cy = Math.sin(charAngle) * ringRadius;
 
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rot);
 
+    // Dark stroke outline for 100% legibility on any bright or dark ring color
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
+    ctx.lineWidth = 2.4;
+    ctx.lineJoin = "round";
+    ctx.strokeText(ch, 0, 0);
+
+    // Crisp white fill
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(b.abbr, startX + b.w / 2, badgeY + badgeH / 2 + 0.5);
+    ctx.fillText(ch, 0, 0);
 
-    startX += b.w + 3;
-  });
+    ctx.restore();
+  }
 
   ctx.restore();
 }
@@ -12515,8 +12566,8 @@ function positionTokenPopover(token) {
   const screenY = wy * mapCamera.zoom + mapCamera.y;
   const radius = ((token.size || 1) * g * mapCamera.zoom) / 2;
 
-  const popW = 230;
-  const popH = 150;
+  const popW = pop.offsetWidth || 294;
+  const popH = pop.offsetHeight || 220;
   let posX = screenX - popW / 2;
   let posY = screenY - radius - popH - 12;
 
