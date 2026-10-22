@@ -10214,102 +10214,127 @@ const MAP_PLAYER_COLOR_KEY = "codex_map_player_color_v2";
 const MAP_SCENE_CATALOG = {
   forest_ambush: {
     title: "Woodland Road & River",
-    icon: "🌲",
+    color: "#2e7d32",
     desc: "Forest trail, river crossing & boulders",
     cols: 26,
     rows: 18
   },
   dungeon_crypt: {
     title: "Stone Dungeon Crypt",
-    icon: "🏛️",
+    color: "#546e7a",
     desc: "Carved stone halls, pillars & ritual chamber",
     cols: 26,
     rows: 18
   },
   grassland: {
     title: "Open Grassland Field",
-    icon: "🌿",
+    color: "#43a047",
     desc: "Lush green wilderness battlemat",
     cols: 26,
     rows: 18
   },
   tavern_inn: {
     title: "Tavern Common Room",
-    icon: "🍺",
+    color: "#b45309",
     desc: "Wooden tables, hearth fire & bar counter",
     cols: 24,
     rows: 16
   },
   magma_cavern: {
     title: "Volcanic Cavern",
-    icon: "🌋",
+    color: "#c2410c",
     desc: "Lava rivers & obsidian islands",
     cols: 28,
     rows: 18
   },
   arcane_sanctum: {
     title: "Astral Sanctum",
-    icon: "✨",
+    color: "#7e22ce",
     desc: "Starfield void, rune circle & obelisks",
     cols: 24,
     rows: 18
   },
   pirate_galleon: {
     title: "High Seas Galleon",
-    icon: "⛵",
+    color: "#0369a1",
     desc: "Wooden ship deck, masts & open ocean",
     cols: 28,
     rows: 18
   },
   parchment_mat: {
     title: "Classic Parchment Grid",
-    icon: "📜",
+    color: "#d4a373",
     desc: "Warm vintage tabletop parchment mat",
     cols: 26,
     rows: 18
   },
   dark_slate: {
     title: "Dark Slate Grid",
-    icon: "⬛",
+    color: "#334155",
     desc: "Clean modern minimalist dark grid",
     cols: 26,
     rows: 18
   }
 };
 
+const MAP_CONDITIONS = {
+  blinded: { label: "Blinded", color: "#64748b", abbr: "BLN" },
+  charmed: { label: "Charmed", color: "#ec4899", abbr: "CHM" },
+  deafened: { label: "Deafened", color: "#94a3b8", abbr: "DEF" },
+  frightened: { label: "Frightened", color: "#f59e0b", abbr: "FRG" },
+  grappled: { label: "Grappled", color: "#b45309", abbr: "GRP" },
+  incapacitated: { label: "Incapacitated", color: "#881337", abbr: "INC" },
+  invisible: { label: "Invisible", color: "#06b6d4", abbr: "INV" },
+  paralyzed: { label: "Paralyzed", color: "#eab308", abbr: "PAR" },
+  petrified: { label: "Petrified", color: "#78716c", abbr: "PET" },
+  poisoned: { label: "Poisoned", color: "#22c55e", abbr: "POI" },
+  prone: { label: "Prone", color: "#a16207", abbr: "PRN" },
+  restrained: { label: "Restrained", color: "#dc2626", abbr: "RES" },
+  stunned: { label: "Stunned", color: "#facc15", abbr: "STN" },
+  unconscious: { label: "Unconscious", color: "#991b1b", abbr: "UNC" },
+  exhaustion: { label: "Exhaustion", color: "#d97706", abbr: "EXH" },
+  concentration: { label: "Concentration", color: "#0284c7", abbr: "CON" },
+  blessed: { label: "Blessed", color: "#fbbf24", abbr: "BLS" },
+  hexed: { label: "Hexed", color: "#a855f7", abbr: "HEX" },
+  target: { label: "Target", color: "#ef4444", abbr: "TAR" },
+  raging: { label: "Raging", color: "#ea580c", abbr: "RAG" },
+  dodging: { label: "Dodging", color: "#14b8a6", abbr: "DOD" },
+  hidden: { label: "Hidden", color: "#6366f1", abbr: "HID" }
+};
+
 const MAP_PRESET_TOKENS = {
-  // Heroes & NPCs
-  warrior: { name: "Warrior", icon: "⚔️", size: 1, cat: "character", layer: "character", color: "#3b82f6" },
-  mage: { name: "Mage", icon: "🧙‍♂️", size: 1, cat: "character", layer: "character", color: "#8b5cf6" },
-  rogue: { name: "Rogue", icon: "🗡️", size: 1, cat: "character", layer: "character", color: "#10b981" },
-  cleric: { name: "Cleric", icon: "✨", size: 1, cat: "character", layer: "character", color: "#f59e0b" },
-  paladin: { name: "Paladin", icon: "🛡️", size: 1, cat: "character", layer: "character", color: "#eab308" },
-  ranger: { name: "Ranger", icon: "🏹", size: 1, cat: "character", layer: "character", color: "#22c55e" },
-  bard: { name: "Bard", icon: "🪕", size: 1, cat: "character", layer: "character", color: "#ec4899" },
-  monk: { name: "Monk", icon: "🥋", size: 1, cat: "character", layer: "character", color: "#06b6d4" },
-  druid: { name: "Druid", icon: "🍃", size: 1, cat: "character", layer: "character", color: "#15803d" },
-  warlock: { name: "Warlock", icon: "🔮", size: 1, cat: "character", layer: "character", color: "#7e22ce" },
+  // NPCs
+  warrior: { name: "Warrior", monogram: "WAR", size: 1, cat: "character", layer: "character", color: "#3b82f6" },
+  mage: { name: "Mage", monogram: "MAG", size: 1, cat: "character", layer: "character", color: "#8b5cf6" },
+  rogue: { name: "Rogue", monogram: "ROG", size: 1, cat: "character", layer: "character", color: "#10b981" },
+  cleric: { name: "Cleric", monogram: "CLR", size: 1, cat: "character", layer: "character", color: "#f59e0b" },
+  paladin: { name: "Paladin", monogram: "PAL", size: 1, cat: "character", layer: "character", color: "#eab308" },
+  ranger: { name: "Ranger", monogram: "RNG", size: 1, cat: "character", layer: "character", color: "#22c55e" },
+  bard: { name: "Bard", monogram: "BRD", size: 1, cat: "character", layer: "character", color: "#ec4899" },
+  monk: { name: "Monk", monogram: "MNK", size: 1, cat: "character", layer: "character", color: "#06b6d4" },
+  druid: { name: "Druid", monogram: "DRD", size: 1, cat: "character", layer: "character", color: "#15803d" },
+  warlock: { name: "Warlock", monogram: "WLK", size: 1, cat: "character", layer: "character", color: "#7e22ce" },
 
   // Monsters
-  owlbear: { name: "Owlbear", icon: "🦉", size: 2, cat: "monster", layer: "character", color: "#d97706" },
-  dragon: { name: "Red Dragon", icon: "🐉", size: 3, cat: "monster", layer: "character", color: "#ef4444" },
-  goblin: { name: "Goblin", icon: "👺", size: 1, cat: "monster", layer: "character", color: "#16a34a" },
-  skeleton: { name: "Skeleton", icon: "💀", size: 1, cat: "monster", layer: "character", color: "#94a3b8" },
-  orc: { name: "Orc", icon: "👹", size: 1, cat: "monster", layer: "character", color: "#ea580c" },
-  beholder: { name: "Beholder", icon: "👁️", size: 2, cat: "monster", layer: "character", color: "#9333ea" },
-  lich: { name: "Lich", icon: "👑", size: 1, cat: "monster", layer: "character", color: "#7c3aed" },
-  wolf: { name: "Dire Wolf", icon: "🐺", size: 2, cat: "monster", layer: "character", color: "#64748b" },
-  bandit: { name: "Bandit", icon: "🦹", size: 1, cat: "monster", layer: "character", color: "#b91c1c" },
-  mimic: { name: "Mimic", icon: "📦", size: 1, cat: "monster", layer: "character", color: "#b45309" },
+  owlbear: { name: "Owlbear", monogram: "OWL", size: 2, cat: "monster", layer: "character", color: "#d97706" },
+  dragon: { name: "Red Dragon", monogram: "DRG", size: 3, cat: "monster", layer: "character", color: "#ef4444" },
+  goblin: { name: "Goblin", monogram: "GOB", size: 1, cat: "monster", layer: "character", color: "#16a34a" },
+  skeleton: { name: "Skeleton", monogram: "SKL", size: 1, cat: "monster", layer: "character", color: "#94a3b8" },
+  orc: { name: "Orc", monogram: "ORC", size: 1, cat: "monster", layer: "character", color: "#ea580c" },
+  beholder: { name: "Beholder", monogram: "BEH", size: 2, cat: "monster", layer: "character", color: "#9333ea" },
+  lich: { name: "Lich", monogram: "LCH", size: 1, cat: "monster", layer: "character", color: "#7c3aed" },
+  wolf: { name: "Dire Wolf", monogram: "WLF", size: 2, cat: "monster", layer: "character", color: "#64748b" },
+  bandit: { name: "Bandit", monogram: "BND", size: 1, cat: "monster", layer: "character", color: "#b91c1c" },
+  mimic: { name: "Mimic", monogram: "MMC", size: 1, cat: "monster", layer: "character", color: "#b45309" },
 
   // Mounts & Props
-  horse: { name: "Warhorse (Mount)", icon: "🐎", size: 2, cat: "prop", layer: "mount", color: "#78350f" },
-  wagon: { name: "Wagon (Mount)", icon: "🛒", size: 2, cat: "prop", layer: "mount", color: "#92400e" },
-  boat: { name: "Rowboat (Mount)", icon: "🛶", size: 2, cat: "prop", layer: "mount", color: "#0369a1" },
-  chest: { name: "Treasure Chest", icon: "💰", size: 1, cat: "prop", layer: "prop", color: "#eab308" },
-  campfire: { name: "Campfire", icon: "🔥", size: 1, cat: "prop", layer: "prop", color: "#f97316" },
-  portal: { name: "Arcane Portal", icon: "🌀", size: 2, cat: "prop", layer: "attachment", color: "#06b6d4" },
-  trap: { name: "Spike Trap", icon: "⚙️", size: 1, cat: "prop", layer: "prop", color: "#dc2626" }
+  horse: { name: "Warhorse (Mount)", monogram: "HRS", size: 2, cat: "prop", layer: "mount", color: "#78350f" },
+  wagon: { name: "Wagon (Mount)", monogram: "WGN", size: 2, cat: "prop", layer: "mount", color: "#92400e" },
+  boat: { name: "Rowboat (Mount)", monogram: "BOT", size: 2, cat: "prop", layer: "mount", color: "#0369a1" },
+  chest: { name: "Treasure Chest", monogram: "CST", size: 1, cat: "prop", layer: "prop", color: "#eab308" },
+  campfire: { name: "Campfire", monogram: "CMP", size: 1, cat: "prop", layer: "prop", color: "#f97316" },
+  portal: { name: "Arcane Portal", monogram: "PRT", size: 2, cat: "prop", layer: "attachment", color: "#06b6d4" },
+  trap: { name: "Spike Trap", monogram: "TRP", size: 1, cat: "prop", layer: "prop", color: "#dc2626" }
 };
 
 // Global Map Engine State
@@ -10373,6 +10398,10 @@ let mapPlayerColor = localStorage.getItem(MAP_PLAYER_COLOR_KEY) || "#d4af37";
 // Dice Tray State
 let mapDiceTrayRolls = [];
 
+// Token Drawer Filter & Search State
+let mapTokenCatFilter = "all";
+let mapTokenSearchQuery = "";
+
 // Safe no-op for legacy vitals HUD call
 function updateOwlbearVitalsHUD() {}
 
@@ -10408,9 +10437,9 @@ function getSavedMapsRegistry() {
   if (!localStorage.getItem(MAP_STATE_PREFIX + "MAP-7B42")) {
     const defaultState = createDefaultMapState("MAP-7B42", "Woodland Ambush Road", "forest_ambush");
     defaultState.tokens = [
-      { id: "tok_knight", name: "Sir Valerie", icon: "🛡️", x: 10, y: 8, size: 1, layer: "character", color: "#3b82f6", rotation: 0, rings: ["#3b82f6"] },
-      { id: "tok_wizard", name: "Ignis the Red", icon: "🧙‍♂️", x: 9, y: 9, size: 1, layer: "character", color: "#8b5cf6", rotation: 0, rings: ["#ef4444"] },
-      { id: "tok_goblin", name: "Goblin Scout", icon: "👺", x: 15, y: 7, size: 1, layer: "character", color: "#16a34a", rotation: 0, rings: ["#eab308"] }
+      { id: "tok_knight", name: "Sir Valerie", monogram: "VAL", x: 10, y: 8, size: 1, layer: "character", color: "#3b82f6", rotation: 0, rings: ["#3b82f6"], conditions: [] },
+      { id: "tok_wizard", name: "Ignis the Red", monogram: "IGN", x: 9, y: 9, size: 1, layer: "character", color: "#8b5cf6", rotation: 0, rings: ["#ef4444"], conditions: ["concentration"] },
+      { id: "tok_goblin", name: "Goblin Scout", monogram: "GOB", x: 15, y: 7, size: 1, layer: "character", color: "#16a34a", rotation: 0, rings: ["#eab308"], conditions: [] }
     ];
     saveMapRoomState("MAP-7B42", defaultState);
   }
@@ -11572,12 +11601,13 @@ function drawMapTokens(ctx, state) {
         mapImageCache[token.img] = img;
       }
     } else {
-      // Draw Icon / Emoji
+      // Draw Crisp Monogram Badge (No Emojis)
+      const monoText = (token.monogram || token.name?.slice(0, 3) || "TOK").toUpperCase();
       ctx.fillStyle = "#ffffff";
-      ctx.font = `${Math.round(size * 0.48)}px sans-serif`;
+      ctx.font = `bold ${Math.round(size * 0.36)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(token.icon || "♟️", 0, 2);
+      ctx.fillText(monoText, 0, 1);
     }
 
     // Inner bevel border
@@ -11587,20 +11617,24 @@ function drawMapTokens(ctx, state) {
     ctx.arc(0, 0, radius - 1, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Owlbear's 8 Colored Status Rings
+    // Status & Condition Rings
     drawTokenStatusRings(ctx, token, radius);
 
     // Locked badge
     if (token.isLocked) {
       ctx.fillStyle = "#ef4444";
       ctx.beginPath();
-      ctx.arc(radius * 0.65, -radius * 0.65, 7, 0, Math.PI * 2);
+      ctx.arc(radius * 0.65, -radius * 0.65, 8, 0, Math.PI * 2);
       ctx.fill();
+      const lx = radius * 0.65;
+      const ly = -radius * 0.65;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.6;
       ctx.fillStyle = "#ffffff";
-      ctx.font = "8px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("🔒", radius * 0.65, -radius * 0.65);
+      ctx.beginPath();
+      ctx.arc(lx, ly - 2, 2.8, Math.PI, 0);
+      ctx.stroke();
+      ctx.fillRect(lx - 4, ly - 1, 8, 6);
     }
 
     // Selection ring & controls
@@ -11613,41 +11647,92 @@ function drawMapTokens(ctx, state) {
 
     // Render name label unrotated
     drawTokenNameLabel(ctx, token, cx, cy, radius);
+
+    // Render condition badge pills above token
+    drawTokenConditionBadges(ctx, token, cx, cy, radius);
   });
 }
 
 function drawTokenStatusRings(ctx, token, radius) {
-  const rings = token.rings;
-  if (!Array.isArray(rings) || rings.length === 0) return;
+  const condRings = (token.conditions || []).map(c => {
+    const meta = MAP_CONDITIONS[c];
+    return {
+      color: meta ? meta.color : "#d4af37",
+      label: meta ? meta.abbr : c.slice(0, 3).toUpperCase()
+    };
+  });
+  const customRings = (token.rings || []).map(r => ({ color: r, label: "" }));
+  const allRings = [...condRings, ...customRings];
+  if (allRings.length === 0) return;
 
   ctx.save();
   const ringWidth = Math.max(3.5, Math.min(6, radius * 0.16));
   const ringRadius = radius + ringWidth / 2 + 1.5;
 
-  if (rings.length === 1) {
+  if (allRings.length === 1) {
     ctx.beginPath();
     ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = rings[0];
+    ctx.strokeStyle = allRings[0].color;
     ctx.lineWidth = ringWidth;
-    ctx.shadowColor = rings[0];
+    ctx.shadowColor = allRings[0].color;
     ctx.shadowBlur = 6;
     ctx.stroke();
   } else {
-    // Segmented glowing arcs
-    const segAngle = (Math.PI * 2) / rings.length;
+    // Segmented glowing arcs around the token perimeter
+    const segAngle = (Math.PI * 2) / allRings.length;
     const gap = 0.08;
-    rings.forEach((color, idx) => {
+    allRings.forEach((item, idx) => {
       const startAngle = idx * segAngle + gap;
       const endAngle = (idx + 1) * segAngle - gap;
       ctx.beginPath();
       ctx.arc(0, 0, ringRadius, startAngle, endAngle);
-      ctx.strokeStyle = color;
+      ctx.strokeStyle = item.color;
       ctx.lineWidth = ringWidth;
-      ctx.shadowColor = color;
+      ctx.shadowColor = item.color;
       ctx.shadowBlur = 6;
       ctx.stroke();
     });
   }
+  ctx.restore();
+}
+
+function drawTokenConditionBadges(ctx, token, cx, cy, radius) {
+  const conditions = token.conditions;
+  if (!Array.isArray(conditions) || conditions.length === 0) return;
+
+  ctx.save();
+  ctx.font = "bold 8px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const badgeH = 13;
+  const badgePad = 4;
+  const badges = conditions.map(c => {
+    const meta = MAP_CONDITIONS[c] || { color: "#d4af37", abbr: c.slice(0, 3).toUpperCase() };
+    const w = ctx.measureText(meta.abbr).width + badgePad * 2;
+    return { ...meta, w };
+  });
+
+  const totalW = badges.reduce((sum, b) => sum + b.w + 3, -3);
+  let startX = cx - totalW / 2;
+  const badgeY = cy - radius - 15;
+
+  badges.forEach(b => {
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.roundRect(startX, badgeY, b.w, badgeH, 4);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(b.abbr, startX + b.w / 2, badgeY + badgeH / 2 + 0.5);
+
+    startX += b.w + 3;
+  });
+
   ctx.restore();
 }
 
@@ -12383,9 +12468,39 @@ function selectMapToken(tokenId, ptr) {
     dot.classList.toggle("active", rings.includes(color));
   });
 
+  // Populate Active Conditions Row
+  renderTokenConditionChips(token);
+
   positionTokenPopover(token);
   pop.style.display = "block";
   resizeAndRenderOwlbearCanvas();
+}
+
+function renderTokenConditionChips(token) {
+  const row = document.getElementById("vttActiveConditionsRow");
+  if (!row) return;
+  row.innerHTML = "";
+
+  const conditions = token.conditions || [];
+  conditions.forEach(condKey => {
+    const meta = MAP_CONDITIONS[condKey] || { label: condKey, color: "#d4af37" };
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "map-cond-chip";
+    chip.title = `Remove ${meta.label}`;
+    chip.innerHTML = `
+      <span class="map-cond-chip-dot" style="background:${meta.color};"></span>
+      <span>${escapeHtml(meta.label)}</span>
+      <span class="map-cond-chip-x">&times;</span>
+    `;
+    chip.addEventListener("click", () => {
+      token.conditions = (token.conditions || []).filter(c => c !== condKey);
+      renderTokenConditionChips(token);
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+    });
+    row.appendChild(chip);
+  });
 }
 
 function positionTokenPopover(token) {
@@ -12439,6 +12554,23 @@ function initMapTokenPopoverListeners() {
       triggerMapAutosave();
       resizeAndRenderOwlbearCanvas();
     }
+  });
+
+  // Condition Select Dropdown
+  document.getElementById("vttAddConditionSelect")?.addEventListener("change", (e) => {
+    const condKey = e.target.value;
+    if (!condKey || !mapSelectedTokenId || !activeMapState) return;
+    const tok = (activeMapState.tokens || []).find(t => t.id === mapSelectedTokenId);
+    if (!tok) return;
+
+    if (!Array.isArray(tok.conditions)) tok.conditions = [];
+    if (!tok.conditions.includes(condKey)) {
+      tok.conditions.push(condKey);
+      renderTokenConditionChips(tok);
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+    }
+    e.target.value = "";
   });
 
   // 8 Status Rings
@@ -12528,7 +12660,8 @@ function initMapTokenPopoverListeners() {
         id: "init_" + Date.now(),
         tokenId: tok.id,
         name: tok.name,
-        icon: tok.icon || "♟️",
+        monogram: tok.monogram || tok.name.slice(0, 3).toUpperCase(),
+        color: tok.color || "#3b82f6",
         val: roll
       });
       showStatus(`Added ${tok.name} to Initiative (Roll: ${roll}).`);
@@ -12548,6 +12681,8 @@ function initMapTokenPopoverListeners() {
     cloned.x += 1;
     cloned.y += 1;
     cloned.name = `${tok.name} (Copy)`;
+    if (!Array.isArray(cloned.conditions)) cloned.conditions = [...(tok.conditions || [])];
+    if (!Array.isArray(cloned.rings)) cloned.rings = [...(tok.rings || [])];
     activeMapState.tokens.push(cloned);
 
     selectMapToken(cloned.id);
@@ -12698,7 +12833,7 @@ function openMapDrawer(tabName) {
   if (paneDice) paneDice.style.display = tabName === "dice" ? "flex" : "none";
   if (paneInit) paneInit.style.display = tabName === "init" ? "flex" : "none";
 
-  if (tabName === "tokens") renderMapPresetTokensGrid("all");
+  if (tabName === "tokens") renderMapPresetTokensGrid(mapTokenCatFilter, mapTokenSearchQuery);
 }
 
 function closeMapDrawer() {
@@ -12817,12 +12952,19 @@ function initMapBottomDrawersListeners() {
     });
   });
 
+  // Tokens Pane: Search Input
+  document.getElementById("vttTokenSearchInput")?.addEventListener("input", (e) => {
+    mapTokenSearchQuery = e.target.value;
+    renderMapPresetTokensGrid(mapTokenCatFilter, mapTokenSearchQuery);
+  });
+
   // Tokens Pane: Category Filter
   document.querySelectorAll(".map-tok-cat-pill").forEach(pill => {
     pill.addEventListener("click", () => {
       document.querySelectorAll(".map-tok-cat-pill").forEach(p => p.classList.remove("active"));
       pill.classList.add("active");
-      renderMapPresetTokensGrid(pill.dataset.tokCat);
+      mapTokenCatFilter = pill.dataset.tokCat || "all";
+      renderMapPresetTokensGrid(mapTokenCatFilter, mapTokenSearchQuery);
     });
   });
 
@@ -12847,13 +12989,14 @@ function initMapBottomDrawersListeners() {
     const tok = {
       id: "tok_" + Date.now(),
       name: name,
-      icon: "♟️",
+      monogram: name.slice(0, 3).toUpperCase(),
       img: imgUrl,
       size: size,
       layer: layer,
       color: color,
       rotation: 0,
       rings: [color],
+      conditions: [],
       x: Math.round(world.cols / 2),
       y: Math.round(world.rows / 2)
     };
@@ -12937,24 +13080,29 @@ function initMapBottomDrawersListeners() {
   });
 }
 
-function renderMapPresetTokensGrid(catFilter = "all") {
+function renderMapPresetTokensGrid(catFilter = "all", searchQuery = "") {
   const grid = document.getElementById("vttPresetTokensGrid");
   if (!grid) return;
   grid.innerHTML = "";
 
+  const q = (searchQuery || "").trim().toLowerCase();
+
   Object.entries(MAP_PRESET_TOKENS).forEach(([key, preset]) => {
     if (catFilter !== "all" && preset.cat !== catFilter) return;
+    if (q && !preset.name.toLowerCase().includes(q) && !(preset.monogram || "").toLowerCase().includes(q)) return;
 
-    const item = document.createElement("div");
-    item.className = "map-preset-tok-card";
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "vtt-preset-token-btn";
     item.draggable = true;
     item.dataset.presetKey = key;
+    item.title = `Click or drag to place ${preset.name}`;
 
     item.innerHTML = `
-      <div class="map-preset-tok-avatar" style="background:${preset.color};">
-        ${preset.icon}
+      <div class="pt-badge" style="background:${preset.color};">
+        ${escapeHtml(preset.monogram)}
       </div>
-      <span class="map-preset-tok-name">${preset.name}</span>
+      <span class="pt-name">${escapeHtml(preset.name)}</span>
     `;
 
     // Click to spawn in center
@@ -12982,12 +13130,13 @@ function spawnMapTokenFromPreset(preset, gridPos = null) {
   const tok = {
     id: "tok_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
     name: preset.name,
-    icon: preset.icon,
+    monogram: preset.monogram,
     size: preset.size || 1,
     layer: preset.layer || "character",
     color: preset.color || "#3b82f6",
     rotation: 0,
     rings: [preset.color || "#3b82f6"],
+    conditions: preset.conditions ? [...preset.conditions] : [],
     x: gx,
     y: gy
   };
@@ -13015,11 +13164,13 @@ function updateMapActiveTokensList() {
     row.className = "vtt-active-token-row";
     row.innerHTML = `
       <div style="display:flex; align-items:center; gap:0.4rem; overflow:hidden;">
-        <span style="font-size:1.1rem;">${tok.icon || "♟️"}</span>
+        <span class="map-tok-avatar-mini" style="background:${tok.color || '#3b82f6'};">${escapeHtml(tok.monogram || tok.name?.slice(0, 2).toUpperCase() || 'TK')}</span>
         <strong style="font-size:0.75rem; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${escapeHtml(tok.name)}</strong>
       </div>
       <div style="display:flex; gap:0.25rem;">
-        <button type="button" class="btn btn-ghost btn-xs btn-focus" title="Focus Token">🔍</button>
+        <button type="button" class="btn btn-ghost btn-xs btn-focus" title="Focus Token">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
         <button type="button" class="btn btn-ghost btn-xs btn-del" style="color:#ef4444;" title="Delete">&times;</button>
       </div>
     `;
@@ -13109,7 +13260,7 @@ function renderMapInitiativeList() {
 
   const initList = activeMapState.initiative || [];
   if (initList.length === 0) {
-    list.innerHTML = '<span style="font-size:0.75rem; color:var(--text-dim);">No tokens in initiative. Select a token and click ⚔️ Init.</span>';
+    list.innerHTML = '<span style="font-size:0.75rem; color:var(--text-dim);">No tokens in initiative. Select a token and click Init.</span>';
     return;
   }
 
@@ -13120,7 +13271,7 @@ function renderMapInitiativeList() {
     item.className = "map-init-item" + (idx === activeIdx ? " active" : "");
     item.innerHTML = `
       <div style="display:flex; align-items:center; gap:0.4rem;">
-        <span style="font-size:1.1rem;">${it.icon || "♟️"}</span>
+        <span class="map-tok-avatar-mini" style="background:${it.color || '#d4af37'};">${escapeHtml(it.monogram || it.name?.slice(0, 2).toUpperCase() || 'TK')}</span>
         <strong style="font-size:0.75rem;">${escapeHtml(it.name)}</strong>
       </div>
       <div style="display:flex; align-items:center; gap:0.4rem;">

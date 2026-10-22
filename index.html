@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=MedievalSharp&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=84" />
+  <link rel="stylesheet" href="style.css?v=85" />
 </head>
 <body id="top" class="theme-nexus">
 
@@ -1404,15 +1404,15 @@
                   <div class="map-field-group">
                     <label for="mapCreateSceneSelect">Starting Terrain</label>
                     <select id="mapCreateSceneSelect" class="map-modern-select">
-                      <option value="forest_ambush">🌲 Woodland Road &amp; River</option>
-                      <option value="dungeon_crypt">🏛️ Stone Dungeon Crypt</option>
-                      <option value="grassland">🌿 Open Grassland Field</option>
-                      <option value="tavern_inn">🍺 Tavern Common Room</option>
-                      <option value="magma_cavern">🌋 Volcanic Cavern</option>
-                      <option value="arcane_sanctum">✨ Astral Sanctum</option>
-                      <option value="pirate_galleon">⛵ High Seas Galleon</option>
-                      <option value="parchment_mat">📜 Classic Parchment Grid</option>
-                      <option value="dark_slate">⬛ Dark Slate Tactical Grid</option>
+                      <option value="forest_ambush">Woodland Road &amp; River</option>
+                      <option value="dungeon_crypt">Stone Dungeon Crypt</option>
+                      <option value="grassland">Open Grassland Field</option>
+                      <option value="tavern_inn">Tavern Common Room</option>
+                      <option value="magma_cavern">Volcanic Cavern</option>
+                      <option value="arcane_sanctum">Astral Sanctum</option>
+                      <option value="pirate_galleon">High Seas Galleon</option>
+                      <option value="parchment_mat">Classic Parchment Grid</option>
+                      <option value="dark_slate">Dark Slate Tactical Grid</option>
                     </select>
                   </div>
                   <button type="button" class="btn btn-gold-subtle map-confirm-action-btn" id="mapConfirmCreateBtn">
@@ -1600,27 +1600,27 @@
                     <span>Fog Active</span>
                   </label>
                   <button type="button" class="map-sub-pill-btn active" id="vttFogPreviewToggleBtn" title="Toggle DM See-Through Fog Preview (50% opacity vs Solid)">
-                    👁️ See-Through
+                    See-Through
                   </button>
                 </div>
 
                 <div class="map-sub-row">
                   <span class="map-sub-lbl">Shape:</span>
-                  <button type="button" class="map-sub-pill-btn active" data-fog-shape="rect" title="Drag a rectangle to reveal/hide fog">⬜ Box</button>
-                  <button type="button" class="map-sub-pill-btn" data-fog-shape="poly" title="Click points to draw a polygon fog area (Double-click to finish)">⬠ Polygon</button>
-                  <button type="button" class="map-sub-pill-btn" data-fog-shape="brush" title="Paint circular fog reveal/hide strokes">🖌️ Brush</button>
+                  <button type="button" class="map-sub-pill-btn active" data-fog-shape="rect" title="Drag a rectangle to reveal/hide fog">Box</button>
+                  <button type="button" class="map-sub-pill-btn" data-fog-shape="poly" title="Click points to draw a polygon fog area (Double-click to finish)">Polygon</button>
+                  <button type="button" class="map-sub-pill-btn" data-fog-shape="brush" title="Paint circular fog reveal/hide strokes">Brush</button>
                 </div>
 
                 <div class="map-sub-row">
                   <span class="map-sub-lbl">Action:</span>
-                  <button type="button" class="map-sub-pill-btn active" id="vttFogModeRevealBtn">✂️ Cut (Reveal)</button>
-                  <button type="button" class="map-sub-pill-btn" id="vttFogModeHideBtn">🌑 Cover (Hide)</button>
+                  <button type="button" class="map-sub-pill-btn active" id="vttFogModeRevealBtn">Cut (Reveal)</button>
+                  <button type="button" class="map-sub-pill-btn" id="vttFogModeHideBtn">Cover (Hide)</button>
                 </div>
 
                 <div class="map-sub-row">
                   <button type="button" class="map-sub-pill-btn" id="vttFogCoverAllBtn">Fill Map with Fog</button>
                   <button type="button" class="map-sub-pill-btn" id="vttFogResetBtn">Clear All Fog</button>
-                  <button type="button" class="map-sub-pill-btn" id="vttFogUndoBtn" title="Undo Last Fog Cut/Cover">↩ Undo</button>
+                  <button type="button" class="map-sub-pill-btn" id="vttFogUndoBtn" title="Undo Last Fog Cut/Cover">Undo</button>
                 </div>
               </div>
 
@@ -1628,12 +1628,12 @@
               <div class="map-sub-group" id="vttSubDrawGroup" style="display: none;">
                 <div class="map-sub-row">
                   <span class="map-sub-lbl">Tool:</span>
-                  <button type="button" class="map-sub-pill-btn active" data-draw-shape="brush" title="Freehand Brush">🖌️ Brush</button>
-                  <button type="button" class="map-sub-pill-btn" data-draw-shape="line" title="Straight Line">📏 Line</button>
-                  <button type="button" class="map-sub-pill-btn" data-draw-shape="rect" title="Rectangle / Cube">⬜ Box</button>
-                  <button type="button" class="map-sub-pill-btn" data-draw-shape="circle" title="Circle / Sphere Radius">⭕ Circle</button>
-                  <button type="button" class="map-sub-pill-btn" data-draw-shape="cone" title="Cone / Triangle">🔺 Cone</button>
-                  <button type="button" class="map-sub-pill-btn" data-draw-shape="erase" title="Click or drag over drawings to erase them">🧽 Erase</button>
+                  <button type="button" class="map-sub-pill-btn active" data-draw-shape="brush" title="Freehand Brush">Brush</button>
+                  <button type="button" class="map-sub-pill-btn" data-draw-shape="line" title="Straight Line">Line</button>
+                  <button type="button" class="map-sub-pill-btn" data-draw-shape="rect" title="Rectangle / Cube">Box</button>
+                  <button type="button" class="map-sub-pill-btn" data-draw-shape="circle" title="Circle / Sphere Radius">Circle</button>
+                  <button type="button" class="map-sub-pill-btn" data-draw-shape="cone" title="Cone / Triangle">Cone</button>
+                  <button type="button" class="map-sub-pill-btn" data-draw-shape="erase" title="Click or drag over drawings to erase them">Erase</button>
                 </div>
 
                 <div class="map-sub-row">
@@ -1660,8 +1660,8 @@
                     <option value="4" selected>Medium</option>
                     <option value="7">Thick</option>
                   </select>
-                  <button type="button" class="map-sub-pill-btn" id="vttUndoDrawingBtn">↩ Undo</button>
-                  <button type="button" class="map-sub-pill-btn" id="vttClearDrawingsBtn" style="color:#f87171;">🗑️ Clear All</button>
+                  <button type="button" class="map-sub-pill-btn" id="vttUndoDrawingBtn">Undo</button>
+                  <button type="button" class="map-sub-pill-btn" id="vttClearDrawingsBtn" style="color:#f87171;">Clear All</button>
                 </div>
               </div>
 
@@ -1693,16 +1693,56 @@
                 <button type="button" id="vttTokCloseBtn" class="map-tok-close-btn" title="Deselect">&times;</button>
               </div>
 
-              <!-- Owlbear's 8 Colored Status Rings -->
-              <div class="map-tok-rings-bar" id="vttTokConditionsRow" title="Click to toggle colored status rings on token">
-                <button type="button" class="map-ring-dot" data-ring="#ef4444" style="background:#ef4444;" title="Red Status Ring"></button>
-                <button type="button" class="map-ring-dot" data-ring="#f97316" style="background:#f97316;" title="Orange Status Ring"></button>
-                <button type="button" class="map-ring-dot" data-ring="#eab308" style="background:#eab308;" title="Yellow Status Ring"></button>
-                <button type="button" class="map-ring-dot" data-ring="#22c55e" style="background:#22c55e;" title="Green Status Ring"></button>
-                <button type="button" class="map-ring-dot" data-ring="#06b6d4" style="background:#06b6d4;" title="Cyan Status Ring"></button>
-                <button type="button" class="map-ring-dot" data-ring="#3b82f6" style="background:#3b82f6;" title="Blue Status Ring"></button>
-                <button type="button" class="map-ring-dot" data-ring="#a855f7" style="background:#a855f7;" title="Purple Status Ring"></button>
-                <button type="button" class="map-ring-dot" data-ring="#ffffff" style="background:#ffffff;" title="White Status Ring"></button>
+              <!-- Conditions & Status Rings Section -->
+              <div class="map-tok-condition-section">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="map-tok-sec-subtitle">Status &amp; Condition Rings</span>
+                </div>
+                
+                <select id="vttAddConditionSelect" class="vtt-mini-select" style="width:100%;">
+                  <option value="">+ Add Status / Condition Ring...</option>
+                  <optgroup label="Conditions">
+                    <option value="blinded">Blinded (Slate)</option>
+                    <option value="charmed">Charmed (Pink)</option>
+                    <option value="deafened">Deafened (Silver)</option>
+                    <option value="frightened">Frightened (Amber)</option>
+                    <option value="grappled">Grappled (Rust)</option>
+                    <option value="incapacitated">Incapacitated (Maroon)</option>
+                    <option value="invisible">Invisible (Cyan)</option>
+                    <option value="paralyzed">Paralyzed (Electric)</option>
+                    <option value="petrified">Petrified (Stone)</option>
+                    <option value="poisoned">Poisoned (Green)</option>
+                    <option value="prone">Prone (Brown)</option>
+                    <option value="restrained">Restrained (Crimson)</option>
+                    <option value="stunned">Stunned (Gold)</option>
+                    <option value="unconscious">Unconscious (Blood Red)</option>
+                    <option value="exhaustion">Exhaustion (Bronze)</option>
+                  </optgroup>
+                  <optgroup label="Combat Statuses">
+                    <option value="concentration">Concentration (Azure)</option>
+                    <option value="blessed">Blessed (Radiant)</option>
+                    <option value="hexed">Hex / Bane (Purple)</option>
+                    <option value="target">Marked / Target (Red)</option>
+                    <option value="raging">Rage (Orange)</option>
+                    <option value="dodging">Dodging (Teal)</option>
+                    <option value="hidden">Hidden (Indigo)</option>
+                  </optgroup>
+                </select>
+
+                <!-- Active Condition Rings List -->
+                <div class="map-active-conditions-row" id="vttActiveConditionsRow"></div>
+
+                <!-- Quick Color Rings Bar -->
+                <div class="map-tok-rings-bar" id="vttTokConditionsRow" title="Click to toggle color ring">
+                  <button type="button" class="map-ring-dot" data-ring="#ef4444" style="background:#ef4444;" title="Red Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#f97316" style="background:#f97316;" title="Orange Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#eab308" style="background:#eab308;" title="Yellow Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#22c55e" style="background:#22c55e;" title="Green Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#06b6d4" style="background:#06b6d4;" title="Cyan Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#3b82f6" style="background:#3b82f6;" title="Blue Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#a855f7" style="background:#a855f7;" title="Purple Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#ffffff" style="background:#ffffff;" title="White Ring"></button>
+                </div>
               </div>
 
               <!-- Size & Layer Controls -->
@@ -1715,30 +1755,30 @@
                   <option value="4">4&times; Gargantuan</option>
                 </select>
 
-                <select id="vttTokLayerSelect" class="vtt-mini-select" title="Token Layer (Mounts carry Character tokens on top of them)">
-                  <option value="character" selected>♟️ Character</option>
-                  <option value="mount">🐎 Mount / Vehicle</option>
-                  <option value="attachment">✨ Attachment / Aura</option>
-                  <option value="prop">📦 Prop / Stamp</option>
+                <select id="vttTokLayerSelect" class="vtt-mini-select" title="Token Layer">
+                  <option value="character" selected>Character</option>
+                  <option value="mount">Mount / Vehicle</option>
+                  <option value="attachment">Attachment / Aura</option>
+                  <option value="prop">Prop / Stamp</option>
                 </select>
               </div>
 
-              <!-- Action Icon Buttons (Hide, Lock, Initiative, Duplicate, Delete) -->
+              <!-- Action Buttons -->
               <div class="map-tok-actions-bar">
                 <button type="button" class="map-tok-act-btn" id="vttTokHideBtn" title="Hide / Show Token for Players">
-                  👁️ <span>Hide</span>
+                  <span>Hide</span>
                 </button>
                 <button type="button" class="map-tok-act-btn" id="vttTokLockBtn" title="Lock / Unlock Token Movement">
-                  🔒 <span>Lock</span>
+                  <span>Lock</span>
                 </button>
                 <button type="button" class="map-tok-act-btn" id="vttTokInitToggleBtn" title="Add / Remove from Initiative Tracker">
-                  ⚔️ <span>Init</span>
+                  <span>Init</span>
                 </button>
-                <button type="button" class="map-tok-act-btn" id="vttTokDupBtn" title="Duplicate Token (Ctrl+D)">
-                  📋 <span>Clone</span>
+                <button type="button" class="map-tok-act-btn" id="vttTokDupBtn" title="Duplicate Token">
+                  <span>Clone</span>
                 </button>
-                <button type="button" class="map-tok-act-btn danger" id="vttTokDelBtn" title="Delete Token (Del)">
-                  🗑️
+                <button type="button" class="map-tok-act-btn danger" id="vttTokDelBtn" title="Delete Token">
+                  Delete
                 </button>
               </div>
             </div>
@@ -1748,7 +1788,7 @@
             <!-- ========================================================= -->
             <div class="map-token-popover" id="vttNotePopover" style="display: none;">
               <div class="map-tok-pop-top">
-                <strong style="font-size:0.74rem; color:var(--accent-gold);">📝 Map Note</strong>
+                <strong style="font-size:0.74rem; color:var(--accent-gold);">Map Note</strong>
                 <button type="button" id="vttNoteCloseBtn" class="map-tok-close-btn">&times;</button>
               </div>
               <textarea id="vttNoteTextInput" class="map-note-textarea" rows="3" placeholder="Write note or room label..."></textarea>
@@ -1761,8 +1801,8 @@
                 <button type="button" class="map-ring-dot" data-note-color="#1e293b" style="background:#1e293b; border-color:#d4af37;"></button>
               </div>
               <div class="map-tok-actions-bar">
-                <button type="button" class="map-tok-act-btn" id="vttNoteLockBtn">🔒 <span>Lock</span></button>
-                <button type="button" class="map-tok-act-btn danger" id="vttNoteDelBtn">🗑️ <span>Delete</span></button>
+                <button type="button" class="map-tok-act-btn" id="vttNoteLockBtn"><span>Lock</span></button>
+                <button type="button" class="map-tok-act-btn danger" id="vttNoteDelBtn"><span>Delete</span></button>
               </div>
             </div>
 
@@ -1775,12 +1815,11 @@
               <aside class="map-bottom-drawer" id="vttRightDrawer" style="display: none;">
                 <div class="map-drawer-header">
                   <div class="map-drawer-tabs-row">
-                    <button type="button" class="vtt-drawer-tab active" data-drawer-tab="maps">🗺️ Maps</button>
-                    <button type="button" class="vtt-drawer-tab" data-drawer-tab="tokens">♟️ Tokens</button>
-                    <button type="button" class="vtt-drawer-tab" data-drawer-tab="dice">🎲 Dice</button>
-                    <button type="button" class="vtt-drawer-tab" data-drawer-tab="init">⚔️ Initiative</button>
+                    <button type="button" class="vtt-drawer-tab active" data-drawer-tab="maps">Maps</button>
+                    <button type="button" class="vtt-drawer-tab" data-drawer-tab="tokens">Tokens</button>
+                    <button type="button" class="vtt-drawer-tab" data-drawer-tab="init">Initiative</button>
                   </div>
-                  <button type="button" class="vtt-drawer-close" id="vttDrawerCloseBtn" title="Close Dock">&times;</button>
+                  <button type="button" class="vtt-drawer-close" id="vttDrawerCloseBtn" title="Close Drawer">&times;</button>
                 </div>
 
                 <!-- PANE 1: MAPS & GRID CONFIGURATOR -->
@@ -1790,7 +1829,7 @@
                       <span class="vtt-drawer-sec-title">Upload or Paste Custom Map</span>
                     </div>
                     <label class="btn btn-gold-subtle btn-xs" style="width:100%; text-align:center; cursor:pointer; display:block;">
-                      📁 Upload Map Image (PNG / JPG / WebP)
+                      Upload Map Image (PNG / JPG / WebP)
                       <input type="file" id="vttUploadMapInput" accept="image/*" style="display:none;" />
                     </label>
                     <div style="display:flex; gap:0.35rem; margin-top:0.25rem;">
@@ -1835,13 +1874,13 @@
                     <div class="map-grid-directional-expand">
                       <span style="font-size:0.68rem; font-weight:700; color:var(--accent-gold); text-transform:uppercase;">Expand Grid in Direction:</span>
                       <div class="map-dir-expand-grid">
-                        <button type="button" class="btn btn-outline btn-xs map-dir-btn" id="vttExpandNorthBtn" title="Expand Map Upward (+4 Rows)">⬆ +4 North (Top)</button>
+                        <button type="button" class="btn btn-outline btn-xs map-dir-btn" id="vttExpandNorthBtn" title="Expand Map Upward (+4 Rows)">North (+4)</button>
                         <div style="display:flex; gap:0.35rem; width:100%;">
-                          <button type="button" class="btn btn-outline btn-xs map-dir-btn" id="vttExpandWestBtn" style="flex:1;" title="Expand Map Leftward (+4 Columns)">⬅ +4 West (Left)</button>
-                          <button type="button" class="btn btn-gold-subtle btn-xs map-dir-btn" id="vttExpandAllBtn" style="flex:1;" title="Expand All Sides Uniformly (+2 all sides)">⤢ +2 All</button>
-                          <button type="button" class="btn btn-outline btn-xs map-dir-btn" id="vttExpandEastBtn" style="flex:1;" title="Expand Map Rightward (+4 Columns)">➡ +4 East (Right)</button>
+                          <button type="button" class="btn btn-outline btn-xs map-dir-btn" id="vttExpandWestBtn" style="flex:1;" title="Expand Map Leftward (+4 Columns)">West (+4)</button>
+                          <button type="button" class="btn btn-gold-subtle btn-xs map-dir-btn" id="vttExpandAllBtn" style="flex:1;" title="Expand All Sides Uniformly (+2 all sides)">All Sides (+2)</button>
+                          <button type="button" class="btn btn-outline btn-xs map-dir-btn" id="vttExpandEastBtn" style="flex:1;" title="Expand Map Rightward (+4 Columns)">East (+4)</button>
                         </div>
-                        <button type="button" class="btn btn-outline btn-xs map-dir-btn" id="vttExpandSouthBtn" title="Expand Map Downward (+4 Rows)">⬇ +4 South (Bottom)</button>
+                        <button type="button" class="btn btn-outline btn-xs map-dir-btn" id="vttExpandSouthBtn" title="Expand Map Downward (+4 Rows)">South (+4)</button>
                       </div>
                     </div>
                   </div>
@@ -1850,63 +1889,63 @@
                     <span class="vtt-drawer-sec-title">Built-in Maps</span>
                     <div class="vtt-scene-list" id="vttSceneList">
                       <button type="button" class="vtt-scene-card active" data-scene="forest_ambush">
-                        <span class="sc-icon">🌲</span>
+                        <span class="sc-color-pip" style="background:#2d6a4f;"></span>
                         <div class="sc-info">
                           <strong>Woodland Road &amp; Bridge</strong>
                           <span>Forest trail, river crossing &amp; boulders</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="dungeon_crypt">
-                        <span class="sc-icon">🏛️</span>
+                        <span class="sc-color-pip" style="background:#475569;"></span>
                         <div class="sc-info">
                           <strong>Stone Dungeon Crypt</strong>
                           <span>Carved stone halls, pillars &amp; ritual chamber</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="grassland">
-                        <span class="sc-icon">🌿</span>
+                        <span class="sc-color-pip" style="background:#4ade80;"></span>
                         <div class="sc-info">
                           <strong>Open Grassland Field</strong>
                           <span>Lush green wilderness battlemat</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="tavern_inn">
-                        <span class="sc-icon">🍺</span>
+                        <span class="sc-color-pip" style="background:#b45309;"></span>
                         <div class="sc-info">
                           <strong>Tavern Common Room</strong>
                           <span>Wooden tables, hearth fire &amp; bar counter</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="magma_cavern">
-                        <span class="sc-icon">🌋</span>
+                        <span class="sc-color-pip" style="background:#ef4444;"></span>
                         <div class="sc-info">
                           <strong>Volcanic Magma Cavern</strong>
                           <span>Lava rivers &amp; obsidian islands</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="arcane_sanctum">
-                        <span class="sc-icon">✨</span>
+                        <span class="sc-color-pip" style="background:#8b5cf6;"></span>
                         <div class="sc-info">
                           <strong>Astral Arcane Sanctum</strong>
                           <span>Starfield void, rune circle &amp; obelisks</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="pirate_galleon">
-                        <span class="sc-icon">⛵</span>
+                        <span class="sc-color-pip" style="background:#0284c7;"></span>
                         <div class="sc-info">
                           <strong>High Seas Galleon</strong>
                           <span>Wooden ship deck, masts &amp; open ocean</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="parchment_mat">
-                        <span class="sc-icon">📜</span>
+                        <span class="sc-color-pip" style="background:#d97706;"></span>
                         <div class="sc-info">
                           <strong>Classic Parchment Grid</strong>
                           <span>Warm vintage tabletop parchment mat</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="dark_slate">
-                        <span class="sc-icon">⬛</span>
+                        <span class="sc-color-pip" style="background:#334155;"></span>
                         <div class="sc-info">
                           <strong>Dark Slate Grid</strong>
                           <span>Clean modern minimalist dark grid</span>
@@ -1919,9 +1958,10 @@
                 <!-- PANE 2: TOKENS DOCK -->
                 <div class="vtt-drawer-pane" id="vttDrawerPaneTokens" style="display: none;">
                   <div class="vtt-drawer-section">
+                    <input type="text" id="vttTokenSearchInput" class="vtt-drawer-input" placeholder="Search NPCs, monsters, props..." style="margin-bottom:0.45rem;" />
                     <div class="map-tok-filter-bar">
                       <button type="button" class="map-tok-cat-pill active" data-tok-cat="all">All</button>
-                      <button type="button" class="map-tok-cat-pill" data-tok-cat="character">Heroes &amp; NPCs</button>
+                      <button type="button" class="map-tok-cat-pill" data-tok-cat="character">NPCs</button>
                       <button type="button" class="map-tok-cat-pill" data-tok-cat="monster">Monsters</button>
                       <button type="button" class="map-tok-cat-pill" data-tok-cat="prop">Mounts &amp; Props</button>
                     </div>
@@ -1952,7 +1992,7 @@
                       </div>
                       <div style="display:flex; gap:0.35rem;">
                         <label class="btn btn-outline btn-xs" style="flex:1; text-align:center; cursor:pointer;">
-                          📷 Upload Image
+                          Upload Image
                           <input type="file" id="vttCustomTokFileInput" accept="image/*" style="display:none;" />
                         </label>
                         <input type="text" id="vttCustomTokImg" class="vtt-drawer-input" placeholder="Or Image URL..." style="flex:1;" />
@@ -1970,71 +2010,36 @@
                   </div>
                 </div>
 
-                <!-- PANE 3: DICE TRAY -->
-                <div class="vtt-drawer-pane" id="vttDrawerPaneDice" style="display: none;">
-                  <div class="vtt-drawer-section">
-                    <span class="vtt-drawer-sec-title">Click Dice to Roll in Tray</span>
-                    <div class="map-dice-rack" id="mapDiceRack">
-                      <button type="button" class="map-die-btn" data-map-die="4"><span>d4</span></button>
-                      <button type="button" class="map-die-btn" data-map-die="6"><span>d6</span></button>
-                      <button type="button" class="map-die-btn" data-map-die="8"><span>d8</span></button>
-                      <button type="button" class="map-die-btn" data-map-die="10"><span>d10</span></button>
-                      <button type="button" class="map-die-btn" data-map-die="100"><span>d100</span></button>
-                      <button type="button" class="map-die-btn" data-map-die="12"><span>d12</span></button>
-                      <button type="button" class="map-die-btn" data-map-die="20"><span>d20</span></button>
-                    </div>
-                    <div class="map-dice-tray-arena" id="mapDiceTrayArena">
-                      <div class="map-dice-visual-list" id="mapDiceVisualList">
-                        <span class="map-dice-empty-hint">Click any die above to roll</span>
-                      </div>
-                      <div class="map-dice-total-bar" id="mapDiceTotalBar" style="display: none;">
-                        <span id="mapDiceBreakdownText">1d20</span>
-                        <strong id="mapDiceTotalValue">20</strong>
-                      </div>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
-                      <label class="map-toggle-chip">
-                        <input type="checkbox" id="mapDiceShareCheckbox" checked />
-                        <span>Share Roll with Room</span>
-                      </label>
-                      <div style="display:flex; gap:0.3rem;">
-                        <button type="button" class="btn btn-outline btn-xs" id="mapDiceRerollBtn">🎲 Reroll</button>
-                        <button type="button" class="btn btn-ghost btn-xs" id="mapDiceClearBtn">Clear</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- PANE 4: INITIATIVE TRACKER -->
+                <!-- PANE 3: INITIATIVE TRACKER -->
                 <div class="vtt-drawer-pane" id="vttDrawerPaneInit" style="display: none;">
                   <div class="vtt-drawer-section">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                       <span class="vtt-drawer-sec-title">Initiative Order</span>
                       <div style="display:flex; gap:0.25rem;">
-                        <button type="button" class="btn btn-gold-subtle btn-xs" id="mapInitNextTurnBtn">▶ Next</button>
-                        <button type="button" class="btn btn-outline btn-xs" id="mapInitSortBtn">↕ Sort</button>
+                        <button type="button" class="btn btn-gold-subtle btn-xs" id="mapInitNextTurnBtn">Next</button>
+                        <button type="button" class="btn btn-outline btn-xs" id="mapInitSortBtn">Sort</button>
                         <button type="button" class="btn btn-ghost btn-xs" id="mapInitClearBtn">Clear</button>
                       </div>
                     </div>
-                    <p style="font-size:0.68rem; color:var(--text-dim); margin:0;">Select any token on the map and click <strong>⚔️ Init</strong> to add it to turn order.</p>
+                    <p style="font-size:0.68rem; color:var(--text-dim); margin:0;">Select any token on the map and click <strong>Init</strong> to add it to turn order.</p>
                     <div class="map-init-tracker-list" id="mapInitTrackerList"></div>
                   </div>
                 </div>
               </aside>
 
-              <!-- Bottom-Left Floating Trigger Pills (Maps, Tokens, Dice, Initiative) -->
+              <!-- Bottom-Left Floating Trigger Pills (Maps, Tokens, Initiative) -->
               <div class="map-bottom-dock-bar" id="mapBottomDockBar">
-                <button type="button" class="map-bottom-dock-btn" data-open-drawer="maps" title="Open Maps &amp; Grid Settings">
-                  <span>🗺️</span> <strong>Maps</strong>
+                <button type="button" class="map-bottom-dock-btn" data-open-drawer="maps" title="Maps &amp; Grid Settings">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+                  <strong>Maps</strong>
                 </button>
-                <button type="button" class="map-bottom-dock-btn" data-open-drawer="tokens" title="Open Tokens Dock">
-                  <span>♟️</span> <strong>Tokens</strong>
+                <button type="button" class="map-bottom-dock-btn" data-open-drawer="tokens" title="Tokens Catalog">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"></circle><path d="M5.5 21a6.5 6.5 0 0 1 13 0"></path></svg>
+                  <strong>Tokens</strong>
                 </button>
-                <button type="button" class="map-bottom-dock-btn" data-open-drawer="dice" title="Open Dice Roller Tray">
-                  <span>🎲</span> <strong>Dice</strong>
-                </button>
-                <button type="button" class="map-bottom-dock-btn" data-open-drawer="init" title="Open Initiative Tracker">
-                  <span>⚔️</span> <strong>Initiative</strong>
+                <button type="button" class="map-bottom-dock-btn" data-open-drawer="init" title="Initiative Tracker">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                  <strong>Initiative</strong>
                 </button>
               </div>
             </div>
@@ -3187,6 +3192,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=84"></script>
+  <script src="app.js?v=85"></script>
 </body>
 </html>
