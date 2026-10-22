@@ -10201,978 +10201,729 @@ function initAdminPanel() {
 }
 
 /* ==========================================================================
-   OWLBEAR RODEO VTT INTEGRATION & NATIVE BATTLE MAP ENGINE
+   MODERN VIRTUAL TABLETOP (MAP) ENGINE
+   Native Owlbear-style Battlemap with Fog of War, Tokens, Status Rings,
+   Mount Attachments, Drawings, Measurement, Notes, Dice Tray & Initiative
    ========================================================================== */
 
-const OWLBEAR_ROOM_KEY = "codex_owlbear_room_url";
-const OWLBEAR_STATE_PREFIX = "codex_owlbear_vtt_state_";
+const MAP_REGISTRY_KEY = "codex_saved_maps_registry_v2";
+const MAP_STATE_PREFIX = "codex_map_state_";
+const MAP_LAST_ID_KEY = "codex_last_active_map_id";
+const MAP_PLAYER_COLOR_KEY = "codex_map_player_color_v2";
 
-const VTT_SCENE_META = {
-  forest_ambush: { title: "🌲 Forest Road Ambush", cols: 26, rows: 18 },
-  dungeon_crypt: { title: "💀 Crypt of the Lich King", cols: 26, rows: 18 },
-  tavern_inn: { title: "🍺 The Gilded Gryphon Inn", cols: 24, rows: 16 },
-  magma_cavern: { title: "🌋 Dragon's Magma Lair", cols: 28, rows: 18 },
-  arcane_sanctum: { title: "✨ Astral Arcane Sanctum", cols: 24, rows: 18 },
-  pirate_galleon: { title: "⛵ High Seas Galleon", cols: 28, rows: 18 },
-  parchment_mat: { title: "📜 Classic Parchment Grid", cols: 26, rows: 18 }
+const MAP_SCENE_CATALOG = {
+  forest_ambush: {
+    title: "Woodland Road & River",
+    icon: "🌲",
+    desc: "Forest trail, river crossing & boulders",
+    cols: 26,
+    rows: 18
+  },
+  dungeon_crypt: {
+    title: "Stone Dungeon Crypt",
+    icon: "🏛️",
+    desc: "Carved stone halls, pillars & ritual chamber",
+    cols: 26,
+    rows: 18
+  },
+  grassland: {
+    title: "Open Grassland Field",
+    icon: "🌿",
+    desc: "Lush green wilderness battlemat",
+    cols: 26,
+    rows: 18
+  },
+  tavern_inn: {
+    title: "Tavern Common Room",
+    icon: "🍺",
+    desc: "Wooden tables, hearth fire & bar counter",
+    cols: 24,
+    rows: 16
+  },
+  magma_cavern: {
+    title: "Volcanic Cavern",
+    icon: "🌋",
+    desc: "Lava rivers & obsidian islands",
+    cols: 28,
+    rows: 18
+  },
+  arcane_sanctum: {
+    title: "Astral Sanctum",
+    icon: "✨",
+    desc: "Starfield void, rune circle & obelisks",
+    cols: 24,
+    rows: 18
+  },
+  pirate_galleon: {
+    title: "High Seas Galleon",
+    icon: "⛵",
+    desc: "Wooden ship deck, masts & open ocean",
+    cols: 28,
+    rows: 18
+  },
+  parchment_mat: {
+    title: "Classic Parchment Grid",
+    icon: "📜",
+    desc: "Warm vintage tabletop parchment mat",
+    cols: 26,
+    rows: 18
+  },
+  dark_slate: {
+    title: "Dark Slate Grid",
+    icon: "⬛",
+    desc: "Clean modern minimalist dark grid",
+    cols: 26,
+    rows: 18
+  }
 };
 
-const VTT_PRESET_TOKENS = {
-  owlbear: { name: "Owlbear", icon: "🦉", size: 2, hp: 59, ac: 13, color: "#d97706" },
-  dragon: { name: "Red Dragon", icon: "🐉", size: 3, hp: 178, ac: 18, color: "#dc2626" },
-  goblin: { name: "Goblin", icon: "👺", size: 1, hp: 7, ac: 15, color: "#16a34a" },
-  skeleton: { name: "Skeleton", icon: "💀", size: 1, hp: 13, ac: 13, color: "#94a3b8" },
-  orc: { name: "Orc Brute", icon: "👹", size: 1, hp: 15, ac: 13, color: "#ea580c" },
-  bandit: { name: "Bandit", icon: "🗡️", size: 1, hp: 11, ac: 12, color: "#b91c1c" },
-  wolf: { name: "Dire Wolf", icon: "🐺", size: 2, hp: 37, ac: 14, color: "#64748b" },
-  beholder: { name: "Beholder", icon: "👁️", size: 2, hp: 180, ac: 18, color: "#9333ea" },
-  lich: { name: "Lich", icon: "🧙‍♂️", size: 1, hp: 135, ac: 17, color: "#7c3aed" },
-  knight: { name: "Knight", icon: "🛡️", size: 1, hp: 52, ac: 18, color: "#3b82f6" },
-  mimic: { name: "Mimic", icon: "📦", size: 1, hp: 58, ac: 12, color: "#a16207" },
-  cultist: { name: "Cultist", icon: "🕯️", size: 1, hp: 9, ac: 12, color: "#be123c" },
-  chest: { name: "Loot Chest", icon: "💰", size: 1, hp: 20, ac: 10, color: "#eab308" },
-  campfire: { name: "Campfire", icon: "🔥", size: 1, hp: 10, ac: 10, color: "#f97316" },
-  trap: { name: "Hazard Trap", icon: "⚙️", size: 1, hp: 15, ac: 12, color: "#ef4444" },
-  portal: { name: "Arcane Portal", icon: "🌀", size: 2, hp: 50, ac: 15, color: "#06b6d4" }
+const MAP_PRESET_TOKENS = {
+  // Heroes & NPCs
+  warrior: { name: "Warrior", icon: "⚔️", size: 1, cat: "character", layer: "character", color: "#3b82f6" },
+  mage: { name: "Mage", icon: "🧙‍♂️", size: 1, cat: "character", layer: "character", color: "#8b5cf6" },
+  rogue: { name: "Rogue", icon: "🗡️", size: 1, cat: "character", layer: "character", color: "#10b981" },
+  cleric: { name: "Cleric", icon: "✨", size: 1, cat: "character", layer: "character", color: "#f59e0b" },
+  paladin: { name: "Paladin", icon: "🛡️", size: 1, cat: "character", layer: "character", color: "#eab308" },
+  ranger: { name: "Ranger", icon: "🏹", size: 1, cat: "character", layer: "character", color: "#22c55e" },
+  bard: { name: "Bard", icon: "🪕", size: 1, cat: "character", layer: "character", color: "#ec4899" },
+  monk: { name: "Monk", icon: "🥋", size: 1, cat: "character", layer: "character", color: "#06b6d4" },
+  druid: { name: "Druid", icon: "🍃", size: 1, cat: "character", layer: "character", color: "#15803d" },
+  warlock: { name: "Warlock", icon: "🔮", size: 1, cat: "character", layer: "character", color: "#7e22ce" },
+
+  // Monsters
+  owlbear: { name: "Owlbear", icon: "🦉", size: 2, cat: "monster", layer: "character", color: "#d97706" },
+  dragon: { name: "Red Dragon", icon: "🐉", size: 3, cat: "monster", layer: "character", color: "#ef4444" },
+  goblin: { name: "Goblin", icon: "👺", size: 1, cat: "monster", layer: "character", color: "#16a34a" },
+  skeleton: { name: "Skeleton", icon: "💀", size: 1, cat: "monster", layer: "character", color: "#94a3b8" },
+  orc: { name: "Orc", icon: "👹", size: 1, cat: "monster", layer: "character", color: "#ea580c" },
+  beholder: { name: "Beholder", icon: "👁️", size: 2, cat: "monster", layer: "character", color: "#9333ea" },
+  lich: { name: "Lich", icon: "👑", size: 1, cat: "monster", layer: "character", color: "#7c3aed" },
+  wolf: { name: "Dire Wolf", icon: "🐺", size: 2, cat: "monster", layer: "character", color: "#64748b" },
+  bandit: { name: "Bandit", icon: "🦹", size: 1, cat: "monster", layer: "character", color: "#b91c1c" },
+  mimic: { name: "Mimic", icon: "📦", size: 1, cat: "monster", layer: "character", color: "#b45309" },
+
+  // Mounts & Props
+  horse: { name: "Warhorse (Mount)", icon: "🐎", size: 2, cat: "prop", layer: "mount", color: "#78350f" },
+  wagon: { name: "Wagon (Mount)", icon: "🛒", size: 2, cat: "prop", layer: "mount", color: "#92400e" },
+  boat: { name: "Rowboat (Mount)", icon: "🛶", size: 2, cat: "prop", layer: "mount", color: "#0369a1" },
+  chest: { name: "Treasure Chest", icon: "💰", size: 1, cat: "prop", layer: "prop", color: "#eab308" },
+  campfire: { name: "Campfire", icon: "🔥", size: 1, cat: "prop", layer: "prop", color: "#f97316" },
+  portal: { name: "Arcane Portal", icon: "🌀", size: 2, cat: "prop", layer: "attachment", color: "#06b6d4" },
+  trap: { name: "Spike Trap", icon: "⚙️", size: 1, cat: "prop", layer: "prop", color: "#dc2626" }
 };
 
-let vttActiveMode = "real_owlbear"; // 'real_owlbear' | 'native' | 'stream' | 'iframe'
-let vttCurrentTool = "select"; // 'select' | 'pan' | 'measure' | 'ping' | 'draw' | 'aoe' | 'fog'
-let vttDrawColor = "#d4af37";
-let vttAoeShape = "sphere_20";
-let vttFogBrushMode = "reveal"; // 'reveal' | 'hide'
+// Global Map Engine State
+let activeMapRoomId = null;
+let activeMapState = null;
 
-let vttCamera = { x: 40, y: 30, zoom: 1.0, gridSize: 48 };
-let vttShowGrid = true;
-let vttSnapToGrid = true;
-let vttSelectedTokenId = null;
-let vttDraggingToken = null;
-let vttDragOffset = { x: 0, y: 0 };
-let vttIsPanning = false;
-let vttPanStart = { x: 0, y: 0 };
-let vttSpacePressed = false;
-
-let vttActiveMeasure = null; // { x1, y1, x2, y2 } in grid coords
-let vttActiveDrawStroke = null;
-let vttActiveAoeDraft = null;
-let vttActiveFogRect = null;
-let vttPings = []; // [{ x, y, color, createdAt }]
-let vttAnimFrameId = null;
-
-let vttImageCache = {};
-let vttRoomUnsubscribe = null;
-let vttActiveSyncRoomId = "";
-let vttLastLocalUpdateTs = 0;
-let vttSyncDebounceTimer = null;
-let vttMediaStream = null;
-let vttUserLeftMap = false;
+let mapCamera = { x: 40, y: 30, zoom: 1.0, gridSize: 48 };
+let mapCameraInitialized = false;
 let vttCameraInitialized = false;
-
-let vttState = {
-  scene: "forest_ambush",
-  customMapUrl: "",
-  fogEnabled: false,
-  fogRects: [], // [{ x, y, w, h, mode: 'reveal'|'hide' }] in grid coords
-  drawings: [], // [{ color, points: [{x,y}] }]
-  aoes: [],     // [{ id, shape, x1, y1, x2, y2, color }]
-  tokens: []
-};
-
-function normalizeOwlbearUrl(raw) {
-  if (!raw) return "";
-  let clean = raw.trim();
-  if (!clean) return "";
-  if (/^(https?:\/\/)/i.test(clean)) return clean;
-  if (clean.includes("owlbear.rodeo") || clean.includes("owlbear.app")) {
-    return "https://" + clean;
-  }
-  return clean;
+function resetVttCameraToFit() {
+  resetMapCameraToFit();
 }
 
-function extractOwlbearRoomId(rawUrl) {
-  if (!rawUrl) return "";
-  const clean = rawUrl.trim();
-  if (!clean) return "";
-  const roomMatch = clean.match(/\/room\/([a-zA-Z0-9_-]+)/i);
-  if (roomMatch && roomMatch[1]) {
-    return "OBR-" + roomMatch[1].replace(/[^a-zA-Z0-9]/g, "").slice(0, 20).toUpperCase();
-  }
-  const alnum = clean.replace(/^https?:\/\/(www\.)?owlbear\.(rodeo|app)\/?/i, "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-  if (alnum.length >= 2) {
-    return "OBR-" + alnum.slice(0, 20);
-  }
-  return "OBR-TABLETOP";
-}
+let mapCurrentTool = "select"; // 'select' | 'pan' | 'fog' | 'draw' | 'measure' | 'ping' | 'note'
+let mapShowGrid = true;
+let mapSnapToGrid = true;
 
-function extractOwlbearRoomDisplayName(rawUrl, fallbackId) {
-  if (!rawUrl) return fallbackId || "OBR-TABLETOP";
-  const clean = rawUrl.trim();
-  const fullMatch = clean.match(/\/room\/([a-zA-Z0-9_-]+)(?:\/([a-zA-Z0-9_% -]+))?/i);
-  if (fullMatch) {
-    const slug = fullMatch[2] ? decodeURIComponent(fullMatch[2]).replace(/[-_]+/g, " ").trim() : "";
-    const code = fullMatch[1].slice(0, 12);
-    return slug ? `${slug} (${code})` : `Owlbear Room (${code})`;
-  }
-  return clean.length > 38 ? `${fallbackId} (${clean.slice(0, 32)}…)` : clean;
-}
+let mapSelectedTokenId = null;
+let mapSelectedNoteId = null;
+let mapDraggingToken = null;
+let mapDragOffset = { x: 0, y: 0 };
+let mapDragRiders = []; // Mounted riders that travel with the mount
 
-function inferSceneFromUrl(rawUrl) {
-  const s = String(rawUrl || "").toLowerCase();
-  if (/crypt|tomb|dungeon|lich|undead|catacomb|skeleton/.test(s)) return "dungeon_crypt";
-  if (/tavern|inn|bar|pub|gryphon/.test(s)) return "tavern_inn";
-  if (/lava|magma|dragon|volcano|inferno|hell|fire/.test(s)) return "magma_cavern";
-  if (/astral|arcane|sanctum|void|tower|portal|magic/.test(s)) return "arcane_sanctum";
-  if (/ship|pirate|galleon|sea|ocean|boat|naval/.test(s)) return "pirate_galleon";
-  if (/parchment|grid|blank|mat/.test(s)) return "parchment_mat";
-  return "forest_ambush";
-}
+let mapIsRotating = false;
+let mapRotateCenter = { x: 0, y: 0 };
+let mapIsResizing = false;
+let mapResizeStartSize = 1;
 
-function getStoredOwlbearUrl() {
+let mapIsPanning = false;
+let mapPanStart = { x: 0, y: 0 };
+let mapSpacePressed = false;
+
+// Drawing & Shape Tool State
+let mapDrawShape = "brush"; // 'brush' | 'line' | 'rect' | 'circle' | 'cone' | 'erase'
+let mapDrawColor = "#d4af37";
+let mapDrawFill = true;
+let mapDrawWidth = 4;
+let mapActiveDrawStroke = null;
+
+// Fog of War State
+let mapFogShape = "rect"; // 'rect' | 'poly' | 'brush'
+let mapFogMode = "reveal"; // 'reveal' | 'hide'
+let mapActiveFogDraft = null;
+let mapPolyPoints = [];
+let mapFogOffscreen = null;
+
+// Measurement State
+let mapMeasureRule = "chebyshev"; // 'chebyshev' | 'alternating' | 'euclidean' | 'manhattan'
+let mapActiveMeasure = null; // { x1, y1, x2, y2 }
+
+// Pings & Animations
+let mapPings = []; // [{ x, y, color, startTime }]
+let mapAnimFrameId = null;
+let mapImageCache = {};
+let mapAutosaveTimer = null;
+let mapFirestoreUnsubscribe = null;
+
+// Player Color (Used for pointer ping, ruler & notes)
+let mapPlayerColor = localStorage.getItem(MAP_PLAYER_COLOR_KEY) || "#d4af37";
+
+// Dice Tray State
+let mapDiceTrayRolls = [];
+
+// Safe no-op for legacy vitals HUD call
+function updateOwlbearVitalsHUD() {}
+
+/* --------------------------------------------------------------------------
+   STORAGE & PERSISTENCE HELPERS (AUTOSAVE)
+   -------------------------------------------------------------------------- */
+
+function getSavedMapsRegistry() {
   try {
-    return localStorage.getItem(OWLBEAR_ROOM_KEY) || "";
+    const raw = localStorage.getItem(MAP_REGISTRY_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.warn("Could not load map registry:", e);
+  }
+
+  // Seed default starter map
+  const defaultMap = {
+    id: "MAP-7B42",
+    name: "Woodland Ambush Road",
+    scene: "forest_ambush",
+    thumbnail: "",
+    createdAt: Date.now() - 3600000,
+    updatedAt: Date.now() - 3600000,
+    tokenCount: 3
+  };
+  const list = [defaultMap];
+  saveSavedMapsRegistry(list);
+
+  // Seed default map state
+  if (!localStorage.getItem(MAP_STATE_PREFIX + "MAP-7B42")) {
+    const defaultState = createDefaultMapState("MAP-7B42", "Woodland Ambush Road", "forest_ambush");
+    defaultState.tokens = [
+      { id: "tok_knight", name: "Sir Valerie", icon: "🛡️", x: 10, y: 8, size: 1, layer: "character", color: "#3b82f6", rotation: 0, rings: ["#3b82f6"] },
+      { id: "tok_wizard", name: "Ignis the Red", icon: "🧙‍♂️", x: 9, y: 9, size: 1, layer: "character", color: "#8b5cf6", rotation: 0, rings: ["#ef4444"] },
+      { id: "tok_goblin", name: "Goblin Scout", icon: "👺", x: 15, y: 7, size: 1, layer: "character", color: "#16a34a", rotation: 0, rings: ["#eab308"] }
+    ];
+    saveMapRoomState("MAP-7B42", defaultState);
+  }
+  return list;
+}
+
+function saveSavedMapsRegistry(list) {
+  try {
+    localStorage.setItem(MAP_REGISTRY_KEY, JSON.stringify(list || []));
+  } catch (e) {
+    console.warn("Failed saving map registry:", e);
+  }
+}
+
+function createDefaultMapState(roomId, name, scene) {
+  const meta = MAP_SCENE_CATALOG[scene] || MAP_SCENE_CATALOG.forest_ambush;
+  return {
+    id: roomId,
+    name: name || meta.title,
+    scene: scene || "forest_ambush",
+    customMapUrl: null,
+    gridCols: meta.cols,
+    gridRows: meta.rows,
+    gridColor: "gold",
+    gridScale: 5,
+    gridUnit: "ft",
+    fogEnabled: false,
+    fogPreviewDm: true,
+    fogShapes: [],
+    tokens: [],
+    drawings: [],
+    notes: [],
+    initiative: [],
+    activeInitIndex: 0,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+}
+
+function getMapRoomState(roomId) {
+  try {
+    const raw = localStorage.getItem(MAP_STATE_PREFIX + roomId);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn("Could not parse map state for", roomId, e);
+  }
+  return null;
+}
+
+function saveMapRoomState(roomId, state) {
+  try {
+    localStorage.setItem(MAP_STATE_PREFIX + roomId, JSON.stringify(state));
+  } catch (e) {
+    console.warn("Could not save map state for", roomId, e);
+  }
+}
+
+function deleteSavedMap(roomId) {
+  let list = getSavedMapsRegistry();
+  list = list.filter(m => m.id !== roomId);
+  saveSavedMapsRegistry(list);
+  try {
+    localStorage.removeItem(MAP_STATE_PREFIX + roomId);
+  } catch (e) {}
+
+  if (activeMapRoomId === roomId) {
+    showMapLobbyView();
+  } else {
+    renderSavedMapsGrid();
+  }
+  showStatus(`Map ${roomId} deleted.`);
+}
+
+function generateMapThumbnail() {
+  const canvas = document.getElementById("owlbearMapCanvas");
+  if (!canvas || !canvas.width || !canvas.height) return "";
+  try {
+    const thumb = document.createElement("canvas");
+    thumb.width = 280;
+    thumb.height = 175;
+    const tCtx = thumb.getContext("2d");
+    if (!tCtx) return "";
+    tCtx.drawImage(canvas, 0, 0, thumb.width, thumb.height);
+    return thumb.toDataURL("image/jpeg", 0.6);
   } catch (e) {
     return "";
   }
 }
 
-function updateOwlbearVitalsHUD() {
-  const hpEl = document.getElementById("owlbearHpDisplay");
-  const acEl = document.getElementById("owlbearAcDisplay");
-  const percEl = document.getElementById("owlbearPercDisplay");
-  const inspEl = document.getElementById("owlbearInspDisplay");
+function triggerMapAutosave(immediate = false) {
+  if (!activeMapRoomId || !activeMapState) return;
 
-  const curHp = document.getElementById("curHp")?.value || 0;
-  const maxHp = document.getElementById("maxHp")?.value || 0;
-  const ac = document.getElementById("armorClass")?.value || 10;
-  const perc = document.getElementById("passivePerception")?.value || 10;
-  const hasInsp = document.getElementById("heroicInspirationToggle")?.checked || false;
+  const performSave = () => {
+    activeMapState.updatedAt = Date.now();
+    saveMapRoomState(activeMapRoomId, activeMapState);
 
-  if (hpEl) hpEl.textContent = `${curHp}/${maxHp}`;
-  if (acEl) acEl.textContent = ac;
-  if (percEl) percEl.textContent = perc;
-  if (inspEl) {
-    inspEl.textContent = hasInsp ? "Yes" : "No";
-    inspEl.style.color = hasInsp ? "#c084fc" : "var(--text-dim)";
-  }
-}
+    // Update registry entry
+    const registry = getSavedMapsRegistry();
+    let entry = registry.find(m => m.id === activeMapRoomId);
+    const thumb = generateMapThumbnail();
 
-function switchOwlbearViewMode(mode) {
-  vttActiveMode = mode || "real_owlbear";
-  document.querySelectorAll(".owlbear-mode-pill").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.vttMode === vttActiveMode);
-  });
-
-  const realLayer = document.getElementById("owlbearRealEngineLayer");
-  const realFrame = document.getElementById("owlbearRealEngineFrame");
-  const realHomeBtn = document.getElementById("owlbearRealHomeBtn");
-  const sceneLabel = document.getElementById("vttActiveSceneLabel");
-  const nativeLayer = document.getElementById("owlbearNativeVttLayer");
-  const streamLayer = document.getElementById("owlbearStreamLayer");
-  const iframeWrapper = document.getElementById("owlbearIframeWrapper");
-  const iframe = document.getElementById("owlbearIframe");
-
-  if (realLayer) realLayer.style.display = vttActiveMode === "real_owlbear" ? "flex" : "none";
-  if (realHomeBtn) realHomeBtn.style.display = vttActiveMode === "real_owlbear" ? "inline-flex" : "none";
-  if (sceneLabel) sceneLabel.style.display = vttActiveMode === "native" ? "inline-flex" : "none";
-  if (nativeLayer) nativeLayer.style.display = vttActiveMode === "native" ? "block" : "none";
-  if (streamLayer) streamLayer.style.display = vttActiveMode === "stream" ? "flex" : "none";
-  if (iframeWrapper) iframeWrapper.style.display = vttActiveMode === "iframe" ? "flex" : "none";
-
-  if (vttActiveMode === "real_owlbear" && realFrame) {
-    const raw = getStoredOwlbearUrl();
-    const roomId = extractOwlbearRoomId(raw || "OBR-TABLETOP");
-    const targetSrc = `./owlbear/index.html#/game/${encodeURIComponent(roomId)}`;
-    if (!realFrame.getAttribute("src") || !realFrame.getAttribute("src").includes(`#/game/${encodeURIComponent(roomId)}`)) {
-      realFrame.src = targetSrc;
-    }
-  }
-
-  if (vttActiveMode === "iframe" && iframe) {
-    const raw = getStoredOwlbearUrl();
-    const targetUrl = /^https?:\/\//i.test(raw) ? raw : "https://www.owlbear.rodeo";
-    if (iframe.src !== targetUrl) {
-      iframe.src = targetUrl;
-    }
-  }
-
-  if (vttActiveMode === "native") {
-    requestAnimationFrame(() => resizeAndRenderOwlbearCanvas());
-  } else if (vttActiveMode === "stream") {
-    requestAnimationFrame(() => {
-      if (typeof resizeAndRenderStreamOverlayCanvas === "function") {
-        resizeAndRenderStreamOverlayCanvas();
-      }
-      if (typeof sendStreamRemoteInput === "function") {
-        sendStreamRemoteInput({ action: "ping_bridge" });
-      }
-    });
-  }
-}
-
-function setOwlbearRoomUrl(rawUrl, broadcast = true) {
-  const cleanUrl = normalizeOwlbearUrl(rawUrl);
-  try {
-    if (cleanUrl) {
-      vttUserLeftMap = false;
-      localStorage.setItem(OWLBEAR_ROOM_KEY, cleanUrl);
+    if (entry) {
+      entry.name = activeMapState.name;
+      entry.scene = activeMapState.scene;
+      entry.tokenCount = (activeMapState.tokens || []).length;
+      entry.updatedAt = activeMapState.updatedAt;
+      if (thumb) entry.thumbnail = thumb;
     } else {
-      localStorage.removeItem(OWLBEAR_ROOM_KEY);
+      registry.unshift({
+        id: activeMapRoomId,
+        name: activeMapState.name,
+        scene: activeMapState.scene,
+        thumbnail: thumb,
+        createdAt: activeMapState.createdAt || Date.now(),
+        updatedAt: activeMapState.updatedAt,
+        tokenCount: (activeMapState.tokens || []).length
+      });
     }
-  } catch (e) {}
+    saveSavedMapsRegistry(registry);
 
-  const input = document.getElementById("owlbearRoomUrlInput");
-  const wizardInput = document.getElementById("owlbearWizardRoomInput");
-  const iframe = document.getElementById("owlbearIframe");
-  const emptyState = document.getElementById("owlbearEmptyState");
-  const activeContainer = document.getElementById("owlbearActiveContainer");
-  const statusPill = document.getElementById("owlbearStatusPill");
-  const statusText = document.getElementById("owlbearStatusText");
-  const navBadge = document.getElementById("owlbearNavBadge");
-  const leaveBtn = document.getElementById("owlbearLeaveBtn");
-  const modeSwitcher = document.getElementById("owlbearModeSwitcher");
-  const activeUrlDisplay = document.getElementById("owlbearActiveUrlDisplay");
-
-  if (input) input.value = cleanUrl;
-  if (wizardInput) wizardInput.value = cleanUrl;
-
-  if (cleanUrl) {
-    const roomId = extractOwlbearRoomId(cleanUrl);
-    const displayName = extractOwlbearRoomDisplayName(cleanUrl, roomId);
-    if (activeUrlDisplay) {
-      activeUrlDisplay.textContent = displayName;
-      activeUrlDisplay.title = cleanUrl;
+    // Flash autosave indicator
+    const ind = document.getElementById("mapAutosaveIndicator");
+    if (ind) {
+      ind.textContent = "✓ Autosaved";
+      ind.style.opacity = "1";
     }
-    if (emptyState) emptyState.style.display = "none";
-    if (activeContainer) activeContainer.style.display = "flex";
-    if (leaveBtn) leaveBtn.style.display = "inline-flex";
-    if (modeSwitcher) modeSwitcher.style.display = "inline-flex";
-    if (statusPill) statusPill.classList.add("is-active");
-    if (statusText) statusText.textContent = `Active (${displayName})`;
-    if (navBadge) navBadge.style.display = "inline-block";
 
-    loadOwlbearRoomState(roomId, cleanUrl);
-    const realFrame = document.getElementById("owlbearRealEngineFrame");
-    if (realFrame) {
-      realFrame.src = `./owlbear/index.html#/game/${encodeURIComponent(roomId)}`;
+    // Cloud sync to Firestore if db is active
+    if (db && typeof db.collection === "function") {
+      try {
+        db.collection("codex_maps").doc(activeMapRoomId).set({
+          ...activeMapState,
+          lastSavedBy: currentUser ? currentUser.uid : "local",
+          cloudUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).catch(() => {});
+      } catch (err) {}
     }
-    switchOwlbearViewMode(vttActiveMode || "real_owlbear");
+  };
+
+  if (immediate) {
+    if (mapAutosaveTimer) clearTimeout(mapAutosaveTimer);
+    performSave();
   } else {
-    if (vttSyncDebounceTimer) {
-      clearTimeout(vttSyncDebounceTimer);
-      vttSyncDebounceTimer = null;
-    }
-    stopOwlbearStream();
-    if (vttRoomUnsubscribe) {
-      vttRoomUnsubscribe();
-      vttRoomUnsubscribe = null;
-    }
-    vttActiveSyncRoomId = "";
-    selectVttToken(null);
-    const realFrame = document.getElementById("owlbearRealEngineFrame");
-    if (realFrame) realFrame.src = "";
-    if (iframe) iframe.src = "";
-    if (activeUrlDisplay) activeUrlDisplay.textContent = "";
-    if (emptyState) emptyState.style.display = "flex";
-    if (activeContainer) activeContainer.style.display = "none";
-    if (leaveBtn) leaveBtn.style.display = "none";
-    if (modeSwitcher) modeSwitcher.style.display = "none";
-    if (statusPill) statusPill.classList.remove("is-active");
-    if (statusText) statusText.textContent = "No Room Loaded";
-    if (navBadge) navBadge.style.display = "none";
-  }
-
-  updateOwlbearVitalsHUD();
-
-  if (broadcast && cleanUrl) {
-    broadcastOwlbearUrlToParty(cleanUrl);
+    if (mapAutosaveTimer) clearTimeout(mapAutosaveTimer);
+    const ind = document.getElementById("mapAutosaveIndicator");
+    if (ind) ind.textContent = "Saving...";
+    mapAutosaveTimer = setTimeout(performSave, 350);
   }
 }
 
-function leaveOwlbearRoom(e) {
-  if (e && typeof e.preventDefault === "function") e.preventDefault();
-  if (e && typeof e.stopPropagation === "function") e.stopPropagation();
-
-  vttUserLeftMap = true;
-  if (vttSyncDebounceTimer) {
-    clearTimeout(vttSyncDebounceTimer);
-    vttSyncDebounceTimer = null;
-  }
-
-  // Exit theater mode if active
-  if (document.body.classList.contains("owlbear-theater-active")) {
-    document.body.classList.remove("owlbear-theater-active");
-    const label = document.getElementById("owlbearTheaterBtnLabel");
-    if (label) label.textContent = "Theater Mode";
-  }
-
-  setOwlbearRoomUrl("", false);
-
-  // Also clear the shared room URL in Firestore if user is DM or in a room so onSnapshot doesn't re-trigger it
-  const roomCode = activeDMRoomCode || connectedCampaignRoom;
-  if (db && roomCode) {
-    db.collection("campaigns").doc(roomCode).collection("handouts").doc("owlbear_vtt").set({
-      id: "owlbear_vtt",
-      title: "Owlbear Rodeo Battle Map",
-      type: "map",
-      content: JSON.stringify({ url: "", updatedAt: Date.now() }),
-      isShared: false,
-      createdAt: Date.now()
-    }, { merge: true }).catch(() => {});
-  }
-
-  showStatus("Closed Owlbear battle map.");
-}
-
-function copyOwlbearRoomUrl() {
-  const url = normalizeOwlbearUrl(document.getElementById("owlbearRoomUrlInput")?.value || getStoredOwlbearUrl());
-  if (!url) {
-    showStatus("No active Owlbear room link to copy.");
-    return;
-  }
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(url).then(() => {
-      showStatus("Owlbear room link copied to clipboard!");
-    }).catch(() => {
-      prompt("Copy Owlbear room link:", url);
-    });
-  } else {
-    prompt("Copy Owlbear room link:", url);
-  }
-}
-
-async function broadcastOwlbearUrlToParty(roomUrl) {
-  const roomCode = activeDMRoomCode || connectedCampaignRoom;
-  if (!db || !roomCode || !roomUrl) return;
-  const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === roomCode);
-  try {
-    await db.collection("campaigns").doc(roomCode).collection("handouts").doc("owlbear_vtt").set({
-      id: "owlbear_vtt",
-      title: "Owlbear Rodeo Battle Map",
-      type: "map",
-      author: isDM ? "Dungeon Master" : "Party Member",
-      content: JSON.stringify({ url: roomUrl, updatedAt: Date.now() }),
-      isShared: true,
-      updatedAt: Date.now()
-    }, { merge: true });
-  } catch (err) {
-    console.warn("Could not broadcast Owlbear URL to party:", err);
-  }
-}
-
-function toggleOwlbearTheaterMode() {
-  const isActive = document.body.classList.toggle("owlbear-theater-active");
-  const label = document.getElementById("owlbearTheaterBtnLabel");
-  if (label) {
-    label.textContent = isActive ? "Exit Theater" : "Theater Mode";
-  }
-  requestAnimationFrame(() => resizeAndRenderOwlbearCanvas());
-  showStatus(isActive ? "Theater Mode: Fullscreen map view enabled." : "Exited Theater Mode.");
+function formatMapRelativeTime(ts) {
+  if (!ts) return "Just now";
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 /* --------------------------------------------------------------------------
-   STATE PERSISTENCE & REAL-TIME FIREBASE MULTIPLAYER SYNC
+   VIEW 1: MAP LOBBY CONTROLLER
    -------------------------------------------------------------------------- */
 
-function getDefaultTokensForNewMap() {
-  const charName = document.getElementById("charName")?.value?.trim() || "Hero";
-  const curHp = parseInt(document.getElementById("curHp")?.value, 10) || 24;
-  const maxHp = parseInt(document.getElementById("maxHp")?.value, 10) || 24;
-  const ac = parseInt(document.getElementById("armorClass")?.value, 10) || 16;
-  const avatar = (typeof myCharacterAvatar !== "undefined" && myCharacterAvatar) ? myCharacterAvatar : "";
-  const heroId = (typeof activeCharId !== "undefined" && activeCharId) ? activeCharId : "main";
+function showMapLobbyView() {
+  const lobby = document.getElementById("mapLobbyView");
+  const tabletop = document.getElementById("mapTabletopView");
+  if (lobby) lobby.style.display = "flex";
+  if (tabletop) tabletop.style.display = "none";
 
-  return [
-    {
-      id: "tok_hero_" + heroId,
-      charId: heroId,
-      name: charName,
-      icon: "⚔️",
-      avatar: avatar,
-      x: 8,
-      y: 9,
-      size: 1,
-      hpCur: curHp,
-      hpMax: maxHp,
-      ac: ac,
-      color: "#d4af37",
-      conditions: []
-    },
-    {
-      id: "tok_owlbear_1",
-      name: "Wild Owlbear",
-      icon: "🦉",
-      avatar: "",
-      x: 15,
-      y: 8,
-      size: 2,
-      hpCur: 59,
-      hpMax: 59,
-      ac: 13,
-      color: "#d97706",
-      conditions: []
-    },
-    {
-      id: "tok_goblin_1",
-      name: "Goblin Scout",
-      icon: "👺",
-      avatar: "",
-      x: 13,
-      y: 6,
-      size: 1,
-      hpCur: 7,
-      hpMax: 7,
-      ac: 15,
-      color: "#16a34a",
-      conditions: []
-    }
-  ];
+  // Hide action drawers
+  document.getElementById("mapCreateActionDrawer")?.style.setProperty("display", "none");
+  document.getElementById("mapJoinActionDrawer")?.style.setProperty("display", "none");
+
+  // Close all popovers and drawers
+  closeAllMapPopovers();
+  closeMapDrawer();
+
+  activeMapRoomId = null;
+  renderSavedMapsGrid();
 }
 
-function loadOwlbearRoomState(roomId, rawUrl = "") {
-  const syncRoom = (activeDMRoomCode || connectedCampaignRoom || roomId || "OBR-TABLETOP").trim().toUpperCase();
-  vttActiveSyncRoomId = syncRoom;
-  vttCameraInitialized = false;
-  const defaultScene = inferSceneFromUrl(rawUrl || roomId);
+function renderSavedMapsGrid() {
+  const grid = document.getElementById("mapSavedCardsGrid");
+  const section = document.getElementById("mapSavedRoomsSection");
+  if (!grid || !section) return;
 
-  // Load local cached state for instant startup
-  try {
-    const raw = localStorage.getItem(OWLBEAR_STATE_PREFIX + syncRoom);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") {
-        vttState.scene = parsed.scene || defaultScene;
-        vttState.customMapUrl = parsed.customMapUrl || "";
-        vttState.fogEnabled = Boolean(parsed.fogEnabled);
-        vttState.fogRects = Array.isArray(parsed.fogRects) ? parsed.fogRects : [];
-        vttState.drawings = Array.isArray(parsed.drawings) ? parsed.drawings : [];
-        vttState.aoes = Array.isArray(parsed.aoes) ? parsed.aoes : [];
-        vttState.tokens = Array.isArray(parsed.tokens) && parsed.tokens.length > 0 ? parsed.tokens : getDefaultTokensForNewMap();
-      }
-    } else {
-      vttState = {
-        scene: defaultScene,
-        customMapUrl: "",
-        fogEnabled: false,
-        fogRects: [],
-        drawings: [],
-        aoes: [],
-        tokens: getDefaultTokensForNewMap()
-      };
-    }
-  } catch (e) {
-    vttState.tokens = getDefaultTokensForNewMap();
+  const registry = getSavedMapsRegistry();
+  if (!registry || registry.length === 0) {
+    section.style.display = "none";
+    grid.innerHTML = "";
+    return;
   }
 
-  syncVttUiControlsFromState();
-  renderVttActiveTokensList();
+  section.style.display = "block";
+  grid.innerHTML = "";
+
+  registry.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+  registry.forEach(mapItem => {
+    const card = document.createElement("div");
+    card.className = "map-saved-room-card";
+    card.dataset.roomId = mapItem.id;
+
+    const sceneMeta = MAP_SCENE_CATALOG[mapItem.scene] || MAP_SCENE_CATALOG.forest_ambush;
+    const thumbHtml = mapItem.thumbnail
+      ? `<img src="${mapItem.thumbnail}" alt="${escapeHtml(mapItem.name)}" class="map-card-thumb-img" />`
+      : `<div class="map-card-fallback-thumb"><span style="font-size:2.2rem;">${sceneMeta.icon}</span><span>${sceneMeta.title}</span></div>`;
+
+    card.innerHTML = `
+      <div class="map-saved-card-thumb">
+        ${thumbHtml}
+        <span class="map-card-scene-pill">${sceneMeta.icon} ${sceneMeta.title}</span>
+        <button type="button" class="map-card-del-btn" title="Delete Map" data-del-id="${mapItem.id}">&times;</button>
+      </div>
+      <div class="map-saved-card-body">
+        <div class="map-saved-card-header">
+          <strong class="map-saved-card-title">${escapeHtml(mapItem.name || "Untitled Map")}</strong>
+          <span class="map-card-code-pill">${mapItem.id}</span>
+        </div>
+        <div class="map-saved-card-meta">
+          <span>${formatMapRelativeTime(mapItem.updatedAt)}</span>
+          <span>&bull;</span>
+          <span>${mapItem.tokenCount || 0} tokens</span>
+        </div>
+      </div>
+    `;
+
+    // Clicking card opens map directly
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".map-card-del-btn")) return;
+      openMapRoom(mapItem.id);
+    });
+
+    // Delete button
+    const delBtn = card.querySelector(".map-card-del-btn");
+    if (delBtn) {
+      delBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete map "${mapItem.name || mapItem.id}"? This cannot be undone.`)) {
+          deleteSavedMap(mapItem.id);
+        }
+      });
+    }
+
+    grid.appendChild(card);
+  });
+}
+
+function initMapLobbyListeners() {
+  const openCreateBtn = document.getElementById("mapOpenCreateModalBtn");
+  const createDrawer = document.getElementById("mapCreateActionDrawer");
+  const openJoinBtn = document.getElementById("mapOpenJoinModalBtn");
+  const joinDrawer = document.getElementById("mapJoinActionDrawer");
+
+  if (openCreateBtn && createDrawer) {
+    openCreateBtn.addEventListener("click", () => {
+      const isClosed = createDrawer.style.display === "none";
+      createDrawer.style.display = isClosed ? "block" : "none";
+      if (joinDrawer) joinDrawer.style.display = "none";
+      if (isClosed) {
+        document.getElementById("mapCreateNameInput")?.focus();
+      }
+    });
+  }
+
+  if (openJoinBtn && joinDrawer) {
+    openJoinBtn.addEventListener("click", () => {
+      const isClosed = joinDrawer.style.display === "none";
+      joinDrawer.style.display = isClosed ? "block" : "none";
+      if (createDrawer) createDrawer.style.display = "none";
+      if (isClosed) {
+        document.getElementById("mapJoinCodeInput")?.focus();
+      }
+    });
+  }
+
+  document.getElementById("mapCloseCreateDrawerBtn")?.addEventListener("click", () => {
+    if (createDrawer) createDrawer.style.display = "none";
+  });
+
+  document.getElementById("mapCloseJoinDrawerBtn")?.addEventListener("click", () => {
+    if (joinDrawer) joinDrawer.style.display = "none";
+  });
+
+  // Launch New Map confirmation
+  document.getElementById("mapConfirmCreateBtn")?.addEventListener("click", () => {
+    const nameInput = document.getElementById("mapCreateNameInput");
+    const sceneSelect = document.getElementById("mapCreateSceneSelect");
+    const scene = sceneSelect ? sceneSelect.value : "forest_ambush";
+    const randCode = "MAP-" + Math.random().toString(36).substr(2, 4).toUpperCase();
+    const mapName = (nameInput && nameInput.value.trim()) || `Encounter ${randCode.slice(4)}`;
+
+    const newState = createDefaultMapState(randCode, mapName, scene);
+    saveMapRoomState(randCode, newState);
+
+    const registry = getSavedMapsRegistry();
+    registry.unshift({
+      id: randCode,
+      name: mapName,
+      scene: scene,
+      thumbnail: "",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      tokenCount: 0
+    });
+    saveSavedMapsRegistry(registry);
+
+    openMapRoom(randCode);
+  });
+
+  // Connect & Join Map confirmation
+  document.getElementById("mapConfirmJoinBtn")?.addEventListener("click", () => {
+    const input = document.getElementById("mapJoinCodeInput");
+    if (!input || !input.value.trim()) {
+      showStatus("Please enter a room code or paste a link.");
+      return;
+    }
+    const raw = input.value.trim();
+    let code = raw;
+
+    // Check if URL
+    const urlMatch = raw.match(/[?&](?:map|room)=([a-zA-Z0-9_-]+)/i);
+    if (urlMatch && urlMatch[1]) {
+      code = urlMatch[1];
+    } else {
+      const obrMatch = raw.match(/\/room\/([a-zA-Z0-9_-]+)/i);
+      if (obrMatch && obrMatch[1]) {
+        code = obrMatch[1];
+      }
+    }
+    code = code.replace(/[^a-zA-Z0-9_-]/g, "").toUpperCase();
+    if (!code.startsWith("MAP-") && !code.startsWith("OBR-")) {
+      code = "MAP-" + code;
+    }
+
+    let state = getMapRoomState(code);
+    if (!state) {
+      state = createDefaultMapState(code, `Joined Room ${code.slice(4)}`, "forest_ambush");
+      saveMapRoomState(code, state);
+    }
+
+    const registry = getSavedMapsRegistry();
+    if (!registry.some(m => m.id === code)) {
+      registry.unshift({
+        id: code,
+        name: state.name,
+        scene: state.scene,
+        thumbnail: "",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        tokenCount: (state.tokens || []).length
+      });
+      saveSavedMapsRegistry(registry);
+    }
+
+    openMapRoom(code);
+  });
+}
+
+/* --------------------------------------------------------------------------
+   VIEW 2: ACTIVE TABLETOP CONTROLLER
+   -------------------------------------------------------------------------- */
+
+function openMapRoom(roomId) {
+  if (!roomId) return;
+  const cleanId = String(roomId).trim().toUpperCase();
+  activeMapRoomId = cleanId;
+  localStorage.setItem(MAP_LAST_ID_KEY, cleanId);
+
+  // Switch views
+  const lobby = document.getElementById("mapLobbyView");
+  const tabletop = document.getElementById("mapTabletopView");
+  if (lobby) lobby.style.display = "none";
+  if (tabletop) tabletop.style.display = "block";
+
+  // Load state or create default
+  let state = getMapRoomState(cleanId);
+  if (!state) {
+    state = createDefaultMapState(cleanId, `Tabletop Map ${cleanId.replace("MAP-", "")}`, "forest_ambush");
+    saveMapRoomState(cleanId, state);
+  }
+  activeMapState = state;
+
+  // Sync HUD
+  const titleInput = document.getElementById("mapActiveTitleInput");
+  if (titleInput) titleInput.value = state.name;
+
+  const codeText = document.getElementById("mapActiveRoomCodeText");
+  if (codeText) codeText.textContent = cleanId;
+
+  const playerColorInput = document.getElementById("mapPlayerColorPicker");
+  if (playerColorInput) playerColorInput.value = mapPlayerColor;
+
+  syncMapUiControlsFromState();
+  closeAllMapPopovers();
+  closeMapDrawer();
+
+  // Reset camera to fit
+  mapCameraInitialized = false;
   requestAnimationFrame(() => {
-    resetVttCameraToFit();
+    resetMapCameraToFit();
     resizeAndRenderOwlbearCanvas();
   });
 
-  startOwlbearDedicatedRoomListener(syncRoom);
+  if (!mapAnimFrameId) {
+    runMapAnimLoop();
+  }
+
+  startMapFirestoreSync(cleanId);
 }
 
-async function startOwlbearDedicatedRoomListener(syncRoom) {
-  if (!db || !syncRoom) return;
-  if (vttRoomUnsubscribe) {
-    vttRoomUnsubscribe();
-    vttRoomUnsubscribe = null;
+function syncMapUiControlsFromState() {
+  if (!activeMapState) return;
+  const colsInput = document.getElementById("vttGridColsInput");
+  if (colsInput) colsInput.value = activeMapState.gridCols || 26;
+  const rowsInput = document.getElementById("vttGridRowsInput");
+  if (rowsInput) rowsInput.value = activeMapState.gridRows || 18;
+  const colorSelect = document.getElementById("vttGridColorSelect");
+  if (colorSelect) colorSelect.value = activeMapState.gridColor || "gold";
+  const scaleInput = document.getElementById("vttGridScaleInput");
+  if (scaleInput) scaleInput.value = activeMapState.gridScale || 5;
+  const unitInput = document.getElementById("vttGridUnitInput");
+  if (unitInput) unitInput.value = activeMapState.gridUnit || "ft";
+  const fogCheck = document.getElementById("vttFogEnabledCheckbox");
+  if (fogCheck) fogCheck.checked = !!activeMapState.fogEnabled;
+  const urlInput = document.getElementById("vttCustomMapUrlInput");
+  if (urlInput) urlInput.value = activeMapState.customMapUrl || "";
+
+  // Highlight active scene
+  document.querySelectorAll("#vttSceneList .vtt-scene-card").forEach(card => {
+    card.classList.toggle("active", card.dataset.scene === activeMapState.scene);
+  });
+
+  updateMapActiveTokensList();
+  renderMapInitiativeList();
+  updateMapZoomReadout();
+}
+
+function startMapFirestoreSync(roomId) {
+  if (!db || typeof db.collection !== "function") return;
+  if (mapFirestoreUnsubscribe) {
+    mapFirestoreUnsubscribe();
+    mapFirestoreUnsubscribe = null;
   }
 
   try {
-    const campRef = db.collection("campaigns").doc(syncRoom);
-    const snap = await campRef.get();
-    if (!snap.exists) {
-      await campRef.set({
-        creatorUid: auth?.currentUser?.uid || "local",
-        createdAt: Date.now()
-      });
-    }
-  } catch (e) {}
+    mapFirestoreUnsubscribe = db.collection("codex_maps").doc(roomId).onSnapshot(doc => {
+      if (!doc.exists) return;
+      const remote = doc.data();
+      if (!remote || !activeMapState) return;
 
-  vttRoomUnsubscribe = db.collection("campaigns").doc(syncRoom).collection("handouts")
-    .onSnapshot((snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "removed") return;
-        const doc = change.doc;
-        const d = doc.data() || {};
-        if (doc.id === "owlbear_vtt_state") {
-          applyRemoteOwlbearVttState(d);
-        } else if (doc.id === "owlbear_real_bridge" && d.content) {
-          try {
-            const msg = JSON.parse(d.content);
-            const realFrame = document.getElementById("owlbearRealEngineFrame");
-            if (realFrame && realFrame.contentWindow) {
-              realFrame.contentWindow.postMessage(msg, "*");
-            }
-          } catch (e) {}
-        }
-      });
-    }, (err) => {
-      console.warn("Owlbear VTT room sync error:", err);
-    });
-}
-
-function applyRemoteOwlbearVttState(docData) {
-  if (!docData || !docData.content) return;
-  if (docData.updatedAt && docData.updatedAt <= vttLastLocalUpdateTs) return;
-  if (vttDraggingToken) return; // Don't interrupt active local token drag
-
-  try {
-    const parsed = JSON.parse(docData.content);
-    if (!parsed || typeof parsed !== "object") return;
-
-    vttState.scene = parsed.scene || "forest_ambush";
-    vttState.customMapUrl = docData.imageUrl || parsed.customMapUrl || "";
-    vttState.fogEnabled = Boolean(parsed.fogEnabled);
-    vttState.fogRects = Array.isArray(parsed.fogRects) ? parsed.fogRects : [];
-    vttState.drawings = Array.isArray(parsed.drawings) ? parsed.drawings : [];
-    vttState.aoes = Array.isArray(parsed.aoes) ? parsed.aoes : [];
-    if (Array.isArray(parsed.tokens)) {
-      vttState.tokens = parsed.tokens;
-    }
-
-    if (parsed.lastPing && parsed.lastPing.createdAt && (Date.now() - parsed.lastPing.createdAt < 4000)) {
-      const exists = vttPings.some((p) => p.createdAt === parsed.lastPing.createdAt);
-      if (!exists) {
-        vttPings.push(parsed.lastPing);
-        startVttPingLoop();
+      // Only apply if remote is newer and not saved by local user
+      if (remote.lastSavedBy && remote.lastSavedBy === (currentUser ? currentUser.uid : "local")) {
+        return;
       }
-    }
-
-    try {
-      localStorage.setItem(OWLBEAR_STATE_PREFIX + vttActiveSyncRoomId, JSON.stringify(vttState));
-    } catch (e) {}
-
-    syncVttUiControlsFromState();
-    renderVttActiveTokensList();
-    updateSelectedTokenPopoverUI();
-    renderOwlbearCanvas();
-  } catch (err) {
-    console.warn("Could not parse remote Owlbear state:", err);
-  }
-}
-
-function saveAndSyncOwlbearState(extraPayload = {}) {
-  const syncRoom = vttActiveSyncRoomId || extractOwlbearRoomId(getStoredOwlbearUrl()) || "OBR-TABLETOP";
-  const now = Date.now();
-  vttLastLocalUpdateTs = now;
-
-  try {
-    localStorage.setItem(OWLBEAR_STATE_PREFIX + syncRoom, JSON.stringify(vttState));
-  } catch (e) {}
-
-  if (!db || !syncRoom) return;
-
-  if (vttSyncDebounceTimer) clearTimeout(vttSyncDebounceTimer);
-  vttSyncDebounceTimer = setTimeout(async () => {
-    try {
-      // Keep token avatars lightweight for 50k content rule
-      const compactTokens = vttState.tokens.map((t) => ({
-        id: t.id,
-        charId: t.charId || "",
-        name: (t.name || "Token").slice(0, 50),
-        icon: t.icon || "⚔️",
-        avatar: (t.avatar && t.avatar.length < 18000) ? t.avatar : "",
-        x: Math.round(t.x * 100) / 100,
-        y: Math.round(t.y * 100) / 100,
-        size: t.size || 1,
-        hpCur: t.hpCur ?? 10,
-        hpMax: t.hpMax ?? 10,
-        ac: t.ac ?? 10,
-        color: t.color || "#d4af37",
-        conditions: Array.isArray(t.conditions) ? t.conditions : []
-      }));
-
-      const payloadObj = {
-        scene: vttState.scene,
-        fogEnabled: Boolean(vttState.fogEnabled),
-        fogRects: (vttState.fogRects || []).slice(-60),
-        drawings: (vttState.drawings || []).slice(-40),
-        aoes: (vttState.aoes || []).slice(-25),
-        tokens: compactTokens,
-        ...extraPayload
-      };
-
-      const contentStr = JSON.stringify(payloadObj);
-      const customImg = (vttState.customMapUrl && vttState.customMapUrl.length <= 480000) ? vttState.customMapUrl : "";
-
-      await db.collection("campaigns").doc(syncRoom).collection("handouts").doc("owlbear_vtt_state").set({
-        id: "owlbear_vtt_state",
-        title: "Owlbear VTT Live State",
-        type: "map",
-        author: document.getElementById("charName")?.value?.trim() || "Adventurer",
-        imageUrl: customImg,
-        content: contentStr.slice(0, 49500),
-        isShared: true,
-        updatedAt: Date.now()
-      });
-    } catch (err) {
-      console.warn("Could not sync Owlbear state to Firestore:", err);
-    }
-  }, 120);
+      if (remote.updatedAt && remote.updatedAt > (activeMapState.updatedAt || 0)) {
+        activeMapState = { ...activeMapState, ...remote };
+        saveMapRoomState(roomId, activeMapState);
+        syncMapUiControlsFromState();
+        resizeAndRenderOwlbearCanvas();
+      }
+    }, err => {
+      // ignore live sync error if unauthenticated
+    });
+  } catch (err) {}
 }
 
 /* --------------------------------------------------------------------------
-   PROCEDURAL FANTASY BATTLEMAP RENDERER + CANVAS ENGINE
+   CANVAS RENDERING & PROCEDURAL BATTLEMAP ENGINE
    -------------------------------------------------------------------------- */
 
-function getVttMapDimensions() {
-  const meta = VTT_SCENE_META[vttState.scene] || VTT_SCENE_META.forest_ambush;
+function getMapWorldDimensions() {
+  const meta = MAP_SCENE_CATALOG[activeMapState?.scene] || MAP_SCENE_CATALOG.forest_ambush;
+  const cols = activeMapState?.gridCols || meta.cols;
+  const rows = activeMapState?.gridRows || meta.rows;
   return {
-    cols: meta.cols,
-    rows: meta.rows,
-    width: meta.cols * vttCamera.gridSize,
-    height: meta.rows * vttCamera.gridSize
+    cols: cols,
+    rows: rows,
+    width: cols * mapCamera.gridSize,
+    height: rows * mapCamera.gridSize
   };
 }
 
-function resetVttCameraToFit() {
+function resetMapCameraToFit() {
   const canvas = document.getElementById("owlbearMapCanvas");
   if (!canvas) return;
   const parent = canvas.parentElement || canvas;
   const rect = parent.getBoundingClientRect();
   if (!rect.width || !rect.height) return;
 
-  const dims = getVttMapDimensions();
-  const drawerOpen = document.getElementById("vttRightDrawer")?.classList.contains("open");
-  const rightInset = drawerOpen ? 280 : 30;
-  const availW = Math.max(300, rect.width - rightInset - 50);
-  const availH = Math.max(300, rect.height - 40);
-  const scaleX = availW / dims.width;
-  const scaleY = availH / dims.height;
-  vttCamera.zoom = Math.min(1.25, Math.max(0.45, Math.min(scaleX, scaleY) * 0.94));
-  vttCamera.x = Math.max(54, (availW - dims.width * vttCamera.zoom) / 2 + 48);
-  vttCamera.y = Math.max(16, (availH - dims.height * vttCamera.zoom) / 2 + 12);
-  vttCameraInitialized = true;
-  updateVttZoomLabel();
+  const world = getMapWorldDimensions();
+  const padX = 60;
+  const padY = 60;
+  const fitZoomX = (rect.width - padX * 2) / world.width;
+  const fitZoomY = (rect.height - padY * 2) / world.height;
+  const fitZoom = Math.min(fitZoomX, fitZoomY, 1.35);
+
+  mapCamera.zoom = Math.max(0.3, Math.min(3.0, fitZoom));
+  mapCamera.x = (rect.width - world.width * mapCamera.zoom) / 2;
+  mapCamera.y = (rect.height - world.height * mapCamera.zoom) / 2;
+  mapCameraInitialized = true;
+  updateMapZoomReadout();
 }
 
-function updateVttZoomLabel() {
+function updateMapZoomReadout() {
   const lbl = document.getElementById("vttZoomLabel");
-  if (lbl) lbl.textContent = `${Math.round(vttCamera.zoom * 100)}%`;
-}
-
-function screenToWorld(sx, sy) {
-  return {
-    x: (sx - vttCamera.x) / vttCamera.zoom,
-    y: (sy - vttCamera.y) / vttCamera.zoom
-  };
-}
-
-function screenToGrid(sx, sy) {
-  const w = screenToWorld(sx, sy);
-  return {
-    gx: w.x / vttCamera.gridSize,
-    gy: w.y / vttCamera.gridSize
-  };
-}
-
-function getCachedVttImage(url) {
-  if (!url) return null;
-  if (vttImageCache[url]) {
-    return vttImageCache[url].loaded ? vttImageCache[url].img : null;
-  }
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  vttImageCache[url] = { img, loaded: false };
-  img.onload = () => {
-    vttImageCache[url].loaded = true;
-    renderOwlbearCanvas();
-  };
-  img.src = url;
-  return null;
-}
-
-function drawProceduralBattlemap(ctx, scene, cols, rows, gs) {
-  const W = cols * gs;
-  const H = rows * gs;
-
-  if (vttState.customMapUrl) {
-    const customImg = getCachedVttImage(vttState.customMapUrl);
-    if (customImg) {
-      ctx.drawImage(customImg, 0, 0, W, H);
-      return;
-    }
-  }
-
-  if (scene === "forest_ambush") {
-    // Rich woodland grass
-    const grad = ctx.createLinearGradient(0, 0, W, H);
-    grad.addColorStop(0, "#192f1e");
-    grad.addColorStop(0.5, "#213c26");
-    grad.addColorStop(1, "#16291a");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
-
-    // Winding dirt road (horizontal)
-    ctx.fillStyle = "#5c4632";
-    ctx.beginPath();
-    ctx.moveTo(0, 7.5 * gs);
-    ctx.bezierCurveTo(8 * gs, 6.5 * gs, 16 * gs, 9.5 * gs, W, 8 * gs);
-    ctx.lineTo(W, 10.5 * gs);
-    ctx.bezierCurveTo(16 * gs, 12 * gs, 8 * gs, 9 * gs, 0, 10 * gs);
-    ctx.closePath();
-    ctx.fill();
-
-    // River cutting north-south
-    ctx.fillStyle = "#1d4ed8";
-    ctx.globalAlpha = 0.78;
-    ctx.beginPath();
-    ctx.moveTo(17 * gs, 0);
-    ctx.bezierCurveTo(15.5 * gs, 6 * gs, 18.5 * gs, 12 * gs, 16.5 * gs, H);
-    ctx.lineTo(19 * gs, H);
-    ctx.bezierCurveTo(21 * gs, 12 * gs, 18 * gs, 6 * gs, 19.5 * gs, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    // Wooden Bridge at intersection
-    ctx.fillStyle = "#784f2b";
-    ctx.strokeStyle = "#3e2723";
-    ctx.lineWidth = 3;
-    ctx.fillRect(16.2 * gs, 8.1 * gs, 3.6 * gs, 2.4 * gs);
-    ctx.strokeRect(16.2 * gs, 8.1 * gs, 3.6 * gs, 2.4 * gs);
-    for (let bx = 16.5; bx < 19.6; bx += 0.45) {
-      ctx.beginPath();
-      ctx.moveTo(bx * gs, 8.1 * gs);
-      ctx.lineTo(bx * gs, 10.5 * gs);
-      ctx.stroke();
-    }
-
-    // Boulders
-    const rocks = [[6, 5, 0.9], [11, 12, 1.1], [22, 6, 1.0], [14, 4, 0.7], [8, 13, 0.8]];
-    ctx.fillStyle = "#475569";
-    ctx.strokeStyle = "#1e293b";
-    rocks.forEach(([rx, ry, r]) => {
-      ctx.beginPath();
-      ctx.arc(rx * gs, ry * gs, r * gs, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    });
-
-    // Tree canopies
-    const trees = [
-      [3, 3, 1.6], [7, 2.5, 1.4], [12, 2.2, 1.5], [22, 3, 1.7], [24, 5, 1.3],
-      [2.5, 14, 1.6], [6, 15.5, 1.5], [13, 15, 1.4], [22, 14.5, 1.7], [24.5, 12.5, 1.3]
-    ];
-    trees.forEach(([tx, ty, tr]) => {
-      ctx.fillStyle = "rgba(10, 22, 12, 0.55)";
-      ctx.beginPath();
-      ctx.arc(tx * gs + 6, ty * gs + 6, tr * gs, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#15803d";
-      ctx.strokeStyle = "#052e16";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(tx * gs, ty * gs, tr * gs, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#22c55e";
-      ctx.globalAlpha = 0.25;
-      ctx.beginPath();
-      ctx.arc((tx - 0.3) * gs, (ty - 0.3) * gs, tr * 0.55 * gs, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    });
-  } else if (scene === "dungeon_crypt") {
-    // Stone Dungeon
-    ctx.fillStyle = "#11131a";
-    ctx.fillRect(0, 0, W, H);
-
-    // Carved stone rooms
-    ctx.fillStyle = "#262936";
-    ctx.strokeStyle = "#475569";
-    ctx.lineWidth = 4;
-    // West Entry Hall
-    ctx.fillRect(2 * gs, 6 * gs, 6 * gs, 6 * gs);
-    ctx.strokeRect(2 * gs, 6 * gs, 6 * gs, 6 * gs);
-    // Corridor
-    ctx.fillRect(8 * gs, 8 * gs, 3 * gs, 2 * gs);
-    // Grand Crypt Chamber
-    ctx.fillRect(11 * gs, 2 * gs, 13 * gs, 14 * gs);
-    ctx.strokeRect(11 * gs, 2 * gs, 13 * gs, 14 * gs);
-
-    // Glowing Arcane Ritual Circle in Crypt center
-    const cx = 17.5 * gs;
-    const cy = 9 * gs;
-    const rGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, 3 * gs);
-    rGrad.addColorStop(0, "rgba(212, 175, 55, 0.32)");
-    rGrad.addColorStop(0.6, "rgba(168, 85, 247, 0.18)");
-    rGrad.addColorStop(1, "transparent");
-    ctx.fillStyle = rGrad;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 3 * gs, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "rgba(212, 175, 55, 0.65)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 2.2 * gs, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx, cy, 1.6 * gs, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Stone Pillars
-    const pillars = [[13, 4], [22, 4], [13, 14], [22, 14], [16, 4], [19, 4], [16, 14], [19, 14]];
-    pillars.forEach(([px, py]) => {
-      ctx.fillStyle = "#475569";
-      ctx.strokeStyle = "#0f172a";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(px * gs, py * gs, 0.45 * gs, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    });
-
-    // Sarcophagi / Altar
-    ctx.fillStyle = "#334155";
-    ctx.strokeStyle = "#d4af37";
-    ctx.lineWidth = 2;
-    ctx.fillRect(21 * gs, 8 * gs, 2 * gs, 2 * gs);
-    ctx.strokeRect(21 * gs, 8 * gs, 2 * gs, 2 * gs);
-  } else if (scene === "tavern_inn") {
-    ctx.fillStyle = "#3b2314";
-    ctx.fillRect(0, 0, W, H);
-
-    // Wood plank lines
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.28)";
-    ctx.lineWidth = 1;
-    for (let y = 0; y < H; y += gs * 0.5) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(W, y);
-      ctx.stroke();
-    }
-
-    // Outer stone walls
-    ctx.strokeStyle = "#78553a";
-    ctx.lineWidth = 8;
-    ctx.strokeRect(gs, gs, W - 2 * gs, H - 2 * gs);
-
-    // Hearth Fireplace (North wall)
-    ctx.fillStyle = "#475569";
-    ctx.fillRect(10 * gs, gs, 4 * gs, 1.2 * gs);
-    const fireGrad = ctx.createRadialGradient(12 * gs, 2 * gs, 4, 12 * gs, 2.5 * gs, 3.5 * gs);
-    fireGrad.addColorStop(0, "rgba(251, 146, 60, 0.65)");
-    fireGrad.addColorStop(1, "transparent");
-    ctx.fillStyle = fireGrad;
-    ctx.beginPath();
-    ctx.arc(12 * gs, 2.5 * gs, 3.5 * gs, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Bar Counter
-    ctx.fillStyle = "#5c341d";
-    ctx.strokeStyle = "#271409";
-    ctx.lineWidth = 3;
-    ctx.fillRect(17 * gs, 3 * gs, 4 * gs, 1.2 * gs);
-    ctx.strokeRect(17 * gs, 3 * gs, 4 * gs, 1.2 * gs);
-    ctx.fillRect(17 * gs, 3 * gs, 1.2 * gs, 5 * gs);
-    ctx.strokeRect(17 * gs, 3 * gs, 1.2 * gs, 5 * gs);
-
-    // Banquet Tables
-    const tables = [[4, 5, 3, 2], [4, 10, 3, 2], [10, 6, 4, 2], [10, 11, 4, 2], [17, 10, 3, 2]];
-    ctx.fillStyle = "#6e4226";
-    tables.forEach(([tx, ty, tw, th]) => {
-      ctx.fillRect(tx * gs, ty * gs, tw * gs, th * gs);
-      ctx.strokeRect(tx * gs, ty * gs, tw * gs, th * gs);
-    });
-  } else if (scene === "magma_cavern") {
-    // Lava background
-    const lavaGrad = ctx.createRadialGradient(W / 2, H / 2, gs, W / 2, H / 2, W * 0.7);
-    lavaGrad.addColorStop(0, "#ea580c");
-    lavaGrad.addColorStop(0.5, "#b91c1c");
-    lavaGrad.addColorStop(1, "#450a0a");
-    ctx.fillStyle = lavaGrad;
-    ctx.fillRect(0, 0, W, H);
-
-    // Obsidian islands
-    ctx.fillStyle = "#1e1b24";
-    ctx.strokeStyle = "#f97316";
-    ctx.lineWidth = 3;
-
-    // West Island
-    ctx.beginPath();
-    ctx.ellipse(6 * gs, 9 * gs, 4.5 * gs, 5 * gs, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Bridge
-    ctx.fillRect(10 * gs, 8 * gs, 5 * gs, 2 * gs);
-
-    // East Dragon Lair Island
-    ctx.beginPath();
-    ctx.ellipse(20 * gs, 9 * gs, 6 * gs, 6.5 * gs, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Gold Hoard Pile
-    const goldGrad = ctx.createRadialGradient(22 * gs, 9 * gs, 4, 22 * gs, 9 * gs, 2.5 * gs);
-    goldGrad.addColorStop(0, "rgba(250, 204, 21, 0.85)");
-    goldGrad.addColorStop(0.7, "rgba(202, 138, 4, 0.45)");
-    goldGrad.addColorStop(1, "transparent");
-    ctx.fillStyle = goldGrad;
-    ctx.beginPath();
-    ctx.arc(22 * gs, 9 * gs, 2.5 * gs, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (scene === "arcane_sanctum") {
-    ctx.fillStyle = "#070512";
-    ctx.fillRect(0, 0, W, H);
-
-    const cx = W / 2;
-    const cy = H / 2;
-    const platGrad = ctx.createRadialGradient(cx, cy, gs, cx, cy, 7.5 * gs);
-    platGrad.addColorStop(0, "#1e1b4b");
-    platGrad.addColorStop(0.8, "#0f172a");
-    platGrad.addColorStop(1, "#070512");
-    ctx.fillStyle = platGrad;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 7.5 * gs, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.5)";
-    ctx.lineWidth = 3;
-    [7.2, 5.2, 3.0, 1.2].forEach((r) => {
-      ctx.beginPath();
-      ctx.arc(cx, cy, r * gs, 0, Math.PI * 2);
-      ctx.stroke();
-    });
-  } else if (scene === "pirate_galleon") {
-    // Ocean
-    ctx.fillStyle = "#0c2d48";
-    ctx.fillRect(0, 0, W, H);
-
-    // Ship Hull
-    ctx.fillStyle = "#5c3a21";
-    ctx.strokeStyle = "#2b180a";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(4 * gs, 9 * gs);
-    ctx.quadraticCurveTo(8 * gs, 4.5 * gs, 22 * gs, 5 * gs);
-    ctx.lineTo(24 * gs, 9 * gs);
-    ctx.lineTo(22 * gs, 13 * gs);
-    ctx.quadraticCurveTo(8 * gs, 13.5 * gs, 4 * gs, 9 * gs);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // 3 Masts
-    ctx.fillStyle = "#3e2723";
-    [9, 14, 19].forEach((mx) => {
-      ctx.beginPath();
-      ctx.arc(mx * gs, 9 * gs, 0.55 * gs, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    });
-  } else {
-    // Parchment Mat
-    ctx.fillStyle = "#d9c5a0";
-    ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = "#8c6d46";
-    ctx.lineWidth = 4;
-    ctx.strokeRect(4, 4, W - 8, H - 8);
+  if (lbl) lbl.textContent = Math.round(mapCamera.zoom * 100) + "%";
+  const scale = document.getElementById("vttScaleReadout");
+  if (scale && activeMapState) {
+    scale.textContent = `1 sq = ${activeMapState.gridScale || 5}${activeMapState.gridUnit || "ft"}`;
   }
 }
 
@@ -11183,16 +10934,17 @@ function resizeAndRenderOwlbearCanvas() {
   if (!parent) return;
 
   const rect = parent.getBoundingClientRect();
-  if (rect.width <= 0 || rect.height <= 0) return;
+  if (rect.width === 0 || rect.height === 0) return;
 
   const dpr = window.devicePixelRatio || 1;
-  if (canvas.width !== Math.floor(rect.width * dpr) || canvas.height !== Math.floor(rect.height * dpr)) {
-    canvas.width = Math.floor(rect.width * dpr);
-    canvas.height = Math.floor(rect.height * dpr);
-  }
+  const targetW = Math.round(rect.width * dpr);
+  const targetH = Math.round(rect.height * dpr);
 
-  if (!vttCameraInitialized) {
-    resetVttCameraToFit();
+  if (canvas.width !== targetW || canvas.height !== targetH) {
+    canvas.width = targetW;
+    canvas.height = targetH;
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
   }
 
   renderOwlbearCanvas();
@@ -11205,2181 +10957,2542 @@ function renderOwlbearCanvas() {
   if (!ctx) return;
 
   const dpr = window.devicePixelRatio || 1;
-  const viewW = canvas.width / dpr;
-  const viewH = canvas.height / dpr;
+  const W = canvas.width / dpr;
+  const H = canvas.height / dpr;
 
   ctx.save();
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
 
-  // Outer Tabletop Void Background (Owlbear dark slate with subtle dots)
-  ctx.fillStyle = "#090710";
-  ctx.fillRect(0, 0, viewW, viewH);
+  // Background void
+  ctx.fillStyle = "#090d16";
+  ctx.fillRect(0, 0, W, H);
 
-  // Apply Camera Pan & Zoom
-  ctx.translate(vttCamera.x, vttCamera.y);
-  ctx.scale(vttCamera.zoom, vttCamera.zoom);
+  if (!activeMapState) {
+    ctx.restore();
+    return;
+  }
 
-  const dims = getVttMapDimensions();
-  const gs = vttCamera.gridSize;
+  const world = getMapWorldDimensions();
 
-  // Map Drop Shadow
-  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-  ctx.fillRect(8, 10, dims.width, dims.height);
-
-  // 1. Draw Battlemap Scene
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, dims.width, dims.height);
-  ctx.clip();
-  drawProceduralBattlemap(ctx, vttState.scene, dims.cols, dims.rows, gs);
+  ctx.translate(mapCamera.x, mapCamera.y);
+  ctx.scale(mapCamera.zoom, mapCamera.zoom);
 
-  // 2. Draw Tactical Grid Overlay
-  if (vttShowGrid) {
-    const isParchment = vttState.scene === "parchment_mat";
-    ctx.strokeStyle = isParchment ? "rgba(70, 45, 20, 0.28)" : "rgba(255, 255, 255, 0.14)";
-    ctx.lineWidth = 1 / vttCamera.zoom;
+  // 1. Scene Background
+  drawMapSceneBackground(ctx, activeMapState, world.width, world.height);
 
+  // 2. Grid lines
+  if (mapShowGrid) {
+    drawMapGrid(ctx, activeMapState, world);
+  }
+
+  // 3. Drawings & Shapes
+  drawMapDrawings(ctx, activeMapState);
+
+  // 4. Tokens
+  drawMapTokens(ctx, activeMapState);
+
+  // 5. Sticky Notes
+  drawMapNotes(ctx, activeMapState);
+
+  // 6. Fog of War
+  if (activeMapState.fogEnabled) {
+    drawMapFog(ctx, activeMapState, world.width, world.height);
+  }
+
+  // 7. Measurement Ruler
+  if (mapActiveMeasure) {
+    drawMapMeasureRuler(ctx, activeMapState, mapActiveMeasure);
+  }
+
+  // 8. Laser Pointer Pings
+  drawMapPings(ctx);
+
+  ctx.restore();
+  ctx.restore();
+}
+
+/* --------------------------------------------------------------------------
+   PROCEDURAL BATTLEMAP BACKGROUNDS
+   -------------------------------------------------------------------------- */
+
+function drawMapSceneBackground(ctx, state, width, height) {
+  // If custom map image is provided
+  if (state.customMapUrl) {
+    const cached = mapImageCache[state.customMapUrl];
+    if (cached && cached.complete && cached.naturalWidth > 0) {
+      ctx.drawImage(cached, 0, 0, width, height);
+      return;
+    } else if (!cached) {
+      const img = new Image();
+      img.onload = () => resizeAndRenderOwlbearCanvas();
+      img.src = state.customMapUrl;
+      mapImageCache[state.customMapUrl] = img;
+    }
+  }
+
+  const scene = state.scene || "forest_ambush";
+
+  if (scene === "forest_ambush") {
+    // Lush Woodland with River & Dirt Trail
+    ctx.fillStyle = "#1b3320";
+    ctx.fillRect(0, 0, width, height);
+
+    // River
     ctx.beginPath();
-    for (let c = 0; c <= dims.cols; c++) {
-      ctx.moveTo(c * gs, 0);
-      ctx.lineTo(c * gs, dims.height);
-    }
-    for (let r = 0; r <= dims.rows; r++) {
-      ctx.moveTo(0, r * gs);
-      ctx.lineTo(dims.width, r * gs);
-    }
+    ctx.moveTo(width * 0.7, 0);
+    ctx.bezierCurveTo(width * 0.65, height * 0.35, width * 0.8, height * 0.65, width * 0.72, height);
+    ctx.lineWidth = width * 0.16;
+    ctx.strokeStyle = "#1e3a5f";
     ctx.stroke();
-  }
 
-  // 3. Draw Spell AoE Templates
-  const allAoes = [...(vttState.aoes || [])];
-  if (vttActiveAoeDraft) allAoes.push(vttActiveAoeDraft);
-  allAoes.forEach((aoe) => drawVttAoeTemplate(ctx, aoe, gs));
+    ctx.lineWidth = width * 0.12;
+    ctx.strokeStyle = "#2563eb";
+    ctx.stroke();
 
-  // 4. Draw Freehand Ink Strokes
-  const allDrawings = [...(vttState.drawings || [])];
-  if (vttActiveDrawStroke) allDrawings.push(vttActiveDrawStroke);
-  allDrawings.forEach((stroke) => {
-    if (!stroke.points || stroke.points.length < 2) return;
-    ctx.strokeStyle = stroke.color || "#d4af37";
-    ctx.lineWidth = 3.5;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
+    // Dirt Road
     ctx.beginPath();
-    ctx.moveTo(stroke.points[0].x * gs, stroke.points[0].y * gs);
-    for (let i = 1; i < stroke.points.length; i++) {
-      ctx.lineTo(stroke.points[i].x * gs, stroke.points[i].y * gs);
-    }
+    ctx.moveTo(0, height * 0.45);
+    ctx.bezierCurveTo(width * 0.35, height * 0.48, width * 0.6, height * 0.52, width, height * 0.5);
+    ctx.lineWidth = 64;
+    ctx.strokeStyle = "#57422f";
     ctx.stroke();
-  });
+    ctx.lineWidth = 48;
+    ctx.strokeStyle = "#85583b";
+    ctx.stroke();
 
-  // 5. Draw Tokens
-  (vttState.tokens || []).forEach((tok) => {
-    drawVttToken(ctx, tok, gs);
-  });
+    // Wooden Bridge over river
+    ctx.fillStyle = "#452d1a";
+    ctx.fillRect(width * 0.68, height * 0.44, 48, 80);
+    ctx.fillStyle = "#6d4627";
+    ctx.fillRect(width * 0.69, height * 0.45, 46, 78);
 
-  // 6. Draw Fog of War
-  if (vttState.fogEnabled) {
-    drawVttFogOfWar(ctx, dims.width, dims.height, gs);
-  }
-  if (vttActiveFogRect) {
-    ctx.strokeStyle = vttFogBrushMode === "reveal" ? "#4ade80" : "#f87171";
-    ctx.lineWidth = 2 / vttCamera.zoom;
-    ctx.setLineDash([6, 4]);
-    const rx = Math.min(vttActiveFogRect.x1, vttActiveFogRect.x2) * gs;
-    const ry = Math.min(vttActiveFogRect.y1, vttActiveFogRect.y2) * gs;
-    const rw = Math.abs(vttActiveFogRect.x2 - vttActiveFogRect.x1) * gs;
-    const rh = Math.abs(vttActiveFogRect.y2 - vttActiveFogRect.y1) * gs;
-    ctx.strokeRect(rx, ry, rw, rh);
-    ctx.setLineDash([]);
-  }
+    // Natural Boulders
+    ctx.fillStyle = "#4b5563";
+    ctx.beginPath();
+    ctx.ellipse(width * 0.28, height * 0.28, 30, 22, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(width * 0.42, height * 0.72, 38, 28, -0.3, 0, Math.PI * 2);
+    ctx.fill();
 
-  // 7. Draw Active Ruler Measurement
-  if (vttActiveMeasure) {
-    drawVttRuler(ctx, vttActiveMeasure, gs);
-  }
+  } else if (scene === "dungeon_crypt") {
+    // Flagstone Stone Dungeon Floor
+    ctx.fillStyle = "#1e2229";
+    ctx.fillRect(0, 0, width, height);
 
-  // 8. Draw Animated Pings
-  const now = Date.now();
-  vttPings = vttPings.filter((p) => now - p.createdAt < 2800);
-  vttPings.forEach((p) => {
-    const age = (now - p.createdAt) / 2800;
-    const px = p.x * gs;
-    const py = p.y * gs;
-    for (let ring = 0; ring < 3; ring++) {
-      const rAge = (age * 2 + ring * 0.33) % 1;
-      ctx.strokeStyle = p.color || "#d4af37";
-      ctx.globalAlpha = (1 - rAge) * 0.85;
-      ctx.lineWidth = 3 / vttCamera.zoom;
+    // Stone tile slabs
+    ctx.strokeStyle = "#11141a";
+    ctx.lineWidth = 2;
+    const g = mapCamera.gridSize;
+    for (let x = 0; x < width; x += g * 2) {
+      for (let y = 0; y < height; y += g * 2) {
+        ctx.strokeRect(x + 2, y + 2, g * 2 - 4, g * 2 - 4);
+      }
+    }
+
+    // Carved stone pillars
+    const pillars = [
+      { x: width * 0.25, y: height * 0.3 },
+      { x: width * 0.75, y: height * 0.3 },
+      { x: width * 0.25, y: height * 0.7 },
+      { x: width * 0.75, y: height * 0.7 }
+    ];
+    pillars.forEach(p => {
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
       ctx.beginPath();
-      ctx.arc(px, py, rAge * gs * 2.2, 0, Math.PI * 2);
+      ctx.arc(p.x + 4, p.y + 6, 26, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#334155";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 24, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#475569";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    });
+
+    // Ritual Rune Circle in center
+    ctx.save();
+    ctx.strokeStyle = "rgba(168, 85, 247, 0.35)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(width / 2, height / 2, 70, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(width / 2, height / 2, 45, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+  } else if (scene === "grassland") {
+    // Wilderness Grassland
+    ctx.fillStyle = "#274e13";
+    ctx.fillRect(0, 0, width, height);
+
+    // Subtle natural grass patches
+    ctx.fillStyle = "rgba(56, 142, 60, 0.18)";
+    for (let i = 0; i < 40; i++) {
+      const rx = (Math.sin(i * 12.3) * 0.5 + 0.5) * width;
+      const ry = (Math.cos(i * 17.7) * 0.5 + 0.5) * height;
+      ctx.beginPath();
+      ctx.arc(rx, ry, 25, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+  } else if (scene === "tavern_inn") {
+    // Warm Oak Tavern Wood Floor
+    ctx.fillStyle = "#3d2817";
+    ctx.fillRect(0, 0, width, height);
+
+    // Wood planks
+    ctx.strokeStyle = "#291a0e";
+    ctx.lineWidth = 2;
+    const plankH = 24;
+    for (let y = 0; y < height; y += plankH) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
       ctx.stroke();
     }
-    ctx.globalAlpha = 1;
-  });
 
-  ctx.restore();
+    // Bar Counter
+    ctx.fillStyle = "#5c3d22";
+    ctx.fillRect(40, 40, width - 80, 45);
+    ctx.fillStyle = "#784f2c";
+    ctx.fillRect(42, 42, width - 84, 41);
 
-  // Map Border Frame
-  ctx.strokeStyle = "rgba(212, 175, 55, 0.45)";
-  ctx.lineWidth = 2 / vttCamera.zoom;
-  ctx.strokeRect(0, 0, dims.width, dims.height);
+    // Tavern Tables
+    const tables = [
+      { x: width * 0.3, y: height * 0.45, w: 90, h: 60 },
+      { x: width * 0.7, y: height * 0.45, w: 90, h: 60 },
+      { x: width * 0.5, y: height * 0.75, w: 120, h: 70 }
+    ];
+    tables.forEach(t => {
+      ctx.fillStyle = "rgba(0,0,0,0.3)";
+      ctx.fillRect(t.x - t.w / 2 + 4, t.y - t.h / 2 + 4, t.w, t.h);
+      ctx.fillStyle = "#4a2e18";
+      ctx.fillRect(t.x - t.w / 2, t.y - t.h / 2, t.w, t.h);
+      ctx.strokeStyle = "#6b4424";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(t.x - t.w / 2, t.y - t.h / 2, t.w, t.h);
+    });
 
-  ctx.restore();
-}
+  } else if (scene === "magma_cavern") {
+    // Volcanic Magma Lair
+    ctx.fillStyle = "#140b08";
+    ctx.fillRect(0, 0, width, height);
 
-function drawVttAoeTemplate(ctx, aoe, gs) {
-  const x1 = aoe.x1 * gs;
-  const y1 = aoe.y1 * gs;
-  const x2 = aoe.x2 * gs;
-  const y2 = aoe.y2 * gs;
-  const color = aoe.color || "#f97316";
-
-  ctx.save();
-  ctx.fillStyle = color;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2.5;
-
-  if (aoe.shape.startsWith("sphere_")) {
-    const feet = parseInt(aoe.shape.split("_")[1], 10) || 20;
-    const radiusSq = feet / 5;
-    const r = radiusSq * gs;
-    ctx.globalAlpha = 0.24;
+    // Molten Lava Channels
+    ctx.strokeStyle = "#ea580c";
+    ctx.lineWidth = 70;
     ctx.beginPath();
-    ctx.arc(x1, y1, r, 0, Math.PI * 2);
+    ctx.moveTo(0, height * 0.3);
+    ctx.bezierCurveTo(width * 0.4, height * 0.2, width * 0.6, height * 0.8, width, height * 0.7);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#facc15";
+    ctx.lineWidth = 40;
+    ctx.stroke();
+
+    // Basalt Islands
+    ctx.fillStyle = "#271d1a";
+    ctx.beginPath();
+    ctx.ellipse(width * 0.3, height * 0.65, 90, 70, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 0.85;
-    ctx.stroke();
-    drawCanvasBadge(ctx, x1, y1, `${feet}ft Sphere`);
-  } else if (aoe.shape.startsWith("cube_")) {
-    const feet = parseInt(aoe.shape.split("_")[1], 10) || 15;
-    const side = (feet / 5) * gs;
-    ctx.globalAlpha = 0.24;
-    ctx.fillRect(x1 - side / 2, y1 - side / 2, side, side);
-    ctx.globalAlpha = 0.85;
-    ctx.strokeRect(x1 - side / 2, y1 - side / 2, side, side);
-    drawCanvasBadge(ctx, x1, y1, `${feet}ft Cube`);
-  } else if (aoe.shape.startsWith("cone_")) {
-    const feet = parseInt(aoe.shape.split("_")[1], 10) || 15;
-    const len = (feet / 5) * gs;
-    const angle = Math.atan2(y2 - y1, x2 - x1);
-    const halfSpread = Math.atan(0.5); // 5e 53-degree cone (width = distance)
     ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.arc(x1, y1, len, angle - halfSpread, angle + halfSpread);
-    ctx.closePath();
-    ctx.globalAlpha = 0.26;
+    ctx.ellipse(width * 0.7, height * 0.35, 80, 60, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 0.9;
-    ctx.stroke();
-    drawCanvasBadge(ctx, x1 + Math.cos(angle) * len * 0.6, y1 + Math.sin(angle) * len * 0.6, `${feet}ft Cone`);
-  } else if (aoe.shape.startsWith("line_")) {
-    const feet = parseInt(aoe.shape.split("_")[1], 10) || 30;
-    const len = (feet / 5) * gs;
-    const angle = Math.atan2(y2 - y1, x2 - x1);
-    ctx.translate(x1, y1);
-    ctx.rotate(angle);
-    ctx.globalAlpha = 0.26;
-    ctx.fillRect(0, -gs / 2, len, gs);
-    ctx.globalAlpha = 0.9;
-    ctx.strokeRect(0, -gs / 2, len, gs);
-  }
-  ctx.restore();
-}
 
-function drawVttToken(ctx, tok, gs) {
-  const sizeSq = parseFloat(tok.size) || 1;
-  const diameter = sizeSq * gs;
-  const radius = diameter * 0.44;
-  const cx = (tok.x + sizeSq / 2) * gs;
-  const cy = (tok.y + sizeSq / 2) * gs;
-  const isSelected = tok.id === vttSelectedTokenId;
-  const conds = Array.isArray(tok.conditions) ? tok.conditions : [];
+  } else if (scene === "arcane_sanctum") {
+    // Astral Void & Arcane Pentagram
+    ctx.fillStyle = "#090918";
+    ctx.fillRect(0, 0, width, height);
 
-  ctx.save();
-  if (conds.includes("hidden")) {
-    ctx.globalAlpha = 0.48;
-  }
+    // Stars
+    ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+    for (let i = 0; i < 70; i++) {
+      const sx = (Math.sin(i * 31.4) * 0.5 + 0.5) * width;
+      const sy = (Math.cos(i * 47.9) * 0.5 + 0.5) * height;
+      ctx.fillRect(sx, sy, 2, 2);
+    }
 
-  // Selection Halo
-  if (isSelected) {
-    ctx.strokeStyle = "#4ade80";
-    ctx.lineWidth = 3.5;
-    ctx.setLineDash([5, 3]);
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  // Drop Shadow
-  ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-  ctx.beginPath();
-  ctx.arc(cx + 2, cy + 3, radius, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Token Base Circle Fill
-  ctx.fillStyle = "#181326";
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Avatar or Icon
-  const avatarImg = tok.avatar ? getCachedVttImage(tok.avatar) : null;
-  if (avatarImg) {
+    // Magic Circle
     ctx.save();
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = "#38bdf8";
+    ctx.shadowBlur = 12;
     ctx.beginPath();
-    ctx.arc(cx, cy, radius - 3, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(avatarImg, cx - radius, cy - radius, radius * 2, radius * 2);
+    ctx.arc(width / 2, height / 2, 100, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(width / 2, height / 2, 75, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.restore();
-  } else {
-    ctx.font = `${Math.round(radius * 1.05)}px sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(tok.icon || "⚔️", cx, cy + 1);
-  }
 
-  // Colored Metallic Ring
-  ctx.strokeStyle = tok.color || "#d4af37";
-  ctx.lineWidth = Math.max(3, radius * 0.14);
+  } else if (scene === "pirate_galleon") {
+    // Ship Deck and Ocean
+    ctx.fillStyle = "#0c4a6e";
+    ctx.fillRect(0, 0, width, height);
+
+    // Galleon Hull Deck
+    ctx.save();
+    ctx.fillStyle = "#451a03";
+    ctx.beginPath();
+    ctx.roundRect(width * 0.12, height * 0.15, width * 0.76, height * 0.7, 40);
+    ctx.fill();
+    ctx.fillStyle = "#78350f";
+    ctx.beginPath();
+    ctx.roundRect(width * 0.14, height * 0.17, width * 0.72, height * 0.66, 30);
+    ctx.fill();
+
+    // Masts
+    ctx.fillStyle = "#292524";
+    ctx.beginPath();
+    ctx.arc(width * 0.32, height / 2, 16, 0, Math.PI * 2);
+    ctx.arc(width * 0.68, height / 2, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+  } else if (scene === "parchment_mat") {
+    // Classic Parchment Battlemat
+    ctx.fillStyle = "#e2d2b5";
+    ctx.fillRect(0, 0, width, height);
+
+    // Subtle edge vignette
+    const vig = ctx.createRadialGradient(width / 2, height / 2, width * 0.2, width / 2, height / 2, width * 0.7);
+    vig.addColorStop(0, "rgba(0,0,0,0)");
+    vig.addColorStop(1, "rgba(80, 50, 20, 0.25)");
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, width, height);
+
+  } else {
+    // Dark Slate Minimalist
+    ctx.fillStyle = "#111827";
+    ctx.fillRect(0, 0, width, height);
+  }
+}
+
+function drawMapGrid(ctx, state, world) {
+  const g = mapCamera.gridSize;
+  const cols = world.cols;
+  const rows = world.rows;
+
+  let strokeColor = "rgba(212, 175, 55, 0.22)";
+  if (state.gridColor === "white") strokeColor = "rgba(255, 255, 255, 0.2)";
+  else if (state.gridColor === "dark") strokeColor = "rgba(0, 0, 0, 0.35)";
+
+  ctx.save();
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 1;
+
   ctx.beginPath();
-  ctx.arc(cx, cy, radius - 1.5, 0, Math.PI * 2);
+  // Vertical lines
+  for (let c = 0; c <= cols; c++) {
+    const x = c * g;
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, world.height);
+  }
+  // Horizontal lines
+  for (let r = 0; r <= rows; r++) {
+    const y = r * g;
+    ctx.moveTo(0, y);
+    ctx.lineTo(world.width, y);
+  }
   ctx.stroke();
 
-  // Dead overlay
-  if (conds.includes("dead") || (tok.hpMax > 0 && tok.hpCur <= 0)) {
-    ctx.strokeStyle = "#ef4444";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(cx - radius * 0.6, cy - radius * 0.6);
-    ctx.lineTo(cx + radius * 0.6, cy + radius * 0.6);
-    ctx.moveTo(cx + radius * 0.6, cy - radius * 0.6);
-    ctx.lineTo(cx - radius * 0.6, cy + radius * 0.6);
-    ctx.stroke();
-  }
+  // Outer border
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(212, 175, 55, 0.5)";
+  ctx.strokeRect(0, 0, world.width, world.height);
+  ctx.restore();
+}
 
-  // Condition Badges around top-right of token
-  const condEmojiMap = {
-    bloodied: "🩸",
-    poisoned: "☠️",
-    concentrating: "💠",
-    hexed: "🔮",
-    blessed: "✨",
-    prone: "⛓️",
-    hidden: "👁️"
+/* --------------------------------------------------------------------------
+   DRAWINGS & SHAPES LAYER
+   -------------------------------------------------------------------------- */
+
+function drawMapDrawings(ctx, state) {
+  const drawings = state.drawings || [];
+  drawings.forEach(d => {
+    ctx.save();
+    ctx.strokeStyle = d.color || "#d4af37";
+    ctx.fillStyle = d.color || "#d4af37";
+    ctx.lineWidth = d.width || 4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    if (d.type === "brush" && Array.isArray(d.points) && d.points.length > 0) {
+      ctx.beginPath();
+      d.points.forEach((pt, i) => {
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.stroke();
+
+    } else if (d.type === "line" && d.p1 && d.p2) {
+      ctx.beginPath();
+      ctx.moveTo(d.p1.x, d.p1.y);
+      ctx.lineTo(d.p2.x, d.p2.y);
+      ctx.stroke();
+
+    } else if (d.type === "rect" && d.x !== undefined) {
+      if (d.fill) {
+        ctx.save();
+        ctx.globalAlpha = 0.25;
+        ctx.fillRect(d.x, d.y, d.w, d.h);
+        ctx.restore();
+      }
+      ctx.strokeRect(d.x, d.y, d.w, d.h);
+
+    } else if (d.type === "circle" && d.cx !== undefined) {
+      ctx.beginPath();
+      ctx.arc(d.cx, d.cy, d.r, 0, Math.PI * 2);
+      if (d.fill) {
+        ctx.save();
+        ctx.globalAlpha = 0.25;
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.stroke();
+
+    } else if (d.type === "cone" && d.p1 && d.p2) {
+      // Cone from p1 pointing towards p2
+      const angle = Math.atan2(d.p2.y - d.p1.y, d.p2.x - d.p1.x);
+      const dist = Math.hypot(d.p2.x - d.p1.x, d.p2.y - d.p1.y);
+      const halfSpread = Math.PI / 6; // 30 deg cone
+
+      ctx.beginPath();
+      ctx.moveTo(d.p1.x, d.p1.y);
+      ctx.lineTo(d.p1.x + Math.cos(angle - halfSpread) * dist, d.p1.y + Math.sin(angle - halfSpread) * dist);
+      ctx.lineTo(d.p1.x + Math.cos(angle + halfSpread) * dist, d.p1.y + Math.sin(angle + halfSpread) * dist);
+      ctx.closePath();
+      if (d.fill) {
+        ctx.save();
+        ctx.globalAlpha = 0.25;
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  });
+
+  // Active Drawing Stroke Preview
+  if (mapActiveDrawStroke) {
+    ctx.save();
+    ctx.strokeStyle = mapDrawColor;
+    ctx.fillStyle = mapDrawColor;
+    ctx.lineWidth = mapDrawWidth;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    const d = mapActiveDrawStroke;
+    if (d.type === "brush" && d.points.length > 0) {
+      ctx.beginPath();
+      d.points.forEach((pt, i) => {
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      });
+      ctx.stroke();
+    } else if (d.type === "line" && d.p1 && d.p2) {
+      ctx.beginPath();
+      ctx.moveTo(d.p1.x, d.p1.y);
+      ctx.lineTo(d.p2.x, d.p2.y);
+      ctx.stroke();
+    } else if (d.type === "rect") {
+      ctx.strokeRect(d.x, d.y, d.w, d.h);
+    } else if (d.type === "circle") {
+      ctx.beginPath();
+      ctx.arc(d.cx, d.cy, d.r, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (d.type === "cone" && d.p1 && d.p2) {
+      const angle = Math.atan2(d.p2.y - d.p1.y, d.p2.x - d.p1.x);
+      const dist = Math.hypot(d.p2.x - d.p1.x, d.p2.y - d.p1.y);
+      const halfSpread = Math.PI / 6;
+      ctx.beginPath();
+      ctx.moveTo(d.p1.x, d.p1.y);
+      ctx.lineTo(d.p1.x + Math.cos(angle - halfSpread) * dist, d.p1.y + Math.sin(angle - halfSpread) * dist);
+      ctx.lineTo(d.p1.x + Math.cos(angle + halfSpread) * dist, d.p1.y + Math.sin(angle + halfSpread) * dist);
+      ctx.closePath();
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+/* --------------------------------------------------------------------------
+   TOKENS LAYER (OWLBEAR STATUS RINGS & MOUNT ATTACHMENTS)
+   -------------------------------------------------------------------------- */
+
+function getTokenWorldBounds(token) {
+  const g = mapCamera.gridSize;
+  const size = (token.size || 1) * g;
+  const half = size / 2;
+  const wx = token.x * g;
+  const wy = token.y * g;
+  return {
+    left: wx - half,
+    top: wy - half,
+    right: wx + half,
+    bottom: wy + half,
+    width: size,
+    height: size,
+    cx: wx,
+    cy: wy
   };
-  let badgeIdx = 0;
-  conds.forEach((c) => {
-    if (!condEmojiMap[c]) return;
-    const angle = -Math.PI / 3 + badgeIdx * 0.48;
-    const bx = cx + Math.cos(angle) * (radius + 2);
-    const by = cy + Math.sin(angle) * (radius + 2);
-    ctx.fillStyle = "rgba(10, 8, 16, 0.9)";
-    ctx.beginPath();
-    ctx.arc(bx, by, 9, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.font = "11px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(condEmojiMap[c], bx, by);
-    badgeIdx++;
+}
+
+function isPointInsideToken(wx, wy, token) {
+  const b = getTokenWorldBounds(token);
+  const r = b.width / 2;
+  const dist = Math.hypot(wx - b.cx, wy - b.cy);
+  return dist <= r * 1.08;
+}
+
+// Owlbear Concept: When a mount moves, its riders move along!
+function getRidersOnMount(mountToken) {
+  if (!activeMapState || !mountToken || mountToken.layer !== "mount") return [];
+  const mb = getTokenWorldBounds(mountToken);
+  return (activeMapState.tokens || []).filter(tok => {
+    if (tok.id === mountToken.id || tok.layer === "mount" || tok.layer === "prop") return false;
+    const tb = getTokenWorldBounds(tok);
+    return (tb.cx >= mb.left && tb.cx <= mb.right && tb.cy >= mb.top && tb.cy <= mb.bottom);
+  });
+}
+
+function drawMapTokens(ctx, state) {
+  const tokens = state.tokens || [];
+  if (tokens.length === 0) return;
+
+  // Layer order: prop -> mount -> character -> attachment
+  const layerOrder = { prop: 0, mount: 1, character: 2, attachment: 3 };
+  const sorted = [...tokens].sort((a, b) => {
+    const la = layerOrder[a.layer || "character"] || 2;
+    const lb = layerOrder[b.layer || "character"] || 2;
+    return la - lb;
   });
 
-  // HP Bar (Above Token)
-  if (tok.hpMax > 0) {
-    const barW = Math.max(38, diameter * 0.82);
-    const barH = 7;
-    const barX = cx - barW / 2;
-    const barY = cy - radius - 12;
-    const pct = Math.max(0, Math.min(1, (tok.hpCur ?? tok.hpMax) / tok.hpMax));
+  const g = mapCamera.gridSize;
 
-    ctx.fillStyle = "rgba(8, 6, 14, 0.88)";
-    ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+  sorted.forEach(token => {
+    const size = (token.size || 1) * g;
+    const radius = size / 2;
+    const cx = token.x * g;
+    const cy = token.y * g;
 
-    ctx.fillStyle = pct > 0.5 ? "#22c55e" : pct > 0.25 ? "#eab308" : "#ef4444";
-    ctx.fillRect(barX, barY, barW * pct, barH);
-  }
+    ctx.save();
+    ctx.translate(cx, cy);
 
-  // Token Nameplate (Below Token)
-  if (tok.name) {
-    ctx.font = "bold 11px 'Inter', sans-serif";
-    const textW = ctx.measureText(tok.name).width;
-    const padX = 6;
-    const pillW = textW + padX * 2;
-    const pillH = 16;
-    const pillX = cx - pillW / 2;
-    const pillY = cy + radius + 4;
+    if (token.rotation) {
+      ctx.rotate(token.rotation);
+    }
 
-    ctx.fillStyle = "rgba(10, 8, 18, 0.88)";
-    ctx.strokeStyle = isSelected ? "#4ade80" : "rgba(212, 175, 55, 0.4)";
-    ctx.lineWidth = 1;
+    if (token.isHidden) {
+      ctx.globalAlpha = 0.45;
+    }
+
+    // Shadow
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
+
+    // Token Body Circle
     ctx.beginPath();
-    ctx.roundRect(pillX, pillY, pillW, pillH, 4);
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fillStyle = token.color || "#3b82f6";
     ctx.fill();
+    ctx.shadowColor = "transparent";
+
+    // Custom Token Image or Icon
+    if (token.img) {
+      const cached = mapImageCache[token.img];
+      if (cached && cached.complete && cached.naturalWidth > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, radius - 2, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(cached, -radius, -radius, size, size);
+        ctx.restore();
+      } else if (!cached) {
+        const img = new Image();
+        img.onload = () => resizeAndRenderOwlbearCanvas();
+        img.src = token.img;
+        mapImageCache[token.img] = img;
+      }
+    } else {
+      // Draw Icon / Emoji
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `${Math.round(size * 0.48)}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(token.icon || "♟️", 0, 2);
+    }
+
+    // Inner bevel border
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius - 1, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.fillStyle = "#f8fafc";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(tok.name, cx, pillY + pillH / 2);
-  }
+    // Owlbear's 8 Colored Status Rings
+    drawTokenStatusRings(ctx, token, radius);
 
+    // Locked badge
+    if (token.isLocked) {
+      ctx.fillStyle = "#ef4444";
+      ctx.beginPath();
+      ctx.arc(radius * 0.65, -radius * 0.65, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "8px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("🔒", radius * 0.65, -radius * 0.65);
+    }
+
+    // Selection ring & controls
+    if (mapSelectedTokenId === token.id) {
+      drawTokenSelectionControls(ctx, token, radius);
+    }
+
+    // Token label underneath
+    ctx.restore();
+
+    // Render name label unrotated
+    drawTokenNameLabel(ctx, token, cx, cy, radius);
+  });
+}
+
+function drawTokenStatusRings(ctx, token, radius) {
+  const rings = token.rings;
+  if (!Array.isArray(rings) || rings.length === 0) return;
+
+  ctx.save();
+  const ringWidth = Math.max(3.5, Math.min(6, radius * 0.16));
+  const ringRadius = radius + ringWidth / 2 + 1.5;
+
+  if (rings.length === 1) {
+    ctx.beginPath();
+    ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = rings[0];
+    ctx.lineWidth = ringWidth;
+    ctx.shadowColor = rings[0];
+    ctx.shadowBlur = 6;
+    ctx.stroke();
+  } else {
+    // Segmented glowing arcs
+    const segAngle = (Math.PI * 2) / rings.length;
+    const gap = 0.08;
+    rings.forEach((color, idx) => {
+      const startAngle = idx * segAngle + gap;
+      const endAngle = (idx + 1) * segAngle - gap;
+      ctx.beginPath();
+      ctx.arc(0, 0, ringRadius, startAngle, endAngle);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = ringWidth;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 6;
+      ctx.stroke();
+    });
+  }
   ctx.restore();
 }
 
-function drawVttFogOfWar(ctx, mapW, mapH, gs) {
+function drawTokenSelectionControls(ctx, token, radius) {
   ctx.save();
-  // Create offscreen or path clipping for fog
-  ctx.fillStyle = "rgba(6, 5, 11, 0.92)";
-  ctx.fillRect(0, 0, mapW, mapH);
-
-  (vttState.fogRects || []).forEach((r) => {
-    const rx = r.x * gs;
-    const ry = r.y * gs;
-    const rw = r.w * gs;
-    const rh = r.h * gs;
-    if (r.mode === "reveal") {
-      ctx.clearRect(rx, ry, rw, rh);
-      // Redraw underlying scene + tokens inside revealed rect?
-      // Wait: clearRect on main canvas would erase map! Instead, let's use an offscreen canvas for Fog of War!
-    }
-  });
-  ctx.restore();
-}
-
-let vttFogOffscreenCanvas = null;
-function renderFogLayerWithOffscreen(ctx, mapW, mapH, gs) {
-  if (!vttFogOffscreenCanvas) {
-    vttFogOffscreenCanvas = document.createElement("canvas");
-  }
-  if (vttFogOffscreenCanvas.width !== mapW || vttFogOffscreenCanvas.height !== mapH) {
-    vttFogOffscreenCanvas.width = mapW;
-    vttFogOffscreenCanvas.height = mapH;
-  }
-  const fctx = vttFogOffscreenCanvas.getContext("2d");
-  fctx.clearRect(0, 0, mapW, mapH);
-  fctx.fillStyle = "rgba(7, 5, 12, 0.9)";
-  fctx.fillRect(0, 0, mapW, mapH);
-
-  (vttState.fogRects || []).forEach((r) => {
-    const rx = r.x * gs;
-    const ry = r.y * gs;
-    const rw = r.w * gs;
-    const rh = r.h * gs;
-    if (r.mode === "reveal") {
-      fctx.clearRect(rx, ry, rw, rh);
-    } else {
-      fctx.fillStyle = "rgba(7, 5, 12, 0.9)";
-      fctx.fillRect(rx, ry, rw, rh);
-    }
-  });
-
-  ctx.drawImage(vttFogOffscreenCanvas, 0, 0);
-}
-
-// Override drawVttFogOfWar with proper offscreen compositing so revealed areas show the map & tokens underneath!
-drawVttFogOfWar = renderFogLayerWithOffscreen;
-
-function drawVttRuler(ctx, m, gs) {
-  const x1 = m.x1 * gs;
-  const y1 = m.y1 * gs;
-  const x2 = m.x2 * gs;
-  const y2 = m.y2 * gs;
-
-  const dxSq = Math.abs(m.x2 - m.x1);
-  const dySq = Math.abs(m.y2 - m.y1);
-  // D&D 5e grid distance (Chebyshev / max axis or Euclidean)
-  const euclidSq = Math.hypot(dxSq, dySq);
-  const feet = Math.round(euclidSq * 5);
-  const squares = (Math.round(euclidSq * 10) / 10).toFixed(1);
-
-  ctx.save();
-  ctx.strokeStyle = "#facc15";
-  ctx.lineWidth = 3;
-  ctx.setLineDash([8, 5]);
+  // Pulsing gold selection circle
   ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
+  ctx.arc(0, 0, radius + 8, 0, Math.PI * 2);
+  ctx.strokeStyle = "#d4af37";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 4]);
+  ctx.shadowColor = "rgba(212, 175, 55, 0.7)";
+  ctx.shadowBlur = 8;
   ctx.stroke();
   ctx.setLineDash([]);
 
-  ctx.fillStyle = "#facc15";
+  // Top Rotation Knob
+  const knobDist = radius + 22;
   ctx.beginPath();
-  ctx.arc(x1, y1, 5, 0, Math.PI * 2);
-  ctx.arc(x2, y2, 6, 0, Math.PI * 2);
-  ctx.fill();
-
-  drawCanvasBadge(ctx, (x1 + x2) / 2, (y1 + y2) / 2 - 16, `📏 ${feet} ft (${squares} sq)`);
-  ctx.restore();
-}
-
-function drawCanvasBadge(ctx, x, y, text) {
-  ctx.save();
-  ctx.font = "bold 12px 'JetBrains Mono', monospace";
-  const w = ctx.measureText(text).width + 14;
-  const h = 22;
-  ctx.fillStyle = "rgba(12, 10, 20, 0.92)";
+  ctx.moveTo(0, -radius - 8);
+  ctx.lineTo(0, -knobDist);
   ctx.strokeStyle = "#d4af37";
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
   ctx.beginPath();
-  ctx.roundRect(x - w / 2, y - h / 2, w, h, 6);
+  ctx.arc(0, -knobDist, 6, 0, Math.PI * 2);
+  ctx.fillStyle = "#38bdf8";
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = "#38bdf8";
+  ctx.shadowBlur = 6;
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = "#facc15";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, x, y);
+
   ctx.restore();
 }
 
-function startVttPingLoop() {
-  if (vttAnimFrameId) return;
-  const step = () => {
-    renderOwlbearCanvas();
-    if (vttPings.length > 0) {
-      vttAnimFrameId = requestAnimationFrame(step);
-    } else {
-      vttAnimFrameId = null;
-    }
-  };
-  vttAnimFrameId = requestAnimationFrame(step);
+function drawTokenNameLabel(ctx, token, cx, cy, radius) {
+  if (!token.name) return;
+  ctx.save();
+  ctx.font = "bold 10px sans-serif";
+  const metrics = ctx.measureText(token.name);
+  const textW = metrics.width;
+  const pillW = textW + 14;
+  const pillH = 16;
+  const pillY = cy + radius + 6;
+
+  // Glassmorphic pill badge
+  ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+  ctx.beginPath();
+  ctx.roundRect(cx - pillW / 2, pillY, pillW, pillH, 8);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(212, 175, 55, 0.4)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = "#f8fafc";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(token.name, cx, pillY + pillH / 2);
+  ctx.restore();
 }
 
 /* --------------------------------------------------------------------------
-   TOKEN MANAGEMENT, PARTY SPAWNING & CONTEXT POPOVER
+   STICKY NOTES LAYER
    -------------------------------------------------------------------------- */
 
-function findTokenAtGridPos(gx, gy) {
-  const list = vttState.tokens || [];
-  for (let i = list.length - 1; i >= 0; i--) {
-    const t = list[i];
-    const sz = parseFloat(t.size) || 1;
-    if (gx >= t.x && gx <= t.x + sz && gy >= t.y && gy <= t.y + sz) {
-      return t;
-    }
-  }
-  return null;
-}
+function drawMapNotes(ctx, state) {
+  const notes = state.notes || [];
+  const g = mapCamera.gridSize;
+
+  notes.forEach(note => {
+    const wx = note.x * g;
+    const wy = note.y * g;
+    const w = g * 1.8;
+    const h = g * 1.4;
 
-function selectVttToken(tokenId) {
-  vttSelectedTokenId = tokenId;
-  updateSelectedTokenPopoverUI();
-  renderVttActiveTokensList();
-  renderOwlbearCanvas();
-}
-
-function updateSelectedTokenPopoverUI() {
-  const pop = document.getElementById("vttTokenPopover");
-  if (!pop) return;
-  const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
-  if (!tok) {
-    pop.style.display = "none";
-    return;
-  }
-
-  pop.style.display = "flex";
-  const nameIn = document.getElementById("vttTokNameInput");
-  const hpCurIn = document.getElementById("vttTokHpCur");
-  const hpMaxIn = document.getElementById("vttTokHpMax");
-  const acIn = document.getElementById("vttTokAcInput");
-  const sizeSel = document.getElementById("vttTokSizeSelect");
-
-  if (nameIn && document.activeElement !== nameIn) nameIn.value = tok.name || "";
-  if (hpCurIn && document.activeElement !== hpCurIn) hpCurIn.value = tok.hpCur ?? 10;
-  if (hpMaxIn && document.activeElement !== hpMaxIn) hpMaxIn.value = tok.hpMax ?? 10;
-  if (acIn && document.activeElement !== acIn) acIn.value = tok.ac ?? 10;
-  if (sizeSel) sizeSel.value = String(tok.size || 1);
-
-  const conds = Array.isArray(tok.conditions) ? tok.conditions : [];
-  document.querySelectorAll("#vttTokConditionsRow .vtt-cond-btn").forEach((btn) => {
-    btn.classList.toggle("active", conds.includes(btn.dataset.cond));
-  });
-}
-
-function renderVttActiveTokensList() {
-  const container = document.getElementById("vttActiveTokensList");
-  if (!container) return;
-  const tokens = vttState.tokens || [];
-  if (tokens.length === 0) {
-    container.innerHTML = `<span style="font-size:0.7rem; color:var(--text-dim);">No tokens on map. Click a creature above to spawn!</span>`;
-    return;
-  }
-
-  container.innerHTML = tokens.map((t) => `
-    <div class="vtt-active-token-item ${t.id === vttSelectedTokenId ? "selected" : ""}" data-token-id="${escapeHtml(t.id)}">
-      <div style="display:flex; align-items:center; gap:0.35rem; min-width:0;">
-        <span>${escapeHtml(t.icon || "⚔️")}</span>
-        <strong style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-main);">${escapeHtml(t.name || "Token")}</strong>
-      </div>
-      <div style="display:flex; align-items:center; gap:0.4rem; font-family:'JetBrains Mono',monospace; font-size:0.68rem;">
-        <span style="color:#4ade80;">${t.hpCur ?? 0}/${t.hpMax ?? 0}</span>
-        <span style="color:var(--accent-gold);">AC ${t.ac ?? 10}</span>
-      </div>
-    </div>
-  `).join("");
-}
-
-function spawnMyCharacterTokenOnVtt() {
-  if (!getStoredOwlbearUrl()) {
-    setOwlbearRoomUrl(activeDMRoomCode || connectedCampaignRoom || "OBR-TABLETOP", true);
-  }
-  if (vttActiveMode !== "native") {
-    switchOwlbearViewMode("native");
-  }
-
-  const charName = document.getElementById("charName")?.value?.trim() || "Hero";
-  const curHp = parseInt(document.getElementById("curHp")?.value, 10) || 20;
-  const maxHp = parseInt(document.getElementById("maxHp")?.value, 10) || 20;
-  const ac = parseInt(document.getElementById("armorClass")?.value, 10) || 15;
-  const heroId = (typeof activeCharId !== "undefined" && activeCharId) ? activeCharId : "main";
-  const myId = "tok_hero_" + heroId;
-  const avatarUrl = (typeof myCharacterAvatar !== "undefined" && myCharacterAvatar) ? myCharacterAvatar : "";
-
-  const existing = (vttState.tokens || []).find((t) => t.id === myId || (t.charId && t.charId === heroId));
-  if (existing) {
-    existing.name = charName;
-    existing.hpCur = curHp;
-    existing.hpMax = maxHp;
-    existing.ac = ac;
-    if (avatarUrl) existing.avatar = avatarUrl;
-    selectVttToken(existing.id);
-    saveAndSyncOwlbearState();
-    showStatus(`Updated ${charName}'s token on the battle map!`);
-    return;
-  }
-
-  const newTok = {
-    id: myId,
-    charId: heroId,
-    name: charName,
-    icon: "⚔️",
-    avatar: avatarUrl,
-    x: 6 + Math.floor(Math.random() * 4),
-    y: 7 + Math.floor(Math.random() * 4),
-    size: 1,
-    hpCur: curHp,
-    hpMax: maxHp,
-    ac: ac,
-    color: "#d4af37",
-    conditions: []
-  };
-
-  vttState.tokens.push(newTok);
-  selectVttToken(newTok.id);
-  saveAndSyncOwlbearState();
-  showStatus(`Spawned ${charName} onto the battle map!`);
-}
-
-function spawnCampaignPartyOnVtt() {
-  if (!getStoredOwlbearUrl()) {
-    setOwlbearRoomUrl(activeDMRoomCode || connectedCampaignRoom || "OBR-TABLETOP", true);
-  }
-  if (vttActiveMode !== "native") {
-    switchOwlbearViewMode("native");
-  }
-
-  const members = (typeof cachedRoomMembers !== "undefined" && Array.isArray(cachedRoomMembers) && cachedRoomMembers.length > 0)
-    ? cachedRoomMembers
-    : [];
-  if (members.length === 0) {
-    spawnMyCharacterTokenOnVtt();
-    return;
-  }
-
-  const partyColors = ["#d4af37", "#38bdf8", "#4ade80", "#c084fc", "#f472b6", "#fb923c"];
-  let added = 0;
-
-  members.forEach((m, idx) => {
-    if (!m || !m.id) return;
-    const tokId = "tok_hero_" + m.id;
-    let tok = vttState.tokens.find((t) => t.id === tokId || t.charId === m.id);
-    if (tok) {
-      tok.name = m.name || "Hero";
-      tok.hpCur = m.hp?.cur ?? 20;
-      tok.hpMax = m.hp?.max ?? 20;
-      tok.ac = m.ac ?? 15;
-      if (m.avatar) tok.avatar = m.avatar;
-    } else {
-      vttState.tokens.push({
-        id: tokId,
-        charId: m.id,
-        name: m.name || "Hero",
-        icon: "🛡️",
-        avatar: m.avatar || "",
-        x: 5 + (idx % 3) * 2,
-        y: 6 + Math.floor(idx / 3) * 2,
-        size: 1,
-        hpCur: m.hp?.cur ?? 20,
-        hpMax: m.hp?.max ?? 20,
-        ac: m.ac ?? 15,
-        color: partyColors[idx % partyColors.length],
-        conditions: []
-      });
-      added++;
-    }
-  });
-
-  renderVttActiveTokensList();
-  renderOwlbearCanvas();
-  saveAndSyncOwlbearState();
-  showStatus(added > 0 ? `Dropped ${added} party member(s) onto the battle map!` : "Synced all party tokens on the battle map!");
-}
-
-function spawnPresetTokenOnVtt(presetKey) {
-  const preset = VTT_PRESET_TOKENS[presetKey];
-  if (!preset) return;
-
-  const sameCount = (vttState.tokens || []).filter((t) => (t.name || "").startsWith(preset.name)).length;
-  const label = sameCount > 0 ? `${preset.name} ${sameCount + 1}` : preset.name;
-
-  const newTok = {
-    id: `tok_${presetKey}_${Date.now()}_${Math.floor(Math.random() * 999)}`,
-    name: label,
-    icon: preset.icon,
-    avatar: "",
-    x: 11 + Math.floor(Math.random() * 5),
-    y: 6 + Math.floor(Math.random() * 5),
-    size: preset.size || 1,
-    hpCur: preset.hp,
-    hpMax: preset.hp,
-    ac: preset.ac,
-    color: preset.color,
-    conditions: []
-  };
-
-  vttState.tokens.push(newTok);
-  selectVttToken(newTok.id);
-  saveAndSyncOwlbearState();
-  showStatus(`Spawned ${label} on map!`);
-}
-
-function syncVttUiControlsFromState() {
-  const sceneMeta = VTT_SCENE_META[vttState.scene] || VTT_SCENE_META.forest_ambush;
-  const sceneLabel = document.getElementById("vttActiveSceneLabel");
-  if (sceneLabel) {
-    sceneLabel.textContent = vttState.customMapUrl ? "🗺️ Custom Battlemap" : sceneMeta.title;
-  }
-
-  document.querySelectorAll("#vttSceneList .vtt-scene-card").forEach((card) => {
-    card.classList.toggle("active", !vttState.customMapUrl && card.dataset.scene === vttState.scene);
-  });
-
-  const fogCb = document.getElementById("vttFogEnabledCheckbox");
-  if (fogCb) fogCb.checked = Boolean(vttState.fogEnabled);
-}
-
-function setVttTool(toolName) {
-  vttCurrentTool = toolName || "select";
-  document.querySelectorAll("#vttLeftDock .vtt-tool-btn[data-vtt-tool]").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.vttTool === vttCurrentTool);
-  });
-
-  const canvas = document.getElementById("owlbearMapCanvas");
-  if (canvas) {
-    canvas.className = `owlbear-vtt-canvas tool-${vttCurrentTool}`;
-  }
-
-  const subBar = document.getElementById("vttSubToolbar");
-  const drawGrp = document.getElementById("vttSubDrawGroup");
-  const aoeGrp = document.getElementById("vttSubAoeGroup");
-  const fogGrp = document.getElementById("vttSubFogGroup");
-
-  if (subBar) {
-    const showSub = vttCurrentTool === "draw" || vttCurrentTool === "aoe" || vttCurrentTool === "fog";
-    subBar.style.display = showSub ? "flex" : "none";
-    if (drawGrp) drawGrp.style.display = vttCurrentTool === "draw" ? "flex" : "none";
-    if (aoeGrp) aoeGrp.style.display = vttCurrentTool === "aoe" ? "flex" : "none";
-    if (fogGrp) fogGrp.style.display = vttCurrentTool === "fog" ? "flex" : "none";
-  }
-}
-
-/* --------------------------------------------------------------------------
-   MODE 2: INTERACTIVE CONTROLLABLE LIVE TAB STREAM
-   (CaptureController + Remote Pointer/Key Bridge + Tactical Stream Overlay)
-   -------------------------------------------------------------------------- */
-
-let vttStreamControlMode = "remote"; // "remote" | "overlay" | "panzoom"
-let vttCaptureController = null;
-let vttExternalOwlbearWin = null;
-let vttStreamRemoteBc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("owlbear_stream_remote_control") : null;
-let vttStreamBridgeConnected = false;
-let vttStreamLocalCamera = { x: 0, y: 0, zoom: 1.0 };
-let vttStreamOverlayTool = "select"; // "select" | "measure" | "ping" | "draw" | "aoe"
-let vttStreamRemoteDragging = false;
-let vttStreamPanDragging = false;
-let vttStreamPanStart = { x: 0, y: 0 };
-let vttStreamCursorRipples = [];
-let vttStreamDragTrail = [];
-let vttStreamAnimId = null;
-
-if (vttStreamRemoteBc) {
-  vttStreamRemoteBc.onmessage = (ev) => {
-    if (ev.data && ev.data.type === "OBR_STREAM_BRIDGE_READY") {
-      markStreamBridgeConnected(ev.data.via || "broadcast");
-    }
-  };
-}
-
-function markStreamBridgeConnected(via = "bridge") {
-  vttStreamBridgeConnected = true;
-  const badge = document.getElementById("owlbearStreamBridgeBadge");
-  if (badge) {
-    badge.textContent = "🟢 Remote Click/Drag Active";
-    badge.style.background = "rgba(74, 222, 128, 0.18)";
-    badge.style.color = "#4ade80";
-    badge.style.borderColor = "rgba(74, 222, 128, 0.45)";
-  }
-  const hint = document.getElementById("owlbearStreamCtrlHintTag");
-  if (hint && vttStreamControlMode === "remote") {
-    hint.textContent = `🟢 Full Remote Control (${via})`;
-  }
-}
-
-function setStreamControlMode(mode) {
-  vttStreamControlMode = mode || "remote";
-  document.querySelectorAll("#owlbearStreamCtrlModes .stream-ctrl-pill").forEach((pill) => {
-    pill.classList.toggle("active", pill.dataset.streamCtrl === vttStreamControlMode);
-  });
-
-  const overlayDock = document.getElementById("owlbearStreamOverlayDock");
-  if (overlayDock) {
-    overlayDock.style.display = vttStreamControlMode === "overlay" ? "flex" : "none";
-  }
-
-  const overlayCanvas = document.getElementById("owlbearStreamOverlayCanvas");
-  if (overlayCanvas) {
-    overlayCanvas.style.display = "block";
-    overlayCanvas.style.cursor =
-      vttStreamControlMode === "panzoom" ? "grab" :
-      vttStreamControlMode === "overlay" && vttStreamOverlayTool === "select" ? "default" :
-      "crosshair";
-  }
-
-  const hint = document.getElementById("owlbearStreamCtrlHintTag");
-  if (hint) {
-    if (vttStreamControlMode === "remote") {
-      hint.textContent = vttStreamBridgeConnected
-        ? "🟢 Full Remote Click/Drag Active"
-        : "🖱️ Remote Control (Wheel + Bridge)";
-    } else if (vttStreamControlMode === "overlay") {
-      hint.textContent = "♟️ 5e Tactical Overlay Active";
-    } else {
-      hint.textContent = "🔍 Drag to Pan • Scroll to Zoom";
-    }
-  }
-
-  resizeAndRenderStreamOverlayCanvas();
-}
-
-function setStreamOverlayTool(tool) {
-  vttStreamOverlayTool = tool || "select";
-  document.querySelectorAll("#owlbearStreamOverlayDock .vtt-tool-btn[data-stream-tool]").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.streamTool === vttStreamOverlayTool);
-  });
-}
-
-function applyStreamLocalTransform() {
-  const wrap = document.getElementById("owlbearStreamTransformWrap");
-  if (wrap) {
-    wrap.style.transform = `translate(${vttStreamLocalCamera.x}px, ${vttStreamLocalCamera.y}px) scale(${vttStreamLocalCamera.zoom})`;
-  }
-  const lbl = document.getElementById("owlbearStreamZoomLabel");
-  if (lbl) {
-    lbl.textContent = `${Math.round(vttStreamLocalCamera.zoom * 100)}%`;
-  }
-}
-
-function getStreamNormalizedCoords(e) {
-  const videoEl = document.getElementById("owlbearStreamVideo");
-  const stageEl = document.getElementById("owlbearStreamStage");
-  const targetBox = (videoEl && videoEl.style.display !== "none" ? videoEl : stageEl)?.getBoundingClientRect();
-  if (!targetBox || !targetBox.width || !targetBox.height) {
-    return { nx: 0.5, ny: 0.5, sx: 0, sy: 0 };
-  }
-
-  const clientX = e.touches?.[0]?.clientX ?? e.changedTouches?.[0]?.clientX ?? e.clientX;
-  const clientY = e.touches?.[0]?.clientY ?? e.changedTouches?.[0]?.clientY ?? e.clientY;
-
-  const vw = (videoEl && videoEl.videoWidth) ? videoEl.videoWidth : targetBox.width;
-  const vh = (videoEl && videoEl.videoHeight) ? videoEl.videoHeight : targetBox.height;
-  const videoRatio = vw / vh;
-  const boxRatio = targetBox.width / targetBox.height;
-
-  let renderW = targetBox.width;
-  let renderH = targetBox.height;
-  let offsetX = 0;
-  let offsetY = 0;
-
-  if (boxRatio > videoRatio) {
-    renderW = targetBox.height * videoRatio;
-    offsetX = (targetBox.width - renderW) / 2;
-  } else {
-    renderH = targetBox.width / videoRatio;
-    offsetY = (targetBox.height - renderH) / 2;
-  }
-
-  const localX = clientX - targetBox.left - offsetX;
-  const localY = clientY - targetBox.top - offsetY;
-
-  const nx = Math.max(0, Math.min(1, localX / Math.max(1, renderW)));
-  const ny = Math.max(0, Math.min(1, localY / Math.max(1, renderH)));
-
-  const canvas = document.getElementById("owlbearStreamOverlayCanvas");
-  const cRect = canvas ? canvas.getBoundingClientRect() : targetBox;
-  const sx = (clientX - cRect.left) / (vttStreamLocalCamera.zoom || 1);
-  const sy = (clientY - cRect.top) / (vttStreamLocalCamera.zoom || 1);
-
-  return { nx, ny, sx, sy };
-}
-
-function sendStreamRemoteInput(payload) {
-  const pkt = {
-    source: "codex-sheet",
-    type: "OBR_REMOTE_INPUT",
-    replyOrigin: window.location.origin,
-    timestamp: Date.now(),
-    ...payload
-  };
-
-  // 1. Direct Window Handle (if opened via "1. Open Owlbear Room Tab")
-  if (vttExternalOwlbearWin && !vttExternalOwlbearWin.closed) {
-    try {
-      vttExternalOwlbearWin.postMessage(pkt, "*");
-    } catch (e) {}
-  }
-
-  // 2. BroadcastChannel (reaches same-origin ./owlbear/, relay iframe, or OBR 2.0 SDK extension)
-  if (vttStreamRemoteBc) {
-    try {
-      vttStreamRemoteBc.postMessage(pkt);
-    } catch (e) {}
-  }
-
-  // 3. Chrome Extension Content Script Bridge (owlbear-embed-extension v2.0)
-  try {
-    window.postMessage(pkt, "*");
-  } catch (e) {}
-}
-
-async function startOwlbearStream() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-    alert("Your browser does not support native tab streaming (getDisplayMedia). Use the Owlbear Rodeo mode instead!");
-    return;
-  }
-  try {
-    stopOwlbearStream();
-
-    // Use Chromium CaptureController for native zero-install wheel forwarding & tab zoom
-    vttCaptureController = typeof CaptureController !== "undefined" ? new CaptureController() : null;
-    const displayMediaOpts = {
-      video: {
-        displaySurface: "browser",
-        frameRate: { ideal: 60, max: 60 }
-      },
-      audio: false
-    };
-    if (vttCaptureController) {
-      displayMediaOpts.controller = vttCaptureController;
-    }
-
-    const stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOpts);
-    vttMediaStream = stream;
-
-    if (vttCaptureController) {
-      try {
-        if (typeof vttCaptureController.setFocusBehavior === "function") {
-          vttCaptureController.setFocusBehavior("no-focus-change");
-        }
-      } catch (e) {}
-    }
-
-    const videoEl = document.getElementById("owlbearStreamVideo");
-    const overlayCanvas = document.getElementById("owlbearStreamOverlayCanvas");
-    const placeholderEl = document.getElementById("owlbearStreamPlaceholder");
-    const stopBtn = document.getElementById("owlbearStopStreamBtn");
-    const zoomPill = document.getElementById("owlbearStreamZoomPill");
-
-    if (videoEl) {
-      videoEl.srcObject = stream;
-      videoEl.style.display = "block";
-      videoEl.play().catch(() => {});
-
-      // Enable native Chromium wheel forwarding from the stream stage directly to the captured tab
-      if (vttCaptureController && typeof vttCaptureController.forwardWheel === "function") {
-        try {
-          const stageEl = document.getElementById("owlbearStreamStage") || videoEl;
-          await vttCaptureController.forwardWheel(stageEl);
-        } catch (e) {}
-      }
-    }
-
-    if (overlayCanvas) overlayCanvas.style.display = "block";
-    if (placeholderEl) placeholderEl.style.display = "none";
-    if (stopBtn) stopBtn.style.display = "inline-flex";
-    if (zoomPill) zoomPill.style.display = "inline-flex";
-
-    setStreamControlMode(vttStreamControlMode);
-    resizeAndRenderStreamOverlayCanvas();
-
-    // Ping remote bridges to update live status badge
-    sendStreamRemoteInput({ action: "ping_bridge" });
-    window.postMessage({ source: "codex-sheet", type: "OBR_CHECK_BRIDGE" }, "*");
-
-    const track = stream.getVideoTracks()[0];
-    if (track) {
-      track.addEventListener("ended", () => {
-        stopOwlbearStream();
-      });
-    }
-    showStatus("Streaming Owlbear Rodeo at 60fps — Click, drag, or scroll on the stream to control!");
-  } catch (err) {
-    console.warn("Tab stream cancelled or denied:", err);
-  }
-}
-
-function stopOwlbearStream() {
-  if (vttMediaStream) {
-    vttMediaStream.getTracks().forEach((t) => t.stop());
-    vttMediaStream = null;
-  }
-  vttCaptureController = null;
-  const videoEl = document.getElementById("owlbearStreamVideo");
-  const placeholderEl = document.getElementById("owlbearStreamPlaceholder");
-  const stopBtn = document.getElementById("owlbearStopStreamBtn");
-  const zoomPill = document.getElementById("owlbearStreamZoomPill");
-  if (videoEl) {
-    videoEl.srcObject = null;
-    videoEl.style.display = "none";
-  }
-  if (placeholderEl) placeholderEl.style.display = "flex";
-  if (stopBtn) stopBtn.style.display = "none";
-  if (zoomPill) zoomPill.style.display = "none";
-}
-
-function openExternalOwlbearRoomTab() {
-  const raw = document.getElementById("owlbearRoomUrlInput")?.value || getStoredOwlbearUrl();
-  const target = /^https?:\/\//i.test(raw) ? raw : "https://www.owlbear.rodeo";
-  // Keep window reference so postMessage can send pointer/wheel/key events directly to the tab
-  vttExternalOwlbearWin = window.open(target, "OwlbearRodeoLiveRoom");
-}
-
-function resizeAndRenderStreamOverlayCanvas() {
-  const canvas = document.getElementById("owlbearStreamOverlayCanvas");
-  const stage = document.getElementById("owlbearStreamStage");
-  if (!canvas || !stage) return;
-  const rect = stage.getBoundingClientRect();
-  if (rect.width > 0 && rect.height > 0) {
-    if (canvas.width !== Math.round(rect.width) || canvas.height !== Math.round(rect.height)) {
-      canvas.width = Math.round(rect.width);
-      canvas.height = Math.round(rect.height);
-    }
-  }
-  renderOwlbearStreamOverlayCanvas();
-}
-
-function renderOwlbearStreamOverlayCanvas() {
-  const canvas = document.getElementById("owlbearStreamOverlayCanvas");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  const W = canvas.width;
-  const H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
-
-  const now = Date.now();
-  const gs = 48; // 48px per 5ft square on overlay
-
-  // 1. If Tactical Overlay mode is active (or has items), render drawings, AoEs, tokens, ruler, pings
-  if (vttStreamControlMode === "overlay") {
-    // Subtle tactical grid guide
     ctx.save();
-    ctx.strokeStyle = "rgba(212, 175, 55, 0.14)";
-    ctx.lineWidth = 1;
-    for (let x = 0; x <= W; x += gs) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-    }
-    for (let y = 0; y <= H; y += gs) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    }
-    ctx.restore();
+    ctx.translate(wx, wy);
 
-    // Drawings
-    [...(vttState.drawings || []), ...(vttActiveDrawStroke ? [vttActiveDrawStroke] : [])].forEach((d) => {
-      if (!d.points || d.points.length < 2) return;
-      ctx.save();
-      ctx.strokeStyle = d.color || "#d4af37";
-      ctx.lineWidth = 3.5;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
+    // Note shadow
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 3;
+
+    // Colored Note paper
+    ctx.fillStyle = note.color || "#fef08a";
+    ctx.fillRect(0, 0, w, h);
+    ctx.shadowColor = "transparent";
+
+    // Red pin
+    ctx.fillStyle = "#ef4444";
+    ctx.beginPath();
+    ctx.arc(w / 2, 4, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Text snippet
+    ctx.fillStyle = note.color === "#1e293b" ? "#f8fafc" : "#1e293b";
+    ctx.font = "bold 9px sans-serif";
+    const lines = (note.text || "Note").split("\n").slice(0, 3);
+    lines.forEach((line, idx) => {
+      ctx.fillText(line.slice(0, 15), 6, 17 + idx * 11);
+    });
+
+    if (mapSelectedNoteId === note.id) {
+      ctx.strokeStyle = "#d4af37";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-2, -2, w + 4, h + 4);
+    }
+
+    ctx.restore();
+  });
+}
+
+/* --------------------------------------------------------------------------
+   FOG OF WAR LAYER
+   -------------------------------------------------------------------------- */
+
+function drawMapFog(ctx, state, mapW, mapH) {
+  if (!state.fogEnabled) return;
+
+  if (!mapFogOffscreen) {
+    mapFogOffscreen = document.createElement("canvas");
+  }
+  if (mapFogOffscreen.width !== mapW || mapFogOffscreen.height !== mapH) {
+    mapFogOffscreen.width = mapW;
+    mapFogOffscreen.height = mapH;
+  }
+  const fCtx = mapFogOffscreen.getContext("2d");
+  if (!fCtx) return;
+
+  fCtx.clearRect(0, 0, mapW, mapH);
+
+  // Fog opacity: DM see-through preview vs solid black
+  const fogAlpha = state.fogPreviewDm ? 0.48 : 0.98;
+  fCtx.fillStyle = `rgba(10, 14, 23, ${fogAlpha})`;
+  fCtx.fillRect(0, 0, mapW, mapH);
+
+  const shapes = state.fogShapes || [];
+  shapes.forEach(shape => {
+    fCtx.save();
+    if (shape.mode === "reveal") {
+      fCtx.globalCompositeOperation = "destination-out";
+      fCtx.fillStyle = "rgba(0,0,0,1)";
+      fCtx.strokeStyle = "rgba(0,0,0,1)";
+    } else {
+      fCtx.globalCompositeOperation = "source-over";
+      fCtx.fillStyle = `rgba(10, 14, 23, ${fogAlpha})`;
+      fCtx.strokeStyle = `rgba(10, 14, 23, ${fogAlpha})`;
+    }
+
+    if (shape.type === "rect") {
+      fCtx.fillRect(shape.x, shape.y, shape.w, shape.h);
+    } else if (shape.type === "poly" && Array.isArray(shape.points) && shape.points.length > 2) {
+      fCtx.beginPath();
+      fCtx.moveTo(shape.points[0].x, shape.points[0].y);
+      for (let i = 1; i < shape.points.length; i++) {
+        fCtx.lineTo(shape.points[i].x, shape.points[i].y);
+      }
+      fCtx.closePath();
+      fCtx.fill();
+    } else if (shape.type === "brush" && Array.isArray(shape.points)) {
+      fCtx.lineCap = "round";
+      fCtx.lineJoin = "round";
+      fCtx.lineWidth = (shape.radius || 24) * 2;
+      fCtx.beginPath();
+      shape.points.forEach((pt, i) => {
+        if (i === 0) fCtx.moveTo(pt.x, pt.y);
+        else fCtx.lineTo(pt.x, pt.y);
+      });
+      fCtx.stroke();
+    }
+    fCtx.restore();
+  });
+
+  ctx.drawImage(mapFogOffscreen, 0, 0);
+
+  // Live Fog Draft Outline
+  if (mapActiveFogDraft) {
+    ctx.save();
+    ctx.strokeStyle = mapActiveFogDraft.mode === "reveal" ? "#22c55e" : "#ef4444";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+
+    if (mapActiveFogDraft.type === "rect") {
+      ctx.strokeRect(mapActiveFogDraft.x, mapActiveFogDraft.y, mapActiveFogDraft.w, mapActiveFogDraft.h);
+    } else if (mapActiveFogDraft.type === "poly" && mapPolyPoints.length > 0) {
       ctx.beginPath();
-      d.points.forEach((pt, idx) => {
-        if (idx === 0) ctx.moveTo(pt.x * gs, pt.y * gs);
-        else ctx.lineTo(pt.x * gs, pt.y * gs);
+      mapPolyPoints.forEach((pt, i) => {
+        if (i === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
       });
       ctx.stroke();
-      ctx.restore();
-    });
-
-    // AoEs
-    [...(vttState.aoes || []), ...(vttActiveAoeDraft ? [vttActiveAoeDraft] : [])].forEach((aoe) => {
-      drawVttAoeTemplate(ctx, aoe, gs);
-    });
-
-    // Tokens
-    (vttState.tokens || []).forEach((tok) => {
-      drawVttToken(ctx, tok, gs);
-    });
-
-    // Ruler
-    if (vttActiveMeasure) {
-      drawVttRuler(ctx, vttActiveMeasure, gs);
     }
-
-    // Pings
-    vttPings = vttPings.filter((p) => now - p.createdAt < 2600);
-    vttPings.forEach((p) => {
-      const age = (now - p.createdAt) / 2600;
-      const px = p.x * gs;
-      const py = p.y * gs;
-      for (let ring = 0; ring < 3; ring++) {
-        const rAge = (age * 2 + ring * 0.33) % 1;
-        ctx.save();
-        ctx.strokeStyle = p.color || "#d4af37";
-        ctx.globalAlpha = (1 - rAge) * 0.85;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(px, py, rAge * gs * 2, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-    });
-  }
-
-  // 2. Render Remote Control Drag Trail & Click Ripples
-  if (vttStreamDragTrail.length > 1) {
-    ctx.save();
-    ctx.strokeStyle = "rgba(212, 175, 55, 0.75)";
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([5, 4]);
-    ctx.beginPath();
-    vttStreamDragTrail.forEach((pt, idx) => {
-      if (idx === 0) ctx.moveTo(pt.x, pt.y);
-      else ctx.lineTo(pt.x, pt.y);
-    });
-    ctx.stroke();
     ctx.restore();
   }
-
-  vttStreamCursorRipples = vttStreamCursorRipples.filter((r) => now - r.ts < 650);
-  vttStreamCursorRipples.forEach((r) => {
-    const progress = (now - r.ts) / 650;
-    ctx.save();
-    ctx.strokeStyle = r.color || "#d4af37";
-    ctx.globalAlpha = (1 - progress) * 0.9;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(r.x, r.y, 6 + progress * 24, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  });
-
-  if (vttStreamCursorRipples.length > 0 || (vttStreamControlMode === "overlay" && vttPings.length > 0)) {
-    if (!vttStreamAnimId) {
-      vttStreamAnimId = requestAnimationFrame(() => {
-        vttStreamAnimId = null;
-        renderOwlbearStreamOverlayCanvas();
-      });
-    }
-  }
-}
-
-function getOneClickStreamControllerSnippet() {
-  const relayUrl = new URL("./owlbear/stream-relay.html", window.location.href).href;
-  const receiverUrl = new URL("./owlbear/stream-remote-receiver.js", window.location.href).href;
-  return `(function(){if(!document.getElementById('codex-stream-relay')){var f=document.createElement('iframe');f.id='codex-stream-relay';f.src=${JSON.stringify(relayUrl)};f.style.cssText='display:none;width:0;height:0;border:0;';document.body.appendChild(f);}var s=document.createElement('script');s.src=${JSON.stringify(receiverUrl)};document.head.appendChild(s);})();`;
-}
-
-function initOwlbearStreamControlListeners() {
-  const stage = document.getElementById("owlbearStreamStage");
-  const overlayCanvas = document.getElementById("owlbearStreamOverlayCanvas");
-  if (!stage || !overlayCanvas) return;
-
-  // Populate Owlbear 2.0 Extension Manifest URL & Bookmarklet href
-  const extInput = document.getElementById("owlbearObr2ExtUrlInput");
-  if (extInput) {
-    try {
-      extInput.value = new URL("./owlbear/obr-extension-manifest.json", window.location.href).href;
-    } catch (e) {}
-  }
-  const bmLink = document.getElementById("owlbearRemoteBookmarkletLink");
-  if (bmLink) {
-    bmLink.href = "javascript:" + encodeURIComponent(getOneClickStreamControllerSnippet());
-    bmLink.addEventListener("click", (e) => {
-      e.preventDefault();
-      navigator.clipboard?.writeText(getOneClickStreamControllerSnippet()).catch(() => {});
-      showStatus("Drag this button to your Bookmarks Bar (or copied script to clipboard)!");
-    });
-  }
-
-  document.getElementById("owlbearCopyRemoteScriptBtn")?.addEventListener("click", () => {
-    const snippet = getOneClickStreamControllerSnippet();
-    navigator.clipboard?.writeText(snippet).then(() => {
-      showStatus("Copied 1-Click Stream Controller script! Paste it into the Owlbear tab console (F12).");
-    }).catch(() => {});
-  });
-
-  document.getElementById("owlbearCopyObr2ExtUrlBtn")?.addEventListener("click", () => {
-    const url = extInput?.value || new URL("./owlbear/obr-extension-manifest.json", window.location.href).href;
-    navigator.clipboard?.writeText(url).then(() => {
-      showStatus("Copied Owlbear 2.0 Extension Manifest URL!");
-    }).catch(() => {});
-  });
-
-  const bridgePop = document.getElementById("owlbearStreamBridgePopover");
-  document.getElementById("owlbearStreamBridgeHelpBtn")?.addEventListener("click", () => {
-    if (bridgePop) {
-      bridgePop.style.display = bridgePop.style.display === "none" ? "block" : "none";
-    }
-  });
-  document.getElementById("owlbearStreamBridgeCloseBtn")?.addEventListener("click", () => {
-    if (bridgePop) bridgePop.style.display = "none";
-  });
-
-  // Stream Control Mode Switcher Pills
-  document.querySelectorAll("#owlbearStreamCtrlModes .stream-ctrl-pill").forEach((pill) => {
-    pill.addEventListener("click", () => {
-      setStreamControlMode(pill.dataset.streamCtrl);
-    });
-  });
-
-  // Stream Overlay Tool Buttons
-  document.querySelectorAll("#owlbearStreamOverlayDock .vtt-tool-btn[data-stream-tool]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      setStreamOverlayTool(btn.dataset.streamTool);
-    });
-  });
-
-  document.getElementById("owlbearStreamSpawnSelfBtn")?.addEventListener("click", () => {
-    spawnMyCharacterTokenOnVtt();
-    if (vttStreamRemoteBc) {
-      const myName = document.getElementById("charName")?.value?.trim() || "Adventurer";
-      vttStreamRemoteBc.postMessage({
-        type: "OBR_SPAWN_TOKEN",
-        token: { name: myName, avatar: myCharacterAvatar || "" }
-      });
-    }
-    renderOwlbearStreamOverlayCanvas();
-  });
-
-  document.getElementById("owlbearStreamSpawnPartyBtn")?.addEventListener("click", () => {
-    spawnCampaignPartyOnVtt();
-    renderOwlbearStreamOverlayCanvas();
-  });
-
-  document.getElementById("owlbearStreamClearOverlayBtn")?.addEventListener("click", () => {
-    vttState.drawings = [];
-    vttState.aoes = [];
-    renderOwlbearStreamOverlayCanvas();
-    saveAndSyncOwlbearState();
-    showStatus("Cleared stream overlay drawings & spell AoEs.");
-  });
-
-  // Stream Zoom Buttons (CaptureController + Local Stream Zoom)
-  document.getElementById("owlbearStreamZoomInBtn")?.addEventListener("click", () => {
-    if (vttStreamControlMode === "remote" && vttCaptureController && typeof vttCaptureController.increaseZoomLevel === "function") {
-      try { vttCaptureController.increaseZoomLevel(); } catch (e) {}
-    }
-    vttStreamLocalCamera.zoom = Math.min(4.0, Math.round((vttStreamLocalCamera.zoom + 0.2) * 100) / 100);
-    applyStreamLocalTransform();
-  });
-
-  document.getElementById("owlbearStreamZoomOutBtn")?.addEventListener("click", () => {
-    if (vttStreamControlMode === "remote" && vttCaptureController && typeof vttCaptureController.decreaseZoomLevel === "function") {
-      try { vttCaptureController.decreaseZoomLevel(); } catch (e) {}
-    }
-    vttStreamLocalCamera.zoom = Math.max(0.5, Math.round((vttStreamLocalCamera.zoom - 0.2) * 100) / 100);
-    applyStreamLocalTransform();
-  });
-
-  document.getElementById("owlbearStreamZoomResetBtn")?.addEventListener("click", () => {
-    if (vttStreamControlMode === "remote" && vttCaptureController && typeof vttCaptureController.resetZoomLevel === "function") {
-      try { vttCaptureController.resetZoomLevel(); } catch (e) {}
-    }
-    vttStreamLocalCamera = { x: 0, y: 0, zoom: 1.0 };
-    applyStreamLocalTransform();
-  });
-
-  // Pointer & Wheel Events on the Stream Canvas
-  overlayCanvas.addEventListener("mousedown", (e) => {
-    stage.focus({ preventScroll: true });
-    const { nx, ny, sx, sy } = getStreamNormalizedCoords(e);
-    const gs = 48;
-    const gx = sx / gs;
-    const gy = sy / gs;
-
-    if (vttStreamControlMode === "remote") {
-      vttStreamRemoteDragging = true;
-      vttStreamDragTrail = [{ x: sx, y: sy }];
-      vttStreamCursorRipples.push({ x: sx, y: sy, color: "#d4af37", ts: Date.now() });
-      renderOwlbearStreamOverlayCanvas();
-      sendStreamRemoteInput({
-        action: "mousedown",
-        nx,
-        ny,
-        button: e.button,
-        buttons: e.buttons || (1 << e.button),
-        shiftKey: e.shiftKey,
-        ctrlKey: e.ctrlKey,
-        altKey: e.altKey,
-        metaKey: e.metaKey
-      });
-    } else if (vttStreamControlMode === "panzoom") {
-      vttStreamPanDragging = true;
-      vttStreamPanStart = { x: e.clientX - vttStreamLocalCamera.x, y: e.clientY - vttStreamLocalCamera.y };
-      overlayCanvas.style.cursor = "grabbing";
-    } else if (vttStreamControlMode === "overlay") {
-      if (vttStreamOverlayTool === "select") {
-        const hitTok = findTokenAtGridPos(gx, gy);
-        if (hitTok) {
-          selectVttToken(hitTok.id);
-          vttDraggingToken = hitTok;
-          vttDragOffset = { x: gx - hitTok.x, y: gy - hitTok.y };
-        }
-      } else if (vttStreamOverlayTool === "measure") {
-        vttActiveMeasure = { x1: gx, y1: gy, x2: gx, y2: gy };
-      } else if (vttStreamOverlayTool === "ping") {
-        const pingObj = { x: gx, y: gy, color: "#facc15", createdAt: Date.now() };
-        vttPings.push(pingObj);
-        saveAndSyncOwlbearState({ lastPing: pingObj });
-      } else if (vttStreamOverlayTool === "draw") {
-        vttActiveDrawStroke = { color: vttDrawColor || "#d4af37", points: [{ x: gx, y: gy }] };
-      } else if (vttStreamOverlayTool === "aoe") {
-        vttActiveAoeDraft = {
-          id: "aoe_stream_" + Date.now(),
-          shape: vttAoeShape || "sphere_20",
-          x1: gx,
-          y1: gy,
-          x2: gx + 2,
-          y2: gy,
-          color: "#f97316"
-        };
-      }
-      renderOwlbearStreamOverlayCanvas();
-    }
-  });
-
-  window.addEventListener("mousemove", (e) => {
-    const streamLayer = document.getElementById("owlbearStreamLayer");
-    if (!streamLayer || streamLayer.style.display === "none") return;
-
-    if (vttStreamControlMode === "remote" && vttStreamRemoteDragging) {
-      const { nx, ny, sx, sy } = getStreamNormalizedCoords(e);
-      vttStreamDragTrail.push({ x: sx, y: sy });
-      if (vttStreamDragTrail.length > 35) vttStreamDragTrail.shift();
-      renderOwlbearStreamOverlayCanvas();
-      sendStreamRemoteInput({
-        action: "mousemove",
-        nx,
-        ny,
-        button: e.button,
-        buttons: e.buttons || 1,
-        shiftKey: e.shiftKey,
-        ctrlKey: e.ctrlKey,
-        altKey: e.altKey,
-        metaKey: e.metaKey
-      });
-    } else if (vttStreamControlMode === "panzoom" && vttStreamPanDragging) {
-      vttStreamLocalCamera.x = e.clientX - vttStreamPanStart.x;
-      vttStreamLocalCamera.y = e.clientY - vttStreamPanStart.y;
-      applyStreamLocalTransform();
-    } else if (vttStreamControlMode === "overlay") {
-      if (!vttDraggingToken && !vttActiveMeasure && !vttActiveDrawStroke && !vttActiveAoeDraft) return;
-      const { sx, sy } = getStreamNormalizedCoords(e);
-      const gs = 48;
-      const gx = sx / gs;
-      const gy = sy / gs;
-      if (vttDraggingToken) {
-        vttDraggingToken.x = gx - vttDragOffset.x;
-        vttDraggingToken.y = gy - vttDragOffset.y;
-      } else if (vttActiveMeasure) {
-        vttActiveMeasure.x2 = gx;
-        vttActiveMeasure.y2 = gy;
-      } else if (vttActiveDrawStroke) {
-        vttActiveDrawStroke.points.push({ x: Math.round(gx * 20) / 20, y: Math.round(gy * 20) / 20 });
-      } else if (vttActiveAoeDraft) {
-        vttActiveAoeDraft.x2 = gx;
-        vttActiveAoeDraft.y2 = gy;
-      }
-      renderOwlbearStreamOverlayCanvas();
-    }
-  });
-
-  window.addEventListener("mouseup", (e) => {
-    if (vttStreamRemoteDragging) {
-      vttStreamRemoteDragging = false;
-      vttStreamDragTrail = [];
-      const { nx, ny, sx, sy } = getStreamNormalizedCoords(e);
-      vttStreamCursorRipples.push({ x: sx, y: sy, color: "#4ade80", ts: Date.now() });
-      renderOwlbearStreamOverlayCanvas();
-      sendStreamRemoteInput({
-        action: "mouseup",
-        nx,
-        ny,
-        button: e.button,
-        buttons: 0,
-        shiftKey: e.shiftKey,
-        ctrlKey: e.ctrlKey,
-        altKey: e.altKey,
-        metaKey: e.metaKey
-      });
-    }
-    if (vttStreamPanDragging) {
-      vttStreamPanDragging = false;
-      overlayCanvas.style.cursor = "grab";
-    }
-    if (vttStreamControlMode === "overlay") {
-      if (vttDraggingToken) {
-        vttDraggingToken = null;
-        saveAndSyncOwlbearState();
-      }
-      if (vttActiveMeasure) {
-        vttActiveMeasure = null;
-      }
-      if (vttActiveDrawStroke) {
-        if (vttActiveDrawStroke.points.length > 1) {
-          vttState.drawings.push(vttActiveDrawStroke);
-          saveAndSyncOwlbearState();
-        }
-        vttActiveDrawStroke = null;
-      }
-      if (vttActiveAoeDraft) {
-        vttState.aoes.push(vttActiveAoeDraft);
-        vttActiveAoeDraft = null;
-        saveAndSyncOwlbearState();
-      }
-      renderOwlbearStreamOverlayCanvas();
-    }
-  });
-
-  overlayCanvas.addEventListener("dblclick", (e) => {
-    if (vttStreamControlMode !== "remote") return;
-    const { nx, ny } = getStreamNormalizedCoords(e);
-    sendStreamRemoteInput({ action: "dblclick", nx, ny, button: e.button });
-  });
-
-  overlayCanvas.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
-  });
-
-  overlayCanvas.addEventListener("wheel", (e) => {
-    e.preventDefault();
-    const { nx, ny, sx, sy } = getStreamNormalizedCoords(e);
-    if (vttStreamControlMode === "remote") {
-      vttStreamCursorRipples.push({ x: sx, y: sy, color: "#38bdf8", ts: Date.now() });
-      renderOwlbearStreamOverlayCanvas();
-      sendStreamRemoteInput({
-        action: "wheel",
-        nx,
-        ny,
-        deltaX: e.deltaX,
-        deltaY: e.deltaY,
-        shiftKey: e.shiftKey,
-        ctrlKey: e.ctrlKey,
-        altKey: e.altKey,
-        metaKey: e.metaKey
-      });
-    } else {
-      const factor = e.deltaY < 0 ? 1.12 : 0.89;
-      vttStreamLocalCamera.zoom = Math.min(4.0, Math.max(0.5, Math.round(vttStreamLocalCamera.zoom * factor * 100) / 100));
-      applyStreamLocalTransform();
-    }
-  }, { passive: false });
-
-  stage.addEventListener("keydown", (e) => {
-    if (vttStreamControlMode !== "remote") return;
-    sendStreamRemoteInput({
-      action: "keydown",
-      key: e.key,
-      code: e.code,
-      shiftKey: e.shiftKey,
-      ctrlKey: e.ctrlKey,
-      altKey: e.altKey,
-      metaKey: e.metaKey
-    });
-  });
-
-  stage.addEventListener("keyup", (e) => {
-    if (vttStreamControlMode !== "remote") return;
-    sendStreamRemoteInput({
-      action: "keyup",
-      key: e.key,
-      code: e.code,
-      shiftKey: e.shiftKey,
-      ctrlKey: e.ctrlKey,
-      altKey: e.altKey,
-      metaKey: e.metaKey
-    });
-  });
-
-  window.addEventListener("message", (ev) => {
-    if (!ev.data || typeof ev.data !== "object") return;
-    if (ev.data.type === "OBR_STREAM_BRIDGE_READY") {
-      markStreamBridgeConnected(ev.data.via || "window");
-    } else if (ev.data.type === "OBR_EXTENSION_INSTALLED" || (ev.data.type === "OBR_EXTENSION_STATUS" && ev.data.extensionInstalled)) {
-      markStreamBridgeConnected("extension");
-    }
-  });
 }
 
 /* --------------------------------------------------------------------------
-   CANVAS POINTER / WHEEL / KEYBOARD INTERACTION LISTENERS
+   MEASUREMENT / RULER LAYER
    -------------------------------------------------------------------------- */
 
-function initOwlbearCanvasListeners() {
+function calculateMapDistance(p1, p2, rule, scale) {
+  const g = mapCamera.gridSize;
+  const dx = Math.abs(p2.x - p1.x) / g;
+  const dy = Math.abs(p2.y - p1.y) / g;
+  const s = Number(scale) || 5;
+
+  if (rule === "alternating") {
+    const diag = Math.min(dx, dy);
+    const straight = Math.max(dx, dy) - diag;
+    const diagDist = Math.floor(diag / 2) * 15 + (diag % 2) * 5;
+    return Math.round((diagDist + straight * 5) * (s / 5) * 10) / 10;
+  } else if (rule === "euclidean") {
+    return Math.round(Math.hypot(dx, dy) * s * 10) / 10;
+  } else if (rule === "manhattan") {
+    return Math.round((dx + dy) * s * 10) / 10;
+  } else {
+    // Chebyshev (Standard 5e max axis)
+    return Math.round(Math.max(dx, dy) * s * 10) / 10;
+  }
+}
+
+function drawMapMeasureRuler(ctx, state, measure) {
+  const p1 = measure.p1;
+  const p2 = measure.p2;
+  const dist = calculateMapDistance(p1, p2, mapMeasureRule, state.gridScale || 5);
+  const unit = state.gridUnit || "ft";
+
+  ctx.save();
+  // Ruler line
+  ctx.strokeStyle = mapPlayerColor || "#d4af37";
+  ctx.lineWidth = 3;
+  ctx.shadowColor = mapPlayerColor || "#d4af37";
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.moveTo(p1.x, p1.y);
+  ctx.lineTo(p2.x, p2.y);
+  ctx.stroke();
+
+  // Endpoint circles
+  ctx.fillStyle = mapPlayerColor || "#d4af37";
+  ctx.beginPath();
+  ctx.arc(p1.x, p1.y, 5, 0, Math.PI * 2);
+  ctx.arc(p2.x, p2.y, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Distance Callout Pill
+  const midX = (p1.x + p2.x) / 2;
+  const midY = (p1.y + p2.y) / 2;
+  const text = `${dist} ${unit}`;
+
+  ctx.font = "bold 12px sans-serif";
+  const pillW = ctx.measureText(text).width + 16;
+  const pillH = 22;
+
+  ctx.shadowColor = "rgba(0,0,0,0.5)";
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = "rgba(15, 23, 42, 0.94)";
+  ctx.beginPath();
+  ctx.roundRect(midX - pillW / 2, midY - pillH / 2, pillW, pillH, 11);
+  ctx.fill();
+
+  ctx.strokeStyle = mapPlayerColor || "#d4af37";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, midX, midY);
+
+  ctx.restore();
+}
+
+/* --------------------------------------------------------------------------
+   LASER POINTER PINGS LAYER
+   -------------------------------------------------------------------------- */
+
+function drawMapPings(ctx) {
+  const now = Date.now();
+  mapPings = mapPings.filter(p => now - p.startTime < 2500);
+
+  mapPings.forEach(p => {
+    const age = now - p.startTime;
+    const progress = age / 2500;
+    const maxR = 40;
+    const r = progress * maxR;
+    const alpha = (1 - progress) * 0.9;
+
+    ctx.save();
+    ctx.strokeStyle = p.color || "#ef4444";
+    ctx.lineWidth = 2.5;
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = p.color || "#ef4444";
+    ctx.shadowBlur = 10;
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = p.color || "#ef4444";
+    ctx.fill();
+
+    ctx.restore();
+  });
+}
+
+function runMapAnimLoop() {
+  renderOwlbearCanvas();
+  mapAnimFrameId = requestAnimationFrame(runMapAnimLoop);
+}
+
+/* --------------------------------------------------------------------------
+   POINTER & INTERACTION LISTENERS (DESKTOP & MOBILE TOUCH)
+   -------------------------------------------------------------------------- */
+
+function getMapCanvasPointer(e) {
+  const canvas = document.getElementById("owlbearMapCanvas");
+  if (!canvas) return { screenX: 0, screenY: 0, worldX: 0, worldY: 0, gridX: 0, gridY: 0 };
+  const rect = canvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const screenX = clientX - rect.left;
+  const screenY = clientY - rect.top;
+  const worldX = (screenX - mapCamera.x) / mapCamera.zoom;
+  const worldY = (screenY - mapCamera.y) / mapCamera.zoom;
+  const gridX = worldX / mapCamera.gridSize;
+  const gridY = worldY / mapCamera.gridSize;
+  return { screenX, screenY, worldX, worldY, gridX, gridY };
+}
+
+function initMapCanvasInteractionListeners() {
   const canvas = document.getElementById("owlbearMapCanvas");
   if (!canvas) return;
 
-  const getPointerCoords = (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    const sx = clientX - rect.left;
-    const sy = clientY - rect.top;
-    const g = screenToGrid(sx, sy);
-    return { sx, sy, gx: g.gx, gy: g.gy };
-  };
-
-  canvas.addEventListener("mousedown", (e) => {
-    const { sx, sy, gx, gy } = getPointerCoords(e);
-
-    // Middle-click, right-click, Spacebar, or Pan tool -> Panning
-    if (e.button === 1 || e.button === 2 || vttSpacePressed || vttCurrentTool === "pan") {
-      e.preventDefault();
-      vttIsPanning = true;
-      vttPanStart = { x: sx - vttCamera.x, y: sy - vttCamera.y };
-      return;
-    }
-
-    if (vttCurrentTool === "select") {
-      const hitTok = findTokenAtGridPos(gx, gy);
-      if (hitTok) {
-        selectVttToken(hitTok.id);
-        vttDraggingToken = hitTok;
-        vttDragOffset = { x: gx - hitTok.x, y: gy - hitTok.y };
-      } else {
-        selectVttToken(null);
-        vttIsPanning = true;
-        vttPanStart = { x: sx - vttCamera.x, y: sy - vttCamera.y };
-      }
-    } else if (vttCurrentTool === "measure") {
-      vttActiveMeasure = { x1: gx, y1: gy, x2: gx, y2: gy };
-      renderOwlbearCanvas();
-    } else if (vttCurrentTool === "ping") {
-      const pingObj = { x: gx, y: gy, color: "#facc15", createdAt: Date.now() };
-      vttPings.push(pingObj);
-      startVttPingLoop();
-      saveAndSyncOwlbearState({ lastPing: pingObj });
-    } else if (vttCurrentTool === "draw") {
-      vttActiveDrawStroke = { color: vttDrawColor, points: [{ x: gx, y: gy }] };
-      renderOwlbearCanvas();
-    } else if (vttCurrentTool === "aoe") {
-      vttActiveAoeDraft = {
-        id: "aoe_" + Date.now(),
-        shape: vttAoeShape,
-        x1: Math.round(gx * 2) / 2,
-        y1: Math.round(gy * 2) / 2,
-        x2: gx + 2,
-        y2: gy,
-        color: vttDrawColor
-      };
-      renderOwlbearCanvas();
-    } else if (vttCurrentTool === "fog") {
-      if (!vttState.fogEnabled) {
-        vttState.fogEnabled = true;
-        syncVttUiControlsFromState();
-      }
-      vttActiveFogRect = { x1: gx, y1: gy, x2: gx, y2: gy };
-      renderOwlbearCanvas();
-    }
-  });
-
-  window.addEventListener("mousemove", (e) => {
-    if (!vttIsPanning && !vttDraggingToken && !vttActiveMeasure && !vttActiveDrawStroke && !vttActiveAoeDraft && !vttActiveFogRect) {
-      return;
-    }
-    const { sx, sy, gx, gy } = getPointerCoords(e);
-
-    if (vttIsPanning) {
-      vttCamera.x = sx - vttPanStart.x;
-      vttCamera.y = sy - vttPanStart.y;
-      renderOwlbearCanvas();
-    } else if (vttDraggingToken) {
-      vttDraggingToken.x = gx - vttDragOffset.x;
-      vttDraggingToken.y = gy - vttDragOffset.y;
-      renderOwlbearCanvas();
-    } else if (vttActiveMeasure) {
-      vttActiveMeasure.x2 = gx;
-      vttActiveMeasure.y2 = gy;
-      renderOwlbearCanvas();
-    } else if (vttActiveDrawStroke) {
-      const pts = vttActiveDrawStroke.points;
-      const last = pts[pts.length - 1];
-      if (!last || Math.hypot(gx - last.x, gy - last.y) > 0.12) {
-        pts.push({ x: Math.round(gx * 20) / 20, y: Math.round(gy * 20) / 20 });
-        renderOwlbearCanvas();
-      }
-    } else if (vttActiveAoeDraft) {
-      vttActiveAoeDraft.x2 = gx;
-      vttActiveAoeDraft.y2 = gy;
-      renderOwlbearCanvas();
-    } else if (vttActiveFogRect) {
-      vttActiveFogRect.x2 = gx;
-      vttActiveFogRect.y2 = gy;
-      renderOwlbearCanvas();
-    }
-  });
-
-  window.addEventListener("mouseup", (e) => {
-    if (vttIsPanning) {
-      vttIsPanning = false;
-    }
-    if (vttDraggingToken) {
-      if (vttSnapToGrid && !e.shiftKey) {
-        vttDraggingToken.x = Math.round(vttDraggingToken.x * 2) / 2;
-        vttDraggingToken.y = Math.round(vttDraggingToken.y * 2) / 2;
-      }
-      vttDraggingToken = null;
-      renderOwlbearCanvas();
-      saveAndSyncOwlbearState();
-    }
-    if (vttActiveMeasure) {
-      vttActiveMeasure = null;
-      renderOwlbearCanvas();
-    }
-    if (vttActiveDrawStroke) {
-      if (vttActiveDrawStroke.points.length > 1) {
-        vttState.drawings.push(vttActiveDrawStroke);
-        saveAndSyncOwlbearState();
-      }
-      vttActiveDrawStroke = null;
-      renderOwlbearCanvas();
-    }
-    if (vttActiveAoeDraft) {
-      vttState.aoes.push(vttActiveAoeDraft);
-      vttActiveAoeDraft = null;
-      renderOwlbearCanvas();
-      saveAndSyncOwlbearState();
-    }
-    if (vttActiveFogRect) {
-      const rx = Math.min(vttActiveFogRect.x1, vttActiveFogRect.x2);
-      const ry = Math.min(vttActiveFogRect.y1, vttActiveFogRect.y2);
-      const rw = Math.abs(vttActiveFogRect.x2 - vttActiveFogRect.x1);
-      const rh = Math.abs(vttActiveFogRect.y2 - vttActiveFogRect.y1);
-      if (rw > 0.2 && rh > 0.2) {
-        vttState.fogRects.push({
-          x: Math.round(rx * 10) / 10,
-          y: Math.round(ry * 10) / 10,
-          w: Math.round(rw * 10) / 10,
-          h: Math.round(rh * 10) / 10,
-          mode: vttFogBrushMode
-        });
-        saveAndSyncOwlbearState();
-      }
-      vttActiveFogRect = null;
-      renderOwlbearCanvas();
-    }
-  });
-
-  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
-
+  // Wheel Zoom centered at cursor
   canvas.addEventListener("wheel", (e) => {
     e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+    const ptr = getMapCanvasPointer(e);
+    const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
+    const newZoom = Math.max(0.25, Math.min(3.5, mapCamera.zoom * zoomFactor));
 
-    const zoomFactor = e.deltaY < 0 ? 1.12 : 0.89;
-    const nextZoom = Math.min(3.0, Math.max(0.3, vttCamera.zoom * zoomFactor));
+    mapCamera.x = ptr.screenX - (ptr.screenX - mapCamera.x) * (newZoom / mapCamera.zoom);
+    mapCamera.y = ptr.screenY - (ptr.screenY - mapCamera.y) * (newZoom / mapCamera.zoom);
+    mapCamera.zoom = newZoom;
 
-    vttCamera.x = mx - (mx - vttCamera.x) * (nextZoom / vttCamera.zoom);
-    vttCamera.y = my - (my - vttCamera.y) * (nextZoom / vttCamera.zoom);
-    vttCamera.zoom = nextZoom;
-
-    updateVttZoomLabel();
-    renderOwlbearCanvas();
+    updateMapZoomReadout();
+    resizeAndRenderOwlbearCanvas();
   }, { passive: false });
 
-  window.addEventListener("resize", () => {
-    const tab = document.getElementById("tab-owlbear");
-    if (tab && tab.classList.contains("active")) {
-      resizeAndRenderOwlbearCanvas();
-      if (typeof resizeAndRenderStreamOverlayCanvas === "function") {
-        resizeAndRenderStreamOverlayCanvas();
+  // Pointer Down
+  const onPointerDown = (e) => {
+    const ptr = getMapCanvasPointer(e);
+
+    // Pan with Space or Middle Click
+    if (mapSpacePressed || e.button === 1 || mapCurrentTool === "pan") {
+      mapIsPanning = true;
+      mapPanStart = { x: ptr.screenX - mapCamera.x, y: ptr.screenY - mapCamera.y };
+      return;
+    }
+
+    if (mapCurrentTool === "select") {
+      // Check if clicked rotation knob on currently selected token
+      if (mapSelectedTokenId && activeMapState) {
+        const selTok = (activeMapState.tokens || []).find(t => t.id === mapSelectedTokenId);
+        if (selTok) {
+          const b = getTokenWorldBounds(selTok);
+          const knobDist = (b.width / 2) + 22;
+          const rot = selTok.rotation || 0;
+          const kx = b.cx + Math.sin(rot) * knobDist;
+          const ky = b.cy - Math.cos(rot) * knobDist;
+          if (Math.hypot(ptr.worldX - kx, ptr.worldY - ky) <= 12) {
+            mapIsRotating = true;
+            mapRotateCenter = { x: b.cx, y: b.cy };
+            return;
+          }
+        }
       }
+
+      // Check hit token
+      if (activeMapState) {
+        const tokens = activeMapState.tokens || [];
+        // Hit-test in reverse render order (top tokens first)
+        const hitToken = [...tokens].reverse().find(tok => isPointInsideToken(ptr.worldX, ptr.worldY, tok));
+
+        if (hitToken) {
+          selectMapToken(hitToken.id, ptr);
+          if (!hitToken.isLocked) {
+            mapDraggingToken = hitToken;
+            const g = mapCamera.gridSize;
+            mapDragOffset = { x: (hitToken.x * g) - ptr.worldX, y: (hitToken.y * g) - ptr.worldY };
+            mapDragStartPos = { x: hitToken.x, y: hitToken.y };
+
+            // Owlbear Mount Attachment: Find any characters riding this mount
+            if (hitToken.layer === "mount") {
+              mapDragRiders = getRidersOnMount(hitToken).map(r => ({
+                token: r,
+                startPos: { x: r.x, y: r.y }
+              }));
+            } else {
+              mapDragRiders = [];
+            }
+          }
+          return;
+        }
+      }
+
+      // Check hit note
+      if (activeMapState) {
+        const notes = activeMapState.notes || [];
+        const g = mapCamera.gridSize;
+        const hitNote = notes.find(n => {
+          const nx = n.x * g;
+          const ny = n.y * g;
+          return ptr.worldX >= nx && ptr.worldX <= nx + g * 1.8 && ptr.worldY >= ny && ptr.worldY <= ny + g * 1.4;
+        });
+
+        if (hitNote) {
+          selectMapNote(hitNote.id, ptr);
+          return;
+        }
+      }
+
+      // Clicked empty ground: deselect all
+      deselectAllMapObjects();
+      // Start drag pan on empty space
+      mapIsPanning = true;
+      mapPanStart = { x: ptr.screenX - mapCamera.x, y: ptr.screenY - mapCamera.y };
+
+    } else if (mapCurrentTool === "draw") {
+      if (mapDrawShape === "erase") {
+        eraseDrawingsNear(ptr.worldX, ptr.worldY);
+      } else if (mapDrawShape === "brush") {
+        mapActiveDrawStroke = {
+          type: "brush",
+          points: [{ x: ptr.worldX, y: ptr.worldY }],
+          color: mapDrawColor,
+          width: mapDrawWidth
+        };
+      } else if (mapDrawShape === "line") {
+        mapActiveDrawStroke = {
+          type: "line",
+          p1: { x: ptr.worldX, y: ptr.worldY },
+          p2: { x: ptr.worldX, y: ptr.worldY },
+          color: mapDrawColor,
+          width: mapDrawWidth
+        };
+      } else if (mapDrawShape === "rect") {
+        mapActiveDrawStroke = {
+          type: "rect",
+          startX: ptr.worldX,
+          startY: ptr.worldY,
+          x: ptr.worldX,
+          y: ptr.worldY,
+          w: 0,
+          h: 0,
+          color: mapDrawColor,
+          width: mapDrawWidth,
+          fill: mapDrawFill
+        };
+      } else if (mapDrawShape === "circle") {
+        mapActiveDrawStroke = {
+          type: "circle",
+          cx: ptr.worldX,
+          cy: ptr.worldY,
+          r: 0,
+          color: mapDrawColor,
+          width: mapDrawWidth,
+          fill: mapDrawFill
+        };
+      } else if (mapDrawShape === "cone") {
+        mapActiveDrawStroke = {
+          type: "cone",
+          p1: { x: ptr.worldX, y: ptr.worldY },
+          p2: { x: ptr.worldX, y: ptr.worldY },
+          color: mapDrawColor,
+          width: mapDrawWidth,
+          fill: mapDrawFill
+        };
+      }
+
+    } else if (mapCurrentTool === "measure") {
+      mapActiveMeasure = {
+        p1: { x: ptr.worldX, y: ptr.worldY },
+        p2: { x: ptr.worldX, y: ptr.worldY }
+      };
+
+    } else if (mapCurrentTool === "fog") {
+      if (mapFogShape === "rect") {
+        mapActiveFogDraft = {
+          type: "rect",
+          startX: ptr.worldX,
+          startY: ptr.worldY,
+          x: ptr.worldX,
+          y: ptr.worldY,
+          w: 0,
+          h: 0,
+          mode: mapFogMode
+        };
+      } else if (mapFogShape === "poly") {
+        mapPolyPoints.push({ x: ptr.worldX, y: ptr.worldY });
+        mapActiveFogDraft = {
+          type: "poly",
+          mode: mapFogMode
+        };
+      } else if (mapFogShape === "brush") {
+        mapActiveFogDraft = {
+          type: "brush",
+          points: [{ x: ptr.worldX, y: ptr.worldY }],
+          radius: 24,
+          mode: mapFogMode
+        };
+      }
+
+    } else if (mapCurrentTool === "ping") {
+      createMapPing(ptr.worldX, ptr.worldY, mapPlayerColor);
+
+    } else if (mapCurrentTool === "note") {
+      createNewMapNoteAt(ptr.gridX, ptr.gridY);
+    }
+  };
+
+  // Pointer Move
+  const onPointerMove = (e) => {
+    const ptr = getMapCanvasPointer(e);
+
+    if (mapIsPanning) {
+      mapCamera.x = ptr.screenX - mapPanStart.x;
+      mapCamera.y = ptr.screenY - mapPanStart.y;
+      resizeAndRenderOwlbearCanvas();
+      return;
+    }
+
+    if (mapIsRotating && mapSelectedTokenId && activeMapState) {
+      const selTok = (activeMapState.tokens || []).find(t => t.id === mapSelectedTokenId);
+      if (selTok) {
+        const angle = Math.atan2(ptr.worldX - mapRotateCenter.x, -(ptr.worldY - mapRotateCenter.y));
+        selTok.rotation = angle;
+        resizeAndRenderOwlbearCanvas();
+      }
+      return;
+    }
+
+    if (mapDraggingToken && activeMapState) {
+      const g = mapCamera.gridSize;
+      let targetWx = ptr.worldX + mapDragOffset.x;
+      let targetWy = ptr.worldY + mapDragOffset.y;
+      let targetGx = targetWx / g;
+      let targetGy = targetWy / g;
+
+      if (mapSnapToGrid && !e.altKey) {
+        // Snap to nearest half or full grid unit
+        targetGx = Math.round(targetGx * 2) / 2;
+        targetGy = Math.round(targetGy * 2) / 2;
+      }
+
+      const dx = targetGx - mapDraggingToken.x;
+      const dy = targetGy - mapDraggingToken.y;
+
+      mapDraggingToken.x = targetGx;
+      mapDraggingToken.y = targetGy;
+
+      // Owlbear Mount Attachment: Move all riders with the mount!
+      if (mapDragRiders && mapDragRiders.length > 0) {
+        mapDragRiders.forEach(r => {
+          r.token.x += dx;
+          r.token.y += dy;
+        });
+      }
+
+      // Keep token popover in position
+      positionTokenPopover(mapDraggingToken);
+      resizeAndRenderOwlbearCanvas();
+      return;
+    }
+
+    if (mapCurrentTool === "draw" && mapActiveDrawStroke) {
+      const d = mapActiveDrawStroke;
+      if (d.type === "brush") {
+        d.points.push({ x: ptr.worldX, y: ptr.worldY });
+      } else if (d.type === "line" || d.type === "cone") {
+        d.p2 = { x: ptr.worldX, y: ptr.worldY };
+      } else if (d.type === "rect") {
+        d.x = Math.min(d.startX, ptr.worldX);
+        d.y = Math.min(d.startY, ptr.worldY);
+        d.w = Math.abs(ptr.worldX - d.startX);
+        d.h = Math.abs(ptr.worldY - d.startY);
+      } else if (d.type === "circle") {
+        d.r = Math.hypot(ptr.worldX - d.cx, ptr.worldY - d.cy);
+      }
+      resizeAndRenderOwlbearCanvas();
+
+    } else if (mapCurrentTool === "draw" && mapDrawShape === "erase" && e.buttons === 1) {
+      eraseDrawingsNear(ptr.worldX, ptr.worldY);
+
+    } else if (mapCurrentTool === "measure" && mapActiveMeasure) {
+      mapActiveMeasure.p2 = { x: ptr.worldX, y: ptr.worldY };
+      resizeAndRenderOwlbearCanvas();
+
+    } else if (mapCurrentTool === "fog" && mapActiveFogDraft) {
+      if (mapActiveFogDraft.type === "rect") {
+        mapActiveFogDraft.x = Math.min(mapActiveFogDraft.startX, ptr.worldX);
+        mapActiveFogDraft.y = Math.min(mapActiveFogDraft.startY, ptr.worldY);
+        mapActiveFogDraft.w = Math.abs(ptr.worldX - mapActiveFogDraft.startX);
+        mapActiveFogDraft.h = Math.abs(ptr.worldY - mapActiveFogDraft.startY);
+      } else if (mapActiveFogDraft.type === "brush") {
+        mapActiveFogDraft.points.push({ x: ptr.worldX, y: ptr.worldY });
+      }
+      resizeAndRenderOwlbearCanvas();
+    }
+  };
+
+  // Pointer Up
+  const onPointerUp = () => {
+    if (mapIsPanning) {
+      mapIsPanning = false;
+    }
+
+    if (mapIsRotating) {
+      mapIsRotating = false;
+      triggerMapAutosave();
+    }
+
+    if (mapDraggingToken) {
+      mapDraggingToken = null;
+      mapDragRiders = [];
+      triggerMapAutosave();
+    }
+
+    if (mapCurrentTool === "draw" && mapActiveDrawStroke && activeMapState) {
+      if (!activeMapState.drawings) activeMapState.drawings = [];
+      activeMapState.drawings.push({
+        id: "draw_" + Date.now(),
+        ...mapActiveDrawStroke
+      });
+      mapActiveDrawStroke = null;
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+    }
+
+    if (mapCurrentTool === "fog" && mapActiveFogDraft && activeMapState) {
+      if (mapActiveFogDraft.type === "rect" && mapActiveFogDraft.w > 4 && mapActiveFogDraft.h > 4) {
+        if (!activeMapState.fogShapes) activeMapState.fogShapes = [];
+        activeMapState.fogShapes.push({ ...mapActiveFogDraft });
+        triggerMapAutosave();
+      } else if (mapActiveFogDraft.type === "brush" && mapActiveFogDraft.points.length > 1) {
+        if (!activeMapState.fogShapes) activeMapState.fogShapes = [];
+        activeMapState.fogShapes.push({ ...mapActiveFogDraft });
+        triggerMapAutosave();
+      }
+      if (mapActiveFogDraft.type !== "poly") {
+        mapActiveFogDraft = null;
+      }
+      resizeAndRenderOwlbearCanvas();
+    }
+  };
+
+  // Double click for Polygon Fog completion
+  canvas.addEventListener("dblclick", () => {
+    if (mapCurrentTool === "fog" && mapFogShape === "poly" && mapPolyPoints.length > 2 && activeMapState) {
+      if (!activeMapState.fogShapes) activeMapState.fogShapes = [];
+      activeMapState.fogShapes.push({
+        type: "poly",
+        points: [...mapPolyPoints],
+        mode: mapFogMode
+      });
+      mapPolyPoints = [];
+      mapActiveFogDraft = null;
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
     }
   });
 
-  window.addEventListener("keydown", (e) => {
-    const tab = document.getElementById("tab-owlbear");
-    if (!tab || !tab.classList.contains("active")) return;
-    const tag = (e.target?.tagName || "").toLowerCase();
-    if (tag === "input" || tag === "textarea" || tag === "select") return;
+  // Attach mouse & touch handlers
+  canvas.addEventListener("mousedown", onPointerDown);
+  window.addEventListener("mousemove", onPointerMove);
+  window.addEventListener("mouseup", onPointerUp);
 
-    if (e.code === "Space") {
-      vttSpacePressed = true;
-    } else if (e.key === "v" || e.key === "V") {
-      setVttTool("select");
-    } else if (e.key === "h" || e.key === "H") {
-      setVttTool("pan");
-    } else if (e.key === "m" || e.key === "M") {
-      setVttTool("measure");
-    } else if (e.key === "p" || e.key === "P") {
-      setVttTool("ping");
-    } else if (e.key === "d" || e.key === "D") {
-      setVttTool("draw");
-    } else if (e.key === "a" || e.key === "A") {
-      setVttTool("aoe");
-    } else if (e.key === "f" || e.key === "F") {
-      setVttTool("fog");
-    } else if (e.key === "g" || e.key === "G") {
-      vttShowGrid = !vttShowGrid;
-      document.getElementById("vttToggleGridBtn")?.classList.toggle("active", vttShowGrid);
-      renderOwlbearCanvas();
-    } else if ((e.key === "Delete" || e.key === "Backspace") && vttSelectedTokenId) {
-      vttState.tokens = (vttState.tokens || []).filter((t) => t.id !== vttSelectedTokenId);
-      selectVttToken(null);
-      saveAndSyncOwlbearState();
+  canvas.addEventListener("touchstart", onPointerDown, { passive: true });
+  window.addEventListener("touchmove", onPointerMove, { passive: true });
+  window.addEventListener("touchend", onPointerUp);
+}
+
+/* --------------------------------------------------------------------------
+   TOKEN CONTEXT POPOVER & MANIPULATION
+   -------------------------------------------------------------------------- */
+
+function selectMapToken(tokenId, ptr) {
+  mapSelectedTokenId = tokenId;
+  mapSelectedNoteId = null;
+  closeMapNotePopover();
+
+  const token = (activeMapState?.tokens || []).find(t => t.id === tokenId);
+  if (!token) return;
+
+  const pop = document.getElementById("vttTokenPopover");
+  if (!pop) return;
+
+  // Fill popover inputs
+  const nameInput = document.getElementById("vttTokNameInput");
+  if (nameInput) nameInput.value = token.name || "";
+
+  const sizeSelect = document.getElementById("vttTokSizeSelect");
+  if (sizeSelect) sizeSelect.value = String(token.size || 1);
+
+  const layerSelect = document.getElementById("vttTokLayerSelect");
+  if (layerSelect) layerSelect.value = token.layer || "character";
+
+  const hideBtn = document.getElementById("vttTokHideBtn");
+  if (hideBtn) hideBtn.classList.toggle("active", !!token.isHidden);
+
+  const lockBtn = document.getElementById("vttTokLockBtn");
+  if (lockBtn) lockBtn.classList.toggle("active", !!token.isLocked);
+
+  // Owlbear 8 Status Rings
+  const rings = token.rings || [];
+  document.querySelectorAll("#vttTokConditionsRow .map-ring-dot").forEach(dot => {
+    const color = dot.dataset.ring;
+    dot.classList.toggle("active", rings.includes(color));
+  });
+
+  positionTokenPopover(token);
+  pop.style.display = "block";
+  resizeAndRenderOwlbearCanvas();
+}
+
+function positionTokenPopover(token) {
+  const pop = document.getElementById("vttTokenPopover");
+  const canvas = document.getElementById("owlbearMapCanvas");
+  if (!pop || !canvas || !token) return;
+
+  const g = mapCamera.gridSize;
+  const wx = token.x * g;
+  const wy = token.y * g;
+  const screenX = wx * mapCamera.zoom + mapCamera.x;
+  const screenY = wy * mapCamera.zoom + mapCamera.y;
+  const radius = ((token.size || 1) * g * mapCamera.zoom) / 2;
+
+  const popW = 230;
+  const popH = 150;
+  let posX = screenX - popW / 2;
+  let posY = screenY - radius - popH - 12;
+
+  if (posY < 50) posY = screenY + radius + 14;
+  posX = Math.max(10, Math.min(window.innerWidth - popW - 10, posX));
+
+  pop.style.left = `${posX}px`;
+  pop.style.top = `${posY}px`;
+}
+
+function closeMapTokenPopover() {
+  const pop = document.getElementById("vttTokenPopover");
+  if (pop) pop.style.display = "none";
+}
+
+function deselectAllMapObjects() {
+  mapSelectedTokenId = null;
+  mapSelectedNoteId = null;
+  closeMapTokenPopover();
+  closeMapNotePopover();
+  resizeAndRenderOwlbearCanvas();
+}
+
+function initMapTokenPopoverListeners() {
+  document.getElementById("vttTokCloseBtn")?.addEventListener("click", () => {
+    deselectAllMapObjects();
+  });
+
+  // Name rename
+  document.getElementById("vttTokNameInput")?.addEventListener("input", (e) => {
+    if (!mapSelectedTokenId || !activeMapState) return;
+    const tok = (activeMapState.tokens || []).find(t => t.id === mapSelectedTokenId);
+    if (tok) {
+      tok.name = e.target.value.trim();
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
     }
   });
 
-  window.addEventListener("keyup", (e) => {
-    if (e.code === "Space") vttSpacePressed = false;
+  // 8 Status Rings
+  document.querySelectorAll("#vttTokConditionsRow .map-ring-dot").forEach(dot => {
+    dot.addEventListener("click", () => {
+      if (!mapSelectedTokenId || !activeMapState) return;
+      const tok = (activeMapState.tokens || []).find(t => t.id === mapSelectedTokenId);
+      if (!tok) return;
+
+      const ringColor = dot.dataset.ring;
+      if (!Array.isArray(tok.rings)) tok.rings = [];
+
+      const idx = tok.rings.indexOf(ringColor);
+      if (idx >= 0) {
+        tok.rings.splice(idx, 1);
+        dot.classList.remove("active");
+      } else {
+        tok.rings.push(ringColor);
+        dot.classList.add("active");
+      }
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+    });
+  });
+
+  // Size select
+  document.getElementById("vttTokSizeSelect")?.addEventListener("change", (e) => {
+    if (!mapSelectedTokenId || !activeMapState) return;
+    const tok = (activeMapState.tokens || []).find(t => t.id === mapSelectedTokenId);
+    if (tok) {
+      tok.size = parseFloat(e.target.value) || 1;
+      positionTokenPopover(tok);
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+    }
+  });
+
+  // Layer select
+  document.getElementById("vttTokLayerSelect")?.addEventListener("change", (e) => {
+    if (!mapSelectedTokenId || !activeMapState) return;
+    const tok = (activeMapState.tokens || []).find(t => t.id === mapSelectedTokenId);
+    if (tok) {
+      tok.layer = e.target.value;
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+    }
+  });
+
+  // Hide button
+  document.getElementById("vttTokHideBtn")?.addEventListener("click", () => {
+    if (!mapSelectedTokenId || !activeMapState) return;
+    const tok = (activeMapState.tokens || []).find(t => t.id === mapSelectedTokenId);
+    if (tok) {
+      tok.isHidden = !tok.isHidden;
+      document.getElementById("vttTokHideBtn")?.classList.toggle("active", !!tok.isHidden);
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+    }
+  });
+
+  // Lock button
+  document.getElementById("vttTokLockBtn")?.addEventListener("click", () => {
+    if (!mapSelectedTokenId || !activeMapState) return;
+    const tok = (activeMapState.tokens || []).find(t => t.id === mapSelectedTokenId);
+    if (tok) {
+      tok.isLocked = !tok.isLocked;
+      document.getElementById("vttTokLockBtn")?.classList.toggle("active", !!tok.isLocked);
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+    }
+  });
+
+  // Init toggle button
+  document.getElementById("vttTokInitToggleBtn")?.addEventListener("click", () => {
+    if (!mapSelectedTokenId || !activeMapState) return;
+    const tok = (activeMapState.tokens || []).find(t => t.id === mapSelectedTokenId);
+    if (!tok) return;
+
+    if (!activeMapState.initiative) activeMapState.initiative = [];
+    const existing = activeMapState.initiative.find(it => it.tokenId === tok.id);
+    if (existing) {
+      activeMapState.initiative = activeMapState.initiative.filter(it => it.tokenId !== tok.id);
+      showStatus(`Removed ${tok.name} from Initiative.`);
+    } else {
+      const roll = Math.floor(Math.random() * 20) + 1;
+      activeMapState.initiative.push({
+        id: "init_" + Date.now(),
+        tokenId: tok.id,
+        name: tok.name,
+        icon: tok.icon || "♟️",
+        val: roll
+      });
+      showStatus(`Added ${tok.name} to Initiative (Roll: ${roll}).`);
+    }
+    renderMapInitiativeList();
+    triggerMapAutosave();
+  });
+
+  // Duplicate button
+  document.getElementById("vttTokDupBtn")?.addEventListener("click", () => {
+    if (!mapSelectedTokenId || !activeMapState) return;
+    const tok = (activeMapState.tokens || []).find(t => t.id === mapSelectedTokenId);
+    if (!tok) return;
+
+    const cloned = JSON.parse(JSON.stringify(tok));
+    cloned.id = "tok_" + Date.now();
+    cloned.x += 1;
+    cloned.y += 1;
+    cloned.name = `${tok.name} (Copy)`;
+    activeMapState.tokens.push(cloned);
+
+    selectMapToken(cloned.id);
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+    updateMapActiveTokensList();
+  });
+
+  // Delete button
+  document.getElementById("vttTokDelBtn")?.addEventListener("click", () => {
+    if (!mapSelectedTokenId || !activeMapState) return;
+    activeMapState.tokens = (activeMapState.tokens || []).filter(t => t.id !== mapSelectedTokenId);
+    deselectAllMapObjects();
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+    updateMapActiveTokensList();
   });
 }
 
 /* --------------------------------------------------------------------------
-   MAIN VTT CONTROLLER INITIALIZATION
+   STICKY NOTE POPOVER & CREATION
    -------------------------------------------------------------------------- */
 
-function initOwlbearVTT() {
-  initOwlbearCanvasListeners();
-  if (typeof initOwlbearStreamControlListeners === "function") {
-    initOwlbearStreamControlListeners();
-  }
+function createNewMapNoteAt(gridX, gridY) {
+  if (!activeMapState) return;
+  if (!activeMapState.notes) activeMapState.notes = [];
 
-  const loadBtn = document.getElementById("owlbearLoadBtn");
-  const input = document.getElementById("owlbearRoomUrlInput");
-  const leaveBtn = document.getElementById("owlbearLeaveBtn");
-  const activeLeaveBtn = document.getElementById("owlbearActiveLeaveBtn");
-  const copyBtn = document.getElementById("owlbearCopyRoomUrlBtn");
-  const wizardBtn = document.getElementById("owlbearWizardConnectBtn");
-  const wizardInput = document.getElementById("owlbearWizardRoomInput");
-  const clearBtn = document.getElementById("owlbearClearInputBtn");
-  const theaterBtn = document.getElementById("owlbearTheaterToggleBtn");
-  const demoBtn = document.getElementById("owlbearUseDemoRoomBtn");
+  const noteId = "note_" + Date.now();
+  const note = {
+    id: noteId,
+    text: "Room Note...",
+    x: Math.round(gridX),
+    y: Math.round(gridY),
+    color: "#fef08a"
+  };
+  activeMapState.notes.push(note);
+  selectMapNote(noteId);
+  triggerMapAutosave();
+  resizeAndRenderOwlbearCanvas();
+}
 
-  // Connect / Load Map (Runs Real Owlbear Rodeo Natively In-Tab!)
-  if (loadBtn && input) {
-    loadBtn.addEventListener("click", () => {
-      const url = input.value.trim() || wizardInput?.value?.trim() || activeDMRoomCode || connectedCampaignRoom || "https://www.owlbear.rodeo/room/codex-tabletop/Battlemap";
-      setOwlbearRoomUrl(url, true);
-      showStatus("Loaded Owlbear Rodeo room in-tab!");
-    });
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        loadBtn.click();
-      }
-    });
-  }
+function selectMapNote(noteId, ptr) {
+  mapSelectedNoteId = noteId;
+  mapSelectedTokenId = null;
+  closeMapTokenPopover();
 
-  if (wizardBtn && wizardInput) {
-    wizardBtn.addEventListener("click", () => {
-      const url = wizardInput.value.trim() || input?.value?.trim() || activeDMRoomCode || connectedCampaignRoom || "https://www.owlbear.rodeo/room/codex-tabletop/Battlemap";
-      setOwlbearRoomUrl(url, true);
-      showStatus("Connected to Owlbear Rodeo room in-tab!");
-    });
-    wizardInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        wizardBtn.click();
-      }
-    });
-  }
+  const note = (activeMapState?.notes || []).find(n => n.id === noteId);
+  if (!note) return;
 
-  if (demoBtn) {
-    demoBtn.addEventListener("click", () => {
-      const defaultRoom = activeDMRoomCode || connectedCampaignRoom || "https://www.owlbear.rodeo/room/codex-battlemap/Tabletop";
-      vttActiveMode = "real_owlbear";
-      setOwlbearRoomUrl(defaultRoom, true);
-      showStatus("Launched Real Owlbear Rodeo in-tab!");
-    });
-  }
+  const pop = document.getElementById("vttNotePopover");
+  if (!pop) return;
 
-  document.getElementById("owlbearRealHomeBtn")?.addEventListener("click", () => {
-    const realFrame = document.getElementById("owlbearRealEngineFrame");
-    if (realFrame) {
-      vttActiveMode = "real_owlbear";
-      switchOwlbearViewMode("real_owlbear");
-      realFrame.src = "./owlbear/index.html#/";
-      showStatus("Opened Owlbear Rodeo Home Screen.");
+  const textInput = document.getElementById("vttNoteTextInput");
+  if (textInput) textInput.value = note.text || "";
+
+  document.querySelectorAll("#vttNoteColorSwatches .map-ring-dot").forEach(dot => {
+    dot.classList.toggle("active", dot.dataset.noteColor === note.color);
+  });
+
+  // Position popover
+  const g = mapCamera.gridSize;
+  const wx = note.x * g;
+  const wy = note.y * g;
+  const screenX = wx * mapCamera.zoom + mapCamera.x;
+  const screenY = wy * mapCamera.zoom + mapCamera.y;
+
+  pop.style.left = `${Math.max(10, screenX)}px`;
+  pop.style.top = `${Math.max(50, screenY - 140)}px`;
+  pop.style.display = "block";
+  resizeAndRenderOwlbearCanvas();
+}
+
+function closeMapNotePopover() {
+  const pop = document.getElementById("vttNotePopover");
+  if (pop) pop.style.display = "none";
+}
+
+function initMapNotePopoverListeners() {
+  document.getElementById("vttNoteCloseBtn")?.addEventListener("click", () => {
+    closeMapNotePopover();
+    mapSelectedNoteId = null;
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  document.getElementById("vttNoteTextInput")?.addEventListener("input", (e) => {
+    if (!mapSelectedNoteId || !activeMapState) return;
+    const note = (activeMapState.notes || []).find(n => n.id === mapSelectedNoteId);
+    if (note) {
+      note.text = e.target.value;
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
     }
   });
 
-  window.addEventListener("message", (ev) => {
-    const msg = ev.data;
-    if (!msg || typeof msg !== "object") return;
-    if (msg.type === "OBR_ROOM_CHANGED" && msg.gameId) {
-      const newUrl = `https://www.owlbear.rodeo/room/${msg.gameId}`;
-      try {
-        localStorage.setItem(OWLBEAR_ROOM_KEY, newUrl);
-      } catch (e) {}
-      const inEl = document.getElementById("owlbearRoomUrlInput");
-      const wizEl = document.getElementById("owlbearWizardRoomInput");
-      const dispEl = document.getElementById("owlbearActiveUrlDisplay");
-      if (inEl) inEl.value = newUrl;
-      if (wizEl) wizEl.value = newUrl;
-      if (dispEl) dispEl.textContent = `Owlbear Room (${msg.gameId})`;
-      broadcastOwlbearUrlToParty(newUrl);
-    } else if (msg.type === "OBR_BRIDGE_EVENT" && db && vttActiveSyncRoomId) {
-      const serialized = JSON.stringify(msg);
-      if (serialized.length <= 49500) {
-        db.collection("campaigns").doc(vttActiveSyncRoomId).collection("handouts").doc("owlbear_real_bridge").set({
-          id: "owlbear_real_bridge",
-          title: "Owlbear Real-Time Packet",
-          type: "map",
-          content: serialized,
-          isShared: true,
-          updatedAt: Date.now()
-        }).catch(() => {});
-      }
-    }
-  });
-
-  // Leave / Close Map Buttons (Direct + Delegated fallback)
-  if (leaveBtn) leaveBtn.addEventListener("click", leaveOwlbearRoom);
-  if (activeLeaveBtn) activeLeaveBtn.addEventListener("click", leaveOwlbearRoom);
-  document.addEventListener("click", (e) => {
-    const closeTarget = e.target.closest("#owlbearLeaveBtn, #owlbearActiveLeaveBtn, .owlbear-leave-map-btn");
-    if (closeTarget) {
-      leaveOwlbearRoom(e);
-    }
-  });
-
-  // Copy Link & Clear Input (also closes active map when clicked!)
-  if (copyBtn) copyBtn.addEventListener("click", copyOwlbearRoomUrl);
-  if (clearBtn && input) {
-    clearBtn.addEventListener("click", (e) => {
-      input.value = "";
-      if (wizardInput) wizardInput.value = "";
-      if (getStoredOwlbearUrl() || document.getElementById("owlbearActiveContainer")?.style.display !== "none") {
-        leaveOwlbearRoom(e);
-      } else {
-        input.focus();
+  document.querySelectorAll("#vttNoteColorSwatches .map-ring-dot").forEach(dot => {
+    dot.addEventListener("click", () => {
+      if (!mapSelectedNoteId || !activeMapState) return;
+      const note = (activeMapState.notes || []).find(n => n.id === mapSelectedNoteId);
+      if (note) {
+        note.color = dot.dataset.noteColor;
+        document.querySelectorAll("#vttNoteColorSwatches .map-ring-dot").forEach(d => {
+          d.classList.toggle("active", d === dot);
+        });
+        triggerMapAutosave();
+        resizeAndRenderOwlbearCanvas();
       }
     });
-  }
-
-  if (theaterBtn) theaterBtn.addEventListener("click", toggleOwlbearTheaterMode);
-
-  // Mode Switcher Pills (Native VTT | Live Tab Stream | Direct Iframe)
-  document.querySelectorAll(".owlbear-mode-pill").forEach((pill) => {
-    pill.addEventListener("click", () => {
-      switchOwlbearViewMode(pill.dataset.vttMode);
-    });
   });
 
-  // Left Tool Dock Buttons
-  document.querySelectorAll("#vttLeftDock .vtt-tool-btn[data-vtt-tool]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      setVttTool(btn.dataset.vttTool);
-    });
+  document.getElementById("vttNoteDelBtn")?.addEventListener("click", () => {
+    if (!mapSelectedNoteId || !activeMapState) return;
+    activeMapState.notes = (activeMapState.notes || []).filter(n => n.id !== mapSelectedNoteId);
+    closeMapNotePopover();
+    mapSelectedNoteId = null;
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
   });
+}
 
-  document.getElementById("vttToggleGridBtn")?.addEventListener("click", (e) => {
-    vttShowGrid = !vttShowGrid;
-    e.currentTarget.classList.toggle("active", vttShowGrid);
-    renderOwlbearCanvas();
-  });
+function closeAllMapPopovers() {
+  closeMapTokenPopover();
+  closeMapNotePopover();
+}
 
-  document.getElementById("vttToggleSnapBtn")?.addEventListener("click", (e) => {
-    vttSnapToGrid = !vttSnapToGrid;
-    e.currentTarget.classList.toggle("active", vttSnapToGrid);
-    showStatus(vttSnapToGrid ? "Snap-to-Grid enabled." : "Free token movement enabled.");
-  });
+/* --------------------------------------------------------------------------
+   BOTTOM-LEFT DRAWERS (MAPS, TOKENS, DICE, INITIATIVE)
+   -------------------------------------------------------------------------- */
 
-  document.getElementById("vttClearDrawingsBtn")?.addEventListener("click", () => {
-    vttState.drawings = [];
-    vttState.aoes = [];
-    renderOwlbearCanvas();
-    saveAndSyncOwlbearState();
-    showStatus("Cleared all drawings & spell AoE templates.");
-  });
-
-  document.getElementById("vttResetViewBtn")?.addEventListener("click", () => {
-    resetVttCameraToFit();
-    renderOwlbearCanvas();
-  });
-
-  // Zoom Buttons
-  document.getElementById("vttZoomInBtn")?.addEventListener("click", () => {
-    vttCamera.zoom = Math.min(3.0, vttCamera.zoom * 1.2);
-    updateVttZoomLabel();
-    renderOwlbearCanvas();
-  });
-  document.getElementById("vttZoomOutBtn")?.addEventListener("click", () => {
-    vttCamera.zoom = Math.max(0.3, vttCamera.zoom / 1.2);
-    updateVttZoomLabel();
-    renderOwlbearCanvas();
-  });
-
-  // Sub-Toolbar Options (Draw Color, AoE Shape, Fog Controls)
-  document.querySelectorAll("#vttSubDrawGroup .vtt-color-swatch").forEach((sw) => {
-    sw.addEventListener("click", () => {
-      vttDrawColor = sw.dataset.color || "#d4af37";
-      document.querySelectorAll("#vttSubDrawGroup .vtt-color-swatch").forEach((s) => s.classList.remove("active"));
-      sw.classList.add("active");
-    });
-  });
-
-  document.getElementById("vttUndoDrawingBtn")?.addEventListener("click", () => {
-    if (vttState.drawings.length > 0) {
-      vttState.drawings.pop();
-      renderOwlbearCanvas();
-      saveAndSyncOwlbearState();
-    }
-  });
-
-  document.getElementById("vttAoeShapeSelect")?.addEventListener("change", (e) => {
-    vttAoeShape = e.target.value;
-  });
-
-  document.getElementById("vttFogEnabledCheckbox")?.addEventListener("change", (e) => {
-    vttState.fogEnabled = e.target.checked;
-    if (vttState.fogEnabled && (!vttState.fogRects || vttState.fogRects.length === 0)) {
-      // Reveal a starter area around hero spawn so user immediately sees how fog works
-      vttState.fogRects = [{ x: 5, y: 5, w: 8, h: 8, mode: "reveal" }];
-    }
-    renderOwlbearCanvas();
-    saveAndSyncOwlbearState();
-  });
-
-  document.getElementById("vttFogModeRevealBtn")?.addEventListener("click", (e) => {
-    vttFogBrushMode = "reveal";
-    e.currentTarget.className = "btn btn-gold-subtle btn-xs active";
-    const hideBtn = document.getElementById("vttFogModeHideBtn");
-    if (hideBtn) hideBtn.className = "btn btn-outline btn-xs";
-  });
-
-  document.getElementById("vttFogModeHideBtn")?.addEventListener("click", (e) => {
-    vttFogBrushMode = "hide";
-    e.currentTarget.className = "btn btn-gold-subtle btn-xs active";
-    const revBtn = document.getElementById("vttFogModeRevealBtn");
-    if (revBtn) revBtn.className = "btn btn-outline btn-xs";
-  });
-
-  document.getElementById("vttFogCoverAllBtn")?.addEventListener("click", () => {
-    vttState.fogEnabled = true;
-    vttState.fogRects = [];
-    syncVttUiControlsFromState();
-    renderOwlbearCanvas();
-    saveAndSyncOwlbearState();
-  });
-
-  document.getElementById("vttFogResetBtn")?.addEventListener("click", () => {
-    vttState.fogEnabled = false;
-    vttState.fogRects = [];
-    syncVttUiControlsFromState();
-    renderOwlbearCanvas();
-    saveAndSyncOwlbearState();
-  });
-
-  // Token Context Popover Controls
-  document.getElementById("vttTokCloseBtn")?.addEventListener("click", () => selectVttToken(null));
-
-  document.getElementById("vttTokNameInput")?.addEventListener("input", (e) => {
-    const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
-    if (!tok) return;
-    tok.name = e.target.value;
-    renderVttActiveTokensList();
-    renderOwlbearCanvas();
-    saveAndSyncOwlbearState();
-  });
-
-  document.querySelectorAll(".vtt-hp-step-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
-      if (!tok) return;
-      const delta = parseInt(btn.dataset.hpDelta, 10) || 0;
-      tok.hpCur = Math.max(0, Math.min(tok.hpMax || 999, (tok.hpCur ?? 0) + delta));
-      updateSelectedTokenPopoverUI();
-      renderVttActiveTokensList();
-      renderOwlbearCanvas();
-      saveAndSyncOwlbearState();
-    });
-  });
-
-  document.getElementById("vttTokHpCur")?.addEventListener("change", (e) => {
-    const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
-    if (!tok) return;
-    tok.hpCur = parseInt(e.target.value, 10) || 0;
-    renderVttActiveTokensList();
-    renderOwlbearCanvas();
-    saveAndSyncOwlbearState();
-  });
-
-  document.getElementById("vttTokHpMax")?.addEventListener("change", (e) => {
-    const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
-    if (!tok) return;
-    tok.hpMax = Math.max(1, parseInt(e.target.value, 10) || 1);
-    renderVttActiveTokensList();
-    renderOwlbearCanvas();
-    saveAndSyncOwlbearState();
-  });
-
-  document.getElementById("vttTokAcInput")?.addEventListener("change", (e) => {
-    const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
-    if (!tok) return;
-    tok.ac = parseInt(e.target.value, 10) || 10;
-    renderVttActiveTokensList();
-    renderOwlbearCanvas();
-    saveAndSyncOwlbearState();
-  });
-
-  document.getElementById("vttTokSizeSelect")?.addEventListener("change", (e) => {
-    const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
-    if (!tok) return;
-    tok.size = parseFloat(e.target.value) || 1;
-    renderOwlbearCanvas();
-    saveAndSyncOwlbearState();
-  });
-
-  document.querySelectorAll("#vttTokConditionsRow .vtt-cond-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
-      if (!tok) return;
-      if (!Array.isArray(tok.conditions)) tok.conditions = [];
-      const c = btn.dataset.cond;
-      if (tok.conditions.includes(c)) {
-        tok.conditions = tok.conditions.filter((x) => x !== c);
-      } else {
-        tok.conditions.push(c);
-      }
-      updateSelectedTokenPopoverUI();
-      renderOwlbearCanvas();
-      saveAndSyncOwlbearState();
-    });
-  });
-
-  document.getElementById("vttTokDupBtn")?.addEventListener("click", () => {
-    const tok = (vttState.tokens || []).find((t) => t.id === vttSelectedTokenId);
-    if (!tok) return;
-    const copy = {
-      ...tok,
-      id: `tok_dup_${Date.now()}`,
-      charId: "",
-      name: `${tok.name} Copy`,
-      x: tok.x + 1,
-      y: tok.y + 1,
-      conditions: [...(tok.conditions || [])]
-    };
-    vttState.tokens.push(copy);
-    selectVttToken(copy.id);
-    saveAndSyncOwlbearState();
-  });
-
-  document.getElementById("vttTokDelBtn")?.addEventListener("click", () => {
-    if (!vttSelectedTokenId) return;
-    vttState.tokens = (vttState.tokens || []).filter((t) => t.id !== vttSelectedTokenId);
-    selectVttToken(null);
-    saveAndSyncOwlbearState();
-  });
-
-  // Right Drawer Toggle & Tabs
+function openMapDrawer(tabName) {
   const drawer = document.getElementById("vttRightDrawer");
-  document.getElementById("vttDrawerToggleBtn")?.addEventListener("click", () => {
-    drawer?.classList.toggle("open");
-  });
-  document.getElementById("vttDrawerCloseBtn")?.addEventListener("click", () => {
-    drawer?.classList.remove("open");
-  });
+  if (!drawer) return;
 
-  document.querySelectorAll(".vtt-drawer-tab").forEach((tabBtn) => {
-    tabBtn.addEventListener("click", () => {
-      const target = tabBtn.dataset.drawerTab;
-      document.querySelectorAll(".vtt-drawer-tab").forEach((b) => b.classList.toggle("active", b === tabBtn));
-      const tokPane = document.getElementById("vttDrawerPaneTokens");
-      const mapPane = document.getElementById("vttDrawerPaneMaps");
-      if (tokPane) tokPane.style.display = target === "tokens" ? "flex" : "none";
-      if (mapPane) mapPane.style.display = target === "maps" ? "flex" : "none";
-    });
+  drawer.style.display = "flex";
+
+  // Switch active tab header
+  document.querySelectorAll(".vtt-drawer-tab").forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.drawerTab === tabName);
   });
 
-  // Spawning Tokens
-  document.getElementById("vttSpawnSelfBtn")?.addEventListener("click", spawnMyCharacterTokenOnVtt);
-  document.getElementById("owlbearDropMyTokenBtn")?.addEventListener("click", spawnMyCharacterTokenOnVtt);
-  document.getElementById("vttSpawnPartyBtn")?.addEventListener("click", spawnCampaignPartyOnVtt);
-  document.getElementById("owlbearSyncPartyTokensBtn")?.addEventListener("click", spawnCampaignPartyOnVtt);
+  // Switch pane
+  const paneMaps = document.getElementById("vttDrawerPaneMaps");
+  const paneTokens = document.getElementById("vttDrawerPaneTokens");
+  const paneDice = document.getElementById("vttDrawerPaneDice");
+  const paneInit = document.getElementById("vttDrawerPaneInit");
 
-  document.querySelectorAll("#vttPresetTokensGrid .vtt-preset-token-btn").forEach((btn) => {
+  if (paneMaps) paneMaps.style.display = tabName === "maps" ? "flex" : "none";
+  if (paneTokens) paneTokens.style.display = tabName === "tokens" ? "flex" : "none";
+  if (paneDice) paneDice.style.display = tabName === "dice" ? "flex" : "none";
+  if (paneInit) paneInit.style.display = tabName === "init" ? "flex" : "none";
+
+  if (tabName === "tokens") renderMapPresetTokensGrid("all");
+}
+
+function closeMapDrawer() {
+  const drawer = document.getElementById("vttRightDrawer");
+  if (drawer) drawer.style.display = "none";
+}
+
+function initMapBottomDrawersListeners() {
+  // Trigger buttons in bottom dock bar
+  document.querySelectorAll("#mapBottomDockBar .map-bottom-dock-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      spawnPresetTokenOnVtt(btn.dataset.preset);
+      const drawer = document.getElementById("vttRightDrawer");
+      const target = btn.dataset.openDrawer;
+      if (drawer && drawer.style.display === "flex") {
+        const activeTab = drawer.querySelector(".vtt-drawer-tab.active")?.dataset.drawerTab;
+        if (activeTab === target) {
+          closeMapDrawer();
+          return;
+        }
+      }
+      openMapDrawer(target);
     });
   });
 
-  document.getElementById("vttAddCustomTokBtn")?.addEventListener("click", () => {
-    const name = document.getElementById("vttCustomTokName")?.value?.trim() || "Custom Token";
-    const hp = parseInt(document.getElementById("vttCustomTokHp")?.value, 10) || 25;
-    const size = parseFloat(document.getElementById("vttCustomTokSize")?.value) || 1;
-    const color = document.getElementById("vttCustomTokColor")?.value || "#ef4444";
-    const imgUrl = document.getElementById("vttCustomTokImg")?.value?.trim() || "";
-
-    const newTok = {
-      id: `tok_custom_${Date.now()}`,
-      name,
-      icon: "⚔️",
-      avatar: imgUrl,
-      x: 10,
-      y: 8,
-      size,
-      hpCur: hp,
-      hpMax: hp,
-      ac: 14,
-      color,
-      conditions: []
-    };
-    vttState.tokens.push(newTok);
-    selectVttToken(newTok.id);
-    saveAndSyncOwlbearState();
-    showStatus(`Spawned ${name} on map!`);
-  });
-
-  document.getElementById("vttClearAllTokensBtn")?.addEventListener("click", () => {
-    vttState.tokens = [];
-    selectVttToken(null);
-    saveAndSyncOwlbearState();
-    showStatus("Cleared all tokens from the battle map.");
-  });
-
-  document.getElementById("vttActiveTokensList")?.addEventListener("click", (e) => {
-    const item = e.target.closest(".vtt-active-token-item");
-    if (!item) return;
-    selectVttToken(item.dataset.tokenId);
-  });
-
-  // Switching Battlemap Scenes
-  document.querySelectorAll("#vttSceneList .vtt-scene-card").forEach((card) => {
-    card.addEventListener("click", () => {
-      const sceneKey = card.dataset.scene;
-      if (!sceneKey) return;
-      vttState.scene = sceneKey;
-      vttState.customMapUrl = "";
-      syncVttUiControlsFromState();
-      renderOwlbearCanvas();
-      saveAndSyncOwlbearState();
-      showStatus(`Switched battlemap to ${VTT_SCENE_META[sceneKey]?.title || sceneKey}!`);
+  // Drawer tab buttons
+  document.querySelectorAll(".vtt-drawer-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      openMapDrawer(tab.dataset.drawerTab);
     });
   });
 
+  document.getElementById("vttDrawerCloseBtn")?.addEventListener("click", closeMapDrawer);
+
+  // Maps Pane: File Upload
+  const uploadInput = document.getElementById("vttUploadMapInput");
+  if (uploadInput) {
+    uploadInput.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file || !activeMapState) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const off = document.createElement("canvas");
+          const maxDim = 1600;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+            else { w = Math.round((w * maxDim) / h); h = maxDim; }
+          }
+          off.width = w;
+          off.height = h;
+          off.getContext("2d").drawImage(img, 0, 0, w, h);
+          activeMapState.customMapUrl = off.toDataURL("image/jpeg", 0.8);
+          triggerMapAutosave();
+          resizeAndRenderOwlbearCanvas();
+          showStatus("Custom map uploaded!");
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Maps Pane: URL Apply
   document.getElementById("vttApplyMapUrlBtn")?.addEventListener("click", () => {
-    const url = document.getElementById("vttCustomMapUrlInput")?.value?.trim() || "";
-    if (!url) return;
-    vttState.customMapUrl = url;
-    syncVttUiControlsFromState();
-    renderOwlbearCanvas();
-    saveAndSyncOwlbearState();
-    showStatus("Applied custom battlemap image!");
+    const input = document.getElementById("vttCustomMapUrlInput");
+    if (!input || !activeMapState) return;
+    const url = input.value.trim();
+    activeMapState.customMapUrl = url || null;
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+    showStatus(url ? "Map URL applied!" : "Cleared custom map image.");
   });
 
-  document.getElementById("vttUploadMapInput")?.addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
+  // Maps Pane: Grid cols / rows / color
+  document.getElementById("vttGridColsInput")?.addEventListener("change", (e) => {
+    if (!activeMapState) return;
+    activeMapState.gridCols = Math.max(6, Math.min(100, parseInt(e.target.value, 10) || 26));
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  document.getElementById("vttGridRowsInput")?.addEventListener("change", (e) => {
+    if (!activeMapState) return;
+    activeMapState.gridRows = Math.max(6, Math.min(100, parseInt(e.target.value, 10) || 18));
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  document.getElementById("vttGridColorSelect")?.addEventListener("change", (e) => {
+    if (!activeMapState) return;
+    activeMapState.gridColor = e.target.value;
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  // Built-in Scene cards
+  document.querySelectorAll("#vttSceneList .vtt-scene-card").forEach(card => {
+    card.addEventListener("click", () => {
+      if (!activeMapState) return;
+      const scene = card.dataset.scene;
+      activeMapState.scene = scene;
+      activeMapState.customMapUrl = null;
+      const meta = MAP_SCENE_CATALOG[scene];
+      if (meta) {
+        activeMapState.gridCols = meta.cols;
+        activeMapState.gridRows = meta.rows;
+      }
+      syncMapUiControlsFromState();
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+      showStatus(`Switched terrain: ${meta?.title || scene}`);
+    });
+  });
+
+  // Tokens Pane: Category Filter
+  document.querySelectorAll(".map-tok-cat-pill").forEach(pill => {
+    pill.addEventListener("click", () => {
+      document.querySelectorAll(".map-tok-cat-pill").forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+      renderMapPresetTokensGrid(pill.dataset.tokCat);
+    });
+  });
+
+  // Custom Token Creator
+  document.getElementById("vttAddCustomTokBtn")?.addEventListener("click", () => {
+    if (!activeMapState) return;
+    const nameInput = document.getElementById("vttCustomTokName");
+    const sizeSelect = document.getElementById("vttCustomTokSize");
+    const layerSelect = document.getElementById("vttCustomTokLayer");
+    const colorInput = document.getElementById("vttCustomTokColor");
+    const imgInput = document.getElementById("vttCustomTokImg");
+
+    const name = (nameInput && nameInput.value.trim()) || "Token";
+    const size = parseFloat(sizeSelect?.value) || 1;
+    const layer = layerSelect?.value || "character";
+    const color = colorInput?.value || "#d4af37";
+    const imgUrl = imgInput?.value.trim() || null;
+
+    if (!activeMapState.tokens) activeMapState.tokens = [];
+    const world = getMapWorldDimensions();
+
+    const tok = {
+      id: "tok_" + Date.now(),
+      name: name,
+      icon: "♟️",
+      img: imgUrl,
+      size: size,
+      layer: layer,
+      color: color,
+      rotation: 0,
+      rings: [color],
+      x: Math.round(world.cols / 2),
+      y: Math.round(world.rows / 2)
+    };
+    activeMapState.tokens.push(tok);
+    if (nameInput) nameInput.value = "";
+    if (imgInput) imgInput.value = "";
+
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+    updateMapActiveTokensList();
+    showStatus(`Added ${name} to map!`);
+  });
+
+  // Custom Token File Upload
+  document.getElementById("vttCustomTokFileInput")?.addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        const off = document.createElement("canvas");
-        const maxDim = 1400;
-        let w = img.width;
-        let h = img.height;
-        if (w > maxDim || h > maxDim) {
-          if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
-          else { w = Math.round((w * maxDim) / h); h = maxDim; }
-        }
-        off.width = w;
-        off.height = h;
-        off.getContext("2d").drawImage(img, 0, 0, w, h);
-        vttState.customMapUrl = off.toDataURL("image/jpeg", 0.78);
-        syncVttUiControlsFromState();
-        renderOwlbearCanvas();
-        saveAndSyncOwlbearState();
-        showStatus("Uploaded custom battlemap!");
-      };
-      img.src = ev.target.result;
+      const imgInput = document.getElementById("vttCustomTokImg");
+      if (imgInput) imgInput.value = ev.target.result;
     };
     reader.readAsDataURL(file);
   });
 
-  // Live Tab Stream Controls (Mode 2)
-  document.getElementById("owlbearOpenForStreamBtn")?.addEventListener("click", openExternalOwlbearRoomTab);
-  document.getElementById("owlbearStreamOpenHeroBtn")?.addEventListener("click", openExternalOwlbearRoomTab);
-  document.getElementById("owlbearStartStreamBtn")?.addEventListener("click", startOwlbearStream);
-  document.getElementById("owlbearStreamStartHeroBtn")?.addEventListener("click", startOwlbearStream);
-  document.getElementById("owlbearStopStreamBtn")?.addEventListener("click", stopOwlbearStream);
-
-  // Direct Iframe Controls (Mode 3)
-  document.getElementById("owlbearReloadIframeBtn")?.addEventListener("click", () => {
-    const iframe = document.getElementById("owlbearIframe");
-    if (iframe) {
-      const cur = iframe.src;
-      iframe.src = "";
-      setTimeout(() => { iframe.src = cur; }, 60);
+  document.getElementById("vttClearAllTokensBtn")?.addEventListener("click", () => {
+    if (!activeMapState) return;
+    if (confirm("Remove all tokens from the map?")) {
+      activeMapState.tokens = [];
+      deselectAllMapObjects();
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+      updateMapActiveTokensList();
     }
   });
-  document.getElementById("owlbearSwitchToNativeBtn")?.addEventListener("click", () => {
-    switchOwlbearViewMode("native");
+
+  // Dice Tray Listeners
+  document.querySelectorAll("#mapDiceRack .map-die-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const sides = parseInt(btn.dataset.mapDie, 10);
+      if (sides) rollMapDie(sides);
+    });
   });
 
-  // Quick Combat Rolls in Tactical Strip
-  const initBtn = document.getElementById("owlbearRollInitBtn");
-  if (initBtn) {
-    initBtn.addEventListener("click", () => {
-      const bonus = parseInt(document.getElementById("initiativeDisplay")?.textContent, 10) || 0;
-      performD20Roll(bonus, "Initiative");
+  document.getElementById("mapDiceRerollBtn")?.addEventListener("click", () => {
+    if (mapDiceTrayRolls.length === 0) return;
+    mapDiceTrayRolls = mapDiceTrayRolls.map(r => ({
+      ...r,
+      value: Math.floor(Math.random() * r.sides) + 1
+    }));
+    renderMapDiceTray();
+  });
+
+  document.getElementById("mapDiceClearBtn")?.addEventListener("click", () => {
+    mapDiceTrayRolls = [];
+    renderMapDiceTray();
+  });
+
+  // Initiative Tracker Listeners
+  document.getElementById("mapInitNextTurnBtn")?.addEventListener("click", () => {
+    if (!activeMapState || !activeMapState.initiative || activeMapState.initiative.length === 0) return;
+    activeMapState.activeInitIndex = ((activeMapState.activeInitIndex || 0) + 1) % activeMapState.initiative.length;
+    renderMapInitiativeList();
+    triggerMapAutosave();
+  });
+
+  document.getElementById("mapInitSortBtn")?.addEventListener("click", () => {
+    if (!activeMapState || !activeMapState.initiative) return;
+    activeMapState.initiative.sort((a, b) => (b.val || 0) - (a.val || 0));
+    activeMapState.activeInitIndex = 0;
+    renderMapInitiativeList();
+    triggerMapAutosave();
+  });
+
+  document.getElementById("mapInitClearBtn")?.addEventListener("click", () => {
+    if (!activeMapState) return;
+    activeMapState.initiative = [];
+    activeMapState.activeInitIndex = 0;
+    renderMapInitiativeList();
+    triggerMapAutosave();
+  });
+}
+
+function renderMapPresetTokensGrid(catFilter = "all") {
+  const grid = document.getElementById("vttPresetTokensGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  Object.entries(MAP_PRESET_TOKENS).forEach(([key, preset]) => {
+    if (catFilter !== "all" && preset.cat !== catFilter) return;
+
+    const item = document.createElement("div");
+    item.className = "map-preset-tok-card";
+    item.draggable = true;
+    item.dataset.presetKey = key;
+
+    item.innerHTML = `
+      <div class="map-preset-tok-avatar" style="background:${preset.color};">
+        ${preset.icon}
+      </div>
+      <span class="map-preset-tok-name">${preset.name}</span>
+    `;
+
+    // Click to spawn in center
+    item.addEventListener("click", () => {
+      spawnMapTokenFromPreset(preset);
     });
+
+    // Drag and drop onto canvas
+    item.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("application/json", JSON.stringify(preset));
+    });
+
+    grid.appendChild(item);
+  });
+}
+
+function spawnMapTokenFromPreset(preset, gridPos = null) {
+  if (!activeMapState) return;
+  if (!activeMapState.tokens) activeMapState.tokens = [];
+
+  const world = getMapWorldDimensions();
+  const gx = gridPos ? gridPos.x : Math.round(world.cols / 2);
+  const gy = gridPos ? gridPos.y : Math.round(world.rows / 2);
+
+  const tok = {
+    id: "tok_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+    name: preset.name,
+    icon: preset.icon,
+    size: preset.size || 1,
+    layer: preset.layer || "character",
+    color: preset.color || "#3b82f6",
+    rotation: 0,
+    rings: [preset.color || "#3b82f6"],
+    x: gx,
+    y: gy
+  };
+
+  activeMapState.tokens.push(tok);
+  triggerMapAutosave();
+  resizeAndRenderOwlbearCanvas();
+  updateMapActiveTokensList();
+  showStatus(`Spawned ${tok.name} on map!`);
+}
+
+function updateMapActiveTokensList() {
+  const list = document.getElementById("vttActiveTokensList");
+  if (!list || !activeMapState) return;
+  list.innerHTML = "";
+
+  const tokens = activeMapState.tokens || [];
+  if (tokens.length === 0) {
+    list.innerHTML = '<span style="font-size:0.75rem; color:var(--text-dim);">No tokens on map.</span>';
+    return;
   }
 
-  const atkBtn = document.getElementById("owlbearRollAtkBtn");
-  if (atkBtn) {
-    atkBtn.addEventListener("click", () => {
-      const firstWpn = (Array.isArray(myCharacterWeapons) && myCharacterWeapons[0]) ? myCharacterWeapons[0] : null;
-      if (firstWpn && firstWpn.name) {
-        const numMatch = String(firstWpn.atk || "").match(/[+-]?\d+/);
-        const bonus = numMatch ? parseInt(numMatch[0], 10) : 0;
-        performD20Roll(bonus, `${firstWpn.name} Atk`);
-      } else {
-        performD20Roll(0, "Unarmed Strike");
+  tokens.forEach(tok => {
+    const row = document.createElement("div");
+    row.className = "vtt-active-token-row";
+    row.innerHTML = `
+      <div style="display:flex; align-items:center; gap:0.4rem; overflow:hidden;">
+        <span style="font-size:1.1rem;">${tok.icon || "♟️"}</span>
+        <strong style="font-size:0.75rem; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${escapeHtml(tok.name)}</strong>
+      </div>
+      <div style="display:flex; gap:0.25rem;">
+        <button type="button" class="btn btn-ghost btn-xs btn-focus" title="Focus Token">🔍</button>
+        <button type="button" class="btn btn-ghost btn-xs btn-del" style="color:#ef4444;" title="Delete">&times;</button>
+      </div>
+    `;
+
+    row.querySelector(".btn-focus")?.addEventListener("click", () => {
+      selectMapToken(tok.id);
+      const g = mapCamera.gridSize;
+      const canvas = document.getElementById("owlbearMapCanvas");
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        mapCamera.x = rect.width / 2 - (tok.x * g * mapCamera.zoom);
+        mapCamera.y = rect.height / 2 - (tok.y * g * mapCamera.zoom);
+        resizeAndRenderOwlbearCanvas();
       }
     });
+
+    row.querySelector(".btn-del")?.addEventListener("click", () => {
+      activeMapState.tokens = (activeMapState.tokens || []).filter(t => t.id !== tok.id);
+      deselectAllMapObjects();
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+      updateMapActiveTokensList();
+    });
+
+    list.appendChild(row);
+  });
+}
+
+function rollMapDie(sides) {
+  const val = Math.floor(Math.random() * sides) + 1;
+  const rollObj = {
+    id: "die_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+    sides: sides,
+    value: val,
+    color: sides === 20 ? "#ef4444" : sides === 100 ? "#8b5cf6" : "#d4af37"
+  };
+  mapDiceTrayRolls.push(rollObj);
+  renderMapDiceTray();
+}
+
+function renderMapDiceTray() {
+  const arena = document.getElementById("mapDiceVisualList");
+  const totalBar = document.getElementById("mapDiceTotalBar");
+  const breakdown = document.getElementById("mapDiceBreakdownText");
+  const totalVal = document.getElementById("mapDiceTotalValue");
+  if (!arena) return;
+
+  arena.innerHTML = "";
+
+  if (mapDiceTrayRolls.length === 0) {
+    arena.innerHTML = '<span class="map-dice-empty-hint">Click any die above to roll</span>';
+    if (totalBar) totalBar.style.display = "none";
+    return;
   }
 
-  const chatBtn = document.getElementById("owlbearPartyChatBtn");
-  if (chatBtn) {
-    chatBtn.addEventListener("click", () => {
-      toggleFloatingPartyChat(true);
+  let sum = 0;
+  const counts = {};
+
+  mapDiceTrayRolls.forEach(die => {
+    sum += die.value;
+    counts[die.sides] = (counts[die.sides] || 0) + 1;
+
+    const el = document.createElement("div");
+    el.className = "map-tray-die-pill";
+    el.style.borderColor = die.color;
+    el.innerHTML = `
+      <span class="map-tray-die-sides">d${die.sides}</span>
+      <strong class="map-tray-die-val">${die.value}</strong>
+    `;
+    arena.appendChild(el);
+  });
+
+  if (totalBar) {
+    totalBar.style.display = "flex";
+    if (totalVal) totalVal.textContent = sum;
+    if (breakdown) {
+      const parts = Object.entries(counts).map(([s, cnt]) => `${cnt}d${s}`);
+      breakdown.textContent = parts.join(" + ");
+    }
+  }
+}
+
+function renderMapInitiativeList() {
+  const list = document.getElementById("mapInitTrackerList");
+  if (!list || !activeMapState) return;
+  list.innerHTML = "";
+
+  const initList = activeMapState.initiative || [];
+  if (initList.length === 0) {
+    list.innerHTML = '<span style="font-size:0.75rem; color:var(--text-dim);">No tokens in initiative. Select a token and click ⚔️ Init.</span>';
+    return;
+  }
+
+  const activeIdx = activeMapState.activeInitIndex || 0;
+
+  initList.forEach((it, idx) => {
+    const item = document.createElement("div");
+    item.className = "map-init-item" + (idx === activeIdx ? " active" : "");
+    item.innerHTML = `
+      <div style="display:flex; align-items:center; gap:0.4rem;">
+        <span style="font-size:1.1rem;">${it.icon || "♟️"}</span>
+        <strong style="font-size:0.75rem;">${escapeHtml(it.name)}</strong>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.4rem;">
+        <input type="number" class="vtt-tok-num-input init-score-input" value="${it.val || 0}" style="width:42px;" />
+        <button type="button" class="map-drawer-close-x init-del-btn" style="font-size:1.1rem;">&times;</button>
+      </div>
+    `;
+
+    item.querySelector(".init-score-input")?.addEventListener("change", (e) => {
+      it.val = parseInt(e.target.value, 10) || 0;
+      triggerMapAutosave();
+    });
+
+    item.querySelector(".init-del-btn")?.addEventListener("click", () => {
+      activeMapState.initiative = activeMapState.initiative.filter(itemX => itemX.id !== it.id);
+      renderMapInitiativeList();
+      triggerMapAutosave();
+    });
+
+    list.appendChild(item);
+  });
+}
+
+/* --------------------------------------------------------------------------
+   RIGHT TOOL DOCK & SUB-TOOLBAR CONTROLLERS
+   -------------------------------------------------------------------------- */
+
+function setMapActiveTool(toolName) {
+  mapCurrentTool = toolName;
+
+  document.querySelectorAll("#vttLeftDock .map-dock-tool-btn[data-vtt-tool]").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.vttTool === toolName);
+  });
+
+  const subBar = document.getElementById("vttSubToolbar");
+  const fogGroup = document.getElementById("vttSubFogGroup");
+  const drawGroup = document.getElementById("vttSubDrawGroup");
+  const measureGroup = document.getElementById("vttSubMeasureGroup");
+
+  if (subBar) {
+    if (toolName === "fog" || toolName === "draw" || toolName === "measure") {
+      subBar.style.display = "flex";
+      if (fogGroup) fogGroup.style.display = toolName === "fog" ? "flex" : "none";
+      if (drawGroup) drawGroup.style.display = toolName === "draw" ? "flex" : "none";
+      if (measureGroup) measureGroup.style.display = toolName === "measure" ? "flex" : "none";
+    } else {
+      subBar.style.display = "none";
+    }
+  }
+
+  const canvas = document.getElementById("owlbearMapCanvas");
+  if (canvas) {
+    canvas.className = `map-vtt-canvas tool-${toolName}`;
+  }
+
+  if (toolName !== "measure") {
+    mapActiveMeasure = null;
+  }
+
+  resizeAndRenderOwlbearCanvas();
+}
+
+function eraseDrawingsNear(wx, wy) {
+  if (!activeMapState || !activeMapState.drawings) return;
+  const threshold = 18;
+  const beforeLen = activeMapState.drawings.length;
+
+  activeMapState.drawings = activeMapState.drawings.filter(d => {
+    if (d.type === "brush" && Array.isArray(d.points)) {
+      return !d.points.some(pt => Math.hypot(pt.x - wx, pt.y - wy) < threshold);
+    }
+    if (d.type === "line" && d.p1 && d.p2) {
+      const midX = (d.p1.x + d.p2.x) / 2;
+      const midY = (d.p1.y + d.p2.y) / 2;
+      return Math.hypot(midX - wx, midY - wy) >= threshold &&
+             Math.hypot(d.p1.x - wx, d.p1.y - wy) >= threshold &&
+             Math.hypot(d.p2.x - wx, d.p2.y - wy) >= threshold;
+    }
+    if (d.type === "rect") {
+      return !(wx >= d.x && wx <= d.x + d.w && wy >= d.y && wy <= d.y + d.h);
+    }
+    if (d.type === "circle") {
+      return Math.hypot(wx - d.cx, wy - d.cy) >= (d.r + threshold);
+    }
+    return true;
+  });
+
+  if (activeMapState.drawings.length !== beforeLen) {
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  }
+}
+
+function createMapPing(wx, wy, color) {
+  mapPings.push({
+    x: wx,
+    y: wy,
+    color: color || mapPlayerColor || "#ef4444",
+    startTime: Date.now()
+  });
+  resizeAndRenderOwlbearCanvas();
+}
+
+function initMapToolDockListeners() {
+  document.querySelectorAll("#vttLeftDock .map-dock-tool-btn[data-vtt-tool]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      setMapActiveTool(btn.dataset.vttTool);
+    });
+  });
+
+  // Toggle Grid
+  const toggleGridBtn = document.getElementById("vttToggleGridBtn");
+  if (toggleGridBtn) {
+    toggleGridBtn.addEventListener("click", () => {
+      mapShowGrid = !mapShowGrid;
+      toggleGridBtn.classList.toggle("active", mapShowGrid);
+      resizeAndRenderOwlbearCanvas();
+      showStatus(mapShowGrid ? "Grid Enabled" : "Grid Hidden");
     });
   }
 
-  // Restore saved Owlbear room URL AFTER all button listeners are safely registered
-  try {
-    const savedUrl = getStoredOwlbearUrl();
-    if (savedUrl) {
-      setOwlbearRoomUrl(savedUrl, false);
-    }
-  } catch (err) {
-    console.warn("Could not restore saved Owlbear room:", err);
+  // Toggle Snap to Grid
+  const toggleSnapBtn = document.getElementById("vttToggleSnapBtn");
+  if (toggleSnapBtn) {
+    toggleSnapBtn.addEventListener("click", () => {
+      mapSnapToGrid = !mapSnapToGrid;
+      toggleSnapBtn.classList.toggle("active", mapSnapToGrid);
+      showStatus(mapSnapToGrid ? "Snap to Grid: ON" : "Snap to Grid: OFF");
+    });
   }
+
+  // Reset / Fit View
+  document.getElementById("vttResetViewBtn")?.addEventListener("click", () => {
+    resetMapCameraToFit();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  // Theater / Fullscreen Mode
+  document.getElementById("owlbearTheaterToggleBtn")?.addEventListener("click", () => {
+    const frame = document.getElementById("owlbearViewportFrame");
+    if (frame) {
+      frame.classList.toggle("vtt-theater-fullscreen");
+      resetMapCameraToFit();
+      resizeAndRenderOwlbearCanvas();
+    }
+  });
+
+  // Zoom In / Out Buttons
+  document.getElementById("vttZoomInBtn")?.addEventListener("click", () => {
+    mapCamera.zoom = Math.min(3.5, mapCamera.zoom * 1.2);
+    updateMapZoomReadout();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  document.getElementById("vttZoomOutBtn")?.addEventListener("click", () => {
+    mapCamera.zoom = Math.max(0.25, mapCamera.zoom * 0.82);
+    updateMapZoomReadout();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  // Fog Sub-panel Listeners
+  document.getElementById("vttFogEnabledCheckbox")?.addEventListener("change", (e) => {
+    if (!activeMapState) return;
+    activeMapState.fogEnabled = e.target.checked;
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  const fogPreviewBtn = document.getElementById("vttFogPreviewToggleBtn");
+  if (fogPreviewBtn) {
+    fogPreviewBtn.addEventListener("click", () => {
+      if (!activeMapState) return;
+      activeMapState.fogPreviewDm = !activeMapState.fogPreviewDm;
+      fogPreviewBtn.classList.toggle("active", activeMapState.fogPreviewDm);
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+    });
+  }
+
+  document.querySelectorAll("#vttSubFogGroup button[data-fog-shape]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#vttSubFogGroup button[data-fog-shape]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      mapFogShape = btn.dataset.fogShape;
+    });
+  });
+
+  document.getElementById("vttFogModeRevealBtn")?.addEventListener("click", () => {
+    mapFogMode = "reveal";
+    document.getElementById("vttFogModeRevealBtn")?.classList.add("active");
+    document.getElementById("vttFogModeHideBtn")?.classList.remove("active");
+  });
+
+  document.getElementById("vttFogModeHideBtn")?.addEventListener("click", () => {
+    mapFogMode = "hide";
+    document.getElementById("vttFogModeHideBtn")?.classList.add("active");
+    document.getElementById("vttFogModeRevealBtn")?.classList.remove("active");
+  });
+
+  document.getElementById("vttFogCoverAllBtn")?.addEventListener("click", () => {
+    if (!activeMapState) return;
+    activeMapState.fogShapes = [];
+    activeMapState.fogEnabled = true;
+    document.getElementById("vttFogEnabledCheckbox")?.setAttribute("checked", "true");
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  document.getElementById("vttFogResetBtn")?.addEventListener("click", () => {
+    if (!activeMapState) return;
+    if (confirm("Clear all fog of war?")) {
+      activeMapState.fogShapes = [];
+      activeMapState.fogEnabled = false;
+      const chk = document.getElementById("vttFogEnabledCheckbox");
+      if (chk) chk.checked = false;
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+    }
+  });
+
+  document.getElementById("vttFogUndoBtn")?.addEventListener("click", () => {
+    if (!activeMapState || !activeMapState.fogShapes || activeMapState.fogShapes.length === 0) return;
+    activeMapState.fogShapes.pop();
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  // Draw Sub-panel Listeners
+  document.querySelectorAll("#vttSubDrawGroup button[data-draw-shape]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#vttSubDrawGroup button[data-draw-shape]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      mapDrawShape = btn.dataset.drawShape;
+    });
+  });
+
+  document.querySelectorAll("#vttSubDrawGroup .vtt-color-swatch").forEach(swatch => {
+    swatch.addEventListener("click", () => {
+      document.querySelectorAll("#vttSubDrawGroup .vtt-color-swatch").forEach(s => s.classList.remove("active"));
+      swatch.classList.add("active");
+      mapDrawColor = swatch.dataset.color;
+    });
+  });
+
+  document.getElementById("vttDrawFillCheckbox")?.addEventListener("change", (e) => {
+    mapDrawFill = e.target.checked;
+  });
+
+  document.getElementById("vttDrawStrokeWidthSelect")?.addEventListener("change", (e) => {
+    mapDrawWidth = parseInt(e.target.value, 10) || 4;
+  });
+
+  document.getElementById("vttUndoDrawingBtn")?.addEventListener("click", () => {
+    if (!activeMapState || !activeMapState.drawings || activeMapState.drawings.length === 0) return;
+    activeMapState.drawings.pop();
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  document.getElementById("vttClearDrawingsBtn")?.addEventListener("click", () => {
+    if (!activeMapState) return;
+    if (confirm("Clear all drawings and shapes?")) {
+      activeMapState.drawings = [];
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+    }
+  });
+
+  // Measure Sub-panel Listeners
+  document.getElementById("vttMeasureRuleSelect")?.addEventListener("change", (e) => {
+    mapMeasureRule = e.target.value;
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  document.getElementById("vttGridScaleInput")?.addEventListener("change", (e) => {
+    if (!activeMapState) return;
+    activeMapState.gridScale = parseInt(e.target.value, 10) || 5;
+    updateMapZoomReadout();
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  document.getElementById("vttGridUnitInput")?.addEventListener("change", (e) => {
+    if (!activeMapState) return;
+    activeMapState.gridUnit = e.target.value || "ft";
+    updateMapZoomReadout();
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  // Top-Left Header Listeners
+  document.getElementById("mapBackToLobbyBtn")?.addEventListener("click", () => {
+    triggerMapAutosave(true);
+    showMapLobbyView();
+  });
+
+  document.getElementById("mapActiveTitleInput")?.addEventListener("input", (e) => {
+    if (!activeMapState) return;
+    activeMapState.name = e.target.value.trim() || "Tabletop Map";
+    triggerMapAutosave();
+  });
+
+  document.getElementById("mapCopyRoomCodeBtn")?.addEventListener("click", () => {
+    if (!activeMapRoomId) return;
+    const inviteUrl = `${window.location.origin}${window.location.pathname}?map=${activeMapRoomId}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(inviteUrl).then(() => {
+        showStatus(`Copied Map invite link: ${activeMapRoomId}`);
+      }).catch(() => {
+        prompt("Copy Room Code:", activeMapRoomId);
+      });
+    } else {
+      prompt("Copy Room Code:", activeMapRoomId);
+    }
+  });
+
+  document.getElementById("mapPlayerColorPicker")?.addEventListener("change", (e) => {
+    mapPlayerColor = e.target.value;
+    try {
+      localStorage.setItem(MAP_PLAYER_COLOR_KEY, mapPlayerColor);
+    } catch (err) {}
+    showStatus("Player color updated!");
+  });
 }
+
+/* --------------------------------------------------------------------------
+   KEYBOARD SHORTCUTS
+   -------------------------------------------------------------------------- */
+
+function initMapKeyboardShortcuts() {
+  window.addEventListener("keydown", (e) => {
+    // Ignore inside text inputs or textareas
+    if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
+
+    const tab = document.getElementById("tab-owlbear");
+    if (!tab || !tab.classList.contains("active")) return;
+
+    if (e.code === "Space" && !mapSpacePressed) {
+      mapSpacePressed = true;
+      const canvas = document.getElementById("owlbearMapCanvas");
+      if (canvas) canvas.style.cursor = "grab";
+    }
+
+    if (e.key === "v" || e.key === "V") setMapActiveTool("select");
+    else if (e.key === "h" || e.key === "H") setMapActiveTool("pan");
+    else if (e.key === "f" || e.key === "F") setMapActiveTool("fog");
+    else if (e.key === "d" || e.key === "D") setMapActiveTool("draw");
+    else if (e.key === "m" || e.key === "M") setMapActiveTool("measure");
+    else if (e.key === "p" || e.key === "P") setMapActiveTool("ping");
+    else if (e.key === "t" || e.key === "T") setMapActiveTool("note");
+    else if (e.key === "g" || e.key === "G") document.getElementById("vttToggleGridBtn")?.click();
+    else if (e.key === "s" || e.key === "S") document.getElementById("vttToggleSnapBtn")?.click();
+    else if (e.key === "0") document.getElementById("vttResetViewBtn")?.click();
+
+    else if (e.key === "Delete" || e.key === "Backspace") {
+      if (mapSelectedTokenId && activeMapState) {
+        activeMapState.tokens = (activeMapState.tokens || []).filter(t => t.id !== mapSelectedTokenId);
+        deselectAllMapObjects();
+        triggerMapAutosave();
+        resizeAndRenderOwlbearCanvas();
+        updateMapActiveTokensList();
+      } else if (mapSelectedNoteId && activeMapState) {
+        activeMapState.notes = (activeMapState.notes || []).filter(n => n.id !== mapSelectedNoteId);
+        deselectAllMapObjects();
+        triggerMapAutosave();
+        resizeAndRenderOwlbearCanvas();
+      }
+    } else if (e.key === "Escape") {
+      deselectAllMapObjects();
+      closeMapDrawer();
+    }
+  });
+
+  window.addEventListener("keyup", (e) => {
+    if (e.code === "Space") {
+      mapSpacePressed = false;
+      const canvas = document.getElementById("owlbearMapCanvas");
+      if (canvas) canvas.style.cursor = "";
+    }
+  });
+}
+
+/* --------------------------------------------------------------------------
+   INITIALIZATION OF MAP VTT
+   -------------------------------------------------------------------------- */
+
+function initOwlbearVTT() {
+  initMapLobbyListeners();
+  initMapCanvasInteractionListeners();
+  initMapTokenPopoverListeners();
+  initMapNotePopoverListeners();
+  initMapBottomDrawersListeners();
+  initMapKeyboardShortcuts();
+
+  // Setup Drag-over drop onto Canvas
+  const canvas = document.getElementById("owlbearMapCanvas");
+  if (canvas) {
+    canvas.addEventListener("dragover", (e) => e.preventDefault());
+    canvas.addEventListener("drop", (e) => {
+      e.preventDefault();
+      try {
+        const raw = e.dataTransfer.getData("application/json");
+        if (raw) {
+          const preset = JSON.parse(raw);
+          const ptr = getMapCanvasPointer(e);
+          spawnMapTokenFromPreset(preset, { x: Math.round(ptr.gridX), y: Math.round(ptr.gridY) });
+        }
+      } catch (err) {}
+    });
+  }
+
+  // Handle URL map param: ?map=CODE
+  const urlParams = new URLSearchParams(window.location.search);
+  const mapParam = urlParams.get("map");
+  if (mapParam && mapParam.trim()) {
+    openMapRoom(mapParam.trim().toUpperCase());
+    if (typeof switchMainTab === "function") switchMainTab("tab-owlbear");
+  } else {
+    // Show lobby view by default
+    showMapLobbyView();
+  }
+
+  // Resize listener
+  window.addEventListener("resize", () => {
+    const tab = document.getElementById("tab-owlbear");
+    if (tab && tab.classList.contains("active") && activeMapRoomId) {
+      resizeAndRenderOwlbearCanvas();
+    }
+  });
+}
+
 
 /* ==========================================================================
    INITIALIZATION & URL INVITE LINK CHECK

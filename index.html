@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=MedievalSharp&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=82" />
+  <link rel="stylesheet" href="style.css?v=83" />
 </head>
 <body id="top" class="theme-nexus">
 
@@ -123,7 +123,7 @@
                 <line x1="8" y1="2" x2="8" y2="18"></line>
                 <line x1="16" y1="6" x2="16" y2="22"></line>
               </svg>
-              <span>Owlbear Rodeo</span>
+              <span>Map</span>
               <span class="tab-counter-pill" id="owlbearNavBadge" style="display:none; background: #4ade80; color: #000; font-size: 0.6rem; font-weight: 800;">LIVE</span>
             </button>
           </nav>
@@ -1348,480 +1348,515 @@
       </div>
 
       <!-- =============================================================== -->
-      <!-- TAB 7: OWLBEAR RODEO VTT (BATTLE MAP VIEWPORT)                  -->
+      <!-- TAB 7: MAP (MODERN OWLBEAR-STYLE VIRTUAL TABLETOP)              -->
       <!-- =============================================================== -->
-      <div id="tab-owlbear" class="tab-page owlbear-tab-page">
+      <div id="tab-owlbear" class="tab-page map-vtt-tab-page">
 
-        <!-- Top Control Bar -->
-        <div class="owlbear-control-bar">
-          <div class="owlbear-title-cluster">
-            <div class="owlbear-brand-badge">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
-                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
-                <line x1="8" y1="2" x2="8" y2="18"></line>
-                <line x1="16" y1="6" x2="16" y2="22"></line>
-              </svg>
-              <span>Owlbear Rodeo</span>
-            </div>
-            <span class="owlbear-status-pill" id="owlbearStatusPill">
-              <span class="status-indicator-dot" id="owlbearStatusDot"></span>
-              <span id="owlbearStatusText">No Room Loaded</span>
-            </span>
-          </div>
+        <div class="map-vtt-shell" id="owlbearViewportFrame">
 
-          <!-- Engine Mode Switcher (Visible when map is active) -->
-          <div class="owlbear-mode-switcher" id="owlbearModeSwitcher" style="display: none;">
-            <button type="button" class="owlbear-mode-pill active" data-vtt-mode="real_owlbear" title="Run the official Owlbear Rodeo engine natively inside this tab">
-              🦉 Owlbear Rodeo
-            </button>
-            <button type="button" class="owlbear-mode-pill" data-vtt-mode="native" title="Run 5e Sheet-integrated Tactical VTT map">
-              🗺️ 5e Sheet Map
-            </button>
-            <button type="button" class="owlbear-mode-pill" data-vtt-mode="stream" title="Stream an open owlbear.rodeo tab directly into this viewport at 60fps">
-              📺 Live Tab Stream
-            </button>
-            <button type="button" class="owlbear-mode-pill" data-vtt-mode="iframe" title="Direct iframe embed of owlbear.rodeo (requires header unblocker extension)">
-              🌐 Direct Iframe
-            </button>
-          </div>
-
-          <!-- Room Input & Actions -->
-          <div class="owlbear-actions-cluster">
-            <div class="owlbear-input-wrap">
-              <input type="text" id="owlbearRoomUrlInput" class="owlbear-room-input" placeholder="Paste Owlbear Room URL or Room Name..." spellcheck="false" autocomplete="off" />
-              <button type="button" id="owlbearClearInputBtn" class="owlbear-clear-btn" title="Clear URL / Close Map">&times;</button>
-            </div>
-            <button type="button" id="owlbearLoadBtn" class="btn btn-gold-subtle btn-sm">Load Map</button>
-            <button type="button" id="owlbearLeaveBtn" class="btn red btn-sm owlbear-leave-map-btn" style="display: none;" onclick="if(typeof leaveOwlbearRoom==='function')leaveOwlbearRoom(event);" title="Close and leave this battle map">✕ Close Map</button>
-            <button type="button" id="owlbearTheaterToggleBtn" class="btn btn-outline btn-sm" title="Toggle Fullscreen Theater Mode">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <polyline points="9 21 3 21 3 15"></polyline>
-                <line x1="21" y1="3" x2="14" y2="10"></line>
-                <line x1="3" y1="21" x2="10" y2="14"></line>
-              </svg>
-              <span id="owlbearTheaterBtnLabel">Theater Mode</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Tactical Quick Vitals & Action Strip -->
-        <div class="owlbear-tactical-strip" id="owlbearTacticalStrip">
-          <div class="owlbear-vitals-mini">
-            <div class="owlbear-vital-badge" title="Current Health / Maximum Health">
-              <span class="vital-label">HP</span>
-              <strong id="owlbearHpDisplay" style="color: #4ade80;">--/--</strong>
-            </div>
-            <div class="owlbear-vital-badge" title="Armor Class">
-              <span class="vital-label">AC</span>
-              <strong id="owlbearAcDisplay" style="color: var(--accent-gold);">--</strong>
-            </div>
-            <div class="owlbear-vital-badge" title="Passive Perception">
-              <span class="vital-label">PERC</span>
-              <strong id="owlbearPercDisplay" style="color: #60a5fa;">--</strong>
-            </div>
-            <div class="owlbear-vital-badge" title="Heroic Inspiration">
-              <span class="vital-label">INSP</span>
-              <strong id="owlbearInspDisplay" style="color: #c084fc;">No</strong>
-            </div>
-          </div>
-          <div class="owlbear-quick-actions" id="owlbearQuickActions">
-            <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearDropMyTokenBtn" title="Drop your character token onto the battle map">⚡ Drop My Token</button>
-            <button type="button" class="btn btn-outline btn-xs" id="owlbearSyncPartyTokensBtn" title="Drop all connected campaign party members onto the map">👥 Drop Party</button>
-            <button type="button" class="btn btn-outline btn-xs" id="owlbearRollInitBtn" title="Roll Initiative with your DEX modifier">🎲 Roll Initiative</button>
-            <button type="button" class="btn btn-outline btn-xs" id="owlbearRollAtkBtn" title="Roll attack with primary weapon">⚔️ Primary Attack</button>
-            <button type="button" class="btn btn-outline btn-xs" id="owlbearPartyChatBtn" title="Toggle Party Chat">💬 Party Chat</button>
-          </div>
-        </div>
-
-        <!-- Viewport Frame -->
-        <div class="owlbear-viewport-frame" id="owlbearViewportFrame">
-          
-          <!-- State A: Empty / Setup Wizard -->
-          <div class="owlbear-empty-state" id="owlbearEmptyState">
-            <div class="owlbear-empty-icon-ring">
-              <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--accent-gold)" stroke-width="1.8">
-                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
-                <line x1="8" y1="2" x2="8" y2="18"></line>
-                <line x1="16" y1="6" x2="16" y2="22"></line>
-                <circle cx="12" cy="12" r="3" fill="var(--accent-gold)"></circle>
-              </svg>
-            </div>
-            <h3 class="owlbear-empty-title">Owlbear Rodeo Virtual Tabletop</h3>
-            <p class="owlbear-empty-subtitle">Paste your Owlbear Rodeo room link (or any room name) to launch a live, interactive tactical battle map directly inside this tab—synced in real time with your party.</p>
-
-            <div class="owlbear-empty-inputs">
-              <input type="text" id="owlbearWizardRoomInput" class="owlbear-wizard-input" placeholder="Paste Owlbear Room Link (https://www.owlbear.rodeo/room/...) or Room Code" />
-              <button type="button" id="owlbearWizardConnectBtn" class="btn btn-gold-subtle">Connect to Room</button>
-            </div>
-
-            <div class="owlbear-empty-helpers">
-              <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearUseDemoRoomBtn">🦉 Launch Real Owlbear Rodeo Now</button>
-              <a href="https://www.owlbear.rodeo" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-xs">
-                Open owlbear.rodeo 2.0 &rarr;
-              </a>
-            </div>
-
-            <div class="owlbear-features-grid">
-              <div class="owlbear-feature-card">
-                <span class="feat-icon">🗺️</span>
-                <strong>Runs Natively In-Tab</strong>
-                <p>Full interactive HTML5 Canvas tabletop with pan, zoom, 7 fantasy maps, custom map upload, tokens, fog of war, and AoE templates.</p>
+          <!-- =========================================================== -->
+          <!-- VIEW 1: MAP LOBBY (CREATE MAP / JOIN MAP / SAVED MAPS)      -->
+          <!-- =========================================================== -->
+          <div class="map-lobby-view" id="mapLobbyView">
+            <div class="map-lobby-hero-card">
+              <div class="map-lobby-emblem">
+                <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="var(--accent-gold)" stroke-width="1.8">
+                  <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                  <line x1="8" y1="2" x2="8" y2="18"></line>
+                  <line x1="16" y1="6" x2="16" y2="22"></line>
+                  <circle cx="12" cy="12" r="2.5" fill="var(--accent-gold)"></circle>
+                </svg>
               </div>
-              <div class="owlbear-feature-card">
-                <span class="feat-icon">👥</span>
-                <strong>Real-Time Party Sync</strong>
-                <p>Anyone joining the same Owlbear room link or campaign code sees token moves, pings, rulers, and drawings in real time.</p>
-              </div>
-              <div class="owlbear-feature-card">
-                <span class="feat-icon">📺</span>
-                <strong>3 Native View Modes</strong>
-                <p>Use the Native VTT Canvas, stream an open owlbear.rodeo tab at 60fps via Live Tab Stream, or use Direct Iframe embed.</p>
-              </div>
-            </div>
-          </div>
+              <h2 class="map-lobby-title">Tabletop Map</h2>
+              <p class="map-lobby-subtitle">Create a new tactical map or join a shared room. All maps, tokens, fog of war, and drawings autosave automatically.</p>
 
-          <!-- State B: Active Battle Map Container -->
-          <div class="owlbear-active-container" id="owlbearActiveContainer" style="display: none;">
-
-            <!-- Active Top Sub-Bar -->
-            <div class="owlbear-active-header-bar">
-              <div class="active-room-meta-group">
-                <span class="active-status-badge" id="owlbearLiveSyncBadge">🟢 Live Tabletop</span>
-                <span class="active-room-url-display" id="owlbearActiveUrlDisplay">Room: Default</span>
-                <button type="button" id="owlbearCopyRoomUrlBtn" class="btn btn-ghost btn-xs" title="Copy Room Link to clipboard">📋 Copy Link</button>
-              </div>
-
-              <div class="active-room-action-buttons">
-                <button type="button" id="owlbearRealHomeBtn" class="btn btn-outline btn-xs" title="Open Owlbear Rodeo Home Screen (Start / Join / How-To)">
-                  🏠 Owlbear Home
-                </button>
-                <span class="vtt-active-scene-label" id="vttActiveSceneLabel" style="display: none;">🌲 Forest Road Ambush</span>
-                <button type="button" id="owlbearActiveLeaveBtn" class="btn red btn-xs owlbear-leave-map-btn" onclick="if(typeof leaveOwlbearRoom==='function')leaveOwlbearRoom(event);" title="Close and exit this battle map">
-                  ✕ Close Map
-                </button>
-              </div>
-            </div>
-
-            <!-- ========================================================= -->
-            <!-- MODE 0 (DEFAULT): REAL OFFICIAL OWLBEAR RODEO ENGINE      -->
-            <!-- ========================================================= -->
-            <div class="owlbear-real-engine-layer" id="owlbearRealEngineLayer">
-              <iframe id="owlbearRealEngineFrame" class="owlbear-real-engine-iframe" src="" allow="camera; microphone; clipboard-read; clipboard-write; fullscreen; autoplay" title="Owlbear Rodeo Native VTT"></iframe>
-            </div>
-
-            <!-- ========================================================= -->
-            <!-- MODE 1: 5E SHEET INTERACTIVE TACTICAL CANVAS ENGINE       -->
-            <!-- ========================================================= -->
-            <div class="owlbear-native-vtt-layer" id="owlbearNativeVttLayer" style="display: none;">
-              <canvas id="owlbearMapCanvas" class="owlbear-vtt-canvas"></canvas>
-
-              <!-- Floating Left Tool Dock (Owlbear Rodeo Style) -->
-              <div class="vtt-left-dock" id="vttLeftDock">
-                <button type="button" class="vtt-tool-btn active" data-vtt-tool="select" title="Select & Move Tokens (Shortcut: V)">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
-                    <path d="M13 13l6 6"></path>
+              <!-- The 2 Primary Action Buttons: Join Map & Create Map -->
+              <div class="map-lobby-primary-actions">
+                <button type="button" class="btn map-hero-btn map-hero-btn-create" id="mapOpenCreateModalBtn">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
-                </button>
-                <button type="button" class="vtt-tool-btn" data-vtt-tool="pan" title="Pan Map / Hand Tool (Shortcut: H or Space+Drag)">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path>
-                    <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path>
-                    <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path>
-                    <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path>
-                  </svg>
-                </button>
-                <button type="button" class="vtt-tool-btn" data-vtt-tool="measure" title="Measure Distance / Ruler Tool (5ft per grid square, Shortcut: M)">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"></path>
-                    <path d="m14.5 12.5 2-2"></path>
-                    <path d="m11.5 9.5 2-2"></path>
-                    <path d="m8.5 6.5 2-2"></path>
-                    <path d="m17.5 15.5 2-2"></path>
-                  </svg>
-                </button>
-                <button type="button" class="vtt-tool-btn" data-vtt-tool="ping" title="Laser Pointer / Ping Map for Party (Shortcut: P)">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <circle cx="12" cy="12" r="6"></circle>
-                    <circle cx="12" cy="12" r="2"></circle>
-                  </svg>
-                </button>
-                <button type="button" class="vtt-tool-btn" data-vtt-tool="draw" title="Freehand Draw on Map (Shortcut: D)">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
-                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
-                  </svg>
-                </button>
-                <button type="button" class="vtt-tool-btn" data-vtt-tool="aoe" title="Place Spell AoE Template (Sphere, Cone, Cube, Line - Shortcut: A)">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <polygon points="12 2 2 22 22 22 12 2"></polygon>
-                  </svg>
-                </button>
-                <button type="button" class="vtt-tool-btn" data-vtt-tool="fog" title="Fog of War Reveal / Hide Brush (Shortcut: F)">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path>
-                  </svg>
+                  <span>Create Map</span>
                 </button>
 
-                <div class="vtt-dock-divider"></div>
-
-                <button type="button" class="vtt-tool-btn active" id="vttToggleGridBtn" title="Toggle Tactical Grid Overlay (Shortcut: G)">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-                    <line x1="3" y1="9" x2="21" y2="9"></line>
-                    <line x1="3" y1="15" x2="21" y2="15"></line>
-                    <line x1="9" y1="3" x2="9" y2="21"></line>
-                    <line x1="15" y1="3" x2="15" y2="21"></line>
+                <button type="button" class="btn map-hero-btn map-hero-btn-join" id="mapOpenJoinModalBtn">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                    <polyline points="10 17 15 12 10 7"></polyline>
+                    <line x1="15" y1="12" x2="3" y2="12"></line>
                   </svg>
-                </button>
-                <button type="button" class="vtt-tool-btn active" id="vttToggleSnapBtn" title="Toggle Snap-to-Grid for Tokens">
-                  🧲
-                </button>
-                <button type="button" class="vtt-tool-btn" id="vttClearDrawingsBtn" title="Clear All Drawings & AoE Templates">
-                  🗑️
-                </button>
-                <button type="button" class="vtt-tool-btn" id="vttResetViewBtn" title="Center & Reset Camera Zoom">
-                  🎯
+                  <span>Join Map</span>
                 </button>
               </div>
 
-              <!-- Dynamic Tool Sub-Bar (Draw / AoE / Fog Options) -->
-              <div class="vtt-sub-toolbar" id="vttSubToolbar" style="display: none;">
-                <!-- Draw Options -->
-                <div class="vtt-sub-group" id="vttSubDrawGroup" style="display: none;">
-                  <span class="vtt-sub-label">Ink:</span>
-                  <button type="button" class="vtt-color-swatch active" data-color="#d4af37" style="background:#d4af37;"></button>
-                  <button type="button" class="vtt-color-swatch" data-color="#ef4444" style="background:#ef4444;"></button>
-                  <button type="button" class="vtt-color-swatch" data-color="#38bdf8" style="background:#38bdf8;"></button>
-                  <button type="button" class="vtt-color-swatch" data-color="#4ade80" style="background:#4ade80;"></button>
-                  <button type="button" class="vtt-color-swatch" data-color="#c084fc" style="background:#c084fc;"></button>
-                  <button type="button" class="vtt-color-swatch" data-color="#ffffff" style="background:#ffffff;"></button>
-                  <button type="button" class="btn btn-ghost btn-xs" id="vttUndoDrawingBtn">↩ Undo</button>
+              <!-- Expandable Create Map Panel -->
+              <div class="map-lobby-action-drawer" id="mapCreateActionDrawer" style="display: none;">
+                <div class="map-action-drawer-header">
+                  <strong>Create New Map</strong>
+                  <button type="button" class="map-drawer-close-x" id="mapCloseCreateDrawerBtn">&times;</button>
                 </div>
-
-                <!-- AoE Template Options -->
-                <div class="vtt-sub-group" id="vttSubAoeGroup" style="display: none;">
-                  <span class="vtt-sub-label">Spell AoE:</span>
-                  <select id="vttAoeShapeSelect" class="vtt-mini-select">
-                    <option value="sphere_20">🔥 20ft Sphere (Fireball)</option>
-                    <option value="sphere_10">❄️ 10ft Sphere (Shatter)</option>
-                    <option value="sphere_15">✨ 15ft Aura (Spirit Guardians)</option>
-                    <option value="cone_15">🔺 15ft Cone (Burning Hands)</option>
-                    <option value="cone_30">🐉 30ft Cone (Dragon Breath)</option>
-                    <option value="cube_15">🟦 15ft Cube (Thunderwave)</option>
-                    <option value="line_30">⚡ 30ft Line (Lightning Bolt)</option>
-                  </select>
-                  <span class="vtt-sub-hint">Drag on map to place & aim</span>
-                </div>
-
-                <!-- Fog of War Options -->
-                <div class="vtt-sub-group" id="vttSubFogGroup" style="display: none;">
-                  <label class="vtt-fog-toggle-label">
-                    <input type="checkbox" id="vttFogEnabledCheckbox" />
-                    <span>Enable Fog of War</span>
-                  </label>
-                  <button type="button" class="btn btn-gold-subtle btn-xs active" id="vttFogModeRevealBtn">☀️ Reveal Area</button>
-                  <button type="button" class="btn btn-outline btn-xs" id="vttFogModeHideBtn">🌑 Hide Area</button>
-                  <button type="button" class="btn btn-ghost btn-xs" id="vttFogCoverAllBtn">Cover All</button>
-                  <button type="button" class="btn btn-ghost btn-xs" id="vttFogResetBtn">Clear Fog</button>
-                </div>
-              </div>
-
-              <!-- Selected Token Context HUD Popover -->
-              <div class="vtt-token-popover" id="vttTokenPopover" style="display: none;">
-                <div class="vtt-tok-pop-header">
-                  <input type="text" id="vttTokNameInput" class="vtt-tok-name-input" placeholder="Token Name" />
-                  <button type="button" id="vttTokCloseBtn" class="vtt-tok-close-btn">&times;</button>
-                </div>
-
-                <div class="vtt-tok-pop-row">
-                  <span class="vtt-tok-lbl">HP</span>
-                  <div class="vtt-tok-hp-controls">
-                    <button type="button" class="vtt-hp-step-btn" data-hp-delta="-5">-5</button>
-                    <button type="button" class="vtt-hp-step-btn" data-hp-delta="-1">-1</button>
-                    <input type="number" id="vttTokHpCur" class="vtt-tok-num-input" value="10" />
-                    <span>/</span>
-                    <input type="number" id="vttTokHpMax" class="vtt-tok-num-input" value="10" />
-                    <button type="button" class="vtt-hp-step-btn" data-hp-delta="1">+1</button>
-                    <button type="button" class="vtt-hp-step-btn" data-hp-delta="5">+5</button>
+                <div class="map-action-drawer-body">
+                  <div class="map-field-group">
+                    <label for="mapCreateNameInput">Map Name</label>
+                    <input type="text" id="mapCreateNameInput" class="map-modern-input" placeholder="e.g. Cragmaw Hideout, Session 1..." autocomplete="off" />
                   </div>
-                </div>
-
-                <div class="vtt-tok-pop-row">
-                  <span class="vtt-tok-lbl">AC</span>
-                  <input type="number" id="vttTokAcInput" class="vtt-tok-num-input" value="15" style="width:46px;" />
-                  <span class="vtt-tok-lbl" style="margin-left:0.4rem;">Size</span>
-                  <select id="vttTokSizeSelect" class="vtt-mini-select">
-                    <option value="0.7">Tiny</option>
-                    <option value="1" selected>1x1 Med</option>
-                    <option value="2">2x2 Lrg</option>
-                    <option value="3">3x3 Huge</option>
-                    <option value="4">4x4 Garg</option>
-                  </select>
-                </div>
-
-                <div class="vtt-tok-conditions-row" id="vttTokConditionsRow">
-                  <button type="button" class="vtt-cond-btn" data-cond="bloodied" title="Bloodied / Wounded">🩸</button>
-                  <button type="button" class="vtt-cond-btn" data-cond="poisoned" title="Poisoned">☠️</button>
-                  <button type="button" class="vtt-cond-btn" data-cond="concentrating" title="Concentrating">💠</button>
-                  <button type="button" class="vtt-cond-btn" data-cond="hexed" title="Hexed / Hunter's Mark">🔮</button>
-                  <button type="button" class="vtt-cond-btn" data-cond="blessed" title="Blessed / Hasted">✨</button>
-                  <button type="button" class="vtt-cond-btn" data-cond="prone" title="Prone / Restrained">⛓️</button>
-                  <button type="button" class="vtt-cond-btn" data-cond="dead" title="Defeated / Dead">💀</button>
-                  <button type="button" class="vtt-cond-btn" data-cond="hidden" title="Hidden / Invisible">👁️</button>
-                </div>
-
-                <div class="vtt-tok-pop-footer">
-                  <button type="button" class="btn btn-outline btn-xs" id="vttTokDupBtn">📋 Duplicate</button>
-                  <button type="button" class="btn red btn-xs" id="vttTokDelBtn">🗑️ Remove</button>
+                  <div class="map-field-group">
+                    <label for="mapCreateSceneSelect">Starting Terrain</label>
+                    <select id="mapCreateSceneSelect" class="map-modern-select">
+                      <option value="forest_ambush">🌲 Woodland Road &amp; River</option>
+                      <option value="dungeon_crypt">🏛️ Stone Dungeon Crypt</option>
+                      <option value="grassland">🌿 Open Grassland Field</option>
+                      <option value="tavern_inn">🍺 Tavern Common Room</option>
+                      <option value="magma_cavern">🌋 Volcanic Cavern</option>
+                      <option value="arcane_sanctum">✨ Astral Sanctum</option>
+                      <option value="pirate_galleon">⛵ High Seas Galleon</option>
+                      <option value="parchment_mat">📜 Classic Parchment Grid</option>
+                      <option value="dark_slate">⬛ Dark Slate Tactical Grid</option>
+                    </select>
+                  </div>
+                  <button type="button" class="btn btn-gold-subtle map-confirm-action-btn" id="mapConfirmCreateBtn">
+                    Launch New Map &rarr;
+                  </button>
                 </div>
               </div>
 
-              <!-- Bottom-Left Zoom & Grid Pill -->
-              <div class="vtt-zoom-pill">
-                <button type="button" class="vtt-zoom-btn" id="vttZoomOutBtn" title="Zoom Out">&minus;</button>
-                <span id="vttZoomLabel" class="vtt-zoom-label">100%</span>
-                <button type="button" class="vtt-zoom-btn" id="vttZoomInBtn" title="Zoom In">&plus;</button>
-                <span class="vtt-scale-tag">1 sq = 5ft</span>
+              <!-- Expandable Join Map Panel -->
+              <div class="map-lobby-action-drawer" id="mapJoinActionDrawer" style="display: none;">
+                <div class="map-action-drawer-header">
+                  <strong>Join Existing Map</strong>
+                  <button type="button" class="map-drawer-close-x" id="mapCloseJoinDrawerBtn">&times;</button>
+                </div>
+                <div class="map-action-drawer-body">
+                  <div class="map-field-group">
+                    <label for="mapJoinCodeInput">Room Code or Map Link</label>
+                    <input type="text" id="mapJoinCodeInput" class="map-modern-input" placeholder="Enter Room Code (e.g. MAP-4F9A) or paste link..." autocomplete="off" spellcheck="false" />
+                  </div>
+                  <button type="button" class="btn btn-gold-subtle map-confirm-action-btn" id="mapConfirmJoinBtn">
+                    Connect &amp; Join Map &rarr;
+                  </button>
+                </div>
               </div>
+            </div>
 
-              <!-- Right Collapsible Map & Token Drawer -->
-              <button type="button" class="vtt-drawer-toggle-btn" id="vttDrawerToggleBtn" title="Toggle Maps & Tokens Drawer">
-                🗺️ Maps &amp; Tokens
+            <!-- Previously Created / Saved Maps Section -->
+            <div class="map-saved-rooms-section" id="mapSavedRoomsSection" style="display: none;">
+              <div class="map-saved-section-header">
+                <div>
+                  <h3 class="map-saved-section-title">Your Maps</h3>
+                  <span class="map-saved-section-hint">Click any map below to continue where you left off &bull; Autosaved locally &amp; in cloud</span>
+                </div>
+              </div>
+              <div class="map-saved-cards-grid" id="mapSavedCardsGrid">
+                <!-- Populated dynamically from saved maps registry -->
+              </div>
+            </div>
+          </div>
+
+          <!-- =========================================================== -->
+          <!-- VIEW 2: ACTIVE TABLETOP CANVAS (MODERNIZED OWLBEAR UI)      -->
+          <!-- =========================================================== -->
+          <div class="map-tabletop-view" id="mapTabletopView" style="display: none;">
+
+            <!-- Interactive Tabletop Canvas -->
+            <canvas id="owlbearMapCanvas" class="map-vtt-canvas"></canvas>
+
+            <!-- Top-Left Floating Room & Party Bar (Owlbear Concept) -->
+            <div class="map-floating-top-left" id="mapTopLeftBar">
+              <button type="button" class="map-hud-pill-btn map-back-lobby-btn" id="mapBackToLobbyBtn" title="Save and return to Your Maps">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                <span>Maps</span>
               </button>
 
-              <aside class="vtt-right-drawer open" id="vttRightDrawer">
-                <div class="vtt-drawer-tabs">
-                  <button type="button" class="vtt-drawer-tab active" data-drawer-tab="tokens">♟️ Tokens</button>
-                  <button type="button" class="vtt-drawer-tab" data-drawer-tab="maps">🗺️ Battlemaps</button>
-                  <button type="button" class="vtt-drawer-close" id="vttDrawerCloseBtn" title="Collapse Drawer">&times;</button>
+              <div class="map-room-badge-group">
+                <span class="map-room-live-dot" title="Room Active"></span>
+                <input type="text" id="mapActiveTitleInput" class="map-active-title-input" value="Tabletop Map" title="Click to rename map (Autosaves)" />
+                <button type="button" class="map-room-code-chip" id="mapCopyRoomCodeBtn" title="Click to copy Room Code / Invite Link">
+                  <span id="mapActiveRoomCodeText">MAP-0000</span>
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <span class="map-autosave-indicator" id="mapAutosaveIndicator" title="All changes save automatically">
+                &#10003; Autosaved
+              </span>
+
+              <!-- Player Color & Connected Party Roster -->
+              <div class="map-party-roster-pill" id="mapPartyRosterPill" title="Your Player Color (used for Pointer, Ruler &amp; Notes)">
+                <input type="color" id="mapPlayerColorPicker" class="map-player-color-input" value="#d4af37" title="Change Your Player Color" />
+                <div class="map-party-avatars-row" id="mapPartyAvatarsRow"></div>
+              </div>
+            </div>
+
+            <!-- Right-Side Floating Tool Dock (Owlbear Rodeo Concept) -->
+            <div class="map-floating-right-dock" id="vttLeftDock">
+              <button type="button" class="map-dock-tool-btn active" data-vtt-tool="select" title="Select, Move, Resize &amp; Rotate (Shortcut: V)">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"></path>
+                  <path d="M13 13l6 6"></path>
+                </svg>
+              </button>
+
+              <button type="button" class="map-dock-tool-btn" data-vtt-tool="pan" title="Pan Map / Hand Tool (Shortcut: H or Space+Drag)">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.1">
+                  <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path>
+                  <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path>
+                  <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path>
+                  <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path>
+                </svg>
+              </button>
+
+              <button type="button" class="map-dock-tool-btn" data-vtt-tool="fog" title="Fog of War Tool (Shortcut: F)">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.1">
+                  <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path>
+                </svg>
+              </button>
+
+              <button type="button" class="map-dock-tool-btn" data-vtt-tool="draw" title="Draw &amp; Shapes Tool (Shortcut: D)">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.1">
+                  <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                  <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                </svg>
+              </button>
+
+              <button type="button" class="map-dock-tool-btn" data-vtt-tool="measure" title="Measure Distance / Ruler Tool (Shortcut: M)">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.1">
+                  <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"></path>
+                  <path d="m14.5 12.5 2-2"></path>
+                  <path d="m11.5 9.5 2-2"></path>
+                  <path d="m8.5 6.5 2-2"></path>
+                  <path d="m17.5 15.5 2-2"></path>
+                </svg>
+              </button>
+
+              <button type="button" class="map-dock-tool-btn" data-vtt-tool="ping" title="Laser Pointer &amp; Ping Tool (Shortcut: P)">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.1">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <circle cx="12" cy="12" r="6"></circle>
+                  <circle cx="12" cy="12" r="2"></circle>
+                </svg>
+              </button>
+
+              <button type="button" class="map-dock-tool-btn" data-vtt-tool="note" title="Sticky Note / Text Label Tool (Shortcut: T)">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.1">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+              </button>
+
+              <div class="map-dock-divider"></div>
+
+              <button type="button" class="map-dock-tool-btn active" id="vttToggleGridBtn" title="Toggle Grid Overlay (Shortcut: G)">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <line x1="3" y1="9" x2="21" y2="9"></line>
+                  <line x1="3" y1="15" x2="21" y2="15"></line>
+                  <line x1="9" y1="3" x2="9" y2="21"></line>
+                  <line x1="15" y1="3" x2="15" y2="21"></line>
+                </svg>
+              </button>
+
+              <button type="button" class="map-dock-tool-btn active" id="vttToggleSnapBtn" title="Toggle Snap to Grid (Shortcut: S)">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.1">
+                  <path d="m6 15-4-4 6.75-6.77a7.79 7.79 0 0 1 11 11L13 22l-4-4 6.39-6.36a2.14 2.14 0 0 0-3-3L6 15"></path>
+                </svg>
+              </button>
+
+              <button type="button" class="map-dock-tool-btn" id="vttResetViewBtn" title="Fit Map to Screen (Shortcut: 0)">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.1">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+                  <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+                  <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+                  <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+                </svg>
+              </button>
+
+              <button type="button" class="map-dock-tool-btn" id="owlbearTheaterToggleBtn" title="Toggle Fullscreen Mode">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.1">
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <polyline points="9 21 3 21 3 15"></polyline>
+                  <line x1="21" y1="3" x2="14" y2="10"></line>
+                  <line x1="3" y1="21" x2="10" y2="14"></line>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Dynamic Tool Sub-Toolbar (Appears next to Right Dock for Fog, Draw, Measure) -->
+            <div class="map-tool-subpanel" id="vttSubToolbar" style="display: none;">
+
+              <!-- FOG OF WAR SUB-OPTIONS -->
+              <div class="map-sub-group" id="vttSubFogGroup" style="display: none;">
+                <div class="map-sub-row">
+                  <label class="map-toggle-chip">
+                    <input type="checkbox" id="vttFogEnabledCheckbox" />
+                    <span>Fog Active</span>
+                  </label>
+                  <button type="button" class="map-sub-pill-btn active" id="vttFogPreviewToggleBtn" title="Toggle DM See-Through Fog Preview (50% opacity vs Solid)">
+                    👁️ See-Through
+                  </button>
                 </div>
 
-                <!-- TOKENS PANE -->
-                <div class="vtt-drawer-pane active" id="vttDrawerPaneTokens">
-                  <div class="vtt-drawer-section">
-                    <span class="vtt-drawer-sec-title">Party Heroes</span>
-                    <div class="vtt-party-spawn-btns">
-                      <button type="button" class="btn btn-gold-subtle btn-xs" id="vttSpawnSelfBtn">⚡ Drop My Character</button>
-                      <button type="button" class="btn btn-outline btn-xs" id="vttSpawnPartyBtn">👥 Drop Party</button>
-                    </div>
-                  </div>
+                <div class="map-sub-row">
+                  <span class="map-sub-lbl">Shape:</span>
+                  <button type="button" class="map-sub-pill-btn active" data-fog-shape="rect" title="Drag a rectangle to reveal/hide fog">⬜ Box</button>
+                  <button type="button" class="map-sub-pill-btn" data-fog-shape="poly" title="Click points to draw a polygon fog area (Double-click to finish)">⬠ Polygon</button>
+                  <button type="button" class="map-sub-pill-btn" data-fog-shape="brush" title="Paint circular fog reveal/hide strokes">🖌️ Brush</button>
+                </div>
 
-                  <div class="vtt-drawer-section">
-                    <span class="vtt-drawer-sec-title">Click to Spawn Creature / Prop</span>
-                    <div class="vtt-preset-tokens-grid" id="vttPresetTokensGrid">
-                      <button type="button" class="vtt-preset-token-btn" data-preset="owlbear" title="Spawn Owlbear (Large 2x2)">
-                        <span class="pt-icon">🦉</span><span class="pt-name">Owlbear</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="dragon" title="Spawn Red Dragon (Huge 3x3)">
-                        <span class="pt-icon">🐉</span><span class="pt-name">Dragon</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="goblin" title="Spawn Goblin">
-                        <span class="pt-icon">👺</span><span class="pt-name">Goblin</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="skeleton" title="Spawn Skeleton">
-                        <span class="pt-icon">💀</span><span class="pt-name">Skeleton</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="orc" title="Spawn Orc Brute">
-                        <span class="pt-icon">👹</span><span class="pt-name">Orc</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="bandit" title="Spawn Bandit">
-                        <span class="pt-icon">🗡️</span><span class="pt-name">Bandit</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="wolf" title="Spawn Dire Wolf">
-                        <span class="pt-icon">🐺</span><span class="pt-name">Dire Wolf</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="beholder" title="Spawn Beholder (Large 2x2)">
-                        <span class="pt-icon">👁️</span><span class="pt-name">Beholder</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="lich" title="Spawn Lich">
-                        <span class="pt-icon">🧙‍♂️</span><span class="pt-name">Lich</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="knight" title="Spawn Guard / Knight">
-                        <span class="pt-icon">🛡️</span><span class="pt-name">Knight</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="mimic" title="Spawn Mimic">
-                        <span class="pt-icon">📦</span><span class="pt-name">Mimic</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="cultist" title="Spawn Cultist">
-                        <span class="pt-icon">🕯️</span><span class="pt-name">Cultist</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="chest" title="Spawn Loot Chest">
-                        <span class="pt-icon">💰</span><span class="pt-name">Chest</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="campfire" title="Spawn Campfire">
-                        <span class="pt-icon">🔥</span><span class="pt-name">Campfire</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="trap" title="Spawn Trap Marker">
-                        <span class="pt-icon">⚙️</span><span class="pt-name">Trap</span>
-                      </button>
-                      <button type="button" class="vtt-preset-token-btn" data-preset="portal" title="Spawn Arcane Portal">
-                        <span class="pt-icon">🌀</span><span class="pt-name">Portal</span>
-                      </button>
-                    </div>
-                  </div>
+                <div class="map-sub-row">
+                  <span class="map-sub-lbl">Action:</span>
+                  <button type="button" class="map-sub-pill-btn active" id="vttFogModeRevealBtn">✂️ Cut (Reveal)</button>
+                  <button type="button" class="map-sub-pill-btn" id="vttFogModeHideBtn">🌑 Cover (Hide)</button>
+                </div>
 
-                  <div class="vtt-drawer-section">
-                    <span class="vtt-drawer-sec-title">Custom Token Creator</span>
-                    <div class="vtt-custom-token-form">
-                      <input type="text" id="vttCustomTokName" class="vtt-drawer-input" placeholder="Token Name (e.g. Boss, NPC)..." />
-                      <div class="vtt-custom-tok-row">
-                        <input type="number" id="vttCustomTokHp" class="vtt-drawer-input" placeholder="HP" value="25" style="width:58px;" title="Max HP" />
-                        <select id="vttCustomTokSize" class="vtt-mini-select" style="flex:1;">
-                          <option value="1">1x1 Medium</option>
-                          <option value="2">2x2 Large</option>
-                          <option value="3">3x3 Huge</option>
-                          <option value="4">4x4 Gargantuan</option>
-                        </select>
-                        <input type="color" id="vttCustomTokColor" value="#ef4444" title="Token Ring Color" style="width:30px; height:26px; border:none; background:none; cursor:pointer;" />
-                      </div>
-                      <input type="text" id="vttCustomTokImg" class="vtt-drawer-input" placeholder="Optional Image URL..." />
-                      <button type="button" class="btn btn-gold-subtle btn-xs" id="vttAddCustomTokBtn" style="width:100%;">+ Spawn Custom Token</button>
-                    </div>
-                  </div>
+                <div class="map-sub-row">
+                  <button type="button" class="map-sub-pill-btn" id="vttFogCoverAllBtn">Fill Map with Fog</button>
+                  <button type="button" class="map-sub-pill-btn" id="vttFogResetBtn">Clear All Fog</button>
+                  <button type="button" class="map-sub-pill-btn" id="vttFogUndoBtn" title="Undo Last Fog Cut/Cover">↩ Undo</button>
+                </div>
+              </div>
 
+              <!-- DRAWING & SHAPES SUB-OPTIONS -->
+              <div class="map-sub-group" id="vttSubDrawGroup" style="display: none;">
+                <div class="map-sub-row">
+                  <span class="map-sub-lbl">Tool:</span>
+                  <button type="button" class="map-sub-pill-btn active" data-draw-shape="brush" title="Freehand Brush">🖌️ Brush</button>
+                  <button type="button" class="map-sub-pill-btn" data-draw-shape="line" title="Straight Line">📏 Line</button>
+                  <button type="button" class="map-sub-pill-btn" data-draw-shape="rect" title="Rectangle / Cube">⬜ Box</button>
+                  <button type="button" class="map-sub-pill-btn" data-draw-shape="circle" title="Circle / Sphere Radius">⭕ Circle</button>
+                  <button type="button" class="map-sub-pill-btn" data-draw-shape="cone" title="Cone / Triangle">🔺 Cone</button>
+                  <button type="button" class="map-sub-pill-btn" data-draw-shape="erase" title="Click or drag over drawings to erase them">🧽 Erase</button>
+                </div>
+
+                <div class="map-sub-row">
+                  <span class="map-sub-lbl">Color:</span>
+                  <div class="map-swatches-row">
+                    <button type="button" class="vtt-color-swatch active" data-color="#d4af37" style="background:#d4af37;"></button>
+                    <button type="button" class="vtt-color-swatch" data-color="#ef4444" style="background:#ef4444;"></button>
+                    <button type="button" class="vtt-color-swatch" data-color="#f97316" style="background:#f97316;"></button>
+                    <button type="button" class="vtt-color-swatch" data-color="#eab308" style="background:#eab308;"></button>
+                    <button type="button" class="vtt-color-swatch" data-color="#22c55e" style="background:#22c55e;"></button>
+                    <button type="button" class="vtt-color-swatch" data-color="#38bdf8" style="background:#38bdf8;"></button>
+                    <button type="button" class="vtt-color-swatch" data-color="#a855f7" style="background:#a855f7;"></button>
+                    <button type="button" class="vtt-color-swatch" data-color="#ffffff" style="background:#ffffff;"></button>
+                  </div>
+                </div>
+
+                <div class="map-sub-row">
+                  <label class="map-toggle-chip">
+                    <input type="checkbox" id="vttDrawFillCheckbox" checked />
+                    <span>Fill Shapes</span>
+                  </label>
+                  <select id="vttDrawStrokeWidthSelect" class="vtt-mini-select" title="Stroke Width">
+                    <option value="2">Thin</option>
+                    <option value="4" selected>Medium</option>
+                    <option value="7">Thick</option>
+                  </select>
+                  <button type="button" class="map-sub-pill-btn" id="vttUndoDrawingBtn">↩ Undo</button>
+                  <button type="button" class="map-sub-pill-btn" id="vttClearDrawingsBtn" style="color:#f87171;">🗑️ Clear All</button>
+                </div>
+              </div>
+
+              <!-- MEASURE / RULER SUB-OPTIONS -->
+              <div class="map-sub-group" id="vttSubMeasureGroup" style="display: none;">
+                <div class="map-sub-row">
+                  <span class="map-sub-lbl">Rule:</span>
+                  <select id="vttMeasureRuleSelect" class="vtt-mini-select">
+                    <option value="chebyshev" selected>D&amp;D 5e Standard (Max Axis)</option>
+                    <option value="alternating">Alternating Diagonal (5-10-5ft)</option>
+                    <option value="euclidean">Euclidean (True Distance)</option>
+                    <option value="manhattan">Manhattan (Grid Steps)</option>
+                  </select>
+                </div>
+                <div class="map-sub-row">
+                  <span class="map-sub-lbl">Cell Scale:</span>
+                  <input type="number" id="vttGridScaleInput" class="vtt-tok-num-input" value="5" min="1" max="1000" style="width:48px;" />
+                  <input type="text" id="vttGridUnitInput" class="vtt-tok-num-input" value="ft" style="width:38px;" />
+                </div>
+              </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- OWLBEAR-STYLE FLOATING TOKEN CONTEXT MENU                 -->
+            <!-- ========================================================= -->
+            <div class="map-token-popover" id="vttTokenPopover" style="display: none;">
+              <div class="map-tok-pop-top">
+                <input type="text" id="vttTokNameInput" class="map-tok-label-input" placeholder="Token Label..." />
+                <button type="button" id="vttTokCloseBtn" class="map-tok-close-btn" title="Deselect">&times;</button>
+              </div>
+
+              <!-- Owlbear's 8 Colored Status Rings -->
+              <div class="map-tok-rings-bar" id="vttTokConditionsRow" title="Click to toggle colored status rings on token">
+                <button type="button" class="map-ring-dot" data-ring="#ef4444" style="background:#ef4444;" title="Red Status Ring"></button>
+                <button type="button" class="map-ring-dot" data-ring="#f97316" style="background:#f97316;" title="Orange Status Ring"></button>
+                <button type="button" class="map-ring-dot" data-ring="#eab308" style="background:#eab308;" title="Yellow Status Ring"></button>
+                <button type="button" class="map-ring-dot" data-ring="#22c55e" style="background:#22c55e;" title="Green Status Ring"></button>
+                <button type="button" class="map-ring-dot" data-ring="#06b6d4" style="background:#06b6d4;" title="Cyan Status Ring"></button>
+                <button type="button" class="map-ring-dot" data-ring="#3b82f6" style="background:#3b82f6;" title="Blue Status Ring"></button>
+                <button type="button" class="map-ring-dot" data-ring="#a855f7" style="background:#a855f7;" title="Purple Status Ring"></button>
+                <button type="button" class="map-ring-dot" data-ring="#ffffff" style="background:#ffffff;" title="White Status Ring"></button>
+              </div>
+
+              <!-- Size & Layer Controls -->
+              <div class="map-tok-pop-row">
+                <select id="vttTokSizeSelect" class="vtt-mini-select" title="Token Size">
+                  <option value="0.5">0.5&times; Tiny</option>
+                  <option value="1" selected>1&times; Medium</option>
+                  <option value="2">2&times; Large</option>
+                  <option value="3">3&times; Huge</option>
+                  <option value="4">4&times; Gargantuan</option>
+                </select>
+
+                <select id="vttTokLayerSelect" class="vtt-mini-select" title="Token Layer (Mounts carry Character tokens on top of them)">
+                  <option value="character" selected>♟️ Character</option>
+                  <option value="mount">🐎 Mount / Vehicle</option>
+                  <option value="attachment">✨ Attachment / Aura</option>
+                  <option value="prop">📦 Prop / Stamp</option>
+                </select>
+              </div>
+
+              <!-- Action Icon Buttons (Hide, Lock, Initiative, Duplicate, Delete) -->
+              <div class="map-tok-actions-bar">
+                <button type="button" class="map-tok-act-btn" id="vttTokHideBtn" title="Hide / Show Token for Players">
+                  👁️ <span>Hide</span>
+                </button>
+                <button type="button" class="map-tok-act-btn" id="vttTokLockBtn" title="Lock / Unlock Token Movement">
+                  🔒 <span>Lock</span>
+                </button>
+                <button type="button" class="map-tok-act-btn" id="vttTokInitToggleBtn" title="Add / Remove from Initiative Tracker">
+                  ⚔️ <span>Init</span>
+                </button>
+                <button type="button" class="map-tok-act-btn" id="vttTokDupBtn" title="Duplicate Token (Ctrl+D)">
+                  📋 <span>Clone</span>
+                </button>
+                <button type="button" class="map-tok-act-btn danger" id="vttTokDelBtn" title="Delete Token (Del)">
+                  🗑️
+                </button>
+              </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- FLOATING STICKY NOTE CONTEXT POPOVER                      -->
+            <!-- ========================================================= -->
+            <div class="map-token-popover" id="vttNotePopover" style="display: none;">
+              <div class="map-tok-pop-top">
+                <strong style="font-size:0.74rem; color:var(--accent-gold);">📝 Map Note</strong>
+                <button type="button" id="vttNoteCloseBtn" class="map-tok-close-btn">&times;</button>
+              </div>
+              <textarea id="vttNoteTextInput" class="map-note-textarea" rows="3" placeholder="Write note or room label..."></textarea>
+              <div class="map-tok-rings-bar" id="vttNoteColorSwatches">
+                <button type="button" class="map-ring-dot active" data-note-color="#fef08a" style="background:#fef08a;"></button>
+                <button type="button" class="map-ring-dot" data-note-color="#fed7aa" style="background:#fed7aa;"></button>
+                <button type="button" class="map-ring-dot" data-note-color="#bbf7d0" style="background:#bbf7d0;"></button>
+                <button type="button" class="map-ring-dot" data-note-color="#bae6fd" style="background:#bae6fd;"></button>
+                <button type="button" class="map-ring-dot" data-note-color="#e9d5ff" style="background:#e9d5ff;"></button>
+                <button type="button" class="map-ring-dot" data-note-color="#1e293b" style="background:#1e293b; border-color:#d4af37;"></button>
+              </div>
+              <div class="map-tok-actions-bar">
+                <button type="button" class="map-tok-act-btn" id="vttNoteLockBtn">🔒 <span>Lock</span></button>
+                <button type="button" class="map-tok-act-btn danger" id="vttNoteDelBtn">🗑️ <span>Delete</span></button>
+              </div>
+            </div>
+
+            <!-- ========================================================= -->
+            <!-- BOTTOM-LEFT DOCK BUTTONS & DRAWERS (MAPS, TOKENS, DICE, INIT) -->
+            <!-- ========================================================= -->
+            <div class="map-bottom-left-cluster">
+
+              <!-- Pop-up Drawer Container -->
+              <aside class="map-bottom-drawer" id="vttRightDrawer" style="display: none;">
+                <div class="map-drawer-header">
+                  <div class="map-drawer-tabs-row">
+                    <button type="button" class="vtt-drawer-tab active" data-drawer-tab="maps">🗺️ Maps</button>
+                    <button type="button" class="vtt-drawer-tab" data-drawer-tab="tokens">♟️ Tokens</button>
+                    <button type="button" class="vtt-drawer-tab" data-drawer-tab="dice">🎲 Dice</button>
+                    <button type="button" class="vtt-drawer-tab" data-drawer-tab="init">⚔️ Initiative</button>
+                  </div>
+                  <button type="button" class="vtt-drawer-close" id="vttDrawerCloseBtn" title="Close Dock">&times;</button>
+                </div>
+
+                <!-- PANE 1: MAPS & GRID CONFIGURATOR -->
+                <div class="vtt-drawer-pane" id="vttDrawerPaneMaps" style="display: flex;">
                   <div class="vtt-drawer-section">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                      <span class="vtt-drawer-sec-title">Active Map Tokens</span>
-                      <button type="button" class="btn btn-ghost btn-xs" id="vttClearAllTokensBtn" style="font-size:0.65rem; color:#f87171;">Clear All</button>
+                      <span class="vtt-drawer-sec-title">Upload or Paste Custom Map</span>
                     </div>
-                    <div class="vtt-active-tokens-list" id="vttActiveTokensList"></div>
+                    <label class="btn btn-gold-subtle btn-xs" style="width:100%; text-align:center; cursor:pointer; display:block;">
+                      📁 Upload Map Image (PNG / JPG / WebP)
+                      <input type="file" id="vttUploadMapInput" accept="image/*" style="display:none;" />
+                    </label>
+                    <div style="display:flex; gap:0.35rem; margin-top:0.25rem;">
+                      <input type="text" id="vttCustomMapUrlInput" class="vtt-drawer-input" placeholder="Or paste Map Image URL..." style="flex:1;" />
+                      <button type="button" class="btn btn-outline btn-xs" id="vttApplyMapUrlBtn">Apply</button>
+                    </div>
                   </div>
-                </div>
 
-                <!-- BATTLEMAPS PANE -->
-                <div class="vtt-drawer-pane" id="vttDrawerPaneMaps" style="display: none;">
                   <div class="vtt-drawer-section">
-                    <span class="vtt-drawer-sec-title">Built-in Tactical Battlemaps</span>
+                    <span class="vtt-drawer-sec-title">Grid &amp; Map Settings</span>
+                    <div class="map-grid-settings-box">
+                      <div class="map-grid-setting-item">
+                        <span>Columns</span>
+                        <input type="number" id="vttGridColsInput" class="vtt-tok-num-input" value="26" min="6" max="80" />
+                      </div>
+                      <div class="map-grid-setting-item">
+                        <span>Rows</span>
+                        <input type="number" id="vttGridRowsInput" class="vtt-tok-num-input" value="18" min="6" max="80" />
+                      </div>
+                      <div class="map-grid-setting-item">
+                        <span>Grid Style</span>
+                        <select id="vttGridColorSelect" class="vtt-mini-select">
+                          <option value="gold">Gold Subtle</option>
+                          <option value="white">White Crisp</option>
+                          <option value="dark">Dark Ink</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="vtt-drawer-section">
+                    <span class="vtt-drawer-sec-title">Built-in Maps</span>
                     <div class="vtt-scene-list" id="vttSceneList">
                       <button type="button" class="vtt-scene-card active" data-scene="forest_ambush">
                         <span class="sc-icon">🌲</span>
                         <div class="sc-info">
-                          <strong>Forest Road Ambush</strong>
-                          <span>Woodland trail, river bridge &amp; boulders</span>
+                          <strong>Woodland Road &amp; Bridge</strong>
+                          <span>Forest trail, river crossing &amp; boulders</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="dungeon_crypt">
-                        <span class="sc-icon">💀</span>
+                        <span class="sc-icon">🏛️</span>
                         <div class="sc-info">
-                          <strong>Crypt of the Lich King</strong>
-                          <span>Stone chambers, pillars, altar &amp; torches</span>
+                          <strong>Stone Dungeon Crypt</strong>
+                          <span>Carved stone halls, pillars &amp; ritual chamber</span>
+                        </div>
+                      </button>
+                      <button type="button" class="vtt-scene-card" data-scene="grassland">
+                        <span class="sc-icon">🌿</span>
+                        <div class="sc-info">
+                          <strong>Open Grassland Field</strong>
+                          <span>Lush green wilderness battlemat</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="tavern_inn">
                         <span class="sc-icon">🍺</span>
                         <div class="sc-info">
-                          <strong>The Gilded Gryphon Inn</strong>
-                          <span>Tavern tables, hearth fire, bar &amp; stairs</span>
+                          <strong>Tavern Common Room</strong>
+                          <span>Wooden tables, hearth fire &amp; bar counter</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="magma_cavern">
                         <span class="sc-icon">🌋</span>
                         <div class="sc-info">
-                          <strong>Dragon's Magma Lair</strong>
-                          <span>Lava rivers, obsidian islands &amp; gold hoard</span>
+                          <strong>Volcanic Magma Cavern</strong>
+                          <span>Lava rivers &amp; obsidian islands</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="arcane_sanctum">
@@ -1835,159 +1870,156 @@
                         <span class="sc-icon">⛵</span>
                         <div class="sc-info">
                           <strong>High Seas Galleon</strong>
-                          <span>Wooden ship deck, masts, cannons &amp; sea</span>
+                          <span>Wooden ship deck, masts &amp; open ocean</span>
                         </div>
                       </button>
                       <button type="button" class="vtt-scene-card" data-scene="parchment_mat">
                         <span class="sc-icon">📜</span>
                         <div class="sc-info">
                           <strong>Classic Parchment Grid</strong>
-                          <span>Clean warm tactical parchment battlemat</span>
+                          <span>Warm vintage tabletop parchment mat</span>
+                        </div>
+                      </button>
+                      <button type="button" class="vtt-scene-card" data-scene="dark_slate">
+                        <span class="sc-icon">⬛</span>
+                        <div class="sc-info">
+                          <strong>Dark Slate Grid</strong>
+                          <span>Clean modern minimalist dark grid</span>
                         </div>
                       </button>
                     </div>
                   </div>
+                </div>
+
+                <!-- PANE 2: TOKENS DOCK -->
+                <div class="vtt-drawer-pane" id="vttDrawerPaneTokens" style="display: none;">
+                  <div class="vtt-drawer-section">
+                    <div class="map-tok-filter-bar">
+                      <button type="button" class="map-tok-cat-pill active" data-tok-cat="all">All</button>
+                      <button type="button" class="map-tok-cat-pill" data-tok-cat="character">Heroes &amp; NPCs</button>
+                      <button type="button" class="map-tok-cat-pill" data-tok-cat="monster">Monsters</button>
+                      <button type="button" class="map-tok-cat-pill" data-tok-cat="prop">Mounts &amp; Props</button>
+                    </div>
+                    <span class="map-drag-hint">Click or drag any token onto the map:</span>
+                    <div class="vtt-preset-tokens-grid" id="vttPresetTokensGrid">
+                      <!-- Populated dynamically with rich token items -->
+                    </div>
+                  </div>
 
                   <div class="vtt-drawer-section">
-                    <span class="vtt-drawer-sec-title">Custom Battlemap Image</span>
-                    <input type="text" id="vttCustomMapUrlInput" class="vtt-drawer-input" placeholder="Paste Map Image URL (https://...)" />
-                    <button type="button" class="btn btn-gold-subtle btn-xs" id="vttApplyMapUrlBtn" style="width:100%; margin-top:0.35rem;">Apply Map URL</button>
-                    <label class="btn btn-outline btn-xs" style="width:100%; margin-top:0.35rem; text-align:center; cursor:pointer; display:block;">
-                      📁 Upload Map Image File
-                      <input type="file" id="vttUploadMapInput" accept="image/*" style="display:none;" />
-                    </label>
+                    <span class="vtt-drawer-sec-title">Upload / Create Custom Token</span>
+                    <div class="vtt-custom-token-form">
+                      <input type="text" id="vttCustomTokName" class="vtt-drawer-input" placeholder="Token Name..." />
+                      <div class="vtt-custom-tok-row">
+                        <select id="vttCustomTokSize" class="vtt-mini-select" style="flex:1;">
+                          <option value="0.5">0.5&times; Tiny</option>
+                          <option value="1" selected>1&times; Medium</option>
+                          <option value="2">2&times; Large</option>
+                          <option value="3">3&times; Huge</option>
+                          <option value="4">4&times; Gargantuan</option>
+                        </select>
+                        <select id="vttCustomTokLayer" class="vtt-mini-select" style="flex:1;">
+                          <option value="character" selected>Character</option>
+                          <option value="mount">Mount</option>
+                          <option value="prop">Prop</option>
+                        </select>
+                        <input type="color" id="vttCustomTokColor" value="#d4af37" title="Ring Color" style="width:28px; height:26px; border:none; background:none; cursor:pointer;" />
+                      </div>
+                      <div style="display:flex; gap:0.35rem;">
+                        <label class="btn btn-outline btn-xs" style="flex:1; text-align:center; cursor:pointer;">
+                          📷 Upload Image
+                          <input type="file" id="vttCustomTokFileInput" accept="image/*" style="display:none;" />
+                        </label>
+                        <input type="text" id="vttCustomTokImg" class="vtt-drawer-input" placeholder="Or Image URL..." style="flex:1;" />
+                      </div>
+                      <button type="button" class="btn btn-gold-subtle btn-xs" id="vttAddCustomTokBtn" style="width:100%;">+ Add Token to Map</button>
+                    </div>
+                  </div>
+
+                  <div class="vtt-drawer-section">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                      <span class="vtt-drawer-sec-title">Tokens on Map</span>
+                      <button type="button" class="btn btn-ghost btn-xs" id="vttClearAllTokensBtn" style="font-size:0.65rem; color:#f87171;">Clear All</button>
+                    </div>
+                    <div class="vtt-active-tokens-list" id="vttActiveTokensList"></div>
+                  </div>
+                </div>
+
+                <!-- PANE 3: DICE TRAY -->
+                <div class="vtt-drawer-pane" id="vttDrawerPaneDice" style="display: none;">
+                  <div class="vtt-drawer-section">
+                    <span class="vtt-drawer-sec-title">Click Dice to Roll in Tray</span>
+                    <div class="map-dice-rack" id="mapDiceRack">
+                      <button type="button" class="map-die-btn" data-map-die="4"><span>d4</span></button>
+                      <button type="button" class="map-die-btn" data-map-die="6"><span>d6</span></button>
+                      <button type="button" class="map-die-btn" data-map-die="8"><span>d8</span></button>
+                      <button type="button" class="map-die-btn" data-map-die="10"><span>d10</span></button>
+                      <button type="button" class="map-die-btn" data-map-die="100"><span>d100</span></button>
+                      <button type="button" class="map-die-btn" data-map-die="12"><span>d12</span></button>
+                      <button type="button" class="map-die-btn" data-map-die="20"><span>d20</span></button>
+                    </div>
+                    <div class="map-dice-tray-arena" id="mapDiceTrayArena">
+                      <div class="map-dice-visual-list" id="mapDiceVisualList">
+                        <span class="map-dice-empty-hint">Click any die above to roll</span>
+                      </div>
+                      <div class="map-dice-total-bar" id="mapDiceTotalBar" style="display: none;">
+                        <span id="mapDiceBreakdownText">1d20</span>
+                        <strong id="mapDiceTotalValue">20</strong>
+                      </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
+                      <label class="map-toggle-chip">
+                        <input type="checkbox" id="mapDiceShareCheckbox" checked />
+                        <span>Share Roll with Room</span>
+                      </label>
+                      <div style="display:flex; gap:0.3rem;">
+                        <button type="button" class="btn btn-outline btn-xs" id="mapDiceRerollBtn">🎲 Reroll</button>
+                        <button type="button" class="btn btn-ghost btn-xs" id="mapDiceClearBtn">Clear</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- PANE 4: INITIATIVE TRACKER -->
+                <div class="vtt-drawer-pane" id="vttDrawerPaneInit" style="display: none;">
+                  <div class="vtt-drawer-section">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                      <span class="vtt-drawer-sec-title">Initiative Order</span>
+                      <div style="display:flex; gap:0.25rem;">
+                        <button type="button" class="btn btn-gold-subtle btn-xs" id="mapInitNextTurnBtn">▶ Next</button>
+                        <button type="button" class="btn btn-outline btn-xs" id="mapInitSortBtn">↕ Sort</button>
+                        <button type="button" class="btn btn-ghost btn-xs" id="mapInitClearBtn">Clear</button>
+                      </div>
+                    </div>
+                    <p style="font-size:0.68rem; color:var(--text-dim); margin:0;">Select any token on the map and click <strong>⚔️ Init</strong> to add it to turn order.</p>
+                    <div class="map-init-tracker-list" id="mapInitTrackerList"></div>
                   </div>
                 </div>
               </aside>
-            </div>
 
-            <!-- ========================================================= -->
-            <!-- MODE 2: LIVE OWLBEAR.RODEO TAB STREAM (INTERACTIVE)       -->
-            <!-- ========================================================= -->
-            <div class="owlbear-stream-layer" id="owlbearStreamLayer" style="display: none;">
-              <div class="owlbear-stream-toolbar">
-                <div class="stream-toolbar-left">
-                  <span class="banner-badge" id="owlbearStreamBridgeBadge" title="Remote input status for the streamed Owlbear tab">🕹️ Controllable Stream</span>
-                  <div class="owlbear-stream-ctrl-modes" id="owlbearStreamCtrlModes" role="group" aria-label="Stream Interaction Mode">
-                    <button type="button" class="stream-ctrl-pill active" data-stream-ctrl="remote" title="Click, drag, scroll &amp; press keys on the stream to remotely control the Owlbear tab">
-                      🖱️ Remote Control Tab
-                    </button>
-                    <button type="button" class="stream-ctrl-pill" data-stream-ctrl="overlay" title="Place &amp; move 5e tokens, rulers, pings, and spell AoEs directly on top of the live video stream">
-                      ♟️ Tactical Overlay
-                    </button>
-                    <button type="button" class="stream-ctrl-pill" data-stream-ctrl="panzoom" title="Drag to pan and scroll to zoom the live video stream locally">
-                      🔍 Stream Pan &amp; Zoom
-                    </button>
-                  </div>
-                </div>
-                <div class="stream-toolbar-actions">
-                  <button type="button" class="btn btn-outline btn-xs" id="owlbearOpenForStreamBtn">1. Open Owlbear Room Tab ↗</button>
-                  <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearStartStreamBtn">2. 🎥 Connect &amp; Stream Tab</button>
-                  <button type="button" class="btn btn-outline btn-xs" id="owlbearStreamBridgeHelpBtn" title="Connect full click, token drag &amp; keyboard control to an external owlbear.rodeo tab">⚡ Connect Click/Drag Bridge</button>
-                  <button type="button" class="btn red btn-xs" id="owlbearStopStreamBtn" style="display:none;">⏹ Stop Stream</button>
-                </div>
-              </div>
-
-              <div class="owlbear-stream-stage" id="owlbearStreamStage" tabindex="0">
-                <div class="owlbear-stream-transform-wrap" id="owlbearStreamTransformWrap">
-                  <video id="owlbearStreamVideo" class="owlbear-stream-video" autoplay playsinline muted></video>
-                  <canvas id="owlbearStreamOverlayCanvas" class="owlbear-stream-overlay-canvas"></canvas>
-                </div>
-
-                <!-- Floating Stream Tactical Overlay Tool Dock (shown in Overlay mode or when streaming) -->
-                <div class="vtt-left-dock owlbear-stream-overlay-dock" id="owlbearStreamOverlayDock" style="display: none;">
-                  <button type="button" class="vtt-tool-btn active" data-stream-tool="select" title="Select &amp; Move Overlay Tokens on Stream">↖️</button>
-                  <button type="button" class="vtt-tool-btn" data-stream-tool="measure" title="5e Distance Ruler on Stream (5ft/sq)">📏</button>
-                  <button type="button" class="vtt-tool-btn" data-stream-tool="ping" title="Laser Ping on Stream (Synced with Party)">🎯</button>
-                  <button type="button" class="vtt-tool-btn" data-stream-tool="draw" title="Freehand Draw on Stream">✏️</button>
-                  <button type="button" class="vtt-tool-btn" data-stream-tool="aoe" title="20ft Fireball / Spell AoE on Stream">🔥</button>
-                  <div class="vtt-dock-divider"></div>
-                  <button type="button" class="vtt-tool-btn" id="owlbearStreamSpawnSelfBtn" title="Drop My Character Token onto Stream">⚡</button>
-                  <button type="button" class="vtt-tool-btn" id="owlbearStreamSpawnPartyBtn" title="Drop Party Tokens onto Stream">👥</button>
-                  <button type="button" class="vtt-tool-btn" id="owlbearStreamClearOverlayBtn" title="Clear Stream Drawings &amp; AoEs">🗑️</button>
-                </div>
-
-                <!-- Floating Stream Zoom & CaptureController HUD -->
-                <div class="vtt-zoom-pill owlbear-stream-zoom-pill" id="owlbearStreamZoomPill" style="display: none;">
-                  <button type="button" class="vtt-zoom-btn" id="owlbearStreamZoomOutBtn" title="Zoom Out Stream / Captured Tab">&minus;</button>
-                  <span id="owlbearStreamZoomLabel" class="vtt-zoom-label">100%</span>
-                  <button type="button" class="vtt-zoom-btn" id="owlbearStreamZoomInBtn" title="Zoom In Stream / Captured Tab">&plus;</button>
-                  <button type="button" class="btn btn-ghost btn-xs" id="owlbearStreamZoomResetBtn" style="padding:0 0.35rem; font-size:0.65rem;">Reset</button>
-                  <span class="vtt-scale-tag" id="owlbearStreamCtrlHintTag">🖱️ Click/Drag &amp; Wheel Active</span>
-                </div>
-
-                <!-- Remote Click/Drag Bridge Setup Popover -->
-                <div class="owlbear-stream-bridge-popover" id="owlbearStreamBridgePopover" style="display: none;">
-                  <div class="vtt-tok-pop-header">
-                    <strong style="color:var(--accent-gold); font-family:'Cinzel',serif; font-size:0.82rem;">⚡ Make External Owlbear.rodeo Tab Controllable</strong>
-                    <button type="button" id="owlbearStreamBridgeCloseBtn" class="vtt-tok-close-btn">&times;</button>
-                  </div>
-                  <p style="font-size:0.73rem; color:var(--text-dim); margin:0.25rem 0 0.5rem 0; line-height:1.45;">
-                    Mouse wheel zooming works automatically in Chrome/Edge via <code>CaptureController</code>. To also forward <strong>mouse clicks, token drags, panning, and keyboard shortcuts</strong> into an external <code>owlbear.rodeo</code> tab, use any of these 3 methods:
-                  </p>
-                  <div class="stream-bridge-methods-list">
-                    <div class="stream-bridge-method-card">
-                      <div>
-                        <strong>Method 1: 1-Click Remote Controller Script / Bookmarklet (Instant)</strong>
-                        <span>Copy &amp; paste once into the <code>owlbear.rodeo</code> tab console (<code>F12</code>), or drag the button below to your Bookmarks Bar and click it on the Owlbear tab:</span>
-                      </div>
-                      <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.3rem;">
-                        <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearCopyRemoteScriptBtn">📋 Copy 1-Click Controller Script</button>
-                        <a id="owlbearRemoteBookmarkletLink" href="#" class="btn btn-outline btn-xs" title="Drag me to your Bookmarks Bar, then click me while on the Owlbear Rodeo tab!">🦉 Drag to Bookmarks: Control Owlbear</a>
-                      </div>
-                    </div>
-
-                    <div class="stream-bridge-method-card">
-                      <div>
-                        <strong>Method 2: Owlbear Rodeo 2.0 Native Extension URL (Permanent)</strong>
-                        <span>In Owlbear Rodeo 2.0, click <strong>Extensions (🧩) &rarr; Add Extension</strong> and paste this manifest URL to control camera pan/zoom &amp; tokens via the official OBR SDK:</span>
-                      </div>
-                      <div style="display:flex; gap:0.4rem; align-items:center; margin-top:0.3rem;">
-                        <input type="text" id="owlbearObr2ExtUrlInput" class="vtt-drawer-input" readonly style="flex:1; font-family:'JetBrains Mono',monospace; font-size:0.68rem;" />
-                        <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearCopyObr2ExtUrlBtn">📋 Copy URL</button>
-                      </div>
-                    </div>
-
-                    <div class="stream-bridge-method-card">
-                      <div>
-                        <strong>Method 3: Bundled Chrome Extension v2.0 (Zero-Click Automatic)</strong>
-                        <span>Load the <code>owlbear-embed-extension</code> folder in <code>chrome://extensions</code> (Developer Mode &rarr; Load Unpacked). It automatically forwards all stream clicks, drags &amp; keys to any open Owlbear tab!</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="owlbear-stream-placeholder" id="owlbearStreamPlaceholder">
-                  <div class="hub-radar-circle" style="margin-bottom:0.75rem;">
-                    <span style="font-size:2rem;">📺</span>
-                  </div>
-                  <h4 style="color:var(--accent-gold); font-family:'Cinzel',serif; margin:0 0 0.4rem 0;">Controllable 60FPS Owlbear Tab Stream</h4>
-                  <p style="font-size:0.8rem; color:var(--text-dim); max-width:520px; margin:0 0 1rem 0;">
-                    Stream your open <code>owlbear.rodeo</code> tab directly inside this viewport and <strong>control the map directly from the stream</strong> using mouse clicks, token drags, wheel zoom (via native <code>CaptureController</code>), or the interactive <strong>5e Tactical Overlay</strong>!
-                  </p>
-                  <div style="display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center;">
-                    <button type="button" class="btn btn-outline btn-sm" id="owlbearStreamOpenHeroBtn">1. Open Room in Background Tab ↗</button>
-                    <button type="button" class="btn btn-gold-subtle btn-sm" id="owlbearStreamStartHeroBtn">2. 🎥 Select Owlbear Tab to Stream &amp; Control</button>
-                  </div>
-                </div>
+              <!-- Bottom-Left Floating Trigger Pills (Maps, Tokens, Dice, Initiative) -->
+              <div class="map-bottom-dock-bar" id="mapBottomDockBar">
+                <button type="button" class="map-bottom-dock-btn" data-open-drawer="maps" title="Open Maps &amp; Grid Settings">
+                  <span>🗺️</span> <strong>Maps</strong>
+                </button>
+                <button type="button" class="map-bottom-dock-btn" data-open-drawer="tokens" title="Open Tokens Dock">
+                  <span>♟️</span> <strong>Tokens</strong>
+                </button>
+                <button type="button" class="map-bottom-dock-btn" data-open-drawer="dice" title="Open Dice Roller Tray">
+                  <span>🎲</span> <strong>Dice</strong>
+                </button>
+                <button type="button" class="map-bottom-dock-btn" data-open-drawer="init" title="Open Initiative Tracker">
+                  <span>⚔️</span> <strong>Initiative</strong>
+                </button>
               </div>
             </div>
 
-            <!-- ========================================================= -->
-            <!-- MODE 3: DIRECT IFRAME EMBED + UNBLOCKER EXTENSION HELPER  -->
-            <!-- ========================================================= -->
-            <div class="owlbear-iframe-wrapper" id="owlbearIframeWrapper" style="display: none;">
-              <div class="owlbear-iframe-helper-bar">
-                <div class="stream-toolbar-left">
-                  <span class="banner-badge">🌐 Direct Iframe</span>
-                  <span>If your browser shows <em>"refused to connect"</em>, load the included <code>owlbear-embed-extension</code> folder in <code>chrome://extensions</code> (Developer Mode &rarr; Load Unpacked) or switch to <strong>🗺️ Native VTT</strong>.</span>
-                </div>
-                <div class="stream-toolbar-actions">
-                  <button type="button" class="btn btn-outline btn-xs" id="owlbearReloadIframeBtn">🔄 Reload Frame</button>
-                  <button type="button" class="btn btn-gold-subtle btn-xs" id="owlbearSwitchToNativeBtn">🗺️ Switch to Native VTT</button>
-                </div>
-              </div>
-              <iframe id="owlbearIframe" class="owlbear-map-iframe" src="" allow="camera; microphone; clipboard-read; clipboard-write; fullscreen; display-capture" loading="lazy"></iframe>
+            <!-- Bottom-Right Zoom Pill -->
+            <div class="map-bottom-right-zoom" id="mapBottomRightZoom">
+              <button type="button" class="vtt-zoom-btn" id="vttZoomOutBtn" title="Zoom Out">&minus;</button>
+              <span id="vttZoomLabel" class="vtt-zoom-label">100%</span>
+              <button type="button" class="vtt-zoom-btn" id="vttZoomInBtn" title="Zoom In">&plus;</button>
+              <span class="vtt-scale-tag" id="vttScaleReadout">1 sq = 5ft</span>
             </div>
 
           </div>
@@ -2071,6 +2103,8 @@
         <button class="footer-nav-btn" data-tab="tab-companions">Companions</button>
         <span>&middot;</span>
         <button class="footer-nav-btn" data-tab="tab-journal" data-scroll="journal">Notes</button>
+        <span>&middot;</span>
+        <button class="footer-nav-btn" data-tab="tab-owlbear">Map</button>
       </div>
     </footer>
   </div>
@@ -3123,6 +3157,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=79"></script>
+  <script src="app.js?v=83"></script>
 </body>
 </html>
