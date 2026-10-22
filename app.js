@@ -10847,6 +10847,11 @@ function syncMapUiControlsFromState() {
     card.classList.toggle("active", card.dataset.scene === activeMapState.scene);
   });
 
+  const dimTag = document.getElementById("vttGridDimTag");
+  if (dimTag) dimTag.textContent = `${activeMapState.gridCols || 26}×${activeMapState.gridRows || 18}`;
+  const sizeSummary = document.getElementById("vttGridSizeSummary");
+  if (sizeSummary) sizeSummary.textContent = `${activeMapState.gridCols || 26} × ${activeMapState.gridRows || 18}`;
+
   updateMapActiveTokensList();
   renderMapInitiativeList();
   updateMapZoomReadout();
@@ -10924,6 +10929,14 @@ function updateMapZoomReadout() {
   const scale = document.getElementById("vttScaleReadout");
   if (scale && activeMapState) {
     scale.textContent = `1 sq = ${activeMapState.gridScale || 5}${activeMapState.gridUnit || "ft"}`;
+  }
+  const dimTag = document.getElementById("vttGridDimTag");
+  if (dimTag && activeMapState) {
+    dimTag.textContent = `${activeMapState.gridCols || 26}×${activeMapState.gridRows || 18}`;
+  }
+  const sizeSummary = document.getElementById("vttGridSizeSummary");
+  if (sizeSummary && activeMapState) {
+    sizeSummary.textContent = `${activeMapState.gridCols || 26} × ${activeMapState.gridRows || 18}`;
   }
 }
 
@@ -11280,9 +11293,43 @@ function drawMapGrid(ctx, state, world) {
   const cols = world.cols;
   const rows = world.rows;
 
-  let strokeColor = "rgba(212, 175, 55, 0.22)";
-  if (state.gridColor === "white") strokeColor = "rgba(255, 255, 255, 0.2)";
-  else if (state.gridColor === "dark") strokeColor = "rgba(0, 0, 0, 0.35)";
+  // 1. Boundless Extended Ambient Grid (Owlbear Concept)
+  ctx.save();
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.055)";
+  ctx.lineWidth = 1;
+
+  const canvas = document.getElementById("owlbearMapCanvas");
+  const cW = canvas ? (canvas.width / (window.devicePixelRatio || 1)) : 1400;
+  const cH = canvas ? (canvas.height / (window.devicePixelRatio || 1)) : 900;
+
+  const viewLeft = -mapCamera.x / mapCamera.zoom;
+  const viewTop = -mapCamera.y / mapCamera.zoom;
+  const viewRight = (cW - mapCamera.x) / mapCamera.zoom;
+  const viewBottom = (cH - mapCamera.y) / mapCamera.zoom;
+
+  const startCol = Math.floor(viewLeft / g) - 2;
+  const endCol = Math.ceil(viewRight / g) + 2;
+  const startRow = Math.floor(viewTop / g) - 2;
+  const endRow = Math.ceil(viewBottom / g) + 2;
+
+  ctx.beginPath();
+  for (let c = startCol; c <= endCol; c++) {
+    const x = c * g;
+    ctx.moveTo(x, startRow * g);
+    ctx.lineTo(x, endRow * g);
+  }
+  for (let r = startRow; r <= endRow; r++) {
+    const y = r * g;
+    ctx.moveTo(startCol * g, y);
+    ctx.lineTo(endCol * g, y);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // 2. Primary Battlemap Grid
+  let strokeColor = "rgba(212, 175, 55, 0.24)";
+  if (state.gridColor === "white") strokeColor = "rgba(255, 255, 255, 0.22)";
+  else if (state.gridColor === "dark") strokeColor = "rgba(0, 0, 0, 0.38)";
 
   ctx.save();
   ctx.strokeStyle = strokeColor;
@@ -11303,9 +11350,11 @@ function drawMapGrid(ctx, state, world) {
   }
   ctx.stroke();
 
-  // Outer border
+  // Outer border with subtle glow
   ctx.lineWidth = 2;
-  ctx.strokeStyle = "rgba(212, 175, 55, 0.5)";
+  ctx.strokeStyle = "rgba(212, 175, 55, 0.65)";
+  ctx.shadowColor = "rgba(212, 175, 55, 0.25)";
+  ctx.shadowBlur = 6;
   ctx.strokeRect(0, 0, world.width, world.height);
   ctx.restore();
 }
@@ -12227,6 +12276,16 @@ function initMapCanvasInteractionListeners() {
     }
 
     if (mapDraggingToken) {
+      if (activeMapState) {
+        if (mapDraggingToken.x > (activeMapState.gridCols || 26) - 1) {
+          activeMapState.gridCols = Math.min(250, Math.ceil(mapDraggingToken.x) + 2);
+          syncMapUiControlsFromState();
+        }
+        if (mapDraggingToken.y > (activeMapState.gridRows || 18) - 1) {
+          activeMapState.gridRows = Math.min(250, Math.ceil(mapDraggingToken.y) + 2);
+          syncMapUiControlsFromState();
+        }
+      }
       mapDraggingToken = null;
       mapDragRiders = [];
       triggerMapAutosave();
@@ -13388,6 +13447,138 @@ function initMapToolDockListeners() {
 }
 
 /* --------------------------------------------------------------------------
+   EXPANDABLE GRID CONTROLLERS (OWLBEAR DIRECTIONAL & BOUNDLESS EXPANSION)
+   -------------------------------------------------------------------------- */
+
+function expandMapGridDirection(dir, amount = 4) {
+  if (!activeMapState) return;
+  const g = mapCamera.gridSize;
+
+  if (dir === "east") {
+    activeMapState.gridCols = Math.min(250, (activeMapState.gridCols || 26) + amount);
+    showStatus(`Grid expanded East (+${amount} columns). Size: ${activeMapState.gridCols}×${activeMapState.gridRows}`);
+
+  } else if (dir === "south") {
+    activeMapState.gridRows = Math.min(250, (activeMapState.gridRows || 18) + amount);
+    showStatus(`Grid expanded South (+${amount} rows). Size: ${activeMapState.gridCols}×${activeMapState.gridRows}`);
+
+  } else if (dir === "west") {
+    activeMapState.gridCols = Math.min(250, (activeMapState.gridCols || 26) + amount);
+    (activeMapState.tokens || []).forEach(t => { t.x += amount; });
+    (activeMapState.notes || []).forEach(n => { n.x += amount; });
+    (activeMapState.drawings || []).forEach(d => {
+      const shiftPx = amount * g;
+      if (d.type === "brush" && Array.isArray(d.points)) d.points.forEach(p => { p.x += shiftPx; });
+      else if (d.type === "line" || d.type === "cone") { if (d.p1) d.p1.x += shiftPx; if (d.p2) d.p2.x += shiftPx; }
+      else if (d.type === "rect") d.x += shiftPx;
+      else if (d.type === "circle") d.cx += shiftPx;
+    });
+    (activeMapState.fogShapes || []).forEach(f => {
+      const shiftPx = amount * g;
+      if (f.type === "rect") f.x += shiftPx;
+      else if (f.type === "poly" && Array.isArray(f.points)) f.points.forEach(p => { p.x += shiftPx; });
+      else if (f.type === "brush" && Array.isArray(f.points)) f.points.forEach(p => { p.x += shiftPx; });
+    });
+    mapCamera.x -= amount * g * mapCamera.zoom;
+    showStatus(`Grid expanded West (+${amount} columns). Content shifted.`);
+
+  } else if (dir === "north") {
+    activeMapState.gridRows = Math.min(250, (activeMapState.gridRows || 18) + amount);
+    (activeMapState.tokens || []).forEach(t => { t.y += amount; });
+    (activeMapState.notes || []).forEach(n => { n.y += amount; });
+    (activeMapState.drawings || []).forEach(d => {
+      const shiftPx = amount * g;
+      if (d.type === "brush" && Array.isArray(d.points)) d.points.forEach(p => { p.y += shiftPx; });
+      else if (d.type === "line" || d.type === "cone") { if (d.p1) d.p1.y += shiftPx; if (d.p2) d.p2.y += shiftPx; }
+      else if (d.type === "rect") d.y += shiftPx;
+      else if (d.type === "circle") d.cy += shiftPx;
+    });
+    (activeMapState.fogShapes || []).forEach(f => {
+      const shiftPx = amount * g;
+      if (f.type === "rect") f.y += shiftPx;
+      else if (f.type === "poly" && Array.isArray(f.points)) f.points.forEach(p => { p.y += shiftPx; });
+      else if (f.type === "brush" && Array.isArray(f.points)) f.points.forEach(p => { p.y += shiftPx; });
+    });
+    mapCamera.y -= amount * g * mapCamera.zoom;
+    showStatus(`Grid expanded North (+${amount} rows). Content shifted.`);
+
+  } else if (dir === "all") {
+    expandMapGridDirection("west", Math.max(1, Math.round(amount / 2)));
+    expandMapGridDirection("east", Math.max(1, Math.round(amount / 2)));
+    expandMapGridDirection("north", Math.max(1, Math.round(amount / 2)));
+    expandMapGridDirection("south", Math.max(1, Math.round(amount / 2)));
+    return;
+  }
+
+  syncMapUiControlsFromState();
+  triggerMapAutosave();
+  resizeAndRenderOwlbearCanvas();
+}
+
+function initMapGridExpandListeners() {
+  // Quick Expand / Shrink buttons in Bottom-Right Zoom Bar
+  document.getElementById("vttQuickExpandGridBtn")?.addEventListener("click", () => {
+    if (!activeMapState) return;
+    activeMapState.gridCols = Math.min(250, (activeMapState.gridCols || 26) + 4);
+    activeMapState.gridRows = Math.min(250, (activeMapState.gridRows || 18) + 4);
+    syncMapUiControlsFromState();
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+    showStatus(`Grid expanded to ${activeMapState.gridCols}×${activeMapState.gridRows}`);
+  });
+
+  document.getElementById("vttQuickShrinkGridBtn")?.addEventListener("click", () => {
+    if (!activeMapState) return;
+    activeMapState.gridCols = Math.max(6, (activeMapState.gridCols || 26) - 2);
+    activeMapState.gridRows = Math.max(6, (activeMapState.gridRows || 18) - 2);
+    syncMapUiControlsFromState();
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+    showStatus(`Grid sized to ${activeMapState.gridCols}×${activeMapState.gridRows}`);
+  });
+
+  // Maps Drawer: +5 / -5 buttons for Cols and Rows
+  document.getElementById("vttAdd5ColsBtn")?.addEventListener("click", () => {
+    if (!activeMapState) return;
+    activeMapState.gridCols = Math.min(250, (activeMapState.gridCols || 26) + 5);
+    syncMapUiControlsFromState();
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  document.getElementById("vttSub5ColsBtn")?.addEventListener("click", () => {
+    if (!activeMapState) return;
+    activeMapState.gridCols = Math.max(6, (activeMapState.gridCols || 26) - 5);
+    syncMapUiControlsFromState();
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  document.getElementById("vttAdd5RowsBtn")?.addEventListener("click", () => {
+    if (!activeMapState) return;
+    activeMapState.gridRows = Math.min(250, (activeMapState.gridRows || 18) + 5);
+    syncMapUiControlsFromState();
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  document.getElementById("vttSub5RowsBtn")?.addEventListener("click", () => {
+    if (!activeMapState) return;
+    activeMapState.gridRows = Math.max(6, (activeMapState.gridRows || 18) - 5);
+    syncMapUiControlsFromState();
+    triggerMapAutosave();
+    resizeAndRenderOwlbearCanvas();
+  });
+
+  // Directional Expanders in Maps Drawer
+  document.getElementById("vttExpandNorthBtn")?.addEventListener("click", () => expandMapGridDirection("north", 4));
+  document.getElementById("vttExpandSouthBtn")?.addEventListener("click", () => expandMapGridDirection("south", 4));
+  document.getElementById("vttExpandWestBtn")?.addEventListener("click", () => expandMapGridDirection("west", 4));
+  document.getElementById("vttExpandEastBtn")?.addEventListener("click", () => expandMapGridDirection("east", 4));
+  document.getElementById("vttExpandAllBtn")?.addEventListener("click", () => expandMapGridDirection("all", 4));
+}
+
+/* --------------------------------------------------------------------------
    KEYBOARD SHORTCUTS
    -------------------------------------------------------------------------- */
 
@@ -13454,6 +13645,8 @@ function initOwlbearVTT() {
   initMapTokenPopoverListeners();
   initMapNotePopoverListeners();
   initMapBottomDrawersListeners();
+  initMapToolDockListeners();
+  initMapGridExpandListeners();
   initMapKeyboardShortcuts();
 
   // Setup Drag-over drop onto Canvas
@@ -13467,7 +13660,19 @@ function initOwlbearVTT() {
         if (raw) {
           const preset = JSON.parse(raw);
           const ptr = getMapCanvasPointer(e);
-          spawnMapTokenFromPreset(preset, { x: Math.round(ptr.gridX), y: Math.round(ptr.gridY) });
+          const gx = Math.round(ptr.gridX);
+          const gy = Math.round(ptr.gridY);
+          if (activeMapState) {
+            if (gx > (activeMapState.gridCols || 26) - 1) {
+              activeMapState.gridCols = Math.min(250, gx + 2);
+              syncMapUiControlsFromState();
+            }
+            if (gy > (activeMapState.gridRows || 18) - 1) {
+              activeMapState.gridRows = Math.min(250, gy + 2);
+              syncMapUiControlsFromState();
+            }
+          }
+          spawnMapTokenFromPreset(preset, { x: gx, y: gy });
         }
       } catch (err) {}
     });

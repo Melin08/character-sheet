@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=MedievalSharp&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=83" />
+  <link rel="stylesheet" href="style.css?v=84" />
 </head>
 <body id="top" class="theme-nexus">
 
@@ -1800,15 +1800,26 @@
                   </div>
 
                   <div class="vtt-drawer-section">
-                    <span class="vtt-drawer-sec-title">Grid &amp; Map Settings</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                      <span class="vtt-drawer-sec-title">Grid &amp; Map Settings</span>
+                      <span class="vtt-grid-dim-tag" id="vttGridSizeSummary">26 &times; 18</span>
+                    </div>
                     <div class="map-grid-settings-box">
                       <div class="map-grid-setting-item">
                         <span>Columns</span>
-                        <input type="number" id="vttGridColsInput" class="vtt-tok-num-input" value="26" min="6" max="80" />
+                        <div style="display:flex; align-items:center; gap:0.25rem;">
+                          <button type="button" class="btn btn-outline btn-xs" id="vttSub5ColsBtn" title="Shrink by 5 columns">-5</button>
+                          <input type="number" id="vttGridColsInput" class="vtt-tok-num-input" value="26" min="4" max="250" />
+                          <button type="button" class="btn btn-gold-subtle btn-xs" id="vttAdd5ColsBtn" title="Expand by 5 columns">+5</button>
+                        </div>
                       </div>
                       <div class="map-grid-setting-item">
                         <span>Rows</span>
-                        <input type="number" id="vttGridRowsInput" class="vtt-tok-num-input" value="18" min="6" max="80" />
+                        <div style="display:flex; align-items:center; gap:0.25rem;">
+                          <button type="button" class="btn btn-outline btn-xs" id="vttSub5RowsBtn" title="Shrink by 5 rows">-5</button>
+                          <input type="number" id="vttGridRowsInput" class="vtt-tok-num-input" value="18" min="4" max="250" />
+                          <button type="button" class="btn btn-gold-subtle btn-xs" id="vttAdd5RowsBtn" title="Expand by 5 rows">+5</button>
+                        </div>
                       </div>
                       <div class="map-grid-setting-item">
                         <span>Grid Style</span>
@@ -1817,6 +1828,20 @@
                           <option value="white">White Crisp</option>
                           <option value="dark">Dark Ink</option>
                         </select>
+                      </div>
+                    </div>
+
+                    <!-- Directional Grid Expansion -->
+                    <div class="map-grid-directional-expand">
+                      <span style="font-size:0.68rem; font-weight:700; color:var(--accent-gold); text-transform:uppercase;">Expand Grid in Direction:</span>
+                      <div class="map-dir-expand-grid">
+                        <button type="button" class="btn btn-outline btn-xs map-dir-btn" id="vttExpandNorthBtn" title="Expand Map Upward (+4 Rows)">⬆ +4 North (Top)</button>
+                        <div style="display:flex; gap:0.35rem; width:100%;">
+                          <button type="button" class="btn btn-outline btn-xs map-dir-btn" id="vttExpandWestBtn" style="flex:1;" title="Expand Map Leftward (+4 Columns)">⬅ +4 West (Left)</button>
+                          <button type="button" class="btn btn-gold-subtle btn-xs map-dir-btn" id="vttExpandAllBtn" style="flex:1;" title="Expand All Sides Uniformly (+2 all sides)">⤢ +2 All</button>
+                          <button type="button" class="btn btn-outline btn-xs map-dir-btn" id="vttExpandEastBtn" style="flex:1;" title="Expand Map Rightward (+4 Columns)">➡ +4 East (Right)</button>
+                        </div>
+                        <button type="button" class="btn btn-outline btn-xs map-dir-btn" id="vttExpandSouthBtn" title="Expand Map Downward (+4 Rows)">⬇ +4 South (Bottom)</button>
                       </div>
                     </div>
                   </div>
@@ -2014,12 +2039,17 @@
               </div>
             </div>
 
-            <!-- Bottom-Right Zoom Pill -->
+            <!-- Bottom-Right Zoom & Expandable Grid Pill -->
             <div class="map-bottom-right-zoom" id="mapBottomRightZoom">
               <button type="button" class="vtt-zoom-btn" id="vttZoomOutBtn" title="Zoom Out">&minus;</button>
               <span id="vttZoomLabel" class="vtt-zoom-label">100%</span>
               <button type="button" class="vtt-zoom-btn" id="vttZoomInBtn" title="Zoom In">&plus;</button>
               <span class="vtt-scale-tag" id="vttScaleReadout">1 sq = 5ft</span>
+              <div class="map-grid-quick-expand-group" title="Expand Grid Boundaries">
+                <button type="button" class="vtt-grid-step-btn" id="vttQuickShrinkGridBtn" title="Shrink Grid (-2 Cols &amp; Rows)">&minus;</button>
+                <span class="vtt-grid-dim-tag" id="vttGridDimTag">26&times;18</span>
+                <button type="button" class="vtt-grid-step-btn" id="vttQuickExpandGridBtn" title="Expand Grid (+4 Cols &amp; Rows)">&plus;</button>
+              </div>
             </div>
 
           </div>
@@ -3157,6 +3187,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=83"></script>
+  <script src="app.js?v=84"></script>
 </body>
 </html>
