@@ -7350,8 +7350,13 @@ body.theme-parchment .party-status-indicator {
    ========================================================================== */
 
 .map-vtt-tab-page {
+  display: none;
+}
+
+.map-vtt-tab-page.active {
   display: flex;
   flex-direction: column;
+  animation: studioFade 0.18s ease;
 }
 
 .map-vtt-shell {
