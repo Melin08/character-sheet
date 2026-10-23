@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=MedievalSharp&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=90" />
+  <link rel="stylesheet" href="style.css?v=91" />
 </head>
 <body id="top" class="theme-nexus">
 
@@ -516,11 +516,15 @@
             </div>
           </div>
 
-          <div class="hero-stat-orb" data-blur-id="speed">
+          <div class="hero-stat-orb" id="speedOrb" data-blur-id="speed">
             <span class="orb-caption">Speed</span>
             <div class="orb-unit-wrap">
-              <input type="number" id="charSpeed" class="save-field orb-number center" value="30" />
+              <span class="stat-strike-wrap" id="speedBaseWrap">
+                <input type="number" id="charSpeed" class="save-field orb-number center" value="30" />
+                <span class="stat-strike-line" aria-hidden="true"></span>
+              </span>
               <span class="orb-unit">ft</span>
+              <span class="condition-derived-stat" id="speedDerivedDisplay" hidden></span>
             </div>
             <button type="button" class="blur-toggle-btn" title="Toggle blur">
               <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -652,10 +656,14 @@
               <button type="button" class="hp-corner-btn" id="openHpModalBtn" title="HP Calculator">&plusmn;</button>
             </div>
             <div class="card-main">
-              <div class="hp-gauge-box">
+              <div class="hp-gauge-box" id="hpGaugeBox">
                 <input type="number" id="curHp" class="save-field hp-input cur" value="10" title="Current HP" />
                 <span class="hp-divider">/</span>
-                <input type="number" id="maxHp" class="save-field hp-input max" value="10" title="Max HP" />
+                <span class="stat-strike-wrap hp-max-wrap" id="maxHpBaseWrap">
+                  <input type="number" id="maxHp" class="save-field hp-input max" value="10" title="Max HP" />
+                  <span class="stat-strike-line" aria-hidden="true"></span>
+                </span>
+                <span class="condition-derived-stat hp-derived-stat" id="maxHpDerivedDisplay" hidden></span>
               </div>
               <div class="card-details">
                 <span class="card-title hp-title-btn" id="hpTitleClick">Vitality</span>
@@ -749,6 +757,8 @@
               <h2 class="section-title">Ability Scores</h2>
               <span class="pane-hint">Click Mod for Check &bull; Hex for Save</span>
             </div>
+
+            <div class="condition-inline-notice" id="savingThrowConditionNotice" hidden></div>
 
             <div class="attributes-group">
               <!-- STR -->
@@ -930,7 +940,7 @@
             <div class="attacks-table-wrapper">
               <div class="attacks-table">
                 <div class="attack-headers">
-                  <span>Weapon</span>
+                  <span>Weapon / Atk</span>
                   <span class="center">Damage</span>
                   <span class="center">Type</span>
                   <span>Properties &amp; Notes</span>
@@ -981,25 +991,47 @@
                   <button type="button" class="cond-chip" data-cond="unconscious">Unconscious</button>
                 </div>
 
+                <div class="condition-effects-summary" id="conditionEffectsSummary" hidden>
+                  <span class="condition-effects-label">Active Mechanical Effects</span>
+                  <div class="condition-effects-tags" id="conditionEffectsTags"></div>
+                </div>
+
                 <!-- Interactive 5e Condition Explainer Drawer -->
-                <div id="conditionExplainerCard" class="condition-explainer-card" style="display: none;">
+                <div id="conditionExplainerCard" class="condition-explainer-card tone-neutral" style="display: none;">
                   <div class="condition-explainer-top">
                     <div class="condition-explainer-heading">
-                      <span class="condition-explainer-icon" id="condExplainerIcon">⚠️</span>
+                      <span class="condition-explainer-icon-tile" aria-hidden="true">
+                        <span class="condition-explainer-icon" id="condExplainerIcon">⚠️</span>
+                      </span>
                       <div class="condition-explainer-title-group">
+                        <span class="condition-explainer-eyebrow">Condition Reference</span>
                         <strong class="condition-explainer-name" id="condExplainerName">Blinded</strong>
-                        <span class="condition-explainer-badge" id="condExplainerBadge">Inactive</span>
                       </div>
                     </div>
                     <div class="condition-explainer-actions">
-                      <button type="button" class="btn btn-xs btn-outline" id="condExplainerToggleBtn">Apply Condition</button>
-                      <button type="button" class="btn btn-xs btn-ghost cond-close-btn" id="condExplainerCloseBtn" aria-label="Close explainer">&times;</button>
+                      <span class="condition-explainer-badge inactive" id="condExplainerBadge">Inactive</span>
+                      <button type="button" class="condition-explainer-close" id="condExplainerCloseBtn" aria-label="Close condition details">&times;</button>
                     </div>
                   </div>
                   <div class="condition-explainer-body">
                     <p class="condition-explainer-summary" id="condExplainerSummary">Condition explanation</p>
-                    <div class="condition-explainer-rules-title">Mechanical Rules &amp; Penalties (5e SRD):</div>
-                    <ul class="condition-explainer-rules-list" id="condExplainerRulesList"></ul>
+                    <div class="condition-explainer-effects" id="condExplainerEffectsWrap" hidden>
+                      <div class="condition-explainer-section-head">
+                        <span class="condition-explainer-section-label" id="condExplainerEffectsLabel">Sheet Impact</span>
+                        <span class="condition-explainer-section-hint" id="condExplainerEffectsHint">Preview</span>
+                      </div>
+                      <div class="condition-explainer-effect-tags" id="condExplainerEffectTags"></div>
+                    </div>
+                    <div class="condition-explainer-rules-block">
+                      <div class="condition-explainer-section-head">
+                        <span class="condition-explainer-section-label">Rules &amp; Penalties</span>
+                        <span class="condition-explainer-source">5e SRD</span>
+                      </div>
+                      <ul class="condition-explainer-rules-list" id="condExplainerRulesList"></ul>
+                    </div>
+                  </div>
+                  <div class="condition-explainer-footer">
+                    <button type="button" class="condition-explainer-action" id="condExplainerToggleBtn" aria-pressed="false">Apply Condition</button>
                   </div>
                 </div>
               </div>
@@ -3394,6 +3426,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=90"></script>
+  <script src="app.js?v=91"></script>
 </body>
 </html>

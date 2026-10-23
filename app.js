@@ -61,6 +61,10 @@ let lastBroadcastRoll = null;
 
 // UI Filter & Dice States
 let currentDiceMode = "norm"; // "norm" | "adv" | "dis"
+let manualDiceMode = "norm"; // Player-selected mode before condition defaults
+let conditionImposedDiceMode = null; // "adv" | "dis" while a condition default is active
+let lastRollCategory = null; // "check" | "save" | "attack"
+let lastRollAttr = null;
 let isDiceRollerOpen = false;
 let activeTraitCategoryFilter = "all";
 let activeSpellLevelFilter = "all";
@@ -583,12 +587,14 @@ function updateXpBar() {
   }
 }
 
-function updateHealthBars() {
+function updateHealthBars(effects = null) {
   const curHp = parseInt(document.getElementById("curHp")?.value, 10) || 0;
-  const maxHp = Math.max(1, parseInt(document.getElementById("maxHp")?.value, 10) || 10);
+  const baseMaxHp = Math.max(1, parseInt(document.getElementById("maxHp")?.value, 10) || 10);
+  const activeEffects = effects || getActiveConditionEffects();
+  const maxHp = getEffectiveMaxHp(activeEffects, baseMaxHp);
   const tempHp = Math.max(0, parseInt(document.getElementById("tempHp")?.value, 10) || 0);
 
-  const hpPct = Math.min(100, Math.max(0, Math.round((curHp / maxHp) * 100)));
+  const hpPct = Math.min(100, Math.max(0, Math.round((Math.min(curHp, maxHp) / maxHp) * 100)));
   const tempPct = Math.min(100 - hpPct, Math.max(0, Math.round((tempHp / maxHp) * 100)));
 
   const hpFill = document.getElementById("heroHpBarFill");
@@ -608,7 +614,10 @@ function updateHealthBars() {
   const hpCard = document.querySelector(".hp-card");
   const hpStrip = document.getElementById("heroHealthStrip");
   const isCrit = curHp <= 0 || (hpPct <= 25 && curHp > 0);
-  if (hpCard) hpCard.classList.toggle("critical-hp", isCrit);
+  if (hpCard) {
+    hpCard.classList.toggle("critical-hp", isCrit);
+    hpCard.classList.toggle("max-hp-halved", maxHp < baseMaxHp);
+  }
   if (hpStrip) hpStrip.classList.toggle("critical-hp", isCrit);
   if (typeof updateOwlbearVitalsHUD === "function") updateOwlbearVitalsHUD();
 }
@@ -639,6 +648,548 @@ function updateConcentrationBanner() {
       btn.textContent = "Concentrate";
     }
   });
+}
+
+/* ==========================================================================
+   CONDITION & EXHAUSTION EFFECTS ENGINE
+   Centralized rules maps drive the sheet UI, derived stats, and dice defaults.
+   ========================================================================== */
+
+const CONDITION_EFFECTS = {
+  blinded: {
+    label: "Blinded",
+    attackRolls: "dis",
+    notes: ["Attack rolls have Disadvantage", "Ability checks that rely on sight automatically fail"]
+  },
+  charmed: {
+    label: "Charmed",
+    notes: ["Can't attack the charmer", "The charmer has Advantage on social interaction checks"]
+  },
+  deafened: {
+    label: "Deafened",
+    notes: ["Can't hear", "Automatically fails ability checks that require hearing"]
+  },
+  frightened: {
+    label: "Frightened",
+    abilityChecks: "dis",
+    attackRolls: "dis",
+    notes: ["Ability checks and attack rolls have Disadvantage while the source of fear is in sight"]
+  },
+  grappled: {
+    label: "Grappled",
+    speed: "zero",
+    notes: ["Speed is reduced to 0 ft", "Ends if the grappler is incapacitated or the grapple is broken"]
+  },
+  incapacitated: {
+    label: "Incapacitated",
+    notes: ["Can't take actions, Bonus Actions, or Reactions"]
+  },
+  invisible: {
+    label: "Invisible",
+    attackRolls: "adv",
+    notes: ["Attack rolls have Advantage", "Attacks against you have Disadvantage"]
+  },
+  paralyzed: {
+    label: "Paralyzed",
+    speed: "zero",
+    autoFailSaves: ["str", "dex"],
+    notes: ["Speed is reduced to 0 ft", "Automatically fails Strength and Dexterity saves", "Incapacitated"]
+  },
+  petrified: {
+    label: "Petrified",
+    speed: "zero",
+    autoFailSaves: ["str", "dex"],
+    notes: ["Speed is reduced to 0 ft", "Automatically fails Strength and Dexterity saves", "Incapacitated"]
+  },
+  poisoned: {
+    label: "Poisoned",
+    abilityChecks: "dis",
+    attackRolls: "dis",
+    notes: ["Ability checks and attack rolls have Disadvantage"]
+  },
+  prone: {
+    label: "Prone",
+    notes: ["Melee attacks against you have Advantage", "Ranged attacks against you have Disadvantage", "Standing up costs half your movement"]
+  },
+  restrained: {
+    label: "Restrained",
+    speed: "zero",
+    attackRolls: "dis",
+    saveDis: ["dex"],
+    notes: ["Speed is reduced to 0 ft", "Attack rolls have Disadvantage", "Dexterity saving throws have Disadvantage"]
+  },
+  stunned: {
+    label: "Stunned",
+    speed: "zero",
+    autoFailSaves: ["str", "dex"],
+    notes: ["Speed is reduced to 0 ft", "Automatically fails Strength and Dexterity saves", "Incapacitated"]
+  },
+  unconscious: {
+    label: "Unconscious",
+    speed: "zero",
+    autoFailSaves: ["str", "dex"],
+    notes: ["Speed is reduced to 0 ft", "Automatically fails Strength and Dexterity saves", "Incapacitated and Prone"]
+  }
+};
+
+const EXHAUSTION_EFFECTS = {
+  1: { abilityChecks: "dis", note: "Disadvantage on ability checks" },
+  2: { speed: "half", note: "Speed halved" },
+  3: { attackRolls: "dis", savingThrows: "dis", note: "Disadvantage on attack rolls and saving throws" },
+  4: { maxHp: "half", note: "Hit point maximum halved" },
+  5: { speed: "zero", note: "Speed reduced to 0 ft" },
+  6: { death: true, note: "Death" }
+};
+
+function combineRollModes(modes) {
+  const list = (modes || []).filter(Boolean);
+  if (!list.length) return null;
+  if (list.includes("dis") && list.includes("adv")) return "norm";
+  if (list.includes("dis")) return "dis";
+  if (list.includes("adv")) return "adv";
+  return null;
+}
+
+function getExhaustionLevel() {
+  return Math.min(6, Math.max(0, parseInt(document.getElementById("exhaustionLevel")?.value, 10) || 0));
+}
+
+function getActiveConditionEffects() {
+  const abilityCheckModes = [];
+  const attackRollModes = [];
+  const savingThrowModes = [];
+  const saveDisAbilities = new Set();
+  const autoFailSaves = new Set();
+  const notes = [];
+  let speed = null;
+  let maxHp = null;
+  let death = false;
+
+  const mergeEffect = (effect, sourceLabel) => {
+    if (!effect) return;
+    if (effect.abilityChecks) abilityCheckModes.push(effect.abilityChecks);
+    if (effect.attackRolls) attackRollModes.push(effect.attackRolls);
+    if (effect.savingThrows === "dis" || effect.savingThrows === "adv") {
+      savingThrowModes.push(effect.savingThrows);
+    }
+    (effect.saveDis || []).forEach((attr) => saveDisAbilities.add(attr));
+    (effect.autoFailSaves || []).forEach((attr) => autoFailSaves.add(attr));
+    if (effect.speed === "zero") speed = "zero";
+    else if (effect.speed === "half" && speed !== "zero") speed = "half";
+    if (effect.maxHp === "half") maxHp = "half";
+    if (effect.death) death = true;
+    if (effect.note) notes.push(`${sourceLabel}: ${effect.note}`);
+    (effect.notes || []).forEach((note) => notes.push(`${sourceLabel}: ${note}`));
+  };
+
+  myActiveConditions.forEach((conditionKey) => {
+    const effect = CONDITION_EFFECTS[conditionKey];
+    if (!effect) return;
+    mergeEffect(effect, effect.label);
+  });
+
+  const exhaustionLevel = getExhaustionLevel();
+  for (let level = 1; level <= exhaustionLevel; level += 1) {
+    const effect = EXHAUSTION_EFFECTS[level];
+    if (effect) mergeEffect(effect, `Exhaustion ${level}`);
+  }
+
+  return {
+    abilityChecks: combineRollModes(abilityCheckModes),
+    attackRolls: combineRollModes(attackRollModes),
+    savingThrows: combineRollModes(savingThrowModes),
+    saveDisAbilities,
+    autoFailSaves,
+    speed,
+    maxHp,
+    death,
+    notes,
+    exhaustionLevel
+  };
+}
+
+function getBaseSpeedValue() {
+  return Math.max(0, parseInt(document.getElementById("charSpeed")?.value, 10) || 0);
+}
+
+function getEffectiveSpeed(effects, baseSpeed = null) {
+  const base = baseSpeed === null ? getBaseSpeedValue() : baseSpeed;
+  if (effects.speed === "zero") return 0;
+  if (effects.speed === "half") return Math.floor(base / 2);
+  return base;
+}
+
+function getEffectiveMaxHp(effects, baseMaxHp = null) {
+  const base = baseMaxHp === null
+    ? Math.max(1, parseInt(document.getElementById("maxHp")?.value, 10) || 10)
+    : baseMaxHp;
+  return effects.maxHp === "half" ? Math.max(1, Math.floor(base / 2)) : base;
+}
+
+function updateDiceModeUI() {
+  document.querySelectorAll(".dice-mode-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mode === currentDiceMode);
+  });
+
+  const group = document.querySelector(".dice-mode-group");
+  if (group) {
+    const isConditionImposed = Boolean(conditionImposedDiceMode);
+    group.classList.toggle("condition-imposed", isConditionImposed);
+    group.classList.toggle("condition-imposed-adv", conditionImposedDiceMode === "adv");
+    group.title = isConditionImposed
+      ? `Condition default: ${conditionImposedDiceMode === "adv" ? "Advantage" : "Disadvantage"}. Choose a mode manually to override.`
+      : "Toggle Advantage or Disadvantage";
+  }
+}
+
+function setManualDiceMode(mode) {
+  manualDiceMode = mode === "adv" || mode === "dis" ? mode : "norm";
+  conditionImposedDiceMode = null;
+  currentDiceMode = manualDiceMode;
+  updateDiceModeUI();
+}
+
+function getConditionRollModeForCategory(category, attr = null, effects = null) {
+  const activeEffects = effects || getActiveConditionEffects();
+
+  if (category === "save") {
+    if (attr && activeEffects.autoFailSaves.has(attr)) return "autoFail";
+
+    const saveModes = [];
+    if (activeEffects.savingThrows === "dis" || activeEffects.savingThrows === "adv") {
+      saveModes.push(activeEffects.savingThrows);
+    }
+    if (attr && activeEffects.saveDisAbilities.has(attr)) saveModes.push("dis");
+    return combineRollModes(saveModes);
+  }
+
+  if (category === "attack") return activeEffects.attackRolls;
+  return activeEffects.abilityChecks;
+}
+
+function applyConditionRollMode(category, attr = null) {
+  lastRollCategory = category;
+  lastRollAttr = attr;
+
+  const mode = getConditionRollModeForCategory(category, attr);
+
+  if (mode === "autoFail") {
+    conditionImposedDiceMode = null;
+    currentDiceMode = manualDiceMode;
+    updateDiceModeUI();
+    return "autoFail";
+  }
+
+  if (mode && manualDiceMode === "norm") {
+    conditionImposedDiceMode = mode === "norm" ? null : mode;
+    currentDiceMode = mode;
+  } else {
+    conditionImposedDiceMode = null;
+    currentDiceMode = manualDiceMode;
+  }
+
+  updateDiceModeUI();
+  return mode;
+}
+
+function refreshConditionDiceMode() {
+  if (!lastRollCategory) return;
+  applyConditionRollMode(lastRollCategory, lastRollAttr);
+}
+
+function setConditionRollFlag(element, mode, insertBefore = null) {
+  if (!element) return;
+
+  const existingFlag = element.querySelector(".cond-roll-flag");
+  element.classList.toggle("condition-roll-warning", mode === "dis");
+  element.classList.toggle("condition-roll-positive", mode === "adv");
+
+  if (mode !== "dis" && mode !== "adv") {
+    delete element.dataset.rollMode;
+    if (existingFlag) existingFlag.remove();
+    return;
+  }
+
+  element.dataset.rollMode = mode;
+  let flag = existingFlag;
+  if (!flag) {
+    flag = document.createElement("span");
+    flag.className = "cond-roll-flag";
+    if (insertBefore && insertBefore.parentNode === element) {
+      element.insertBefore(flag, insertBefore);
+    } else {
+      element.appendChild(flag);
+    }
+  }
+
+  flag.classList.toggle("adv", mode === "adv");
+  flag.textContent = mode === "adv" ? "ADV" : "DIS";
+  flag.title = mode === "adv"
+    ? "Condition default: Advantage on this roll"
+    : "Condition default: Disadvantage on this roll";
+}
+
+function applyConditionIndicators(effects) {
+  const checkMode = effects.abilityChecks;
+  document.querySelectorAll(".attr-mod-box.roll-btn").forEach((box) => {
+    setConditionRollFlag(box, checkMode);
+  });
+
+  document.querySelectorAll(".skill-row").forEach((row) => {
+    setConditionRollFlag(row, checkMode, row.querySelector(".hex-die"));
+  });
+
+  const initiativeOrb = document.getElementById("rollInitiativeOrb");
+  if (initiativeOrb) {
+    initiativeOrb.classList.toggle("condition-roll-warning", checkMode === "dis");
+    initiativeOrb.classList.toggle("condition-roll-positive", checkMode === "adv");
+    const baseTitle = initiativeOrb.dataset.baseConditionTitle || initiativeOrb.getAttribute("title") || "Click to Roll Initiative!";
+    initiativeOrb.dataset.baseConditionTitle = baseTitle;
+    initiativeOrb.title = checkMode === "dis"
+      ? `${baseTitle} — Disadvantage (condition)`
+      : checkMode === "adv"
+        ? `${baseTitle} — Advantage (condition)`
+        : baseTitle;
+  }
+
+  ["str", "dex", "con", "int", "wis", "cha"].forEach((stat) => {
+    const saveBox = document.querySelector(`.attr-pod[data-attr="${stat}"] .attr-save-box`);
+    if (!saveBox) return;
+
+    const autoFail = effects.autoFailSaves.has(stat);
+    const saveModes = [];
+    if (effects.savingThrows === "dis" || effects.savingThrows === "adv") {
+      saveModes.push(effects.savingThrows);
+    }
+    if (effects.saveDisAbilities.has(stat)) saveModes.push("dis");
+    const mode = combineRollModes(saveModes);
+
+    saveBox.classList.toggle("condition-save-warning", !autoFail && mode === "dis");
+    saveBox.classList.toggle("condition-save-critical", autoFail);
+
+    let flag = saveBox.querySelector(".save-cond-flag");
+    if (autoFail || mode === "dis" || mode === "adv") {
+      if (!flag) {
+        flag = document.createElement("span");
+        flag.className = "cond-roll-flag save-cond-flag";
+        const die = saveBox.querySelector(".hex-die");
+        if (die) saveBox.insertBefore(flag, die);
+        else saveBox.appendChild(flag);
+      }
+      flag.classList.toggle("critical", autoFail);
+      flag.classList.toggle("adv", !autoFail && mode === "adv");
+      flag.textContent = autoFail ? "FAIL" : (mode === "adv" ? "ADV" : "DIS");
+      flag.title = autoFail
+        ? "Automatically fails this saving throw due to an active condition"
+        : mode === "adv"
+          ? "Condition default: Advantage on this saving throw"
+          : "Condition default: Disadvantage on this saving throw";
+    } else if (flag) {
+      flag.remove();
+    }
+  });
+
+  const saveNotice = document.getElementById("savingThrowConditionNotice");
+  if (saveNotice) {
+    const autoFailLabels = [...effects.autoFailSaves].map((stat) => stat.toUpperCase());
+    const parts = [];
+    if (autoFailLabels.length) parts.push(`${autoFailLabels.join(" & ")} saves AUTO-FAIL`);
+    if (effects.savingThrows === "dis") parts.push("Saving Throws: DIS");
+    else if (effects.savingThrows === "adv") parts.push("Saving Throws: ADV");
+    else {
+      const saveDisLabels = [...effects.saveDisAbilities]
+        .filter((stat) => !effects.autoFailSaves.has(stat))
+        .map((stat) => stat.toUpperCase());
+      if (saveDisLabels.length) parts.push(`${saveDisLabels.join(" & ")} Saves: DIS`);
+    }
+
+    saveNotice.hidden = parts.length === 0;
+    saveNotice.textContent = parts.join(" • ");
+    saveNotice.classList.toggle("critical", autoFailLabels.length > 0);
+    saveNotice.classList.toggle("positive", autoFailLabels.length === 0 && effects.savingThrows === "adv");
+  }
+
+  const attackMode = effects.attackRolls;
+  document.querySelectorAll(".wpn-roll-atk-btn").forEach((btn) => {
+    btn.classList.toggle("condition-roll-warning", attackMode === "dis");
+    btn.classList.toggle("condition-roll-positive", attackMode === "adv");
+    btn.dataset.rollMode = attackMode || "";
+    const baseTitle = btn.dataset.baseConditionTitle || btn.getAttribute("title") || "Roll Weapon Attack";
+    btn.dataset.baseConditionTitle = baseTitle;
+    btn.title = attackMode === "dis"
+      ? `${baseTitle} — Disadvantage (condition)`
+      : attackMode === "adv"
+        ? `${baseTitle} — Advantage (condition)`
+        : baseTitle;
+  });
+
+  const spellAttackBtn = document.getElementById("rollSpellAttackBtn");
+  if (spellAttackBtn) {
+    spellAttackBtn.classList.toggle("condition-roll-warning", attackMode === "dis");
+    spellAttackBtn.classList.toggle("condition-roll-positive", attackMode === "adv");
+    const spellCard = spellAttackBtn.closest(".spell-stat-card");
+    if (spellCard) {
+      spellCard.classList.toggle("condition-roll-warning", attackMode === "dis");
+      spellCard.classList.toggle("condition-roll-positive", attackMode === "adv");
+      setConditionRollFlag(spellCard, attackMode);
+    }
+  }
+
+  const deathSaveBtn = document.getElementById("rollDeathSaveBtn");
+  if (deathSaveBtn) {
+    const deathSaveMode = effects.savingThrows;
+    deathSaveBtn.classList.toggle("condition-roll-warning", deathSaveMode === "dis");
+    deathSaveBtn.classList.toggle("condition-roll-positive", deathSaveMode === "adv");
+    const deathTop = deathSaveBtn.closest(".death-card")?.querySelector(".vitals-card-top");
+    if (deathTop) {
+      let flag = deathTop.querySelector(".cond-roll-flag");
+      if (deathSaveMode === "dis" || deathSaveMode === "adv") {
+        if (!flag) {
+          flag = document.createElement("span");
+          flag.className = "cond-roll-flag";
+          deathTop.insertBefore(flag, deathSaveBtn);
+        }
+        flag.classList.toggle("adv", deathSaveMode === "adv");
+        flag.textContent = deathSaveMode === "adv" ? "ADV" : "DIS";
+      } else if (flag) {
+        flag.remove();
+      }
+    }
+  }
+}
+
+function applyDerivedConditionDisplays(effects) {
+  const baseSpeed = getBaseSpeedValue();
+  const effectiveSpeed = getEffectiveSpeed(effects, baseSpeed);
+  const speedAffected = effectiveSpeed !== baseSpeed;
+
+  const speedBaseWrap = document.getElementById("speedBaseWrap");
+  const speedDerived = document.getElementById("speedDerivedDisplay");
+  const speedOrb = document.getElementById("speedOrb");
+
+  if (speedBaseWrap) speedBaseWrap.classList.toggle("is-overridden", speedAffected);
+  if (speedOrb) speedOrb.classList.toggle("speed-affected", speedAffected);
+  if (speedDerived) {
+    speedDerived.hidden = !speedAffected;
+    speedDerived.textContent = speedAffected ? `${effectiveSpeed} ft` : "";
+  }
+  if (speedOrb) {
+    speedOrb.title = speedAffected
+      ? `Base speed ${baseSpeed} ft — reduced to ${effectiveSpeed} ft by active conditions`
+      : `Base speed ${baseSpeed} ft`;
+  }
+
+  const baseMaxHp = Math.max(1, parseInt(document.getElementById("maxHp")?.value, 10) || 10);
+  const effectiveMaxHp = getEffectiveMaxHp(effects, baseMaxHp);
+  const maxHpAffected = effectiveMaxHp !== baseMaxHp;
+
+  const maxHpWrap = document.getElementById("maxHpBaseWrap");
+  const maxHpDerived = document.getElementById("maxHpDerivedDisplay");
+  const hpGauge = document.getElementById("hpGaugeBox");
+
+  if (maxHpWrap) maxHpWrap.classList.toggle("is-overridden", maxHpAffected);
+  if (hpGauge) hpGauge.classList.toggle("max-hp-affected", maxHpAffected);
+  if (maxHpDerived) {
+    maxHpDerived.hidden = !maxHpAffected;
+    maxHpDerived.textContent = maxHpAffected ? `→ ${effectiveMaxHp}` : "";
+  }
+  const maxHpInput = document.getElementById("maxHp");
+  if (maxHpInput) {
+    const baseTitle = maxHpInput.dataset.baseConditionTitle || "Max HP";
+    maxHpInput.dataset.baseConditionTitle = baseTitle;
+    maxHpInput.title = maxHpAffected
+      ? `${baseTitle} — effective maximum is ${effectiveMaxHp} (condition)`
+      : baseTitle;
+  }
+}
+
+function renderConditionEffectsSummary(effects) {
+  const wrapper = document.getElementById("conditionEffectsSummary");
+  const tags = document.getElementById("conditionEffectsTags");
+  if (!wrapper || !tags) return;
+
+  const items = [];
+  const addTag = (text, tone = "neutral") => items.push({ text, tone });
+
+  if (effects.abilityChecks === "dis") addTag("Checks: DIS", "warning");
+  else if (effects.abilityChecks === "adv") addTag("Checks: ADV", "positive");
+  else if (effects.abilityChecks === "norm") addTag("Checks: ADV + DIS cancel", "neutral");
+
+  if (effects.attackRolls === "dis") addTag("Attacks: DIS", "warning");
+  else if (effects.attackRolls === "adv") addTag("Attacks: ADV", "positive");
+  else if (effects.attackRolls === "norm") addTag("Attacks: ADV + DIS cancel", "neutral");
+
+  if (effects.savingThrows === "dis") addTag("Saves: DIS", "warning");
+  else if (effects.savingThrows === "adv") addTag("Saves: ADV", "positive");
+  else if (effects.savingThrows === "norm") addTag("Saves: ADV + DIS cancel", "neutral");
+
+  if (effects.saveDisAbilities.size && effects.savingThrows !== "dis") {
+    const saveDisLabels = [...effects.saveDisAbilities]
+      .filter((stat) => !effects.autoFailSaves.has(stat))
+      .map((stat) => stat.toUpperCase());
+    if (saveDisLabels.length) addTag(`${saveDisLabels.join(" & ")} Saves: DIS`, "warning");
+  }
+
+  if (effects.autoFailSaves.size) {
+    addTag(`${[...effects.autoFailSaves].map((s) => s.toUpperCase()).join(" & ")} Saves: AUTO-FAIL`, "critical");
+  }
+
+  if (effects.speed) {
+    const effectiveSpeed = getEffectiveSpeed(effects);
+    addTag(`Speed: ${effectiveSpeed} ft${effects.speed === "half" ? " (half)" : ""}`, "warning");
+  }
+
+  if (effects.maxHp === "half") {
+    addTag(`Max HP: ${getEffectiveMaxHp(effects)} (half)`, "warning");
+  }
+
+  if (effects.death) addTag("Exhaustion 6: DEATH", "critical");
+
+  wrapper.hidden = items.length === 0;
+  wrapper.title = effects.notes.join("\n");
+  tags.innerHTML = items.map((item) => (
+    `<span class="cond-effect-tag ${item.tone}">${escapeHtml(item.text)}</span>`
+  )).join("");
+}
+
+function refreshConditionEffects() {
+  const exhaustionInput = document.getElementById("exhaustionLevel");
+  if (exhaustionInput && exhaustionInput.value !== "") {
+    const clamped = Math.min(6, Math.max(0, parseInt(exhaustionInput.value, 10) || 0));
+    if (String(clamped) !== String(exhaustionInput.value)) exhaustionInput.value = clamped;
+  }
+
+  const effects = getActiveConditionEffects();
+  applyConditionIndicators(effects);
+  applyDerivedConditionDisplays(effects);
+  renderConditionEffectsSummary(effects);
+  refreshConditionDiceMode();
+  updateHealthBars(effects);
+
+  const conditionsContainer = document.querySelector(".conditions-container");
+  if (conditionsContainer) {
+    const hasWarningEffect = Boolean(
+      effects.abilityChecks === "dis" ||
+      effects.attackRolls === "dis" ||
+      effects.savingThrows === "dis" ||
+      effects.saveDisAbilities.size ||
+      effects.autoFailSaves.size ||
+      effects.speed ||
+      effects.maxHp ||
+      effects.death
+    );
+    const hasPositiveEffect = Boolean(
+      effects.abilityChecks === "adv" ||
+      effects.attackRolls === "adv" ||
+      effects.savingThrows === "adv"
+    );
+
+    conditionsContainer.classList.toggle("has-condition-effects", hasWarningEffect || hasPositiveEffect);
+    conditionsContainer.classList.toggle("condition-positive", hasPositiveEffect && !hasWarningEffect);
+    conditionsContainer.classList.toggle("condition-death", effects.death);
+  }
+
+  return effects;
 }
 
 function updateWealthAndEncumbrance() {
@@ -787,7 +1338,7 @@ function recalculateAll() {
   if (passInvEl) passInvEl.textContent = 10 + invBonus;
 
   updateXpBar();
-  updateHealthBars();
+  refreshConditionEffects();
   updateConcentrationBanner();
   updateWealthAndEncumbrance();
   updateTabCounters();
@@ -812,16 +1363,22 @@ function renderWeapons() {
 
   container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
     <div class="attack-entry weapon-row-card" data-index="${idx}">
-      <input type="text" class="save-field wpn-field wpn-name-input" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon..." />
+      <div class="wpn-cell-with-roll wpn-name-cell">
+        <input type="text" class="save-field wpn-field wpn-name-input" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon..." />
+        <input type="text" class="save-field wpn-field wpn-atk-input center" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="Atk" title="Attack bonus (for example +5)" />
+        <button type="button" class="wpn-roll-btn wpn-roll-atk-btn" data-index="${idx}" title="Roll Weapon Attack">d20</button>
+      </div>
       <div class="wpn-cell-with-roll">
         <input type="text" class="save-field wpn-field wpn-dmg-input center" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8+3" />
         <button type="button" class="wpn-roll-btn wpn-roll-dmg-btn" data-index="${idx}" title="Roll Weapon Damage">&#9876;</button>
       </div>
-      <input type="text" class="save-field wpn-field wpn-type-input center" data-prop="type" value="${escapeHtml(wpn.type || wpn.atk || "")}" placeholder="Type..." />
+      <input type="text" class="save-field wpn-field wpn-type-input center" data-prop="type" value="${escapeHtml(wpn.type || "")}" placeholder="Type..." />
       <input type="text" class="save-field wpn-field wpn-notes-input" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Properties / Notes..." />
       <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
     </div>
   `).join("");
+
+  refreshConditionEffects();
 }
 
 function renderCustomResources() {
@@ -1315,6 +1872,9 @@ function renderConditionChips() {
     const cond = chip.dataset.cond;
     if (myActiveConditions.includes(cond)) chip.classList.add("active");
     else chip.classList.remove("active");
+
+    const effect = CONDITION_EFFECTS[cond];
+    chip.title = effect?.notes?.length ? effect.notes.join(" • ") : "";
   });
 }
 
@@ -1542,7 +2102,7 @@ function applyCharacterData(charData) {
   myCustomResources = charData.customResources || [];
   myStructuredInventory = charData.structuredInventory || [];
   myCompanions = charData.companions || [];
-  myActiveConditions = charData.conditions || [];
+  myActiveConditions = Array.isArray(charData.conditions) ? charData.conditions : [];
   myBlurredPills = charData.blurredPills || [];
   myHandouts = charData.handouts || [];
   myClaimedHandoutIds = charData.claimedHandouts || [];
@@ -3769,6 +4329,7 @@ function showConcentrationCheckPrompt(damage, spellName) {
 
   const rollBtn = prompt.querySelector(".conc-check-roll-btn");
   rollBtn.addEventListener("click", () => {
+    applyConditionRollMode("save", "con");
     const { total } = performD20Roll(bonus, "CON Save (Concentration)");
     const passed = total >= dc;
     const resultEl = prompt.querySelector(".conc-check-result");
@@ -4327,6 +4888,7 @@ document.addEventListener("click", async (e) => {
   // Roll Spell Attack Button
   if (e.target.id === "rollSpellAttackBtn") {
     const bonus = parseInt(document.getElementById("spellAtkBonus")?.value, 10) || 0;
+    applyConditionRollMode("attack");
     performD20Roll(bonus, "Spell Attack");
     return;
   }
@@ -4339,6 +4901,7 @@ document.addEventListener("click", async (e) => {
     const name = wpn.name?.trim() || "Weapon";
     const numMatch = String(wpn.atk || "").match(/[+-]?\d+/);
     const bonus = numMatch ? parseInt(numMatch[0], 10) : 0;
+    applyConditionRollMode("attack");
     performD20Roll(bonus, `${name} Atk`);
     return;
   }
@@ -5087,6 +5650,7 @@ function exportCharacterJson() {
   if (e.target.id === "clearConditionsBtn") {
     myActiveConditions = [];
     renderConditionChips();
+    refreshConditionEffects();
     closeConditionExplainer();
     saveSheet(false);
     showStatus("All Conditions Cleared");
@@ -5102,6 +5666,7 @@ function exportCharacterJson() {
       myActiveConditions.push(cond);
       e.target.classList.add("active");
     }
+    refreshConditionEffects();
     openConditionExplainer(cond);
     saveSheet(true);
     return;
@@ -5491,10 +6056,7 @@ function exportCharacterJson() {
   // Dice Mode Toggle (ADV / NORM / DIS)
   const modeBtn = e.target.closest(".dice-mode-btn");
   if (modeBtn) {
-    currentDiceMode = modeBtn.dataset.mode || "norm";
-    document.querySelectorAll(".dice-mode-btn").forEach((b) => {
-      b.classList.toggle("active", b.dataset.mode === currentDiceMode);
-    });
+    setManualDiceMode(modeBtn.dataset.mode || "norm");
     return;
   }
 
@@ -5518,12 +6080,14 @@ function exportCharacterJson() {
   if (e.target.id === "rollInitiativeOrb" || e.target.closest("#rollInitiativeOrb")) {
     if (e.target.id === "initBonusMod") return;
     const bonus = parseInt(document.getElementById("initiativeDisplay")?.textContent, 10) || 0;
+    applyConditionRollMode("check");
     performD20Roll(bonus, "Initiative");
     return;
   }
 
   // Roll Death Save Button
   if (e.target.id === "rollDeathSaveBtn") {
+    applyConditionRollMode("save");
     const { chosen } = performD20Roll(0, "Death Save");
     const succEl = document.getElementById("deathSucc");
     const failEl = document.getElementById("deathFail");
@@ -5564,19 +6128,30 @@ function exportCharacterJson() {
   if (rollTrigger) {
     let bonus = 0;
     let label = "Check";
+    const rollType = rollTrigger.dataset.type;
 
-    if (rollTrigger.dataset.type === "save") {
+    if (rollType === "save") {
       const attr = rollTrigger.dataset.attr;
       bonus = parseInt(document.getElementById(`save_val_${attr}`)?.textContent, 10) || 0;
       label = `${attr.toUpperCase()} Save`;
-    } else if (rollTrigger.dataset.type === "check") {
+
+      const conditionMode = applyConditionRollMode("save", attr);
+      if (conditionMode === "autoFail") {
+        updateDiceBadgeDisplay("FAIL", `${attr.toUpperCase()} Save Auto-Fail`);
+        addDiceHistory(`${attr.toUpperCase()} Save — AUTO-FAIL (condition)`, "FAIL");
+        showStatus(`${attr.toUpperCase()} save automatically fails due to an active condition.`);
+        return;
+      }
+    } else if (rollType === "check") {
       const attr = rollTrigger.dataset.attr;
       bonus = parseInt(document.getElementById(`mod_${attr}`)?.textContent, 10) || 0;
       label = `${attr.toUpperCase()} Check`;
-    } else if (rollTrigger.dataset.type === "skill") {
+      applyConditionRollMode("check");
+    } else if (rollType === "skill") {
       const row = rollTrigger.closest(".skill-row");
       bonus = parseInt(row?.querySelector(".skill-val")?.textContent, 10) || 0;
       label = row?.querySelector(".skill-label")?.textContent.trim() || "Skill";
+      applyConditionRollMode("check");
     }
 
     performD20Roll(bonus, label);
@@ -6221,14 +6796,77 @@ const CONDITIONS_DATA = {
   }
 };
 
+const CONDITION_EXPLAINER_TONE_RANK = { neutral: 0, positive: 1, warning: 2, critical: 3 };
+
+function getConditionExplainerModel(condKey) {
+  const items = [];
+  let severity = "neutral";
+  const addTag = (text, tone) => {
+    items.push({ text, tone });
+    if (CONDITION_EXPLAINER_TONE_RANK[tone] > CONDITION_EXPLAINER_TONE_RANK[severity]) {
+      severity = tone;
+    }
+  };
+
+  if (condKey === "exhaustion") {
+    const level = getExhaustionLevel();
+    if (level >= 1) addTag("Ability Checks: DIS", "warning");
+    if (level >= 3) addTag("Attack Rolls: DIS", "warning");
+    if (level >= 3) addTag("Saving Throws: DIS", "warning");
+    if (level >= 5) addTag("Speed: 0 ft", "warning");
+    else if (level >= 2) addTag("Speed: Halved", "warning");
+    if (level >= 4) addTag("Max HP: Halved", "warning");
+    if (level >= 6) addTag("Death", "critical");
+
+    return {
+      items,
+      severity,
+      active: level > 0,
+      label: level > 0 ? `Current Exhaustion ${level}` : "No Levels Active",
+      hint: level > 0 ? "Applied to sheet" : "Preview"
+    };
+  }
+
+  const effect = CONDITION_EFFECTS[condKey];
+  if (!effect) {
+    return { items, severity, active: false, label: "Sheet Impact", hint: "Preview" };
+  }
+
+  if (effect.abilityChecks === "dis") addTag("Ability Checks: DIS", "warning");
+  else if (effect.abilityChecks === "adv") addTag("Ability Checks: ADV", "positive");
+  if (effect.attackRolls === "dis") addTag("Attack Rolls: DIS", "warning");
+  else if (effect.attackRolls === "adv") addTag("Attack Rolls: ADV", "positive");
+  if (effect.savingThrows === "dis") addTag("Saving Throws: DIS", "warning");
+  else if (effect.savingThrows === "adv") addTag("Saving Throws: ADV", "positive");
+  if (effect.saveDis?.length) {
+    addTag(`${effect.saveDis.map((s) => s.toUpperCase()).join(" & ")} Saves: DIS`, "warning");
+  }
+  if (effect.autoFailSaves?.length) {
+    addTag(`${effect.autoFailSaves.map((s) => s.toUpperCase()).join(" & ")} Saves: AUTO-FAIL`, "critical");
+  }
+  if (effect.speed === "zero") addTag("Speed: 0 ft", "warning");
+  else if (effect.speed === "half") addTag("Speed: Halved", "warning");
+  if (effect.maxHp === "half") addTag("Max HP: Halved", "warning");
+  if (effect.death) addTag("Death", "critical");
+
+  const active = myActiveConditions.includes(condKey);
+  return {
+    items,
+    severity,
+    active,
+    label: active ? "Applied to Sheet" : "If Applied",
+    hint: active ? "Live" : "Preview"
+  };
+}
+
 function openConditionExplainer(condKey) {
   const card = document.getElementById("conditionExplainerCard");
   const data = CONDITIONS_DATA[condKey];
   if (!card || !data) return;
 
   currentExplainingCondition = condKey;
-  const exhVal = parseInt(document.getElementById("exhaustionLevel")?.value, 10) || 0;
-  const isActive = condKey === "exhaustion" ? exhVal > 0 : myActiveConditions.includes(condKey);
+  const model = getConditionExplainerModel(condKey);
+  const isActive = model.active;
 
   const iconEl = document.getElementById("condExplainerIcon");
   const nameEl = document.getElementById("condExplainerName");
@@ -6241,10 +6879,31 @@ function openConditionExplainer(condKey) {
     badge.className = `condition-explainer-badge ${isActive ? "active" : "inactive"}`;
   }
 
+  card.classList.remove("tone-neutral", "tone-positive", "tone-warning", "tone-critical");
+  card.classList.add(`tone-${model.severity}`);
+
+  const effectsWrap = document.getElementById("condExplainerEffectsWrap");
+  const effectsLabel = document.getElementById("condExplainerEffectsLabel");
+  const effectsHint = document.getElementById("condExplainerEffectsHint");
+  const effectTags = document.getElementById("condExplainerEffectTags");
+  if (effectsWrap) effectsWrap.hidden = model.items.length === 0;
+  if (effectsLabel) effectsLabel.textContent = model.label;
+  if (effectsHint) effectsHint.textContent = model.hint;
+  if (effectTags) {
+    effectTags.innerHTML = model.items.map((item) => (
+      `<span class="cond-effect-tag ${item.tone}">${escapeHtml(item.text)}</span>`
+    )).join("");
+  }
+
   const toggleBtn = document.getElementById("condExplainerToggleBtn");
   if (toggleBtn) {
-    toggleBtn.textContent = isActive ? "Remove Condition" : "Apply Condition";
-    toggleBtn.className = `btn btn-xs ${isActive ? "btn-danger-ghost" : "btn-outline"}`;
+    if (condKey === "exhaustion") {
+      toggleBtn.textContent = isActive ? "Clear Exhaustion" : "Add 1 Level";
+    } else {
+      toggleBtn.textContent = isActive ? "Remove Condition" : "Apply Condition";
+    }
+    toggleBtn.classList.toggle("is-active", isActive);
+    toggleBtn.setAttribute("aria-pressed", isActive ? "true" : "false");
   }
 
   const summaryEl = document.getElementById("condExplainerSummary");
@@ -6271,6 +6930,7 @@ function toggleConditionFromExplainer() {
     if (el) {
       const cur = parseInt(el.value, 10) || 0;
       el.value = cur > 0 ? 0 : 1;
+      refreshConditionEffects();
       saveSheet(false);
       openConditionExplainer("exhaustion");
     }
@@ -6283,6 +6943,7 @@ function toggleConditionFromExplainer() {
     myActiveConditions.push(currentExplainingCondition);
   }
   renderConditionChips();
+  refreshConditionEffects();
   openConditionExplainer(currentExplainingCondition);
   saveSheet(true);
 }
@@ -8716,7 +9377,7 @@ function initPWAAndNetworkStatus() {
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=79", { updateViaCache: "none" }).then((reg) => {
+      navigator.serviceWorker.register("./sw.js?v=91", { updateViaCache: "none" }).then((reg) => {
         reg.update().catch(() => {});
         console.log("5e Sheet Service Worker registered:", reg.scope);
       }).catch((err) => {
