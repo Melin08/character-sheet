@@ -12,14 +12,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=MedievalSharp&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=89" />
+  <link rel="stylesheet" href="style.css?v=90" />
 </head>
 <body id="top" class="theme-nexus">
 
   <!-- GLOBAL SITE TOP NOTICE BANNER (ADMIN BROADCAST) -->
   <aside id="globalSiteNoticeBanner" class="global-site-notice-banner" style="display: none;" role="alert" aria-live="assertive">
     <div class="global-notice-content">
-      <span class="global-notice-icon" id="globalNoticeIcon">📢</span>
+      <span class="global-notice-icon" id="globalNoticeIcon">
+        <svg class="notice-svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m3 11 18-5v12L3 14v-3z"></path>
+          <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path>
+        </svg>
+      </span>
       <div class="global-notice-text-wrap">
         <span class="global-notice-tag" id="globalNoticeTag">System Notice</span>
         <span class="global-notice-message" id="globalNoticeMessage">Notice message text...</span>
@@ -150,18 +155,162 @@
             <span id="headerPartyBtnText">Party</span>
           </button>
 
-          <div class="theme-selector-wrapper" title="Switch Theme">
-            <span class="theme-label-text">Theme</span>
-            <select id="themeSelect" class="theme-select" aria-label="Select Theme">
-              <option value="theme-nexus" selected>⚔️ Arcane Codex (Gold &amp; Obsidian)</option>
-              <option value="theme-parchment">📜 Ancient Parchment (Vellum &amp; Iron Ink)</option>
-              <option value="theme-amber">🐉 Dragon's Hoard (Ember Brass &amp; Gold)</option>
-              <option value="theme-crimson">🩸 Blood War (Crimson &amp; Dragon Scale)</option>
-              <option value="theme-midnight">🌌 Astral Sea (Celestial Sapphire)</option>
-              <option value="theme-emerald">🌿 Feywild Glade (Verdant Moss &amp; Jade)</option>
-              <option value="theme-violet">🔮 Netherese Void (Eldritch Amethyst)</option>
-              <option value="theme-monolith">🗡️ Shadowfell Crypt (Obsidian &amp; Iron)</option>
-              <option value="theme-cyberpunk">✨ Wild Magic (Prismatic Aurora)</option>
+          <div class="theme-selector-wrapper" id="themeDropdownWrapper" title="Switch Theme">
+            <button type="button" class="theme-trigger-btn" id="themeDropdownBtn" aria-haspopup="true" aria-expanded="false" title="Switch Theme">
+              <span class="theme-label-text">Theme</span>
+              <span class="theme-swatch" id="activeThemeSwatch" aria-hidden="true">
+                <span class="theme-dot dot-primary" style="background: #d4af37;"></span>
+                <span class="theme-dot dot-accent" style="background: #201a2b; box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.5);"></span>
+              </span>
+              <span class="theme-active-name" id="activeThemeName">Arcane Codex</span>
+              <span class="dropdown-caret">▾</span>
+            </button>
+            <div class="theme-dropdown-menu" id="themeDropdownMenu" role="menu" aria-label="Theme options">
+              <button type="button" class="theme-menu-item active" data-theme="theme-nexus" role="menuitem">
+                <span class="theme-swatch" aria-hidden="true">
+                  <span class="theme-dot dot-primary" style="background: #d4af37;"></span>
+                  <span class="theme-dot dot-accent" style="background: #201a2b; box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.5);"></span>
+                </span>
+                <span class="theme-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline><line x1="13" y1="19" x2="19" y2="13"></line><line x1="16" y1="16" x2="20" y2="20"></line><line x1="19" y1="21" x2="21" y2="19"></line></svg>
+                </span>
+                <div class="theme-menu-text">
+                  <span class="theme-menu-title">Arcane Codex</span>
+                  <span class="theme-menu-palette">Gold &amp; Obsidian</span>
+                </div>
+                <svg class="theme-check-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+
+              <button type="button" class="theme-menu-item" data-theme="theme-parchment" role="menuitem">
+                <span class="theme-swatch" aria-hidden="true">
+                  <span class="theme-dot dot-primary" style="background: #8b2500;"></span>
+                  <span class="theme-dot dot-accent" style="background: #f4ebd9; box-shadow: 0 0 0 1px rgba(120, 80, 30, 0.5);"></span>
+                </span>
+                <span class="theme-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17V5a2 2 0 0 0-2-2H4"></path><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1z"></path><path d="M4 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h15"></path></svg>
+                </span>
+                <div class="theme-menu-text">
+                  <span class="theme-menu-title">Ancient Parchment</span>
+                  <span class="theme-menu-palette">Vellum &amp; Iron Ink</span>
+                </div>
+                <svg class="theme-check-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+
+              <button type="button" class="theme-menu-item" data-theme="theme-amber" role="menuitem">
+                <span class="theme-swatch" aria-hidden="true">
+                  <span class="theme-dot dot-primary" style="background: #f59e0b;"></span>
+                  <span class="theme-dot dot-accent" style="background: #fbbf24;"></span>
+                </span>
+                <span class="theme-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+                </span>
+                <div class="theme-menu-text">
+                  <span class="theme-menu-title">Dragon's Hoard</span>
+                  <span class="theme-menu-palette">Ember Brass &amp; Gold</span>
+                </div>
+                <svg class="theme-check-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+
+              <button type="button" class="theme-menu-item" data-theme="theme-crimson" role="menuitem">
+                <span class="theme-swatch" aria-hidden="true">
+                  <span class="theme-dot dot-primary" style="background: #f43f5e;"></span>
+                  <span class="theme-dot dot-accent" style="background: #881337;"></span>
+                </span>
+                <span class="theme-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+                </span>
+                <div class="theme-menu-text">
+                  <span class="theme-menu-title">Blood War</span>
+                  <span class="theme-menu-palette">Crimson &amp; Dragon Scale</span>
+                </div>
+                <svg class="theme-check-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+
+              <button type="button" class="theme-menu-item" data-theme="theme-midnight" role="menuitem">
+                <span class="theme-swatch" aria-hidden="true">
+                  <span class="theme-dot dot-primary" style="background: #38bdf8;"></span>
+                  <span class="theme-dot dot-accent" style="background: #00f0ff;"></span>
+                </span>
+                <span class="theme-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </span>
+                <div class="theme-menu-text">
+                  <span class="theme-menu-title">Astral Sea</span>
+                  <span class="theme-menu-palette">Celestial Sapphire</span>
+                </div>
+                <svg class="theme-check-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+
+              <button type="button" class="theme-menu-item" data-theme="theme-emerald" role="menuitem">
+                <span class="theme-swatch" aria-hidden="true">
+                  <span class="theme-dot dot-primary" style="background: #10b981;"></span>
+                  <span class="theme-dot dot-accent" style="background: #34d399;"></span>
+                </span>
+                <span class="theme-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></svg>
+                </span>
+                <div class="theme-menu-text">
+                  <span class="theme-menu-title">Feywild Glade</span>
+                  <span class="theme-menu-palette">Verdant Moss &amp; Jade</span>
+                </div>
+                <svg class="theme-check-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+
+              <button type="button" class="theme-menu-item" data-theme="theme-violet" role="menuitem">
+                <span class="theme-swatch" aria-hidden="true">
+                  <span class="theme-dot dot-primary" style="background: #a855f7;"></span>
+                  <span class="theme-dot dot-accent" style="background: #c084fc;"></span>
+                </span>
+                <span class="theme-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a9 9 0 0 1 9 9"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </span>
+                <div class="theme-menu-text">
+                  <span class="theme-menu-title">Netherese Void</span>
+                  <span class="theme-menu-palette">Eldritch Amethyst</span>
+                </div>
+                <svg class="theme-check-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+
+              <button type="button" class="theme-menu-item" data-theme="theme-monolith" role="menuitem">
+                <span class="theme-swatch" aria-hidden="true">
+                  <span class="theme-dot dot-primary" style="background: #f1f5f9;"></span>
+                  <span class="theme-dot dot-accent" style="background: #475569;"></span>
+                </span>
+                <span class="theme-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="14 2 14 8 20 8"></polyline><path d="M4 22h16"></path><path d="M6 18h12"></path><path d="M18 18V5a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v13"></path></svg>
+                </span>
+                <div class="theme-menu-text">
+                  <span class="theme-menu-title">Shadowfell Crypt</span>
+                  <span class="theme-menu-palette">Obsidian &amp; Iron</span>
+                </div>
+                <svg class="theme-check-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+
+              <button type="button" class="theme-menu-item" data-theme="theme-cyberpunk" role="menuitem">
+                <span class="theme-swatch" aria-hidden="true">
+                  <span class="theme-dot dot-primary" style="background: #ec4899;"></span>
+                  <span class="theme-dot dot-accent" style="background: #06b6d4;"></span>
+                </span>
+                <span class="theme-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"></path></svg>
+                </span>
+                <div class="theme-menu-text">
+                  <span class="theme-menu-title">Wild Magic</span>
+                  <span class="theme-menu-palette">Prismatic Aurora</span>
+                </div>
+                <svg class="theme-check-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+            </div>
+            <select id="themeSelect" class="theme-select-native-sr" aria-label="Select Theme">
+              <option value="theme-nexus" selected>Arcane Codex (Gold &amp; Obsidian)</option>
+              <option value="theme-parchment">Ancient Parchment (Vellum &amp; Iron Ink)</option>
+              <option value="theme-amber">Dragon's Hoard (Ember Brass &amp; Gold)</option>
+              <option value="theme-crimson">Blood War (Crimson &amp; Dragon Scale)</option>
+              <option value="theme-midnight">Astral Sea (Celestial Sapphire)</option>
+              <option value="theme-emerald">Feywild Glade (Verdant Moss &amp; Jade)</option>
+              <option value="theme-violet">Netherese Void (Eldritch Amethyst)</option>
+              <option value="theme-monolith">Shadowfell Crypt (Obsidian &amp; Iron)</option>
+              <option value="theme-cyberpunk">Wild Magic (Prismatic Aurora)</option>
             </select>
           </div>
 
@@ -2745,9 +2894,9 @@
               <label class="handout-form-label">
                 <span>Message Style</span>
                 <select id="adminBroadcastStyle" class="handout-form-input">
-                  <option value="system">📢 System Alert</option>
-                  <option value="dm">👑 Admin Decree</option>
-                  <option value="maint">⚠️ Server Maintenance Notice</option>
+                  <option value="system">System Alert</option>
+                  <option value="dm">Admin Decree</option>
+                  <option value="maint">Server Maintenance Notice</option>
                 </select>
               </label>
             </div>
@@ -3229,6 +3378,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=89"></script>
+  <script src="app.js?v=90"></script>
 </body>
 </html>

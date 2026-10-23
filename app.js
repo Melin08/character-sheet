@@ -459,17 +459,102 @@ function getClassCssClass(className) {
 }
 
 // Themes: Fantasy RPG Aesthetic Suite
+const THEME_DEFINITIONS = {
+  "theme-nexus": {
+    name: "Arcane Codex",
+    palette: "Gold & Obsidian",
+    primary: "#d4af37",
+    accent: "#201a2b",
+    accentBorder: "rgba(212, 175, 55, 0.5)"
+  },
+  "theme-parchment": {
+    name: "Ancient Parchment",
+    palette: "Vellum & Iron Ink",
+    primary: "#8b2500",
+    accent: "#f4ebd9",
+    accentBorder: "rgba(120, 80, 30, 0.5)"
+  },
+  "theme-amber": {
+    name: "Dragon's Hoard",
+    palette: "Ember Brass & Gold",
+    primary: "#f59e0b",
+    accent: "#fbbf24",
+    accentBorder: ""
+  },
+  "theme-crimson": {
+    name: "Blood War",
+    palette: "Crimson & Dragon Scale",
+    primary: "#f43f5e",
+    accent: "#881337",
+    accentBorder: ""
+  },
+  "theme-midnight": {
+    name: "Astral Sea",
+    palette: "Celestial Sapphire",
+    primary: "#38bdf8",
+    accent: "#00f0ff",
+    accentBorder: ""
+  },
+  "theme-emerald": {
+    name: "Feywild Glade",
+    palette: "Verdant Moss & Jade",
+    primary: "#10b981",
+    accent: "#34d399",
+    accentBorder: ""
+  },
+  "theme-violet": {
+    name: "Netherese Void",
+    palette: "Eldritch Amethyst",
+    primary: "#a855f7",
+    accent: "#c084fc",
+    accentBorder: ""
+  },
+  "theme-monolith": {
+    name: "Shadowfell Crypt",
+    palette: "Obsidian & Iron",
+    primary: "#f1f5f9",
+    accent: "#475569",
+    accentBorder: ""
+  },
+  "theme-cyberpunk": {
+    name: "Wild Magic",
+    palette: "Prismatic Aurora",
+    primary: "#ec4899",
+    accent: "#06b6d4",
+    accentBorder: ""
+  }
+};
+
+function updateCustomThemeUI(validTheme) {
+  const def = THEME_DEFINITIONS[validTheme] || THEME_DEFINITIONS["theme-nexus"];
+  const nameEl = document.getElementById("activeThemeName");
+  if (nameEl) nameEl.textContent = def.name;
+
+  const swatchEl = document.getElementById("activeThemeSwatch");
+  if (swatchEl) {
+    const borderStyle = def.accentBorder ? `box-shadow: 0 0 0 1px ${def.accentBorder};` : "";
+    swatchEl.innerHTML = `
+      <span class="theme-dot dot-primary" style="background: ${def.primary};"></span>
+      <span class="theme-dot dot-accent" style="background: ${def.accent}; ${borderStyle}"></span>
+    `;
+  }
+
+  document.querySelectorAll(".theme-menu-item").forEach((item) => {
+    const isActive = item.dataset.theme === validTheme;
+    item.classList.toggle("active", isActive);
+    item.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+}
+
 function applyTheme(themeName) {
-  const themes = [
-    "theme-nexus", "theme-parchment", "theme-midnight", "theme-emerald", "theme-crimson",
-    "theme-amber", "theme-violet", "theme-monolith", "theme-cyberpunk"
-  ];
+  const themes = Object.keys(THEME_DEFINITIONS);
   themes.forEach((t) => document.body.classList.remove(t));
   const validTheme = themes.includes(themeName) ? themeName : "theme-nexus";
   document.body.classList.add(validTheme);
   localStorage.setItem(THEME_STORAGE_KEY, validTheme);
   const sel = document.getElementById("themeSelect");
-  if (sel) sel.value = validTheme;
+  if (sel && sel.value !== validTheme) sel.value = validTheme;
+  updateCustomThemeUI(validTheme);
 }
 
 /* ==========================================================================
@@ -4410,6 +4495,38 @@ function exportCharacterJson() {
     return;
   }
 
+  // Toggle Theme Dropdown Menu
+  if (e.target.id === "themeDropdownBtn" || e.target.closest("#themeDropdownBtn")) {
+    const menu = document.getElementById("themeDropdownMenu");
+    const btn = document.getElementById("themeDropdownBtn");
+    if (menu) {
+      const isOpen = menu.classList.toggle("open");
+      if (btn) btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    }
+    return;
+  }
+
+  // Select Theme from Custom Dropdown Menu
+  const themeMenuItem = e.target.closest(".theme-menu-item[data-theme]");
+  if (themeMenuItem) {
+    const themeKey = themeMenuItem.dataset.theme;
+    if (themeKey) {
+      applyTheme(themeKey);
+    }
+    document.getElementById("themeDropdownMenu")?.classList.remove("open");
+    document.getElementById("themeDropdownBtn")?.setAttribute("aria-expanded", "false");
+    return;
+  }
+
+  // Close Theme Dropdown if clicked outside
+  if (!e.target.closest("#themeDropdownWrapper")) {
+    const menu = document.getElementById("themeDropdownMenu");
+    if (menu && menu.classList.contains("open")) {
+      menu.classList.remove("open");
+      document.getElementById("themeDropdownBtn")?.setAttribute("aria-expanded", "false");
+    }
+  }
+
   // Export Statblock Formats from Dropdown Menu
   const statblockItem = e.target.closest(".export-menu-item[data-format]");
   if (statblockItem) {
@@ -5857,6 +5974,10 @@ document.addEventListener("keydown", (e) => {
     closeAllModals();
     currentInspectedMemberId = null;
     if (isDiceRollerOpen) toggleDiceRoller(false);
+    document.getElementById("themeDropdownMenu")?.classList.remove("open");
+    document.getElementById("themeDropdownBtn")?.setAttribute("aria-expanded", "false");
+    document.getElementById("exportDropdownMenu")?.classList.remove("open");
+    document.getElementById("exportBtn")?.setAttribute("aria-expanded", "false");
   }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
     e.preventDefault();
@@ -9691,7 +9812,17 @@ function renderGlobalSiteNoticeBanner(data, remainingMs) {
   banner.className = `global-site-notice-banner notice-style-${data.style || 'gold'}`;
   if (msgEl) msgEl.textContent = data.text || "System Notice";
   if (tagEl) tagEl.textContent = data.tag || "System Alert";
-  if (iconEl) iconEl.textContent = data.icon || "📢";
+  if (iconEl) {
+    if (data.icon && !["📢", "👑", "⚠️"].includes(data.icon)) {
+      iconEl.textContent = data.icon;
+    } else {
+      if (data.style === "warning" || data.icon === "⚠️") {
+        iconEl.innerHTML = `<svg class="notice-svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+      } else {
+        iconEl.innerHTML = `<svg class="notice-svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>`;
+      }
+    }
+  }
 
   banner.style.display = "block";
 
@@ -9853,16 +9984,16 @@ async function sendAdminBroadcast(e) {
     }
 
     let tag = "System Notice";
-    let icon = "📢";
+    let icon = "";
     let noticeStyle = "info";
 
     if (style === "dm") {
       tag = "Admin Decree";
-      icon = "👑";
+      icon = "";
       noticeStyle = "gold";
     } else if (style === "maint") {
       tag = "Maintenance Alert";
-      icon = "⚠️";
+      icon = "";
       noticeStyle = "warning";
     }
 
@@ -9949,7 +10080,7 @@ async function sendAdminBroadcast(e) {
   let formattedText = rawText;
   let senderName = "👑 Master Admin";
   if (style === "system") {
-    senderName = "📢 System Alert";
+    senderName = "System Alert";
     formattedText = `[SYSTEM NOTICE]: ${rawText}`;
   } else if (style === "maint") {
     senderName = "⚠️ Maintenance Notice";
