@@ -9227,3 +9227,74 @@ body.owlbear-theater-active .map-vtt-shell {
     box-shadow: none !important;
   }
 }
+/* ==========================================================================
+   CONCENTRATION CHECK PROMPT (triggered by HP damage)
+   ========================================================================== */
+.conc-check-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  transform: translate(-50%, 16px);
+  opacity: 0;
+  width: 300px;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  background: linear-gradient(165deg, rgba(24, 19, 36, 0.98) 0%, rgba(12, 10, 19, 0.98) 100%);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  border-radius: 14px;
+  padding: 0.7rem 0.8rem;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 9999;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.conc-check-prompt.show { opacity: 1; transform: translate(-50%, 0); }
+
+.conc-check-head { display: flex; align-items: center; justify-content: space-between; }
+.conc-check-title {
+  font-size: 0.66rem; font-weight: 800; letter-spacing: 0.07em;
+  color: var(--accent-gold); text-transform: uppercase;
+}
+.conc-check-close {
+  background: none; border: none; color: var(--text-dim);
+  font-size: 1.1rem; line-height: 1; cursor: pointer; padding: 0 0.15rem;
+}
+.conc-check-close:hover { color: #f87171; }
+
+.conc-check-body { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.conc-check-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.conc-check-spell {
+  font-size: 0.9rem; font-weight: 800; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.conc-check-sub { font-size: 0.7rem; color: var(--text-dim); }
+
+.conc-check-dc {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-width: 52px; height: 52px; border-radius: 10px; flex-shrink: 0;
+  background: rgba(212, 175, 55, 0.14); border: 1px solid rgba(212, 175, 55, 0.5);
+}
+.conc-check-dc-lbl { font-size: 0.56rem; font-weight: 800; letter-spacing: 0.08em; color: rgba(212, 175, 55, 0.85); }
+.conc-check-dc-val { font-size: 1.35rem; line-height: 1; color: #fde68a; }
+
+.conc-check-result {
+  font-size: 0.72rem; font-weight: 700; border-radius: 8px; padding: 0.35rem 0.5rem;
+}
+.conc-check-result.pass { background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.5); color: #86efac; }
+.conc-check-result.fail { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.5); color: #fca5a5; }
+
+.conc-check-roll-btn {
+  height: 34px; border-radius: 8px; cursor: pointer;
+  font-size: 0.78rem; font-weight: 800; letter-spacing: 0.03em;
+  color: #1a1408;
+  background: linear-gradient(180deg, #f5d36b 0%, #d4af37 100%);
+  border: 1px solid #b8912a;
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+.conc-check-roll-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+.conc-check-roll-btn:disabled { cursor: default; opacity: 0.6; transform: none; }

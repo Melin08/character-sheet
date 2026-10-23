@@ -3619,6 +3619,107 @@ async function kickPlayerFromRoom(memberId) {
    HP CALCULATOR, INLINE STEPPERS & REST ACTIONS
    ========================================================================== */
 
+/* --------------------------------------------------------------------------
+   CONCENTRATION CHECK PROMPT (linked to HP damage)
+   -------------------------------------------------------------------------- */
+
+function getConSaveBonus() {
+  const conMod = getModifier(parseInt(document.getElementById("attr_con")?.value, 10) || 10);
+  const level = parseInt(document.getElementById("charLevel")?.value, 10) || 1;
+  const isProf = !!document.getElementById("save_con")?.checked;
+  return conMod + (isProf ? getProfBonus(level) : 0);
+}
+
+function dropConcentration(reasonText) {
+  const concEl = document.getElementById("spellConcentration");
+  if (!concEl) return;
+  concEl.value = "";
+  updateConcentrationBanner();
+  if (typeof renderMySpells === "function") renderMySpells();
+  saveSheet(false);
+  if (reasonText) showStatus(reasonText);
+}
+
+function closeConcentrationCheckPrompt() {
+  const el = document.getElementById("concCheckPrompt");
+  if (el) {
+    el.classList.remove("show");
+    setTimeout(() => el.remove(), 220);
+  }
+}
+
+function showConcentrationCheckPrompt(damage, spellName) {
+  const dc = Math.max(10, Math.floor(damage / 2));
+  const bonus = getConSaveBonus();
+
+  // Only one prompt at a time; a new hit replaces the old one with the new DC
+  document.getElementById("concCheckPrompt")?.remove();
+
+  const prompt = document.createElement("div");
+  prompt.id = "concCheckPrompt";
+  prompt.className = "conc-check-prompt";
+  prompt.setAttribute("role", "alertdialog");
+  prompt.innerHTML = `
+    <div class="conc-check-head">
+      <span class="conc-check-title">Concentration Check</span>
+      <button type="button" class="conc-check-close" aria-label="Dismiss">&times;</button>
+    </div>
+    <div class="conc-check-body">
+      <div class="conc-check-info">
+        <span class="conc-check-spell">${escapeHtml(spellName)}</span>
+        <span class="conc-check-sub">Took ${damage} damage &middot; CON save ${formatSigned(bonus)}</span>
+      </div>
+      <div class="conc-check-dc">
+        <span class="conc-check-dc-lbl">DC</span>
+        <strong class="conc-check-dc-val">${dc}</strong>
+      </div>
+    </div>
+    <div class="conc-check-result" style="display:none;"></div>
+    <button type="button" class="conc-check-roll-btn">Roll CON Save</button>
+  `;
+  document.body.appendChild(prompt);
+  requestAnimationFrame(() => prompt.classList.add("show"));
+
+  prompt.querySelector(".conc-check-close").addEventListener("click", closeConcentrationCheckPrompt);
+
+  const rollBtn = prompt.querySelector(".conc-check-roll-btn");
+  rollBtn.addEventListener("click", () => {
+    const { total } = performD20Roll(bonus, "CON Save (Concentration)");
+    const passed = total >= dc;
+    const resultEl = prompt.querySelector(".conc-check-result");
+    resultEl.style.display = "block";
+    resultEl.className = "conc-check-result " + (passed ? "pass" : "fail");
+    resultEl.textContent = passed
+      ? `Rolled ${total} vs DC ${dc}: Concentration held!`
+      : `Rolled ${total} vs DC ${dc}: Concentration lost.`;
+    rollBtn.disabled = true;
+    rollBtn.textContent = passed ? "Success" : "Failed";
+
+    if (passed) {
+      showStatus(`Concentration held on ${spellName}!`);
+    } else {
+      dropConcentration(`Concentration on ${spellName} broken!`);
+    }
+    setTimeout(closeConcentrationCheckPrompt, 3200);
+  });
+}
+
+// Manual edits to the Current HP field also trigger a concentration check
+(function initManualHpConcentrationWatcher() {
+  let lastHp = null;
+  document.addEventListener("focusin", (e) => {
+    if (e.target && e.target.id === "curHp") lastHp = parseInt(e.target.value, 10) || 0;
+  });
+  document.addEventListener("change", (e) => {
+    if (!e.target || e.target.id !== "curHp" || lastHp === null) return;
+    const newHp = parseInt(e.target.value, 10) || 0;
+    const dmg = lastHp - newHp;
+    lastHp = newHp;
+    const concSpell = document.getElementById("spellConcentration")?.value?.trim();
+    if (dmg > 0 && concSpell) showConcentrationCheckPrompt(dmg, concSpell);
+  });
+})();
+
 function applyQuickHpStep(delta) {
   const curHpEl = document.getElementById("curHp");
   const maxHpEl = document.getElementById("maxHp");
@@ -3643,7 +3744,7 @@ function applyQuickHpStep(delta) {
 
     const concSpell = document.getElementById("spellConcentration")?.value?.trim();
     if (concSpell) {
-      showStatus(`-1 HP! Roll CON Save (DC 10) for ${concSpell}!`);
+      showConcentrationCheckPrompt(dmg, concSpell);
     }
   } else if (delta > 0) {
     curHp = Math.min(maxHp, curHp + delta);
@@ -3686,8 +3787,7 @@ function applyHpAdjustment(type) {
 
     const concSpell = document.getElementById("spellConcentration")?.value?.trim();
     if (concSpell) {
-      const dc = Math.max(10, Math.floor(amt / 2));
-      showStatus(`Took ${amt} dmg! Roll CON Save (DC ${dc}) for ${concSpell}!`);
+      showConcentrationCheckPrompt(amt, concSpell);
     } else {
       showStatus(`Took ${amt} damage!`);
     }
