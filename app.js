@@ -12485,6 +12485,21 @@ function initMapCanvasInteractionListeners() {
    TOKEN CONTEXT POPOVER & MANIPULATION
    -------------------------------------------------------------------------- */
 
+function updateTokenPopoverAvatar(token) {
+  const avatar = document.getElementById("vttTokPopAvatar");
+  if (!avatar || !token) return;
+  const baseColor = token.color || "#3b82f6";
+  avatar.style.backgroundColor = baseColor;
+  avatar.style.boxShadow = `0 0 12px ${baseColor}77, inset 0 2px 4px rgba(255, 255, 255, 0.3)`;
+  if (token.img) {
+    avatar.style.backgroundImage = `url("${token.img}")`;
+    avatar.textContent = "";
+  } else {
+    avatar.style.backgroundImage = "none";
+    avatar.textContent = (token.monogram || token.name?.slice(0, 3) || "TOK").toUpperCase();
+  }
+}
+
 function selectMapToken(tokenId, ptr) {
   mapSelectedTokenId = tokenId;
   mapSelectedNoteId = null;
@@ -12495,6 +12510,8 @@ function selectMapToken(tokenId, ptr) {
 
   const pop = document.getElementById("vttTokenPopover");
   if (!pop) return;
+
+  updateTokenPopoverAvatar(token);
 
   // Fill popover inputs
   const nameInput = document.getElementById("vttTokNameInput");
@@ -12512,6 +12529,12 @@ function selectMapToken(tokenId, ptr) {
   const lockBtn = document.getElementById("vttTokLockBtn");
   if (lockBtn) lockBtn.classList.toggle("active", !!token.isLocked);
 
+  const initBtn = document.getElementById("vttTokInitToggleBtn");
+  if (initBtn) {
+    const inInit = (activeMapState?.initiative || []).some(it => it.tokenId === token.id);
+    initBtn.classList.toggle("active", inInit);
+  }
+
   // Owlbear 8 Status Rings
   const rings = token.rings || [];
   document.querySelectorAll("#vttTokConditionsRow .map-ring-dot").forEach(dot => {
@@ -12519,34 +12542,105 @@ function selectMapToken(tokenId, ptr) {
     dot.classList.toggle("active", rings.includes(color));
   });
 
-  // Populate Active Conditions Row
-  renderTokenConditionChips(token);
+  // Close custom dropdown menu initially when selecting a token
+  const dropMenu = document.getElementById("vttStatusDropdownMenu");
+  const dropBtn = document.getElementById("vttStatusDropdownBtn");
+  if (dropMenu) dropMenu.style.display = "none";
+  if (dropBtn) dropBtn.classList.remove("open");
 
+  // Populate Active Conditions Row & Custom Dropdown Options
+  renderTokenConditionChips(token);
+  renderCustomStatusDropdown(token);
+
+  pop.style.display = "flex";
   positionTokenPopover(token);
-  pop.style.display = "block";
   resizeAndRenderOwlbearCanvas();
+}
+
+const MAP_CONDITION_KEYS_LIST = [
+  "blinded", "charmed", "deafened", "frightened", "grappled",
+  "incapacitated", "invisible", "paralyzed", "petrified", "poisoned",
+  "prone", "restrained", "stunned", "unconscious", "exhaustion"
+];
+
+const MAP_COMBAT_STATUS_KEYS_LIST = [
+  "concentration", "blessed", "hexed", "target", "raging", "dodging", "hidden"
+];
+
+function renderCustomStatusDropdown(token) {
+  const condGrid = document.getElementById("vttStatusGridConditions");
+  const combatGrid = document.getElementById("vttStatusGridCombat");
+  if (!condGrid || !combatGrid || !token) return;
+
+  const activeConds = token.conditions || [];
+
+  const buildOptionBtn = (key) => {
+    const meta = MAP_CONDITIONS[key] || { label: key, color: "#d4af37" };
+    const isActive = activeConds.includes(key);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "map-status-opt-btn" + (isActive ? " active" : "");
+    btn.innerHTML = `
+      <span class="map-status-opt-dot" style="background:${meta.color}; color:${meta.color};"></span>
+      <span class="map-status-opt-name">${escapeHtml(meta.label)}</span>
+    `;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!Array.isArray(token.conditions)) token.conditions = [];
+      const idx = token.conditions.indexOf(key);
+      if (idx >= 0) {
+        token.conditions.splice(idx, 1);
+      } else {
+        token.conditions.push(key);
+      }
+      renderTokenConditionChips(token);
+      renderCustomStatusDropdown(token);
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+    });
+    return btn;
+  };
+
+  condGrid.innerHTML = "";
+  MAP_CONDITION_KEYS_LIST.forEach(k => condGrid.appendChild(buildOptionBtn(k)));
+
+  combatGrid.innerHTML = "";
+  MAP_COMBAT_STATUS_KEYS_LIST.forEach(k => combatGrid.appendChild(buildOptionBtn(k)));
 }
 
 function renderTokenConditionChips(token) {
   const row = document.getElementById("vttActiveConditionsRow");
+  const countBadge = document.getElementById("vttTokCondCountBadge");
   if (!row) return;
   row.innerHTML = "";
 
   const conditions = token.conditions || [];
+  if (countBadge) {
+    if (conditions.length > 0) {
+      countBadge.textContent = `${conditions.length} Active`;
+      countBadge.style.display = "inline-block";
+    } else {
+      countBadge.style.display = "none";
+    }
+  }
+
   conditions.forEach(condKey => {
     const meta = MAP_CONDITIONS[condKey] || { label: condKey, color: "#d4af37" };
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "map-cond-chip";
+    chip.style.borderColor = `${meta.color}88`;
+    chip.style.background = `${meta.color}24`;
     chip.title = `Remove ${meta.label}`;
     chip.innerHTML = `
-      <span class="map-cond-chip-dot" style="background:${meta.color};"></span>
+      <span class="map-cond-chip-dot" style="background:${meta.color}; color:${meta.color};"></span>
       <span>${escapeHtml(meta.label)}</span>
       <span class="map-cond-chip-x">&times;</span>
     `;
     chip.addEventListener("click", () => {
       token.conditions = (token.conditions || []).filter(c => c !== condKey);
       renderTokenConditionChips(token);
+      renderCustomStatusDropdown(token);
       triggerMapAutosave();
       resizeAndRenderOwlbearCanvas();
     });
@@ -12566,8 +12660,8 @@ function positionTokenPopover(token) {
   const screenY = wy * mapCamera.zoom + mapCamera.y;
   const radius = ((token.size || 1) * g * mapCamera.zoom) / 2;
 
-  const popW = pop.offsetWidth || 294;
-  const popH = pop.offsetHeight || 220;
+  const popW = pop.offsetWidth || 312;
+  const popH = pop.offsetHeight || 245;
   let posX = screenX - popW / 2;
   let posY = screenY - radius - popH - 12;
 
@@ -12581,6 +12675,10 @@ function positionTokenPopover(token) {
 function closeMapTokenPopover() {
   const pop = document.getElementById("vttTokenPopover");
   if (pop) pop.style.display = "none";
+  const dropMenu = document.getElementById("vttStatusDropdownMenu");
+  const dropBtn = document.getElementById("vttStatusDropdownBtn");
+  if (dropMenu) dropMenu.style.display = "none";
+  if (dropBtn) dropBtn.classList.remove("open");
 }
 
 function deselectAllMapObjects() {
@@ -12602,12 +12700,24 @@ function initMapTokenPopoverListeners() {
     const tok = (activeMapState.tokens || []).find(t => t.id === mapSelectedTokenId);
     if (tok) {
       tok.name = e.target.value.trim();
+      updateTokenPopoverAvatar(tok);
       triggerMapAutosave();
       resizeAndRenderOwlbearCanvas();
     }
   });
 
-  // Condition Select Dropdown
+  // Custom Status Dropdown Trigger Button
+  document.getElementById("vttStatusDropdownBtn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const menu = document.getElementById("vttStatusDropdownMenu");
+    const btn = document.getElementById("vttStatusDropdownBtn");
+    if (!menu || !btn) return;
+    const isOpen = menu.style.display !== "none";
+    menu.style.display = isOpen ? "none" : "block";
+    btn.classList.toggle("open", !isOpen);
+  });
+
+  // Condition Select Dropdown (fallback)
   document.getElementById("vttAddConditionSelect")?.addEventListener("change", (e) => {
     const condKey = e.target.value;
     if (!condKey || !mapSelectedTokenId || !activeMapState) return;
@@ -12618,6 +12728,7 @@ function initMapTokenPopoverListeners() {
     if (!tok.conditions.includes(condKey)) {
       tok.conditions.push(condKey);
       renderTokenConditionChips(tok);
+      renderCustomStatusDropdown(tok);
       triggerMapAutosave();
       resizeAndRenderOwlbearCanvas();
     }
@@ -12694,6 +12805,17 @@ function initMapTokenPopoverListeners() {
     }
   });
 
+  // Close custom status dropdown when clicking elsewhere inside popover
+  document.getElementById("vttTokenPopover")?.addEventListener("click", (e) => {
+    const wrap = document.getElementById("vttStatusDropdownWrap");
+    if (wrap && !wrap.contains(e.target)) {
+      const menu = document.getElementById("vttStatusDropdownMenu");
+      const btn = document.getElementById("vttStatusDropdownBtn");
+      if (menu) menu.style.display = "none";
+      if (btn) btn.classList.remove("open");
+    }
+  });
+
   // Init toggle button
   document.getElementById("vttTokInitToggleBtn")?.addEventListener("click", () => {
     if (!mapSelectedTokenId || !activeMapState) return;
@@ -12704,6 +12826,7 @@ function initMapTokenPopoverListeners() {
     const existing = activeMapState.initiative.find(it => it.tokenId === tok.id);
     if (existing) {
       activeMapState.initiative = activeMapState.initiative.filter(it => it.tokenId !== tok.id);
+      document.getElementById("vttTokInitToggleBtn")?.classList.remove("active");
       showStatus(`Removed ${tok.name} from Initiative.`);
     } else {
       const roll = Math.floor(Math.random() * 20) + 1;
@@ -12715,6 +12838,7 @@ function initMapTokenPopoverListeners() {
         color: tok.color || "#3b82f6",
         val: roll
       });
+      document.getElementById("vttTokInitToggleBtn")?.classList.add("active");
       showStatus(`Added ${tok.name} to Initiative (Roll: ${roll}).`);
     }
     renderMapInitiativeList();

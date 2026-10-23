@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=MedievalSharp&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=86" />
+  <link rel="stylesheet" href="style.css?v=87" />
 </head>
 <body id="top" class="theme-nexus">
 
@@ -1689,96 +1689,133 @@
             <!-- ========================================================= -->
             <div class="map-token-popover" id="vttTokenPopover" style="display: none;">
               <div class="map-tok-pop-top">
-                <input type="text" id="vttTokNameInput" class="map-tok-label-input" placeholder="Token Label..." />
-                <button type="button" id="vttTokCloseBtn" class="map-tok-close-btn" title="Deselect">&times;</button>
+                <div class="map-tok-pop-avatar" id="vttTokPopAvatar">TOK</div>
+                <div class="map-tok-name-wrap">
+                  <span class="map-tok-micro-lbl">TOKEN IDENTIFIER</span>
+                  <input type="text" id="vttTokNameInput" class="map-tok-label-input" placeholder="Token Label..." />
+                </div>
+                <button type="button" id="vttTokCloseBtn" class="map-tok-close-btn" title="Deselect">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
               </div>
 
               <!-- Conditions & Status Rings Section -->
               <div class="map-tok-condition-section">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="map-tok-sec-head">
                   <span class="map-tok-sec-subtitle">Status &amp; Condition Rings</span>
+                  <span class="map-tok-cond-count" id="vttTokCondCountBadge" style="display:none;">0</span>
                 </div>
-                
-                <select id="vttAddConditionSelect" class="vtt-mini-select" style="width:100%;">
-                  <option value="">+ Add Status / Condition Ring...</option>
-                  <optgroup label="Conditions">
-                    <option value="blinded">Blinded</option>
-                    <option value="charmed">Charmed</option>
-                    <option value="deafened">Deafened</option>
-                    <option value="frightened">Frightened</option>
-                    <option value="grappled">Grappled</option>
-                    <option value="incapacitated">Incapacitated</option>
-                    <option value="invisible">Invisible</option>
-                    <option value="paralyzed">Paralyzed</option>
-                    <option value="petrified">Petrified</option>
-                    <option value="poisoned">Poisoned</option>
-                    <option value="prone">Prone</option>
-                    <option value="restrained">Restrained</option>
-                    <option value="stunned">Stunned</option>
-                    <option value="unconscious">Unconscious</option>
-                    <option value="exhaustion">Exhaustion</option>
-                  </optgroup>
-                  <optgroup label="Combat Statuses">
-                    <option value="concentration">Concentration</option>
-                    <option value="blessed">Blessed</option>
-                    <option value="hexed">Hex / Bane</option>
-                    <option value="target">Marked / Target</option>
-                    <option value="raging">Rage</option>
-                    <option value="dodging">Dodging</option>
-                    <option value="hidden">Hidden</option>
-                  </optgroup>
-                </select>
+
+                <!-- Custom Rich Status Dropdown -->
+                <div class="map-status-dropdown-wrap" id="vttStatusDropdownWrap">
+                  <button type="button" class="map-status-trigger-btn" id="vttStatusDropdownBtn">
+                    <span class="map-status-trigger-left">
+                      <span class="map-status-plus-badge">+</span>
+                      <span>Add Status</span>
+                    </span>
+                    <svg class="map-status-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </button>
+
+                  <div class="map-status-dropdown-menu" id="vttStatusDropdownMenu" style="display: none;">
+                    <div class="map-status-group-lbl">Conditions</div>
+                    <div class="map-status-grid" id="vttStatusGridConditions"></div>
+                    <div class="map-status-group-lbl" style="margin-top:0.35rem;">Combat Statuses</div>
+                    <div class="map-status-grid" id="vttStatusGridCombat"></div>
+                  </div>
+
+                  <!-- Hidden native select kept for backwards compatibility -->
+                  <select id="vttAddConditionSelect" class="vtt-mini-select" style="display:none;">
+                    <option value="">Add Status</option>
+                    <optgroup label="Conditions">
+                      <option value="blinded">Blinded</option>
+                      <option value="charmed">Charmed</option>
+                      <option value="deafened">Deafened</option>
+                      <option value="frightened">Frightened</option>
+                      <option value="grappled">Grappled</option>
+                      <option value="incapacitated">Incapacitated</option>
+                      <option value="invisible">Invisible</option>
+                      <option value="paralyzed">Paralyzed</option>
+                      <option value="petrified">Petrified</option>
+                      <option value="poisoned">Poisoned</option>
+                      <option value="prone">Prone</option>
+                      <option value="restrained">Restrained</option>
+                      <option value="stunned">Stunned</option>
+                      <option value="unconscious">Unconscious</option>
+                      <option value="exhaustion">Exhaustion</option>
+                    </optgroup>
+                    <optgroup label="Combat Statuses">
+                      <option value="concentration">Concentration</option>
+                      <option value="blessed">Blessed</option>
+                      <option value="hexed">Hex / Bane</option>
+                      <option value="target">Marked / Target</option>
+                      <option value="raging">Rage</option>
+                      <option value="dodging">Dodging</option>
+                      <option value="hidden">Hidden</option>
+                    </optgroup>
+                  </select>
+                </div>
 
                 <!-- Active Condition Rings List -->
                 <div class="map-active-conditions-row" id="vttActiveConditionsRow"></div>
 
                 <!-- Quick Color Rings Bar -->
                 <div class="map-tok-rings-bar" id="vttTokConditionsRow" title="Click to toggle color ring">
-                  <button type="button" class="map-ring-dot" data-ring="#ef4444" style="background:#ef4444;" title="Red Ring"></button>
-                  <button type="button" class="map-ring-dot" data-ring="#f97316" style="background:#f97316;" title="Orange Ring"></button>
-                  <button type="button" class="map-ring-dot" data-ring="#eab308" style="background:#eab308;" title="Yellow Ring"></button>
-                  <button type="button" class="map-ring-dot" data-ring="#22c55e" style="background:#22c55e;" title="Green Ring"></button>
-                  <button type="button" class="map-ring-dot" data-ring="#06b6d4" style="background:#06b6d4;" title="Cyan Ring"></button>
-                  <button type="button" class="map-ring-dot" data-ring="#3b82f6" style="background:#3b82f6;" title="Blue Ring"></button>
-                  <button type="button" class="map-ring-dot" data-ring="#a855f7" style="background:#a855f7;" title="Purple Ring"></button>
-                  <button type="button" class="map-ring-dot" data-ring="#ffffff" style="background:#ffffff;" title="White Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#ef4444" style="background:#ef4444; color:#ef4444;" title="Red Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#f97316" style="background:#f97316; color:#f97316;" title="Orange Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#eab308" style="background:#eab308; color:#eab308;" title="Yellow Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#22c55e" style="background:#22c55e; color:#22c55e;" title="Green Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#06b6d4" style="background:#06b6d4; color:#06b6d4;" title="Cyan Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#3b82f6" style="background:#3b82f6; color:#3b82f6;" title="Blue Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#a855f7" style="background:#a855f7; color:#a855f7;" title="Purple Ring"></button>
+                  <button type="button" class="map-ring-dot" data-ring="#ffffff" style="background:#ffffff; color:#ffffff;" title="White Ring"></button>
                 </div>
               </div>
 
               <!-- Size & Layer Controls -->
               <div class="map-tok-pop-row">
-                <select id="vttTokSizeSelect" class="vtt-mini-select" title="Token Size">
-                  <option value="0.5">0.5&times; Tiny</option>
-                  <option value="1" selected>1&times; Medium</option>
-                  <option value="2">2&times; Large</option>
-                  <option value="3">3&times; Huge</option>
-                  <option value="4">4&times; Gargantuan</option>
-                </select>
+                <div class="map-tok-field-card">
+                  <span class="map-tok-micro-lbl">SIZE SCALE</span>
+                  <select id="vttTokSizeSelect" class="vtt-mini-select" title="Token Size">
+                    <option value="0.5">0.5&times; Tiny</option>
+                    <option value="1" selected>1&times; Medium</option>
+                    <option value="2">2&times; Large</option>
+                    <option value="3">3&times; Huge</option>
+                    <option value="4">4&times; Gargantuan</option>
+                  </select>
+                </div>
 
-                <select id="vttTokLayerSelect" class="vtt-mini-select" title="Token Layer">
-                  <option value="character" selected>Character</option>
-                  <option value="mount">Mount / Vehicle</option>
-                  <option value="attachment">Attachment / Aura</option>
-                  <option value="prop">Prop / Stamp</option>
-                </select>
+                <div class="map-tok-field-card">
+                  <span class="map-tok-micro-lbl">MAP LAYER</span>
+                  <select id="vttTokLayerSelect" class="vtt-mini-select" title="Token Layer">
+                    <option value="character" selected>Character</option>
+                    <option value="mount">Mount / Vehicle</option>
+                    <option value="attachment">Attachment / Aura</option>
+                    <option value="prop">Prop / Stamp</option>
+                  </select>
+                </div>
               </div>
 
               <!-- Action Buttons -->
               <div class="map-tok-actions-bar">
                 <button type="button" class="map-tok-act-btn" id="vttTokHideBtn" title="Hide / Show Token for Players">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
                   <span>Hide</span>
                 </button>
                 <button type="button" class="map-tok-act-btn" id="vttTokLockBtn" title="Lock / Unlock Token Movement">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                   <span>Lock</span>
                 </button>
                 <button type="button" class="map-tok-act-btn" id="vttTokInitToggleBtn" title="Add / Remove from Initiative Tracker">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                   <span>Init</span>
                 </button>
                 <button type="button" class="map-tok-act-btn" id="vttTokDupBtn" title="Duplicate Token">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                   <span>Clone</span>
                 </button>
                 <button type="button" class="map-tok-act-btn danger" id="vttTokDelBtn" title="Delete Token">
-                  Delete
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  <span>Delete</span>
                 </button>
               </div>
             </div>
@@ -3192,6 +3229,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=86"></script>
+  <script src="app.js?v=87"></script>
 </body>
 </html>
