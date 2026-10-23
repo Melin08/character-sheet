@@ -9825,6 +9825,7 @@ function renderGlobalSiteNoticeBanner(data, remainingMs) {
   }
 
   banner.style.display = "block";
+  document.body.classList.add("has-global-notice");
 
   const totalDurationMs = Math.max(1000, (data.durationSeconds || 15) * 1000);
   const expiresAt = data.expiresAt || (Date.now() + remainingMs);
@@ -9874,6 +9875,7 @@ function dismissGlobalSiteNotice(remember = true) {
   if (banner) {
     banner.style.display = "none";
   }
+  document.body.classList.remove("has-global-notice");
   if (remember && activeTopNoticeData && activeTopNoticeData.id) {
     try {
       sessionStorage.setItem("dismissed_notice_" + activeTopNoticeData.id, "true");
@@ -14257,11 +14259,61 @@ function initOwlbearVTT() {
 
 
 /* ==========================================================================
+   TOP MENU COLLAPSE / RESTORE
+   ========================================================================== */
+
+const TOP_BAR_HIDDEN_KEY = "badman_topbar_hidden";
+
+function setTopBarHidden(hidden, options = {}) {
+  const { persist = true, moveFocus = false } = options;
+  const isHidden = !!hidden;
+
+  document.body.classList.toggle("top-bar-hidden", isHidden);
+
+  const hideBtn = document.getElementById("hideTopBarBtn");
+  const showBtn = document.getElementById("showTopBarBtn");
+  if (hideBtn) hideBtn.setAttribute("aria-expanded", String(!isHidden));
+  if (showBtn) {
+    showBtn.setAttribute("aria-expanded", String(!isHidden));
+    showBtn.tabIndex = isHidden ? 0 : -1;
+  }
+
+  if (persist) {
+    try {
+      localStorage.setItem(TOP_BAR_HIDDEN_KEY, isHidden ? "1" : "0");
+    } catch (err) {}
+  }
+
+  if (moveFocus) {
+    const target = isHidden ? showBtn : hideBtn;
+    if (target) {
+      requestAnimationFrame(() => target.focus({ preventScroll: true }));
+    }
+  }
+}
+
+function initTopBarToggle() {
+  const hideBtn = document.getElementById("hideTopBarBtn");
+  const showBtn = document.getElementById("showTopBarBtn");
+  if (!hideBtn || !showBtn) return;
+
+  hideBtn.addEventListener("click", () => setTopBarHidden(true, { moveFocus: true }));
+  showBtn.addEventListener("click", () => setTopBarHidden(false, { moveFocus: true }));
+
+  let isHidden = false;
+  try {
+    isHidden = localStorage.getItem(TOP_BAR_HIDDEN_KEY) === "1";
+  } catch (err) {}
+  setTopBarHidden(isHidden, { persist: false });
+}
+
+/* ==========================================================================
    INITIALIZATION & URL INVITE LINK CHECK
    ========================================================================== */
 
 detectOSAndSetShortcut();
 applyTheme(localStorage.getItem(THEME_STORAGE_KEY) || "theme-nexus");
+initTopBarToggle();
 loadSheet();
 loadAllSpells();
 loadAllTraits();

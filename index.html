@@ -46,7 +46,7 @@
   <!-- ================================================================= -->
   <!-- SLEEK STUDIO TOP NAVBAR (FULL-BLEED EDGE-TO-EDGE)                 -->
   <!-- ================================================================= -->
-  <header class="top-command-bar">
+  <header class="top-command-bar" id="codexTopBar">
     <div class="top-command-bar-inner">
       <div class="command-top-row">
         <!-- Brand & Live Concentration Status -->
@@ -142,6 +142,13 @@
               </svg>
               <span>Quick Search</span>
               <kbd class="cmd-kbd" id="quickActionShortcutKbd">Ctrl+K</kbd>
+            </button>
+
+            <button class="btn btn-ghost top-bar-hide-btn" id="hideTopBarBtn" type="button" title="Hide top menu" aria-label="Hide top menu" aria-controls="codexTopBar" aria-expanded="true">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="18 15 12 9 6 15"></polyline>
+                <polyline points="18 21 12 15 6 21"></polyline>
+              </svg>
             </button>
           </div>
         </div>
@@ -401,6 +408,15 @@
       </div>
     </div>
   </header>
+
+  <!-- Floating restore control, only visible while the top menu is hidden -->
+  <button class="top-bar-restore-btn" id="showTopBarBtn" type="button" title="Show top menu" aria-label="Show top menu" aria-controls="codexTopBar" aria-expanded="false">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+      <line x1="3" y1="9" x2="21" y2="9"></line>
+    </svg>
+    <span>Show Menu</span>
+  </button>
 
   <div class="sheet-container" id="sheetContainer">
 

@@ -775,6 +775,79 @@ input[type="number"] {
   gap: 0.55rem;
 }
 
+/* --- Top menu collapse / restore controls --- */
+.top-bar-hide-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-medium) !important;
+  color: var(--text-muted) !important;
+  flex-shrink: 0;
+}
+.top-bar-hide-btn:hover {
+  color: var(--accent-gold) !important;
+  border-color: var(--accent-gold) !important;
+  background: rgba(212, 175, 55, 0.1) !important;
+}
+.top-bar-hide-btn:active {
+  transform: scale(0.94);
+}
+
+.top-bar-restore-btn {
+  position: fixed;
+  top: 0.6rem;
+  right: 0.85rem;
+  z-index: 890;
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-active);
+  color: var(--accent-gold);
+  font-family: var(--font-display) !important;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 12px var(--theme-rim);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.top-bar-restore-btn:hover {
+  border-color: var(--accent-gold);
+  transform: translateY(1px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.55), 0 0 16px var(--theme-rim);
+}
+.top-bar-restore-btn:active {
+  transform: scale(0.96);
+}
+
+body.top-bar-hidden .top-command-bar {
+  display: none !important;
+}
+body.top-bar-hidden .top-bar-restore-btn {
+  display: inline-flex;
+}
+body.top-bar-hidden .sheet-container {
+  padding-top: 2.6rem;
+}
+/* Keep the restore pill clear of the sticky admin notice banner */
+body.top-bar-hidden.has-global-notice .top-bar-restore-btn {
+  top: 3.4rem;
+}
+
+@media (max-width: 768px) {
+  .top-bar-restore-btn {
+    right: 0.6rem;
+  }
+}
+
 .command-top-row {
   display: flex;
   align-items: center;
@@ -9381,7 +9454,7 @@ body.owlbear-theater-active .map-vtt-shell {
 
 @media print {
   body { background: #ffffff !important; color: #000000 !important; padding: 0 !important; }
-  .top-command-bar, .codex-navigation-dock, .dice-station-bar, .floating-d20-trigger, .bottom-left-chat-trigger, .sheet-footer, .ambient-glow, .modal-backdrop, .blur-toggle-btn, .live-party-dock, .floating-party-chat, .floating-chat-bubble {
+  .top-command-bar, .top-bar-restore-btn, .codex-navigation-dock, .dice-station-bar, .floating-d20-trigger, .bottom-left-chat-trigger, .sheet-footer, .ambient-glow, .modal-backdrop, .blur-toggle-btn, .live-party-dock, .floating-party-chat, .floating-chat-bubble {
     display: none !important;
   }
   .sheet-container { max-width: 100% !important; padding: 0 !important; }
