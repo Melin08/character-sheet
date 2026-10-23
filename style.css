@@ -849,26 +849,30 @@ body.top-bar-hidden.has-global-notice .top-bar-restore-btn {
 }
 
 .command-top-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "brand . tools"
+    "nav nav nav";
   align-items: center;
-  justify-content: space-between;
-  gap: 0.65rem;
-  flex-wrap: wrap;
+  column-gap: 0.75rem;
+  row-gap: 0.55rem;
 }
 
 .command-nav-group {
+  grid-area: nav;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: nowrap;
-  max-width: 100%;
+  width: 100%;
+  min-width: 0;
 }
 
 .command-brand {
+  grid-area: brand;
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  flex-shrink: 0;
+  min-width: 0;
 }
 .brand-emblem {
   width: 34px;
@@ -929,9 +933,16 @@ body.top-bar-hidden.has-global-notice .top-bar-restore-btn {
   border: 1px solid var(--border-medium);
   border-radius: 999px;
   padding: 0.25rem 0.4rem;
+  width: 100%;
+  min-width: 0;
   overflow-x: visible;
   flex-shrink: 0;
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(212, 175, 55, 0.18), inset 0 1px 0 rgba(255, 215, 0, 0.15);
+}
+
+.codex-navigation-dock .main-tab {
+  flex: 1 0 auto;
+  justify-content: center;
 }
 
 .main-tab {
@@ -992,8 +1003,10 @@ body.top-bar-hidden.has-global-notice .top-bar-restore-btn {
 }
 
 .command-top-right {
+  grid-area: tools;
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 0.45rem;
   flex-shrink: 0;
 }
@@ -1043,15 +1056,36 @@ body.top-bar-hidden.has-global-notice .top-bar-restore-btn {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.55rem 0.75rem;
   flex-wrap: wrap;
 }
 .command-left-Utilities,
 .command-right-utilities {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   flex-wrap: wrap;
+}
+
+/* Keep every control in the action row on the same baseline height */
+.command-actions .btn,
+.command-actions .theme-trigger-btn,
+.command-actions .network-status-badge {
+  min-height: 30px;
+}
+.command-right-utilities .action-btn-group {
+  padding: 0.16rem;
+  gap: 0.15rem;
+}
+.auth-box {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 0.7rem;
+  border-left: 1px solid var(--border-subtle);
+}
+.auth-box .btn {
+  min-height: 32px;
 }
 
 .cmd-palette-trigger {
@@ -4889,15 +4923,50 @@ kbd {
 /* ==========================================================================
    11. RESPONSIVENESS & PRINT VIEW
    ========================================================================== */
-@media (max-width: 1180px) {
-  .command-nav-group {
-    flex-wrap: wrap;
-    width: 100%;
-    justify-content: space-between;
-  }
+@media (max-width: 1240px) {
   .codex-navigation-dock {
     overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .codex-navigation-dock::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .auth-box {
+    padding-left: 0;
+    border-left: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .cmd-palette-trigger {
+    width: 32px;
+    height: 30px;
+    padding: 0 !important;
+    justify-content: center;
+  }
+  .cmd-palette-trigger > span,
+  .cmd-palette-trigger .cmd-kbd {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .command-right-utilities {
+    width: 100%;
+  }
+  .command-right-utilities .action-btn-group {
     max-width: 100%;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 460px) {
+  .brand-system {
+    display: none;
   }
 }
 
