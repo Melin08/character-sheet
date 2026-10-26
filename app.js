@@ -9391,7 +9391,7 @@ function initPWAAndNetworkStatus() {
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=94", { updateViaCache: "none" }).then((reg) => {
+      navigator.serviceWorker.register("./sw.js?v=95", { updateViaCache: "none" }).then((reg) => {
         reg.update().catch(() => {});
         console.log("5e Sheet Service Worker registered:", reg.scope);
       }).catch((err) => {
@@ -11641,18 +11641,21 @@ function initMapLobbyListeners() {
   document.getElementById("mapConfirmCreateBtn")?.addEventListener("click", () => {
     const nameInput = document.getElementById("mapCreateNameInput");
     const sceneSelect = document.getElementById("mapCreateSceneSelect");
-    const scene = sceneSelect ? sceneSelect.value : "forest_ambush";
+    const scene = null;
     const randCode = "MAP-" + Math.random().toString(36).substr(2, 4).toUpperCase();
     const mapName = (nameInput && nameInput.value.trim()) || `Encounter ${randCode.slice(4)}`;
 
     const newState = createDefaultMapState(randCode, mapName, scene);
+    newState.requiresUpload = true;
+    newState.customMapUrl = null;
+    newState.scene = null;
     saveMapRoomState(randCode, newState);
 
     const registry = getSavedMapsRegistry();
     registry.unshift({
       id: randCode,
       name: mapName,
-      scene: scene,
+      scene: scene || "forest_ambush",
       thumbnail: "",
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -11716,6 +11719,16 @@ function initMapLobbyListeners() {
    VIEW 2: ACTIVE TABLETOP CONTROLLER
    -------------------------------------------------------------------------- */
 
+function updateMapUploadEmptyState() {
+  const empty = document.getElementById("mapUploadEmptyState");
+  if (!empty || !activeMapState) return;
+  const hasImage = !!activeMapState.customMapUrl;
+  const needsUpload = !hasImage && !activeMapState.scene;
+  empty.style.display = needsUpload ? "flex" : "none";
+  const clearBtn = document.getElementById("mapEmptyClearBtn");
+  if (clearBtn) clearBtn.style.display = hasImage ? "inline-flex" : "none";
+}
+
 function openMapRoom(roomId) {
   if (!roomId) return;
   const cleanId = String(roomId).trim().toUpperCase();
@@ -11735,6 +11748,7 @@ function openMapRoom(roomId) {
     saveMapRoomState(cleanId, state);
   }
   activeMapState = state;
+  if (typeof updateMapUploadEmptyState === "function") updateMapUploadEmptyState();
 
   // Sync HUD
   const titleInput = document.getElementById("mapActiveTitleInput");
@@ -11935,7 +11949,7 @@ function renderOwlbearCanvas() {
   drawMapSceneBackground(ctx, activeMapState, world.width, world.height);
 
   // 2. Grid lines
-  if (mapShowGrid) {
+  if (mapShowGrid && (activeMapState.customMapUrl || activeMapState.scene)) {
     drawMapGrid(ctx, activeMapState, world);
   }
 
@@ -11982,6 +11996,10 @@ function drawMapSceneBackground(ctx, state, width, height) {
       img.src = state.customMapUrl;
       mapImageCache[state.customMapUrl] = img;
     }
+  }
+
+  if (!state.scene) {
+    return;
   }
 
   const scene = state.scene || "forest_ambush";
@@ -13952,6 +13970,41 @@ function initMapBottomDrawersListeners() {
 
   document.getElementById("vttDrawerCloseBtn")?.addEventListener("click", closeMapDrawer);
 
+  // Map upload empty state
+  function updateMapUploadEmptyState() {
+    const empty = document.getElementById("mapUploadEmptyState");
+    if (!empty || !activeMapState) return;
+    const hasImage = !!activeMapState.customMapUrl;
+    const needsUpload = !hasImage && !activeMapState.scene;
+    empty.style.display = needsUpload ? "flex" : "none";
+    const clearBtn = document.getElementById("mapEmptyClearBtn");
+    if (clearBtn) clearBtn.style.display = hasImage ? "inline-flex" : "none";
+  }
+
+  const emptyState = document.getElementById("mapUploadEmptyState");
+  if (emptyState) {
+    emptyState.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      emptyState.style.background = "rgba(212,175,55,0.08)";
+    });
+    emptyState.addEventListener("dragleave", () => {
+      emptyState.style.background = "rgba(9,13,22,0.92)";
+    });
+    emptyState.addEventListener("drop", (e) => {
+      e.preventDefault();
+      emptyState.style.background = "rgba(9,13,22,0.92)";
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file || !activeMapState) return;
+      const vttInput = document.getElementById("vttUploadMapInput");
+      if (vttInput) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        vttInput.files = dt.files;
+        vttInput.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+  }
+
   // Maps Pane: File Upload
   const uploadInput = document.getElementById("vttUploadMapInput");
   if (uploadInput) {
@@ -13975,13 +14028,57 @@ function initMapBottomDrawersListeners() {
           off.height = h;
           off.getContext("2d").drawImage(img, 0, 0, w, h);
           activeMapState.customMapUrl = off.toDataURL("image/jpeg", 0.8);
+          activeMapState.requiresUpload = false;
           triggerMapAutosave();
           resizeAndRenderOwlbearCanvas();
+          updateMapUploadEmptyState();
           showStatus("Custom map uploaded!");
         };
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
+    });
+  }
+
+  const emptyUploadInput = document.getElementById("mapEmptyUploadInput");
+  if (emptyUploadInput) {
+    emptyUploadInput.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file || !activeMapState) return;
+      const vttInput = document.getElementById("vttUploadMapInput");
+      if (vttInput) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        vttInput.files = dt.files;
+        vttInput.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      e.target.value = "";
+    });
+  }
+
+  const clearMapImageBtn = document.getElementById("vttClearMapImageBtn");
+  if (clearMapImageBtn) {
+    clearMapImageBtn.addEventListener("click", () => {
+      if (!activeMapState) return;
+      activeMapState.customMapUrl = null;
+      activeMapState.requiresUpload = true;
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+      updateMapUploadEmptyState();
+      showStatus("Map image cleared.");
+    });
+  }
+
+  const emptyClearBtn = document.getElementById("mapEmptyClearBtn");
+  if (emptyClearBtn) {
+    emptyClearBtn.addEventListener("click", () => {
+      if (!activeMapState) return;
+      activeMapState.customMapUrl = null;
+      activeMapState.requiresUpload = true;
+      triggerMapAutosave();
+      resizeAndRenderOwlbearCanvas();
+      updateMapUploadEmptyState();
+      showStatus("Map image cleared.");
     });
   }
 
@@ -13991,8 +14088,10 @@ function initMapBottomDrawersListeners() {
     if (!input || !activeMapState) return;
     const url = input.value.trim();
     activeMapState.customMapUrl = url || null;
+    activeMapState.requiresUpload = !url;
     triggerMapAutosave();
     resizeAndRenderOwlbearCanvas();
+    updateMapUploadEmptyState();
     showStatus(url ? "Map URL applied!" : "Cleared custom map image.");
   });
 
@@ -14025,6 +14124,7 @@ function initMapBottomDrawersListeners() {
       const scene = card.dataset.scene;
       activeMapState.scene = scene;
       activeMapState.customMapUrl = null;
+      activeMapState.requiresUpload = false;
       const meta = MAP_SCENE_CATALOG[scene];
       if (meta) {
         activeMapState.gridCols = meta.cols;

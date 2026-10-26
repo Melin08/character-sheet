@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=MedievalSharp&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=94" />
+  <link rel="stylesheet" href="style.css?v=95" />
 </head>
 <body id="top" class="theme-nexus">
 
@@ -1658,6 +1658,20 @@
             <!-- Interactive Tabletop Canvas -->
             <canvas id="owlbearMapCanvas" class="map-vtt-canvas"></canvas>
 
+            <!-- Upload-first empty state -->
+            <div id="mapUploadEmptyState" class="map-upload-empty-state" style="display:none; position:absolute; inset:0; z-index:20; align-items:center; justify-content:center; background:rgba(9,13,22,0.92); backdrop-filter:blur(4px);">
+              <div style="max-width:420px; width:90%; text-align:center; padding:2rem 1.5rem; background:var(--bg-card); border:1px solid var(--border-medium); border-radius:var(--radius-md); box-shadow:var(--shadow-card);">
+                <h3 style="margin:0 0 0.5rem; color:var(--accent-gold); font-family:var(--font-display);">Create Map / Upload Map Image</h3>
+                <p style="margin:0 0 1rem; font-size:0.85rem; color:var(--text-muted); line-height:1.5;">Upload a map image (PNG, JPG, WEBP) to begin. The interactive grid will render directly over your artwork.</p>
+                <label class="btn btn-gold-subtle" style="cursor:pointer; display:inline-block;">
+                  Upload Map Image
+                  <input type="file" id="mapEmptyUploadInput" accept="image/*" style="display:none;" />
+                </label>
+                <p style="margin:0.75rem 0 0; font-size:0.75rem; color:var(--text-dim);">or drag and drop an image here</p>
+                <button type="button" class="btn btn-outline btn-xs" id="mapEmptyClearBtn" style="display:none; margin-top:1rem;">Clear Map Image</button>
+              </div>
+            </div>
+
             <!-- Top-Left Floating Room & Party Bar (Owlbear Concept) -->
             <div class="map-floating-top-left" id="mapTopLeftBar">
               <button type="button" class="map-hud-pill-btn map-back-lobby-btn" id="mapBackToLobbyBtn" title="Save and return to Your Maps">
@@ -2066,6 +2080,7 @@
                       Upload Map Image (PNG / JPG / WebP)
                       <input type="file" id="vttUploadMapInput" accept="image/*" style="display:none;" />
                     </label>
+                    <button type="button" class="btn btn-outline btn-xs" id="vttClearMapImageBtn" style="width:100%; margin-top:0.25rem;">Clear Map Image</button>
                     <div style="display:flex; gap:0.35rem; margin-top:0.25rem;">
                       <input type="text" id="vttCustomMapUrlInput" class="vtt-drawer-input" placeholder="Or paste Map Image URL..." style="flex:1;" />
                       <button type="button" class="btn btn-outline btn-xs" id="vttApplyMapUrlBtn">Apply</button>
@@ -3444,6 +3459,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=94"></script>
+  <script src="app.js?v=95"></script>
 </body>
 </html>
