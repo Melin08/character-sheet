@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=MedievalSharp&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=91" />
+  <link rel="stylesheet" href="style.css?v=92" />
 </head>
 <body id="top" class="theme-nexus">
 
@@ -347,7 +347,6 @@
               </button>
               <div class="export-dropdown-menu" id="exportDropdownMenu" role="menu">
                 <button type="button" class="export-menu-item" id="exportJsonMenuItem" role="menuitem">
-                  <span class="export-menu-icon">💾</span>
                   <div class="export-menu-text">
                     <span class="export-menu-title">Export as JSON</span>
                     <span class="export-menu-desc">Full character backup file</span>
@@ -356,21 +355,18 @@
                 <div class="export-menu-divider"></div>
                 <div class="export-menu-section-header">Statblock Formats</div>
                 <button type="button" class="export-menu-item" id="exportMarkdownMenuItem" role="menuitem" data-format="markdown">
-                  <span class="export-menu-icon">💬</span>
                   <div class="export-menu-text">
                     <span class="export-menu-title">Discord Markdown</span>
                     <span class="export-menu-desc">Formatted for campaign chat</span>
                   </div>
                 </button>
                 <button type="button" class="export-menu-item" id="exportAvraeMenuItem" role="menuitem" data-format="avrae">
-                  <span class="export-menu-icon">🎲</span>
                   <div class="export-menu-text">
                     <span class="export-menu-title">Avrae Bot Macros</span>
                     <span class="export-menu-desc">!attack and !cast syntax</span>
                   </div>
                 </button>
                 <button type="button" class="export-menu-item" id="exportCompactMenuItem" role="menuitem" data-format="compact">
-                  <span class="export-menu-icon">🗂️</span>
                   <div class="export-menu-text">
                     <span class="export-menu-title">Mini Combat Card</span>
                     <span class="export-menu-desc">Quick 1-line combat reference</span>
@@ -378,7 +374,6 @@
                 </button>
                 <div class="export-menu-divider"></div>
                 <button type="button" class="export-menu-item" id="openStatblockModalMenuItem" role="menuitem">
-                  <span class="export-menu-icon">⚔️</span>
                   <div class="export-menu-text">
                     <span class="export-menu-title">Open Statblock Hub...</span>
                     <span class="export-menu-desc">Live preview and clipboard copy</span>
@@ -556,7 +551,9 @@
         <div class="hero-insp-widget" data-blur-id="inspiration">
           <label class="insp-checkbox-label" title="Toggle Heroic Inspiration">
             <input type="checkbox" id="heroicInspirationToggle" class="save-field insp-checkbox" />
-            <span class="insp-star-badge">&#10022;</span>
+            <span class="insp-star-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="m12 2.5 2.9 6 6.6.9-4.8 4.6 1.2 6.6-5.9-3.1-5.9 3.1 1.2-6.6L2.5 9.4l6.6-.9Z"></path></svg>
+            </span>
           </label>
           <span class="insp-title">Inspiration</span>
           <input type="text" id="charInspiration" class="save-field insp-input" placeholder="None / d6" />
@@ -597,7 +594,7 @@
 
         <div class="live-party-dock-actions">
           <button type="button" class="btn btn-outline btn-xs dock-chat-btn" id="dockChatToggleBtn" title="Toggle Live Party Chat">
-            <span>💬 Chat</span>
+            <span>Chat</span>
             <span class="dock-chat-badge" id="dockChatBadge" style="display: none;">0</span>
           </button>
           <button type="button" class="btn btn-primary btn-xs dock-handout-btn" id="dockDmHandoutBtn" style="display: none;" title="Create &amp; Award Loot Handouts to Party">
@@ -1000,9 +997,6 @@
                 <div id="conditionExplainerCard" class="condition-explainer-card tone-neutral" style="display: none;">
                   <div class="condition-explainer-top">
                     <div class="condition-explainer-heading">
-                      <span class="condition-explainer-icon-tile" aria-hidden="true">
-                        <span class="condition-explainer-icon" id="condExplainerIcon">⚠️</span>
-                      </span>
                       <div class="condition-explainer-title-group">
                         <span class="condition-explainer-eyebrow">Condition Reference</span>
                         <strong class="condition-explainer-name" id="condExplainerName">Blinded</strong>
@@ -1680,7 +1674,7 @@
               </div>
 
               <span class="map-autosave-indicator" id="mapAutosaveIndicator" title="All changes save automatically">
-                &#10003; Autosaved
+                Autosaved
               </span>
 
               <!-- Player Color & Connected Party Roster -->
@@ -2488,11 +2482,9 @@
 
         <div class="subtab-controls party-mode-tabs">
           <button type="button" class="sub-tab active" data-sub="party-join-view">
-            <span class="tab-icon">⚔️</span>
             <span>Player: Party View</span>
           </button>
           <button type="button" class="sub-tab" data-sub="party-dm-view">
-            <span class="tab-icon">👑</span>
             <span>DM: Live Dashboard</span>
           </button>
         </div>
@@ -2501,7 +2493,6 @@
         <div id="party-join-view" class="subtab-page active">
           <div class="player-join-card">
             <div class="player-join-header">
-              <span class="player-join-glyph">🛡️</span>
               <div class="player-join-text">
                 <h4 class="player-join-heading">Join an Adventuring Party</h4>
                 <p class="player-join-sub">Enter your DM's Room Code to connect. You'll see live party vitals (HP, AC, conditions) while private character sheet details remain hidden.</p>
@@ -2511,16 +2502,16 @@
             <div class="player-join-form-row">
               <input type="text" id="campaignRoomInput" class="party-room-input player-input-field center" placeholder="ENTER ROOM CODE (e.g. REALM-4200)" maxlength="15" autocomplete="off" />
               <button type="button" class="btn btn-primary player-join-btn" id="joinCampaignBtn">
-                <span>⚔️</span> Connect
+                Connect
               </button>
               <button type="button" class="btn btn-dark-glass btn-sm" id="copyPlayerRoomCodeBtn" style="display: none;">
-                <span>📋</span> Copy Code
+                Copy Code
               </button>
               <button type="button" class="btn btn-dark-glass btn-sm" id="copyInviteLinkBtn" style="display: none;">
-                <span>🔗</span> Invite Link
+                Invite Link
               </button>
               <button type="button" class="btn btn-danger-glass btn-sm" id="leaveCampaignBtn" style="display: none;">
-                <span>🚪</span> Leave Party
+                Leave Party
               </button>
             </div>
 
@@ -2530,8 +2521,8 @@
             </div>
 
             <div id="adminPartyModalQuickChatRow" style="display: none; margin-top: 0.65rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-subtle); justify-content: space-between; align-items: center;">
-              <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700;">👑 Admin Access:</span>
-              <button type="button" class="btn btn-gold-subtle btn-xs" id="adminModalOpenPartyChatBtn">💬 Open Party Chat (Browse Any Campaign)</button>
+              <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700;">Admin Access:</span>
+              <button type="button" class="btn btn-gold-subtle btn-xs" id="adminModalOpenPartyChatBtn">Open Party Chat (Browse Any Campaign)</button>
             </div>
           </div>
 
@@ -2569,23 +2560,23 @@
 
               <div class="dm-session-actions-grid">
                 <button type="button" class="btn btn-gold-subtle btn-sm dm-act-btn" id="dmQuickHandoutBtn" style="display: none;" title="Award items, coins, or clues to players">
-                  <span>🎁</span> Handout Loot
+                  Handout Loot
                 </button>
                 <button type="button" class="btn btn-dark-glass btn-sm dm-act-btn" id="copyRoomCodeBtn" style="display: none;">
-                  <span>📋</span> Copy Code
+                  Copy Code
                 </button>
                 <button type="button" class="btn btn-dark-glass btn-sm dm-act-btn" id="copyDMInviteLinkBtn" style="display: none;">
-                  <span>🔗</span> Invite Link
+                  Invite Link
                 </button>
                 <button type="button" class="btn btn-danger-glass btn-sm dm-act-btn" id="closeCampaignBtn" style="display: none;">
-                  <span>🚪</span> Close Room
+                  Close Room
                 </button>
               </div>
             </div>
 
             <div class="dm-session-secondary-row">
               <button type="button" class="dm-host-other-btn" id="dmToggleCreateOtherBtn">
-                <span>➕</span> Host a different room
+                Host a different room
               </button>
             </div>
           </div>
@@ -2593,7 +2584,6 @@
           <!-- DM Host New Realm Card (Shown when no session is active, or toggled open) -->
           <div id="dmCreateRoomCard" class="dm-create-card">
             <div class="dm-create-header">
-              <span class="dm-create-glyph">👑</span>
               <div class="dm-create-text">
                 <h4 class="dm-create-heading">Host a Campaign Party</h4>
                 <p class="dm-create-sub">Enter a custom realm code or leave blank to auto-generate. As the room creator, you can inspect full player sheets and award loot in real time.</p>
@@ -2602,10 +2592,10 @@
             <div class="dm-create-form-row">
               <div class="dm-input-container">
                 <input type="text" id="dmRoomCodeInput" class="party-room-input dm-input-field center" placeholder="CUSTOM CODE (OR LEAVE BLANK)" maxlength="20" autocomplete="off" />
-                <button type="button" class="dm-input-randomize-btn" id="dmRandomizeCodeBtn" title="Generate random fantasy realm code">🎲 Randomize</button>
+                <button type="button" class="dm-input-randomize-btn" id="dmRandomizeCodeBtn" title="Generate random fantasy realm code">Randomize</button>
               </div>
               <button type="button" class="btn btn-primary dm-create-submit-btn" id="createCampaignBtn">
-                <span>⚔️</span> Create Party
+                Create Party
               </button>
             </div>
           </div>
@@ -2620,9 +2610,6 @@
             </div>
             <div class="dm-party-cards-grid" id="dmPartyGrid">
               <div class="dm-empty-state-box">
-                <div class="dm-empty-halo">
-                  <span class="dm-empty-halo-icon">👑</span>
-                </div>
                 <h4 class="dm-empty-headline">No Active DM Session</h4>
                 <p class="dm-empty-instruction">Host a campaign realm above to monitor your players live and inspect their full character sheets.</p>
               </div>
@@ -2761,9 +2748,9 @@
         <div id="authLoggedInView" style="display: none;">
           <p class="auth-user-label">Signed in as</p>
           <p id="currentUserText" class="auth-user-email"></p>
-          <div id="adminBadgeInAccount" class="admin-account-badge" style="display: none;">👑 Master Admin Verified</div>
+          <div id="adminBadgeInAccount" class="admin-account-badge" style="display: none;">Master Admin Verified</div>
           <div class="auth-sync-status" id="cloudSyncStatus">Cloud Sync: Active</div>
-          <button class="btn btn-primary-gold admin-account-btn" id="openAdminFromAuthModalBtn" type="button" style="display: none; margin-bottom: 0.75rem; width: 100%;">🛡️ Open Master Admin Panel</button>
+          <button class="btn btn-primary-gold admin-account-btn" id="openAdminFromAuthModalBtn" type="button" style="display: none; margin-bottom: 0.75rem; width: 100%;">Open Master Admin Panel</button>
           <button class="btn red auth-logout-btn" id="logoutBtn" type="button">Log Out</button>
         </div>
         <p id="authErrorMsg" class="auth-error-msg"></p>
@@ -2776,7 +2763,6 @@
     <div class="modal-box admin-modal-box">
       <div class="modal-header admin-modal-header">
         <div class="admin-title-wrap">
-          <span class="admin-crown-icon">👑</span>
           <div>
             <h3>Master Admin Panel</h3>
             <span class="admin-subtitle" id="adminSessionSubtitle">Restricted System Access</span>
@@ -2788,19 +2774,19 @@
       <!-- Segmented Admin Navigation Strip -->
       <div class="admin-nav-tabs" id="adminNavTabs">
         <button type="button" class="admin-tab-btn active" data-tab="adminTabOverview">
-          <span>📊 Overview</span>
+          <span>Overview</span>
         </button>
         <button type="button" class="admin-tab-btn" data-tab="adminTabCampaigns">
-          <span>🏰 Campaign Rooms</span>
+          <span>Campaign Rooms</span>
         </button>
         <button type="button" class="admin-tab-btn" data-tab="adminTabBroadcast">
-          <span>📢 Broadcast Alert</span>
+          <span>Broadcast Alert</span>
         </button>
         <button type="button" class="admin-tab-btn" data-tab="adminTabDispenser">
-          <span>⚔️ Item Dispenser</span>
+          <span>Item Dispenser</span>
         </button>
         <button type="button" class="admin-tab-btn" data-tab="adminTabDiagnostics">
-          <span>🛠️ Data &amp; Health</span>
+          <span>Data &amp; Health</span>
         </button>
       </div>
 
@@ -2809,7 +2795,7 @@
         <div id="adminTabOverview" class="admin-tab-pane active">
           <div class="admin-session-card">
             <div class="admin-session-info">
-              <span class="admin-badge-pill">👑 Verified Owner Session</span>
+              <span class="admin-badge-pill">Verified Owner Session</span>
               <strong id="adminUserEmailText" class="admin-email-highlight">ludvigpoulsen08@gmail.com</strong>
               <span id="adminUserUidText" class="admin-uid-text">UID: Checking...</span>
             </div>
@@ -2852,7 +2838,7 @@
           <!-- Live Active Users & Emails Monitor -->
           <div class="admin-section-header" style="margin-top: 0.5rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-              <h4 style="margin: 0; font-size: 0.95rem;">👥 Live Active Visitors &amp; User Emails</h4>
+              <h4 style="margin: 0; font-size: 0.95rem;">Live Active Visitors &amp; User Emails</h4>
               <span class="admin-live-indicator">
                 <span class="admin-live-dot"></span>
                 <span>Live Presence</span>
@@ -2870,7 +2856,7 @@
           </div>
 
           <div id="adminActiveUsersList" class="admin-users-list">
-            <div class="admin-empty-notice"><span class="codex-spin-icon">⏳</span> Loading active site users...</div>
+            <div class="admin-empty-notice">Loading active site users...</div>
           </div>
 
           <div class="admin-quick-actions-bar">
@@ -2918,7 +2904,7 @@
               <label class="handout-form-label">
                 <span>Broadcast Channel / Target</span>
                 <select id="adminBroadcastTarget" class="handout-form-input">
-                  <option value="top_banner">🌐 Top Website Notice Banner (All Site Visitors)</option>
+                  <option value="top_banner">Top Website Notice Banner (All Site Visitors)</option>
                   <option value="current">Current Connected Room (Party Chat)</option>
                   <option value="all">All Known Active Campaign Rooms (Party Chat)</option>
                   <option value="custom">Specific Room Code... (Party Chat)</option>
@@ -3036,7 +3022,7 @@
           </div>
 
           <div class="admin-diag-section">
-            <h5 style="margin:0 0 0.35rem 0; font-size:0.84rem;">⚡ Database Latency Benchmark</h5>
+            <h5 style="margin:0 0 0.35rem 0; font-size:0.84rem;">Database Latency Benchmark</h5>
             <div style="display: flex; align-items: center; gap: 0.85rem; margin-top: 0.4rem;">
               <button type="button" class="btn btn-outline btn-xs" id="adminPingBtn">Ping Firestore Database</button>
               <span id="adminPingResult" style="font-size: 0.82rem; color: var(--accent-gold); font-weight: 700;">Ready to test</span>
@@ -3044,13 +3030,13 @@
           </div>
 
           <div class="admin-diag-section" style="margin-top: 1rem;">
-            <h5 style="margin:0 0 0.35rem 0; font-size:0.84rem;">💾 Master JSON Roster Dump</h5>
+            <h5 style="margin:0 0 0.35rem 0; font-size:0.84rem;">Master JSON Roster Dump</h5>
             <p style="font-size: 0.76rem; color: var(--text-muted); margin: 0.2rem 0 0.45rem;">Export all character profiles, inventory states, and settings to a complete offline archive.</p>
             <button type="button" class="btn btn-outline btn-xs" id="adminFullDumpBtn">Download Complete JSON Backup</button>
           </div>
 
           <div class="admin-diag-section" style="margin-top: 1rem;">
-            <h5 style="margin:0 0 0.35rem 0; font-size:0.84rem;">👥 Additional Trusted Admin Emails</h5>
+            <h5 style="margin:0 0 0.35rem 0; font-size:0.84rem;">Additional Trusted Admin Emails</h5>
             <p style="font-size: 0.76rem; color: var(--text-muted); margin: 0.2rem 0 0.45rem;">The primary owner email (<strong>ludvigpoulsen08@gmail.com</strong>) always has master authorization. You can add secondary admin emails below.</p>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
               <input type="email" id="adminNewEmailInput" class="handout-form-input" placeholder="secondary-admin@example.com" style="flex: 1;" />
@@ -3074,7 +3060,7 @@
       </div>
       <div class="floating-chat-controls">
         <button type="button" class="btn btn-ghost btn-xs" id="chatCreateChannelBtn" title="Create New Private Chat Channel">+ New Chat</button>
-        <button type="button" class="btn btn-ghost btn-xs" id="floatingChatShareRollBtn" title="Share Last Dice Roll to Chat">🎲 Roll</button>
+        <button type="button" class="btn btn-ghost btn-xs" id="floatingChatShareRollBtn" title="Share Last Dice Roll to Chat">Roll</button>
         <button type="button" class="btn btn-ghost chat-ctrl-btn" id="floatingChatExpandBtn" title="Expand / Maximize Chat" aria-label="Expand Chat">
           <svg class="expand-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 3 21 3 21 9"></polyline>
@@ -3096,15 +3082,14 @@
     <!-- Admin Campaign Switcher Bar (Visible for Admin Sessions) -->
     <div class="admin-chat-campaign-bar" id="adminChatCampaignBar" style="display: none;">
       <div class="admin-chat-bar-left">
-        <span class="admin-chat-crown" title="Admin Active">👑</span>
         <label for="adminChatCampaignSelect" class="admin-chat-label">Campaign:</label>
         <select id="adminChatCampaignSelect" class="admin-chat-select" title="Switch active campaign chat">
           <option value="">Loading campaigns...</option>
         </select>
-        <button type="button" class="admin-chat-icon-btn" id="adminChatRefreshRoomsBtn" title="Scan &amp; refresh active campaign rooms">🔄</button>
+        <button type="button" class="admin-chat-icon-btn" id="adminChatRefreshRoomsBtn" title="Scan &amp; refresh active campaign rooms" aria-label="Scan and refresh active campaign rooms"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><polyline points="21 3 21 9 15 9"></polyline></svg></button>
       </div>
       <div class="admin-chat-bar-right">
-        <button type="button" class="admin-chat-myroom-btn" id="adminChatMyRoomBtn" style="display: none;" title="Return to my joined campaign">↩ My Room</button>
+        <button type="button" class="admin-chat-myroom-btn" id="adminChatMyRoomBtn" style="display: none;" title="Return to my joined campaign">My Room</button>
       </div>
     </div>
 
@@ -3118,7 +3103,7 @@
     <!-- Active Channel Details & Invitee Meta -->
     <div class="chat-active-channel-info" id="chatActiveChannelInfo">
       <span class="channel-info-name" id="chatCurrentChannelTag"># general</span>
-      <span class="channel-info-privacy" id="chatCurrentChannelPrivacy">👥 All Party</span>
+      <span class="channel-info-privacy" id="chatCurrentChannelPrivacy">All Party</span>
     </div>
 
     <!-- Chat Message Log -->
@@ -3136,7 +3121,7 @@
 
   <!-- BOTTOM-LEFT PARTY CHAT TRIGGER BUTTON (Only visible when connected to party) -->
   <button type="button" id="bottomLeftPartyChatBtn" class="bottom-left-chat-trigger" style="display: none;" title="Open Live Party Chat" aria-label="Open Live Party Chat">
-    <span class="chat-trigger-icon">💬</span>
+    <svg class="chat-trigger-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"></path></svg>
     <span class="chat-trigger-badge" id="bottomChatUnreadBadge" style="display: none;">0</span>
     <span class="chat-trigger-room" id="bottomChatRoomBadge" style="display: none;">ROOM</span>
   </button>
@@ -3151,7 +3136,6 @@
     <div class="modal-box create-chat-modal-box">
       <div class="modal-header">
         <div class="create-chat-title-group" style="display: flex; align-items: center; gap: 0.5rem;">
-          <span style="font-size: 1.25rem;">🔒</span>
           <h3 style="margin: 0; font-size: 1.1rem;">Create New Chat Channel</h3>
         </div>
         <button id="closeCreateChatModalBtn" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
@@ -3194,7 +3178,7 @@
           <h3 id="exportModalTitle">Export Character &amp; Statblock</h3>
         </div>
         <div style="display: flex; align-items: center; gap: 0.6rem;">
-          <button type="button" id="modalExportJsonBtn" class="btn btn-primary btn-xs" title="Download character as JSON">💾 Export JSON</button>
+          <button type="button" id="modalExportJsonBtn" class="btn btn-primary btn-xs" title="Download character as JSON">Export JSON</button>
           <button id="closeDiscordModal" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
         </div>
       </div>
@@ -3426,6 +3410,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=91"></script>
+  <script src="app.js?v=92"></script>
 </body>
 </html>

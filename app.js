@@ -389,7 +389,7 @@ function detectOSAndSetShortcut() {
 
   const platform = (navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || "").toLowerCase();
   const isMac = platform.includes("mac") || platform.includes("iphone") || platform.includes("ipad");
-  const shortcutText = isMac ? "⌘K" : "Ctrl+K";
+  const shortcutText = isMac ? "Cmd+K" : "Ctrl+K";
 
   kbdEl.textContent = shortcutText;
   if (btnEl) btnEl.title = `Quick Search (${shortcutText})`;
@@ -1091,7 +1091,7 @@ function applyDerivedConditionDisplays(effects) {
   if (hpGauge) hpGauge.classList.toggle("max-hp-affected", maxHpAffected);
   if (maxHpDerived) {
     maxHpDerived.hidden = !maxHpAffected;
-    maxHpDerived.textContent = maxHpAffected ? `→ ${effectiveMaxHp}` : "";
+    maxHpDerived.textContent = maxHpAffected ? `= ${effectiveMaxHp}` : "";
   }
   const maxHpInput = document.getElementById("maxHp");
   if (maxHpInput) {
@@ -1370,7 +1370,7 @@ function renderWeapons() {
       </div>
       <div class="wpn-cell-with-roll">
         <input type="text" class="save-field wpn-field wpn-dmg-input center" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8+3" />
-        <button type="button" class="wpn-roll-btn wpn-roll-dmg-btn" data-index="${idx}" title="Roll Weapon Damage">&#9876;</button>
+        <button type="button" class="wpn-roll-btn wpn-roll-dmg-btn" data-index="${idx}" title="Roll Weapon Damage">dmg</button>
       </div>
       <input type="text" class="save-field wpn-field wpn-type-input center" data-prop="type" value="${escapeHtml(wpn.type || "")}" placeholder="Type..." />
       <input type="text" class="save-field wpn-field wpn-notes-input" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Properties / Notes..." />
@@ -1722,10 +1722,10 @@ function performD20Roll(bonus = 0, label = "Roll") {
 
   if (currentDiceMode === "adv") {
     chosen = Math.max(r1, r2);
-    rollDetail = `ADV [${r1}, ${r2}] → ${chosen}`;
+    rollDetail = `ADV [${r1}, ${r2}] = ${chosen}`;
   } else if (currentDiceMode === "dis") {
     chosen = Math.min(r1, r2);
-    rollDetail = `DIS [${r1}, ${r2}] → ${chosen}`;
+    rollDetail = `DIS [${r1}, ${r2}] = ${chosen}`;
   }
 
   const total = chosen + bonus;
@@ -3980,17 +3980,14 @@ async function startDMLiveListener(roomCode, isNewlyCreated = false) {
       if (cachedRoomMembers.length === 0) {
         grid.innerHTML = `
           <div class="dm-empty-state-box">
-            <div class="dm-empty-halo">
-              <span class="dm-empty-halo-icon">🏰</span>
-            </div>
             <h4 class="dm-empty-headline">Your Realm is Ready</h4>
             <p class="dm-empty-instruction">Share your Room Code <strong>${escapeHtml(activeDMRoomCode)}</strong> or send the invite link. As soon as your players connect, their live HP, AC, conditions, and vitals will appear here.</p>
             <div class="dm-empty-cta-row">
               <button type="button" class="btn btn-primary btn-sm dm-empty-copy-code-btn" data-room="${escapeHtml(activeDMRoomCode)}">
-                <span>📋</span> Copy Room Code
+                Copy Room Code
               </button>
               <button type="button" class="btn btn-dark-glass btn-sm dm-empty-copy-link-btn" data-room="${escapeHtml(activeDMRoomCode)}">
-                <span>🔗</span> Copy 1-Click Invite Link
+                Copy 1-Click Invite Link
               </button>
             </div>
           </div>
@@ -4008,7 +4005,7 @@ async function startDMLiveListener(roomCode, isNewlyCreated = false) {
             <div class="dm-card-header">
               ${m.avatar ? `<img src="${m.avatar}" class="dm-player-avatar" alt="Avatar" />` : `<div class="dm-avatar-placeholder">&dagger;</div>`}
               <div class="dm-player-info">
-                <span class="dm-player-name">${escapeHtml(m.name || "Unnamed")} ${m.heroicInspiration ? "&#10022;" : ""}</span>
+                <span class="dm-player-name">${escapeHtml(m.name || "Unnamed")} ${m.heroicInspiration ? `<svg class="dm-inspiration-mark" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="m12 2.5 2.9 6 6.6.9-4.8 4.6 1.2 6.6-5.9-3.1-5.9 3.1 1.2-6.6L2.5 9.4l6.6-.9Z"></path></svg>` : ""}</span>
                 <span class="dm-player-sub">${escapeHtml(m.charRace || "")} ${escapeHtml(m.charClass || "")} (Lvl ${m.level || 1})</span>
               </div>
             </div>
@@ -4036,7 +4033,7 @@ async function startDMLiveListener(roomCode, isNewlyCreated = false) {
               <button type="button" class="dm-quick-btn dmg" data-dm-act="hp" data-delta="-1" data-member-id="${escapeHtml(m.id)}" title="Deal 1 Damage">-1</button>
               <button type="button" class="dm-quick-btn heal" data-dm-act="hp" data-delta="1" data-member-id="${escapeHtml(m.id)}" title="Heal 1 HP">+1</button>
               <button type="button" class="dm-quick-btn heal" data-dm-act="hp" data-delta="5" data-member-id="${escapeHtml(m.id)}" title="Heal 5 HP">+5 HP</button>
-              <button type="button" class="dm-quick-btn insp" data-dm-act="inspire" data-member-id="${escapeHtml(m.id)}" title="Toggle Heroic Inspiration">&#10022; Inspire</button>
+              <button type="button" class="dm-quick-btn insp" data-dm-act="inspire" data-member-id="${escapeHtml(m.id)}" title="Toggle Heroic Inspiration">Inspire</button>
             </div>
           </div>
         `;
@@ -4064,7 +4061,7 @@ async function dmQuickAdjustPlayer(memberId, actionType, delta = 0) {
         hp: { cur: nextCur, max, temp },
         dmAdjustedAt: Date.now()
       }, { merge: true });
-      showStatus(`${member.name}: HP → ${nextCur}/${max}`);
+      showStatus(`${member.name}: HP ${nextCur}/${max}`);
     } else if (actionType === "inspire") {
       const nextInsp = !member.heroicInspiration;
       await db.collection("campaigns").doc(activeDMRoomCode).collection("members").doc(memberId).set({
@@ -4147,9 +4144,6 @@ async function closeDMCampaignRoom() {
   if (grid) {
     grid.innerHTML = `
       <div class="dm-empty-state-box">
-        <div class="dm-empty-halo">
-          <span class="dm-empty-halo-icon">👑</span>
-        </div>
         <h4 class="dm-empty-headline">No Active DM Session</h4>
         <p class="dm-empty-instruction">Host a campaign realm above to monitor your players live and inspect their full character sheets.</p>
       </div>
@@ -5468,7 +5462,7 @@ function exportCharacterJson() {
       const isVisible = createCard.style.display !== "none" && createCard.style.display !== "";
       createCard.style.display = isVisible ? "none" : "block";
       if (toggleBtn) {
-        toggleBtn.innerHTML = isVisible ? "<span>➕</span> Host a different room" : "<span>✖</span> Hide room creator";
+        toggleBtn.textContent = isVisible ? "Host a different room" : "Hide room creator";
       }
       if (!isVisible) {
         createCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -5659,7 +5653,8 @@ function exportCharacterJson() {
 
   if (e.target.classList.contains("cond-chip")) {
     const cond = e.target.dataset.cond;
-    if (myActiveConditions.includes(cond)) {
+    const wasActive = myActiveConditions.includes(cond);
+    if (wasActive) {
       myActiveConditions = myActiveConditions.filter((c) => c !== cond);
       e.target.classList.remove("active");
     } else {
@@ -5667,7 +5662,11 @@ function exportCharacterJson() {
       e.target.classList.add("active");
     }
     refreshConditionEffects();
-    openConditionExplainer(cond);
+    if (wasActive) {
+      closeConditionExplainer();
+    } else {
+      openConditionExplainer(cond);
+    }
     saveSheet(true);
     return;
   }
@@ -6641,7 +6640,6 @@ document.getElementById("dndbeyondFileInput")?.addEventListener("change", (e) =>
 const CONDITIONS_DATA = {
   blinded: {
     name: "Blinded",
-    icon: "👁️",
     summary: "A blinded creature can't see and automatically fails any ability check that requires sight.",
     rules: [
       "Attack rolls against the creature have Advantage.",
@@ -6651,7 +6649,6 @@ const CONDITIONS_DATA = {
   },
   charmed: {
     name: "Charmed",
-    icon: "💖",
     summary: "A charmed creature cannot attack the charmer or target them with harmful abilities or magical effects.",
     rules: [
       "Cannot attack the charmer or target the charmer with harmful abilities or magical effects.",
@@ -6660,7 +6657,6 @@ const CONDITIONS_DATA = {
   },
   deafened: {
     name: "Deafened",
-    icon: "🔇",
     summary: "A deafened creature can't hear and automatically fails any ability check that requires hearing.",
     rules: [
       "Automatically fails any ability check that requires hearing.",
@@ -6669,7 +6665,6 @@ const CONDITIONS_DATA = {
   },
   frightened: {
     name: "Frightened",
-    icon: "😱",
     summary: "A frightened creature is overwhelmed by terror from the source of its fear.",
     rules: [
       "Disadvantage on ability checks and attack rolls while the source of fear is within line of sight.",
@@ -6678,7 +6673,6 @@ const CONDITIONS_DATA = {
   },
   grappled: {
     name: "Grappled",
-    icon: "🤼",
     summary: "A grappled creature is held fast. Its speed becomes 0, and it cannot benefit from any speed bonuses.",
     rules: [
       "Speed becomes 0 and cannot benefit from any bonus to its speed.",
@@ -6687,7 +6681,6 @@ const CONDITIONS_DATA = {
   },
   incapacitated: {
     name: "Incapacitated",
-    icon: "💫",
     summary: "An incapacitated creature is unable to act or react in any capacity.",
     rules: [
       "Cannot take any actions or reactions.",
@@ -6696,7 +6689,6 @@ const CONDITIONS_DATA = {
   },
   invisible: {
     name: "Invisible",
-    icon: "🌫️",
     summary: "An invisible creature is impossible to see without the aid of magic or a special sense.",
     rules: [
       "Heavily obscured for the purpose of hiding; location can still be detected by noises or tracks.",
@@ -6706,7 +6698,6 @@ const CONDITIONS_DATA = {
   },
   paralyzed: {
     name: "Paralyzed",
-    icon: "⚡",
     summary: "A paralyzed creature is incapacitated and entirely unable to move or speak.",
     rules: [
       "Incapacitated: cannot take actions or reactions.",
@@ -6718,7 +6709,6 @@ const CONDITIONS_DATA = {
   },
   petrified: {
     name: "Petrified",
-    icon: "🗿",
     summary: "Transformed, along with nonmagical objects worn or carried, into an inanimate stone substance.",
     rules: [
       "Incapacitated, unaware of surroundings, ceases aging, and weight multiplies tenfold.",
@@ -6729,7 +6719,6 @@ const CONDITIONS_DATA = {
   },
   poisoned: {
     name: "Poisoned",
-    icon: "🧪",
     summary: "A poisoned creature is afflicted by bodily toxins or venom.",
     rules: [
       "Disadvantage on all attack rolls and ability checks."
@@ -6737,7 +6726,6 @@ const CONDITIONS_DATA = {
   },
   prone: {
     name: "Prone",
-    icon: "🛌",
     summary: "The creature is lying flat on the ground.",
     rules: [
       "Only movement option is crawling (costs 1 extra foot per foot moved).",
@@ -6749,7 +6737,6 @@ const CONDITIONS_DATA = {
   },
   restrained: {
     name: "Restrained",
-    icon: "⛓️",
     summary: "A restrained creature's limbs or body are pinned, bound, or entangled.",
     rules: [
       "Speed becomes 0 and cannot benefit from any bonus to speed.",
@@ -6760,7 +6747,6 @@ const CONDITIONS_DATA = {
   },
   stunned: {
     name: "Stunned",
-    icon: "💫",
     summary: "A stunned creature is dazed, incapacitated, and unable to react effectively.",
     rules: [
       "Incapacitated: cannot take actions or reactions.",
@@ -6771,7 +6757,6 @@ const CONDITIONS_DATA = {
   },
   unconscious: {
     name: "Unconscious",
-    icon: "💀",
     summary: "An unconscious creature is incapacitated, completely unaware, and in a state of total helplessness.",
     rules: [
       "Incapacitated: cannot take actions or reactions.",
@@ -6783,7 +6768,6 @@ const CONDITIONS_DATA = {
   },
   exhaustion: {
     name: "Exhaustion",
-    icon: "😴",
     summary: "Exhaustion is measured in six cumulative levels. A Long Rest reduces exhaustion by 1 level if food and water were consumed.",
     rules: [
       "Level 1: Disadvantage on ability checks",
@@ -6868,9 +6852,7 @@ function openConditionExplainer(condKey) {
   const model = getConditionExplainerModel(condKey);
   const isActive = model.active;
 
-  const iconEl = document.getElementById("condExplainerIcon");
   const nameEl = document.getElementById("condExplainerName");
-  if (iconEl) iconEl.textContent = data.icon;
   if (nameEl) nameEl.textContent = data.name;
 
   const badge = document.getElementById("condExplainerBadge");
@@ -6932,19 +6914,28 @@ function toggleConditionFromExplainer() {
       el.value = cur > 0 ? 0 : 1;
       refreshConditionEffects();
       saveSheet(false);
-      openConditionExplainer("exhaustion");
+      if (cur > 0) {
+        closeConditionExplainer();
+      } else {
+        openConditionExplainer("exhaustion");
+      }
     }
     return;
   }
 
-  if (myActiveConditions.includes(currentExplainingCondition)) {
+  const wasActive = myActiveConditions.includes(currentExplainingCondition);
+  if (wasActive) {
     myActiveConditions = myActiveConditions.filter((c) => c !== currentExplainingCondition);
   } else {
     myActiveConditions.push(currentExplainingCondition);
   }
   renderConditionChips();
   refreshConditionEffects();
-  openConditionExplainer(currentExplainingCondition);
+  if (wasActive) {
+    closeConditionExplainer();
+  } else {
+    openConditionExplainer(currentExplainingCondition);
+  }
   saveSheet(true);
 }
 
@@ -7000,19 +6991,19 @@ function generateDiscordMarkdown(c) {
   const spellsList = (c.spells || []).slice(0, 8).map(s => s.name).join(", ") || "None prepared";
   const traitsList = (c.traits || []).slice(0, 5).map(t => t.name).join(" • ") || "None";
 
-  return `>>> ⚔️ **${name}** — Level ${lvl} ${race ? `${race} ` : ""}${charClass}
-❤️ **HP:** ${hp.cur}/${hp.max}${hp.temp > 0 ? ` (+${hp.temp} temp)` : ""} | 🛡️ **AC:** ${c.ac || 10} | 🏃 **Speed:** ${c.speed || 30}ft | 🎯 **Proficiency:** +${pb} | 🎲 **Init:** ${c.initiative >= 0 ? `+${c.initiative}` : c.initiative}
+  return `>>> **${name}** — Level ${lvl} ${race ? `${race} ` : ""}${charClass}
+**HP:** ${hp.cur}/${hp.max}${hp.temp > 0 ? ` (+${hp.temp} temp)` : ""} | **AC:** ${c.ac || 10} | **Speed:** ${c.speed || 30}ft | **Proficiency:** +${pb} | **Init:** ${c.initiative >= 0 ? `+${c.initiative}` : c.initiative}
 
 **ABILITY SCORES**
 ${statStr}
 
-⚔️ **WEAPONS ARSENAL**
+**WEAPONS ARSENAL**
 ${weaponsList}
 
-🔮 **PREPARED SPELLS**
+**PREPARED SPELLS**
 ${spellsList}
 
-✨ **KEY TRAITS & FEATS**
+**KEY TRAITS & FEATS**
 ${traitsList}`;
 }
 
@@ -7243,7 +7234,7 @@ function renderChatChannelsBar() {
     const unread = unreadPerChannel[chan.id] || 0;
     return `
       <button type="button" class="chat-chan-pill ${isActive ? 'active' : ''}" data-chan-id="${escapeHtml(chan.id)}" title="${escapeHtml(chan.name)}">
-        <span># ${escapeHtml(chan.name)} ${isPrivate ? '🔒' : ''}</span>
+        <span># ${escapeHtml(chan.name)}${isPrivate ? ' · Private' : ''}</span>
         ${unread > 0 && !isActive ? `<span class="chan-unread-dot"></span>` : ''}
       </button>
     `;
@@ -7252,7 +7243,7 @@ function renderChatChannelsBar() {
   if (isAdminSession()) {
     channelsHtml += `
       <button type="button" class="chat-chan-pill admin-rooms-pill" id="adminQuickSwitchCampaignPill" title="Admin: Switch between campaign chats">
-        <span>🏰 Other Campaigns ▾</span>
+        <span>Other Campaigns ▾</span>
       </button>
     `;
   }
@@ -7260,13 +7251,13 @@ function renderChatChannelsBar() {
   list.innerHTML = channelsHtml;
 
   const current = partyChannels.find((c) => c.id === activePartyChannelId) || partyChannels[0];
-  if (infoTag) infoTag.textContent = `# ${current.name} ${current.isDefault ? '' : '🔒'}`;
+  if (infoTag) infoTag.textContent = `# ${current.name}${current.isDefault ? '' : ' · Private'}`;
   if (infoPrivacy) {
     if (current.isDefault || current.id === "general") {
-      infoPrivacy.textContent = "👥 All Party";
+      infoPrivacy.textContent = "All Party";
     } else {
       const count = current.allowedMembers ? current.allowedMembers.length : 1;
-      infoPrivacy.textContent = `🔒 Private (${count} invited)`;
+      infoPrivacy.textContent = `Private (${count} invited)`;
     }
   }
 }
@@ -7312,7 +7303,7 @@ function openCreateChannelModal() {
     membersHtml += `
       <label class="invitee-checkbox-row">
         <div class="invitee-info">
-          ${m.avatar ? `<img src="${escapeHtml(m.avatar)}" class="invitee-avatar" />` : `<div class="invitee-avatar">⚔️</div>`}
+          ${m.avatar ? `<img src="${escapeHtml(m.avatar)}" class="invitee-avatar" />` : `<div class="invitee-avatar">${escapeHtml((m.name || "?").charAt(0).toUpperCase())}</div>`}
           <div>
             <div class="invitee-name">${escapeHtml(m.name || "Adventurer")} ${isMe ? "(You)" : ""}</div>
             <div class="invitee-role">Lvl ${m.level || 1} ${escapeHtml(m.charClass || "Hero")}</div>
@@ -7379,7 +7370,7 @@ async function confirmCreateChannel() {
 
   // Send channel creation event via system message (compliant with Firestore security rules)
   await sendPartyChatMessage(
-    `🔒 Created private chat #${cleanName}`,
+    `Created private chat #${cleanName}`,
     "system",
     { action: "create_channel", channel: channelObj, channelId: channelId }
   );
@@ -7477,7 +7468,7 @@ function renderPartyChatMessages() {
   if (!channelMsgs || channelMsgs.length === 0) {
     let emptyHint = "Waiting for messages... Type below to start chatting!";
     if (currentChan && currentChan.id !== "general") {
-      emptyHint = `🔒 This is the start of #${currentChan.name}. Only invited members can read or send messages here.`;
+      emptyHint = `This is the start of #${currentChan.name}. Only invited members can read or send messages here.`;
     }
     floatContainer.innerHTML = `<div class="chat-empty-hint">${escapeHtml(emptyHint)}</div>`;
     return;
@@ -7504,13 +7495,12 @@ function renderPartyChatMessages() {
     if (msg.type === "roll" && msg.payload) {
       contentHtml += `
         <div class="chat-roll-card">
-          <span class="chat-roll-desc">🎲 ${escapeHtml(msg.payload.desc || "Roll")}: ${escapeHtml(msg.payload.formula || "")}</span>
+          <span class="chat-roll-desc">Roll: ${escapeHtml(msg.payload.desc || "Roll")} — ${escapeHtml(msg.payload.formula || "")}</span>
           <span class="chat-roll-total">${escapeHtml(String(msg.payload.total || 0))}</span>
         </div>
       `;
     } else if (msg.type === "handout" && msg.payload) {
       const h = partyRoomHandouts.find((ph) => ph.id === msg.payload.id) || msg.payload;
-      let badge = "📜";
       let claimBtn = "";
       const isClaimed = myClaimedHandoutIds.includes(h.id);
       const canClaim = canIClaimHandout(h);
@@ -7518,16 +7508,14 @@ function renderPartyChatMessages() {
       const myCount = myClaimedHandoutIds.filter((id) => id === h.id).length;
 
       if (h.type === "weapon") {
-        badge = "⚔️";
         if (canClaim) {
-          claimBtn = `<button type="button" class="btn btn-xs btn-primary claim-weapon-btn" data-id="${escapeHtml(h.id || '')}" style="margin-left: auto;">⚔️ Claim Weapon</button>`;
+          claimBtn = `<button type="button" class="btn btn-xs btn-primary claim-weapon-btn" data-id="${escapeHtml(h.id || '')}" style="margin-left: auto;">Claim Weapon</button>`;
         } else if (fullyClaimed) {
-          claimBtn = `<span class="claimed-badge" style="margin-left: auto; opacity: 0.75;">${myCount > 0 ? '✓ In Arsenal' : 'Claimed'}</span>`;
+          claimBtn = `<span class="claimed-badge" style="margin-left: auto; opacity: 0.75;">${myCount > 0 ? 'In Arsenal' : 'Claimed'}</span>`;
         } else if (isClaimed) {
-          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">✓ In Arsenal</span>`;
+          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">In Arsenal</span>`;
         }
       } else if (h.type === "item") {
-        badge = "🎒";
         const maxClaims = parseInt(h.maxClaims, 10) || 1;
         const currentClaimed = parseInt(h.claimedCount, 10) || 0;
         const left = Math.max(0, maxClaims - currentClaimed);
@@ -7537,31 +7525,30 @@ function renderPartyChatMessages() {
           claimBtn = `
             <div style="margin-left: auto; display: inline-flex; align-items: center; gap: 0.35rem;">
               ${myBadge}
-              <button type="button" class="btn btn-xs btn-primary claim-item-btn" data-id="${escapeHtml(h.id || '')}">🎒 Claim</button>
+              <button type="button" class="btn btn-xs btn-primary claim-item-btn" data-id="${escapeHtml(h.id || '')}">Claim</button>
             </div>
           `;
         } else if (fullyClaimed) {
-          claimBtn = `<span class="claimed-badge" style="margin-left: auto; opacity: 0.75;">${myCount > 0 ? `✓ Claimed (${myCount})` : 'All Claimed'}</span>`;
+          claimBtn = `<span class="claimed-badge" style="margin-left: auto; opacity: 0.75;">${myCount > 0 ? `Claimed (${myCount})` : 'All Claimed'}</span>`;
         } else if (isClaimed) {
-          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">✓ Claimed (${myCount})</span>`;
+          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">Claimed (${myCount})</span>`;
         }
       } else if (h.type === "coin") {
-        badge = "💰";
         if (canClaim) {
           claimBtn = `<button type="button" class="btn btn-xs btn-primary claim-coins-btn" data-id="${escapeHtml(h.id || '')}" style="margin-left: auto;">Claim Coins</button>`;
         } else if (fullyClaimed || isClaimed) {
-          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">✓ Claimed</span>`;
+          claimBtn = `<span class="claimed-badge" style="margin-left: auto;">Claimed</span>`;
         }
       }
 
       let recipientBadge = "";
       if (h.recipient && h.recipient !== "all") {
-        recipientBadge = `<span class="tag-pill" style="font-size:0.65rem; color:#60a5fa; border-color:rgba(96,165,250,0.3);">👤 For: ${escapeHtml(h.recipient)}</span>`;
+        recipientBadge = `<span class="tag-pill" style="font-size:0.65rem; color:#60a5fa; border-color:rgba(96,165,250,0.3);">For: ${escapeHtml(h.recipient)}</span>`;
       }
 
       contentHtml += `
         <div class="chat-roll-card" style="border-left-color: #f59e0b; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-          <span class="chat-roll-desc">${badge} <strong>${escapeHtml(h.title || "Handout")}</strong></span>
+          <span class="chat-roll-desc"><strong>${escapeHtml(h.title || "Handout")}</strong></span>
           ${recipientBadge}
           ${claimBtn}
           <button type="button" class="btn btn-xs btn-outline open-shared-handout-btn" data-handout-id="${escapeHtml(h.id || '')}">View</button>
@@ -7922,27 +7909,27 @@ async function updateAdminChatBarUI() {
 
   let optionsHtml = "";
   if (myRoom) {
-    optionsHtml += `<option value="${escapeHtml(myRoom)}">⭐ My Room (${escapeHtml(myRoom)})</option>`;
+    optionsHtml += `<option value="${escapeHtml(myRoom)}">My Room (${escapeHtml(myRoom)})</option>`;
   }
 
   rooms.forEach((r) => {
     if (r !== myRoom) {
-      optionsHtml += `<option value="${escapeHtml(r)}">🏰 Campaign: ${escapeHtml(r)}</option>`;
+      optionsHtml += `<option value="${escapeHtml(r)}">Campaign: ${escapeHtml(r)}</option>`;
     }
   });
 
-  optionsHtml += `<option value="__custom__">➕ Custom Room Code...</option>`;
+  optionsHtml += `<option value="__custom__">Custom Room Code...</option>`;
 
   select.innerHTML = optionsHtml;
   if (currentRoom) {
     select.value = currentRoom;
   }
 
-  // Toggle "↩ My Room" button and titles
+  // Toggle "My Room" button and titles
   if (myRoom && activeChatRoomOverride && activeChatRoomOverride !== myRoom) {
     if (myRoomBtn) {
       myRoomBtn.style.display = "inline-flex";
-      myRoomBtn.textContent = `↩ My Room (${myRoom})`;
+      myRoomBtn.textContent = `My Room (${myRoom})`;
     }
     if (badgeEl) {
       badgeEl.textContent = `${activeChatRoomOverride} (ADMIN)`;
@@ -8069,11 +8056,10 @@ function renderHandoutsGrid() {
     if (countBadge) countBadge.textContent = "0";
     grid.innerHTML = `
       <div class="handout-empty-state">
-        <div class="handout-empty-icon">📜</div>
         <div class="handout-empty-title">No Active Party Connected</div>
         <div class="handout-empty-desc">Connect to a campaign room or host as Dungeon Master to view, claim, and distribute live party handouts, loot, and quest clues.</div>
         <button type="button" class="btn btn-primary btn-sm" id="handoutsConnectPartyBtn" style="margin-top: 0.35rem;">
-          <span>⚔️</span> Join or Host Party
+          Join or Host Party
         </button>
       </div>
     `;
@@ -9365,19 +9351,19 @@ function initPWAAndNetworkStatus() {
 
   window.addEventListener("online", () => {
     updateStatus(true);
-    showStatus("🌐 Back Online — Cloud sync active");
+    showStatus("Back Online — Cloud sync active");
   });
 
   window.addEventListener("offline", () => {
     updateStatus(false);
-    showStatus("📶 Offline Mode — Sheet is fully functional offline");
+    showStatus("Offline Mode — Sheet is fully functional offline");
   });
 
   updateStatus(navigator.onLine);
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=91", { updateViaCache: "none" }).then((reg) => {
+      navigator.serviceWorker.register("./sw.js?v=92", { updateViaCache: "none" }).then((reg) => {
         reg.update().catch(() => {});
         console.log("5e Sheet Service Worker registered:", reg.scope);
       }).catch((err) => {
@@ -9408,7 +9394,13 @@ function initPWAAndNetworkStatus() {
   if (exhInput) {
     exhInput.addEventListener("focus", () => openConditionExplainer("exhaustion"));
     exhInput.addEventListener("click", () => openConditionExplainer("exhaustion"));
-    exhInput.addEventListener("input", () => openConditionExplainer("exhaustion"));
+    exhInput.addEventListener("input", () => {
+      if (getExhaustionLevel() > 0) {
+        openConditionExplainer("exhaustion");
+      } else {
+        closeConditionExplainer();
+      }
+    });
   }
 }
 
@@ -9713,7 +9705,7 @@ function startAdminPresenceListener() {
 
   const container = document.getElementById("adminActiveUsersList");
   if (container && (!adminActivePresenceSessions || adminActivePresenceSessions.length === 0)) {
-    container.innerHTML = `<div class="admin-empty-notice"><span class="codex-spin-icon">⏳</span> Synchronizing live site users...</div>`;
+    container.innerHTML = `<div class="admin-empty-notice">Synchronizing live site users...</div>`;
   }
 
   adminPresenceUnsubscribe = db.collection("campaigns").doc("CODEX_PRESENCE").collection("members")
@@ -9836,16 +9828,16 @@ function renderAdminPresenceUI() {
         <div class="admin-user-main">
           <div class="admin-user-email-row">
             ${s.email
-              ? `<span class="admin-user-email">📧 ${escapeHtml(s.email)}</span>`
-              : `<span class="admin-user-guest">👤 Guest Visitor</span>`
+              ? `<span class="admin-user-email">${escapeHtml(s.email)}</span>`
+              : `<span class="admin-user-guest">Guest Visitor</span>`
             }
-            ${isOwner ? '<span class="admin-badge-pill" style="color: #fbbf24;">👑 Owner</span>' : ''}
-            ${(!isOwner && isSecondaryAdmin) ? '<span class="admin-badge-pill" style="color: #60a5fa;">🛡️ Admin</span>' : ''}
+            ${isOwner ? '<span class="admin-badge-pill" style="color: #fbbf24;">Owner</span>' : ''}
+            ${(!isOwner && isSecondaryAdmin) ? '<span class="admin-badge-pill" style="color: #60a5fa;">Admin</span>' : ''}
             ${(!isOwner && !isSecondaryAdmin && s.email) ? '<span class="admin-badge-pill" style="color: #93c5fd;">Player</span>' : ''}
             ${isMe ? '<span class="admin-badge-pill" style="color: #34d399;">(You)</span>' : ''}
           </div>
           <div class="admin-user-details">
-            <span class="admin-user-char">⚔️ ${escapeHtml(charText)}</span>
+            <span class="admin-user-char">${escapeHtml(charText)}</span>
             <span class="admin-user-sep">&bull;</span>
             <span class="admin-user-room">${escapeHtml(roomText)}</span>
           </div>
@@ -9970,7 +9962,7 @@ async function loadAdminCampaigns() {
   const container = document.getElementById("adminRoomsList");
   if (!container) return;
 
-  container.innerHTML = `<div class="admin-empty-notice"><span class="codex-spin-icon">⏳</span> Querying Firestore campaign records...</div>`;
+  container.innerHTML = `<div class="admin-empty-notice">Querying Firestore campaign records...</div>`;
 
   // Fetch cloud purged registry if available
   if (db) {
@@ -10077,7 +10069,7 @@ async function loadAdminCampaigns() {
           <span class="admin-room-meta">Source: ${escapeHtml(room.source || "Firestore")} &bull; Logged: ${escapeHtml(dateStr)} &bull; Owner: <span style="color: ${isGuest ? 'var(--text-muted)' : '#60a5fa'}; font-weight: ${isGuest ? 'normal' : '600'};">${escapeHtml(ownerDisplay)}</span></span>
         </div>
         <div class="admin-room-btns">
-          <button type="button" class="btn btn-gold-subtle btn-xs admin-open-chat-room-btn" data-room="${escapeHtml(room.code)}" title="Open live party chat for this campaign">💬 Open Chat</button>
+          <button type="button" class="btn btn-gold-subtle btn-xs admin-open-chat-room-btn" data-room="${escapeHtml(room.code)}" title="Open live party chat for this campaign">Open Chat</button>
           <button type="button" class="btn btn-outline btn-xs admin-inspect-room-btn" data-room="${escapeHtml(room.code)}">Inspect</button>
           <button type="button" class="btn red btn-xs admin-delete-room-btn" data-room="${escapeHtml(room.code)}">Purge</button>
         </div>
@@ -10161,7 +10153,7 @@ async function inspectAdminRoom(roomCode) {
 
   drawer.style.display = "block";
   if (title) title.textContent = `Inspecting Room: ${roomCode}`;
-  content.innerHTML = `<div style="text-align:center; padding: 1.25rem; color: var(--text-dim);"><span class="codex-spin-icon">⏳</span> Fetching live room data from Firestore...</div>`;
+  content.innerHTML = `<div style="text-align:center; padding: 1.25rem; color: var(--text-dim);">Fetching live room data from Firestore...</div>`;
   drawer.scrollIntoView({ behavior: "smooth", block: "nearest" });
   showStatus(`Inspecting room ${roomCode}...`);
 
@@ -10283,7 +10275,7 @@ async function inspectAdminRoom(roomCode) {
     // Direct Action Buttons
     html += `
       <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;">
-        <button type="button" class="btn btn-gold-subtle btn-xs admin-open-chat-room-btn" data-room="${escapeHtml(roomCode)}">💬 Open Chat</button>
+        <button type="button" class="btn btn-gold-subtle btn-xs admin-open-chat-room-btn" data-room="${escapeHtml(roomCode)}">Open Chat</button>
         <button type="button" class="btn red btn-xs admin-delete-room-btn" data-room="${escapeHtml(roomCode)}">Purge Room</button>
       </div>
     `;
@@ -10474,14 +10466,10 @@ function renderGlobalSiteNoticeBanner(data, remainingMs) {
   if (msgEl) msgEl.textContent = data.text || "System Notice";
   if (tagEl) tagEl.textContent = data.tag || "System Alert";
   if (iconEl) {
-    if (data.icon && !["📢", "👑", "⚠️"].includes(data.icon)) {
-      iconEl.textContent = data.icon;
+    if (data.style === "warning") {
+      iconEl.innerHTML = `<svg class="notice-svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
     } else {
-      if (data.style === "warning" || data.icon === "⚠️") {
-        iconEl.innerHTML = `<svg class="notice-svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
-      } else {
-        iconEl.innerHTML = `<svg class="notice-svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>`;
-      }
+      iconEl.innerHTML = `<svg class="notice-svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg>`;
     }
   }
 
@@ -10741,15 +10729,15 @@ async function sendAdminBroadcast(e) {
   }
 
   let formattedText = rawText;
-  let senderName = "👑 Master Admin";
+  let senderName = "Master Admin";
   if (style === "system") {
     senderName = "System Alert";
     formattedText = `[SYSTEM NOTICE]: ${rawText}`;
   } else if (style === "maint") {
-    senderName = "⚠️ Maintenance Notice";
+    senderName = "Maintenance Notice";
     formattedText = `[SCHEDULED MAINTENANCE]: ${rawText}`;
   } else {
-    senderName = "👑 Master Admin";
+    senderName = "Master Admin";
     formattedText = `[ADMIN DECREE]: ${rawText}`;
   }
 
@@ -10854,7 +10842,7 @@ async function spawnAdminItem(e) {
     claimedBy: [],
     claimedCount: 0,
     maxClaims: maxClaims,
-    author: "👑 Master Admin",
+    author: "Master Admin",
     date: new Date().toLocaleDateString(),
     imageUrl: "",
     content: notes,
@@ -10871,10 +10859,10 @@ async function spawnAdminItem(e) {
     // 2. Announce in chat
     await db.collection("campaigns").doc(targetRoom).collection("chat").add({
       senderId: "master_admin",
-      senderName: "👑 Master Admin",
+      senderName: "Master Admin",
       isDM: true,
       type: "handout",
-      text: `👑 Master Admin bestowed handout: "${name}"`,
+      text: `Master Admin bestowed handout: "${name}"`,
       payload: { id: handoutId, title: name, type: type, recipient: recipient },
       timestamp: Date.now()
     });
@@ -10962,7 +10950,7 @@ function renderAdminEmailsList() {
 
   let html = `
     <span class="admin-email-pill primary">
-      <span>👑 ${escapeHtml(PRIMARY_ADMIN_EMAIL)}</span>
+      <span>${escapeHtml(PRIMARY_ADMIN_EMAIL)}</span>
       <span style="font-size:0.65rem; opacity:0.8;">(Owner)</span>
     </span>
   `;
@@ -11457,7 +11445,7 @@ function triggerMapAutosave(immediate = false) {
     // Flash autosave indicator
     const ind = document.getElementById("mapAutosaveIndicator");
     if (ind) {
-      ind.textContent = "✓ Autosaved";
+      ind.textContent = "Autosaved";
       ind.style.opacity = "1";
     }
 
@@ -11543,12 +11531,12 @@ function renderSavedMapsGrid() {
     const sceneMeta = MAP_SCENE_CATALOG[mapItem.scene] || MAP_SCENE_CATALOG.forest_ambush;
     const thumbHtml = mapItem.thumbnail
       ? `<img src="${mapItem.thumbnail}" alt="${escapeHtml(mapItem.name)}" class="map-card-thumb-img" />`
-      : `<div class="map-card-fallback-thumb"><span style="font-size:2.2rem;">${sceneMeta.icon}</span><span>${sceneMeta.title}</span></div>`;
+      : `<div class="map-card-fallback-thumb"><span>${sceneMeta.title}</span></div>`;
 
     card.innerHTML = `
       <div class="map-saved-card-thumb">
         ${thumbHtml}
-        <span class="map-card-scene-pill">${sceneMeta.icon} ${sceneMeta.title}</span>
+        <span class="map-card-scene-pill">${sceneMeta.title}</span>
         <button type="button" class="map-card-del-btn" title="Delete Map" data-del-id="${mapItem.id}">&times;</button>
       </div>
       <div class="map-saved-card-body">
