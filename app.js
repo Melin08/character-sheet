@@ -5180,6 +5180,34 @@ function exportCharacterJson() {
     return;
   }
 
+  if (e.target.id === "generateShareCodeBtn" || e.target.closest("#generateShareCodeBtn")) {
+    const menu = document.getElementById("exportDropdownMenu");
+    if (menu) {
+      menu.classList.remove("open");
+      document.getElementById("exportBtn")?.setAttribute("aria-expanded", "false");
+    }
+    generateShareCode();
+    return;
+  }
+
+  if (e.target.id === "importShareCodeBtn" || e.target.closest("#importShareCodeBtn")) {
+    importFromShareCode();
+    return;
+  }
+
+  if (e.target.id === "closeShareCodeModal" || e.target.closest("#closeShareCodeModal")) {
+    document.getElementById("shareCodeModal")?.classList.remove("open");
+    return;
+  }
+
+  if (e.target.id === "copyShareCodeBtn" || e.target.closest("#copyShareCodeBtn")) {
+    const code = document.getElementById("shareCodeValue")?.textContent.trim() || "";
+    if (code) {
+      navigator.clipboard.writeText(code).then(() => showStatus("Code Copied!")).catch(() => showStatus(code));
+    }
+    return;
+  }
+
   // Compendium & Custom Additions
   if (e.target.id === "addSpellBtn" || e.target.closest("#addSpellBtn") || e.target.closest(".btn-add-spell")) {
     e.preventDefault();
@@ -9363,7 +9391,7 @@ function initPWAAndNetworkStatus() {
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=92", { updateViaCache: "none" }).then((reg) => {
+      navigator.serviceWorker.register("./sw.js?v=93", { updateViaCache: "none" }).then((reg) => {
         reg.update().catch(() => {});
         console.log("5e Sheet Service Worker registered:", reg.scope);
       }).catch((err) => {
@@ -14963,6 +14991,148 @@ function initTopBarToggle() {
 detectOSAndSetShortcut();
 applyTheme(localStorage.getItem(THEME_STORAGE_KEY) || "theme-nexus");
 initTopBarToggle();
+document.addEventListener("input", (e) => {
+  if (e.target && e.target.id === "shareCodeInput") {
+    e.target.value = (e.target.value || "").toUpperCase().replace(/\s+/g, "");
+  }
+});
+
+const SHARE_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function generateShareCodeString() {
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += SHARE_CODE_CHARS[Math.floor(Math.random() * SHARE_CODE_CHARS.length)];
+  }
+  return code;
+}
+
+async function generateShareCode() {
+  if (!db) {
+    showStatus("Database unavailable. Cannot generate share code.");
+    return;
+  }
+  try {
+    saveSheet(true);
+    const roster = getRoster();
+    const charData = roster[activeCharId];
+    if (!charData) {
+      showStatus("No character data to share.");
+      return;
+    }
+
+    let code = "";
+    for (let attempt = 0; attempt < 12; attempt++) {
+      code = generateShareCodeString();
+      const snap = await db.collection("shared_characters").doc(code).get();
+      if (!snap.exists) break;
+      if (attempt === 11) {
+        showStatus("Could not generate a unique share code. Try again.");
+        return;
+      }
+    }
+
+    await db.collection("shared_characters").doc(code).set({
+      code: code,
+      character: charData,
+      createdAt: Date.now(),
+      createdBy: currentUser?.uid || "local"
+    });
+
+    const valueEl = document.getElementById("shareCodeValue");
+    if (valueEl) valueEl.textContent = code;
+    document.getElementById("shareCodeModal")?.classList.add("open");
+    showStatus("Share code generated!");
+  } catch (err) {
+    console.error("Share code generation failed:", err);
+    showStatus("Failed to generate share code.");
+  }
+}
+
+async function importFromShareCode() {
+  const input = document.getElementById("shareCodeInput");
+  const status = document.getElementById("shareCodeStatus");
+  const btn = document.getElementById("importShareCodeBtn");
+  const code = (input?.value || "").trim().toUpperCase().replace(/\s+/g, "");
+
+  const setError = (message) => {
+    if (status) {
+      status.textContent = message;
+      status.style.color = "var(--primary-red)";
+    }
+    showStatus(message);
+  };
+
+  if (!/^[A-Z0-9]{8}$/.test(code)) {
+    setError("Enter a valid 8-character code.");
+    return;
+  }
+  if (!db) {
+    setError("Database unavailable. Cannot import.");
+    return;
+  }
+
+  const originalText = btn ? btn.textContent : "Import Character";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Importing...";
+  }
+  if (status) {
+    status.textContent = "Checking code...";
+    status.style.color = "var(--text-muted)";
+  }
+
+  try {
+    const snap = await db.collection("shared_characters").doc(code).get();
+    if (!snap.exists) {
+      throw new Error("Code not found");
+    }
+
+    const data = snap.data() || {};
+    const charData = data.character;
+    if (!charData || typeof charData !== "object" || !charData.fields || typeof charData.fields !== "object") {
+      throw new Error("Invalid character data");
+    }
+
+    const current = getRoster()[activeCharId];
+    if (current && (current.name || Object.keys(current.fields || {}).length > 0)) {
+      if (!confirm("Importing will create a new character and replace the current sheet. Continue?")) {
+        if (status) {
+          status.textContent = "Import cancelled.";
+          status.style.color = "var(--text-muted)";
+        }
+        return;
+      }
+    }
+
+    activeCharId = "char_" + Date.now();
+    localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
+    applyCharacterData(charData);
+    saveSheet(false);
+    renderCharList();
+
+    if (status) {
+      status.textContent = "Character imported successfully!";
+      status.style.color = "var(--accent-gold)";
+    }
+    showStatus("Character imported!");
+  } catch (err) {
+    console.error("Share code import failed:", err);
+    const message = err && err.message === "Code not found"
+      ? "Share code not found."
+      : (err && err.message === "Invalid character data"
+        ? "Shared character data is invalid."
+        : "Import failed. Please try again.");
+    setError(message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText || "Import Character";
+    }
+  }
+}
+
+
 loadSheet();
 loadAllSpells();
 loadAllTraits();

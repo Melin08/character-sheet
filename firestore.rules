@@ -323,6 +323,21 @@ service cloud.firestore {
       allow write: if isMasterAdmin();
     }
 
+    function isValidSharedCharacter(data) {
+      return data.keys().hasAll(['character', 'createdAt']) &&
+        data.character is map &&
+        data.createdAt is number &&
+        (!('code' in data) || (data.code is string && data.code.size() == 8)) &&
+        (!('createdBy' in data) || (data.createdBy is string && data.createdBy.size() <= 128));
+    }
+
+    // 8. Shared character import/export codes
+    match /shared_characters/{code} {
+      allow read: if true;
+      allow create: if isValidSharedCharacter(request.resource.data);
+      allow update, delete: if false;
+    }
+
     // Default deny for all other unspecified paths
     match /{document=**} {
       allow read, write: if false;
