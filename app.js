@@ -9391,7 +9391,7 @@ function initPWAAndNetworkStatus() {
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=95", { updateViaCache: "none" }).then((reg) => {
+      navigator.serviceWorker.register("./sw.js?v=96", { updateViaCache: "none" }).then((reg) => {
         reg.update().catch(() => {});
         console.log("5e Sheet Service Worker registered:", reg.scope);
       }).catch((err) => {
@@ -11664,6 +11664,59 @@ function initMapLobbyListeners() {
     saveSavedMapsRegistry(registry);
 
     openMapRoom(randCode);
+  });
+
+  document.getElementById("mapCreateUploadInput")?.addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const nameInput = document.getElementById("mapCreateNameInput");
+    const mapName = (nameInput && nameInput.value.trim()) || `Encounter ${Math.floor(1000 + Math.random() * 9000)}`;
+    const randCode = "MAP-" + Math.random().toString(36).substr(2, 4).toUpperCase();
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const off = document.createElement("canvas");
+        const maxDim = 1600;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+          else { w = Math.round((w * maxDim) / h); h = maxDim; }
+        }
+        off.width = w;
+        off.height = h;
+        off.getContext("2d").drawImage(img, 0, 0, w, h);
+        const dataUrl = off.toDataURL("image/jpeg", 0.8);
+
+        const newState = createDefaultMapState(randCode, mapName, null);
+        newState.customMapUrl = dataUrl;
+        newState.requiresUpload = false;
+        newState.scene = null;
+        saveMapRoomState(randCode, newState);
+
+        const registry = getSavedMapsRegistry();
+        registry.unshift({
+          id: randCode,
+          name: mapName,
+          scene: null,
+          thumbnail: "",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          tokenCount: 0
+        });
+        saveSavedMapsRegistry(registry);
+
+        const drawer = document.getElementById("mapCreateActionDrawer");
+        if (drawer) drawer.style.display = "none";
+        openMapRoom(randCode);
+        showStatus("Map created from uploaded image!");
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   });
 
   // Connect & Join Map confirmation
