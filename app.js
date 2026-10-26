@@ -9391,7 +9391,7 @@ function initPWAAndNetworkStatus() {
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=93", { updateViaCache: "none" }).then((reg) => {
+      navigator.serviceWorker.register("./sw.js?v=94", { updateViaCache: "none" }).then((reg) => {
         reg.update().catch(() => {});
         console.log("5e Sheet Service Worker registered:", reg.scope);
       }).catch((err) => {
@@ -15024,7 +15024,7 @@ async function generateShareCode() {
     let code = "";
     for (let attempt = 0; attempt < 12; attempt++) {
       code = generateShareCodeString();
-      const snap = await db.collection("shared_characters").doc(code).get();
+      const snap = await db.collection("campaigns").doc("CODEX_SHARE").collection("chat").doc(code).get();
       if (!snap.exists) break;
       if (attempt === 11) {
         showStatus("Could not generate a unique share code. Try again.");
@@ -15032,11 +15032,14 @@ async function generateShareCode() {
       }
     }
 
-    await db.collection("shared_characters").doc(code).set({
-      code: code,
-      character: charData,
-      createdAt: Date.now(),
-      createdBy: currentUser?.uid || "local"
+    await db.collection("campaigns").doc("CODEX_SHARE").collection("chat").doc(code).set({
+      senderId: "share_code",
+      senderName: "Share Code",
+      isDM: false,
+      type: "system",
+      text: code,
+      payload: { character: charData },
+      timestamp: Date.now()
     });
 
     const valueEl = document.getElementById("shareCodeValue");
@@ -15083,13 +15086,13 @@ async function importFromShareCode() {
   }
 
   try {
-    const snap = await db.collection("shared_characters").doc(code).get();
+    const snap = await db.collection("campaigns").doc("CODEX_SHARE").collection("chat").doc(code).get();
     if (!snap.exists) {
       throw new Error("Code not found");
     }
 
     const data = snap.data() || {};
-    const charData = data.character;
+    const charData = data?.payload?.character;
     if (!charData || typeof charData !== "object" || !charData.fields || typeof charData.fields !== "object") {
       throw new Error("Invalid character data");
     }
