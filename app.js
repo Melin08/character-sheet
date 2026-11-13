@@ -1284,7 +1284,8 @@ function recalculateAll() {
   const mods = {};
 
   stats.forEach((stat) => {
-    const scoreVal = parseInt(document.getElementById(`attr_${stat}`)?.value, 10) || 10;
+    const rawScore = parseInt(document.getElementById(`attr_${stat}`)?.value, 10);
+    const scoreVal = Number.isNaN(rawScore) ? 10 : rawScore;
     const mod = getModifier(scoreVal);
     mods[stat] = mod;
 
@@ -1598,44 +1599,56 @@ function renderMySpells() {
 }
 
 function attachSpellDragEvents() {
-  document.querySelectorAll(".spell-card").forEach((card) => {
-    card.addEventListener("dragstart", (e) => {
-      if (["INPUT", "TEXTAREA", "BUTTON"].includes(e.target.tagName)) {
-        e.preventDefault();
-        return;
-      }
-      draggedSpellIndex = parseInt(card.dataset.index, 10);
-      e.dataTransfer.effectAllowed = "move";
-      card.style.opacity = "0.4";
-    });
+  const container = document.getElementById("mySpellsList");
+  if (!container || container.dataset.dragDelegated === "true") return;
+  container.dataset.dragDelegated = "true";
 
-    card.addEventListener("dragend", () => {
-      card.style.opacity = "1";
-      document.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
-      draggedSpellIndex = null;
-    });
-
-    card.addEventListener("dragover", (e) => {
+  container.addEventListener("dragstart", (e) => {
+    const card = e.target.closest(".spell-card");
+    if (!card || !container.contains(card)) return;
+    if (["INPUT", "TEXTAREA", "BUTTON"].includes(e.target.tagName)) {
       e.preventDefault();
-      card.classList.add("drag-over");
-    });
+      return;
+    }
+    draggedSpellIndex = parseInt(card.dataset.index, 10);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+    card.style.opacity = "0.4";
+  });
 
-    card.addEventListener("dragleave", () => {
-      card.classList.remove("drag-over");
-    });
+  container.addEventListener("dragend", (e) => {
+    const card = e.target.closest(".spell-card");
+    if (card) card.style.opacity = "1";
+    container.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
+    draggedSpellIndex = null;
+  });
 
-    card.addEventListener("drop", (e) => {
-      e.preventDefault();
-      card.classList.remove("drag-over");
-      if (draggedSpellIndex === null) return;
-      const targetIndex = parseInt(card.dataset.index, 10);
-      if (draggedSpellIndex === targetIndex) return;
+  container.addEventListener("dragover", (e) => {
+    const card = e.target.closest(".spell-card");
+    if (!card || !container.contains(card)) return;
+    e.preventDefault();
+    card.classList.add("drag-over");
+  });
 
-      const moved = myCharacterSpells.splice(draggedSpellIndex, 1)[0];
-      myCharacterSpells.splice(targetIndex, 0, moved);
-      saveSheet(false);
-      renderMySpells();
-    });
+  container.addEventListener("dragleave", (e) => {
+    const card = e.target.closest(".spell-card");
+    if (!card || !container.contains(card)) return;
+    if (e.relatedTarget && card.contains(e.relatedTarget)) return;
+    card.classList.remove("drag-over");
+  });
+
+  container.addEventListener("drop", (e) => {
+    const card = e.target.closest(".spell-card");
+    if (!card || !container.contains(card)) return;
+    e.preventDefault();
+    card.classList.remove("drag-over");
+    if (draggedSpellIndex === null) return;
+    const targetIndex = parseInt(card.dataset.index, 10);
+    if (draggedSpellIndex === targetIndex) return;
+
+    const moved = myCharacterSpells.splice(draggedSpellIndex, 1)[0];
+    myCharacterSpells.splice(targetIndex, 0, moved);
+    saveSheet(false);
+    renderMySpells();
   });
 }
 
@@ -2067,17 +2080,50 @@ function saveSheet(quiet = false) {
   if (!quiet) showStatus("Saved!");
 }
 
+function resetSaveFieldsToDefaults() {
+  document.querySelectorAll(".save-field").forEach((field) => {
+    if (field.type === "checkbox") field.checked = false;
+    else if (field.id === "charLevel") field.value = 1;
+    else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") field.value = 10;
+    else if (field.classList.contains("attr-input")) field.value = 10;
+    else if (field.id === "charSpeed") field.value = 30;
+    else if (field.id === "hitDiceCur" || field.id === "hitDiceMax") field.value = 1;
+    else if (field.id === "hitDieSize") field.value = 8;
+    else if (
+      field.classList.contains("hitdice-input") ||
+      field.classList.contains("coin-input") ||
+      field.classList.contains("slot-input") ||
+      field.classList.contains("death-input") ||
+      field.classList.contains("res-input") ||
+      field.classList.contains("exhaustion-input") ||
+      field.id === "tempHp" ||
+      field.id === "initBonusMod"
+    ) field.value = 0;
+    else field.value = "";
+  });
+}
+
+function resetTransientCombatUI() {
+  if (typeof setManualDiceMode === "function") setManualDiceMode("norm");
+  lastRollCategory = null;
+  lastRollAttr = null;
+  if (typeof closeConcentrationCheckPrompt === "function") closeConcentrationCheckPrompt();
+  if (typeof closeConditionExplainer === "function") closeConditionExplainer();
+}
+
 function applyCharacterData(charData) {
   if (!charData) return;
   const fields = charData.fields || {};
 
+  resetSaveFieldsToDefaults();
+  resetTransientCombatUI();
   renderSpellSlotGrid(fields);
 
   Object.keys(fields).forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
       if (el.type === "checkbox") el.checked = !!fields[id];
-      else el.value = fields[id];
+      else el.value = fields[id] ?? "";
     }
   });
 
@@ -2156,26 +2202,8 @@ function resetSheet() {
   activeCharId = "char_" + Date.now();
   localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
 
-  document.querySelectorAll(".save-field").forEach((field) => {
-    if (field.type === "checkbox") field.checked = false;
-    else if (field.id === "charLevel") field.value = 1;
-    else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") field.value = 10;
-    else if (field.classList.contains("attr-input")) field.value = 10;
-    else if (field.id === "charSpeed") field.value = 30;
-    else if (field.id === "hitDiceCur" || field.id === "hitDiceMax") field.value = 1;
-    else if (field.id === "hitDieSize") field.value = 8;
-    else if (
-      field.classList.contains("hitdice-input") ||
-      field.classList.contains("coin-input") ||
-      field.classList.contains("slot-input") ||
-      field.classList.contains("death-input") ||
-      field.classList.contains("res-input") ||
-      field.classList.contains("exhaustion-input") ||
-      field.id === "tempHp" ||
-      field.id === "initBonusMod"
-    ) field.value = 0;
-    else field.value = "";
-  });
+  resetSaveFieldsToDefaults();
+  resetTransientCombatUI();
 
   myCharacterAvatar = "";
   myCharacterSpells = [];
@@ -2392,8 +2420,27 @@ if (auth) {
       try {
         const doc = await db.collection("users").doc(user.uid).get();
         if (doc.exists && doc.data()?.roster) {
-          const merged = { ...getRoster(), ...doc.data().roster };
+          const localRoster = getRoster();
+          const remoteRoster = doc.data().roster;
+          const merged = { ...localRoster };
+          let localIsNewer = false;
+
+          Object.keys(remoteRoster).forEach((id) => {
+            const localChar = localRoster[id];
+            const remoteChar = remoteRoster[id];
+            if (!localChar || (remoteChar.updatedAt || 0) >= (localChar.updatedAt || 0)) {
+              merged[id] = remoteChar;
+            } else {
+              localIsNewer = true;
+            }
+          });
+
+          Object.keys(localRoster).forEach((id) => {
+            if (!remoteRoster[id]) localIsNewer = true;
+          });
+
           localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(merged));
+          if (localIsNewer) syncRosterToCloud(merged);
           loadSheet();
           showStatus("Cloud Synced");
         } else {
@@ -4279,7 +4326,13 @@ function dropConcentration(reasonText) {
   if (reasonText) showStatus(reasonText);
 }
 
+let concPromptAutoCloseTimer = null;
+
 function closeConcentrationCheckPrompt() {
+  if (concPromptAutoCloseTimer) {
+    clearTimeout(concPromptAutoCloseTimer);
+    concPromptAutoCloseTimer = null;
+  }
   const el = document.getElementById("concCheckPrompt");
   if (el) {
     el.classList.remove("show");
@@ -4288,6 +4341,10 @@ function closeConcentrationCheckPrompt() {
 }
 
 function showConcentrationCheckPrompt(damage, spellName) {
+  if (concPromptAutoCloseTimer) {
+    clearTimeout(concPromptAutoCloseTimer);
+    concPromptAutoCloseTimer = null;
+  }
   const dc = Math.max(10, Math.floor(damage / 2));
   const bonus = getConSaveBonus();
 
@@ -4340,7 +4397,7 @@ function showConcentrationCheckPrompt(damage, spellName) {
     } else {
       dropConcentration(`Concentration on ${spellName} broken!`);
     }
-    setTimeout(closeConcentrationCheckPrompt, 3200);
+    concPromptAutoCloseTimer = setTimeout(closeConcentrationCheckPrompt, 3200);
   });
 }
 
@@ -4367,6 +4424,7 @@ function applyQuickHpStep(delta) {
 
   let curHp = parseInt(curHpEl?.value, 10) || 0;
   const maxHp = parseInt(maxHpEl?.value, 10) || 10;
+  const effectiveMaxHp = getEffectiveMaxHp(getActiveConditionEffects(), maxHp);
   let tempHp = parseInt(tempHpEl?.value, 10) || 0;
 
   if (delta < 0) {
@@ -4387,7 +4445,7 @@ function applyQuickHpStep(delta) {
       showConcentrationCheckPrompt(dmg, concSpell);
     }
   } else if (delta > 0) {
-    curHp = Math.min(maxHp, curHp + delta);
+    curHp = Math.min(effectiveMaxHp, curHp + delta);
   }
 
   if (curHpEl) curHpEl.value = curHp;
@@ -4410,6 +4468,7 @@ function applyHpAdjustment(type) {
 
   let curHp = parseInt(curHpEl?.value, 10) || 0;
   const maxHp = parseInt(maxHpEl?.value, 10) || 10;
+  const effectiveMaxHp = getEffectiveMaxHp(getActiveConditionEffects(), maxHp);
   let tempHp = parseInt(tempHpEl?.value, 10) || 0;
 
   if (type === "damage") {
@@ -4432,7 +4491,7 @@ function applyHpAdjustment(type) {
       showStatus(`Took ${amt} damage!`);
     }
   } else if (type === "heal") {
-    curHp = Math.min(maxHp, curHp + amt);
+    curHp = Math.min(effectiveMaxHp, curHp + amt);
     showStatus(`Healed for ${amt} HP!`);
   } else if (type === "temp") {
     tempHp = Math.max(tempHp, amt);
@@ -4548,6 +4607,11 @@ function applyLongRest() {
    MULTI-PLATFORM IMPORTERS
    ========================================================================== */
 
+function setFieldVal(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value;
+}
+
 function importFromPconParchment(parsed) {
   const data = Array.isArray(parsed) ? parsed[0] : (parsed.character || parsed.data || parsed);
   if (!data) throw new Error("Unrecognized parchment format");
@@ -4555,23 +4619,22 @@ function importFromPconParchment(parsed) {
   resetSheet();
 
   const charName = data.name || data.charName || "Imported Character";
-  document.getElementById("charName").value = charName;
-  if (data.level || data.charLevel) document.getElementById("charLevel").value = data.level || data.charLevel;
-  if (data.race || data.charRace) document.getElementById("charRace").value = data.race || data.charRace;
-  if (data.class || data.charClass) document.getElementById("charClass").value = data.class || data.charClass;
+  setFieldVal("charName", charName);
+  if (data.level || data.charLevel) setFieldVal("charLevel", data.level || data.charLevel);
+  if (data.race || data.charRace) setFieldVal("charRace", data.race || data.charRace);
+  if (data.class || data.charClass) setFieldVal("charClass", data.class || data.charClass);
 
   const stats = ["str", "dex", "con", "int", "wis", "cha"];
   stats.forEach((s) => {
     const val = data.stats?.[s] || data.attributes?.[s]?.score || data[`attr_${s}`] || 10;
-    const el = document.getElementById(`attr_${s}`);
-    if (el) el.value = val;
+    setFieldVal(`attr_${s}`, val);
   });
 
   if (data.hp || data.maxHp) {
     const max = data.hp?.max || data.maxHp || 10;
     const cur = data.hp?.cur || data.curHp || max;
-    document.getElementById("maxHp").value = max;
-    document.getElementById("curHp").value = cur;
+    setFieldVal("maxHp", max);
+    setFieldVal("curHp", cur);
   }
 
   if (Array.isArray(data.spells)) myCharacterSpells = data.spells;
@@ -4592,30 +4655,29 @@ function importFromDnDBeyond(parsed) {
 
   resetSheet();
 
-  document.getElementById("charName").value = d.name || "D&D Beyond Character";
-  if (d.race?.fullName) document.getElementById("charRace").value = d.race.fullName;
+  setFieldVal("charName", d.name || "D&D Beyond Character");
+  if (d.race?.fullName) setFieldVal("charRace", d.race.fullName);
 
   if (Array.isArray(d.classes) && d.classes.length > 0) {
     const primary = d.classes[0];
-    document.getElementById("charClass").value = primary.definition?.name || "";
-    document.getElementById("charSubclass").value = primary.subclassDefinition?.name || "";
-    document.getElementById("charLevel").value = primary.level || 1;
+    setFieldVal("charClass", primary.definition?.name || "");
+    setFieldVal("charSubclass", primary.subclassDefinition?.name || "");
+    setFieldVal("charLevel", primary.level || 1);
   }
 
   const statMap = ["str", "dex", "con", "int", "wis", "cha"];
   if (Array.isArray(d.stats)) {
     d.stats.forEach((s, idx) => {
       const statCode = statMap[idx];
-      const el = document.getElementById(`attr_${statCode}`);
-      if (el) el.value = s.value || 10;
+      setFieldVal(`attr_${statCode}`, s.value || 10);
     });
   }
 
   const baseHp = d.baseHitPoints || 10;
   const bonusHp = d.bonusHitPoints || 0;
   const totalMax = baseHp + bonusHp;
-  document.getElementById("maxHp").value = totalMax;
-  document.getElementById("curHp").value = totalMax - (d.removedHitPoints || 0);
+  setFieldVal("maxHp", totalMax);
+  setFieldVal("curHp", totalMax - (d.removedHitPoints || 0));
 
   if (Array.isArray(d.inventory)) {
     myCharacterWeapons = [];
@@ -4661,31 +4723,32 @@ function importFromDnDBeyond(parsed) {
 }
 
 function importFromGenericOrRoll20(parsed) {
-  resetSheet();
   const d = parsed.character || parsed.data || parsed;
 
-  if (d.name) document.getElementById("charName").value = d.name;
-
-  if (Array.isArray(d.attribs)) {
-    const getAttr = (name) => d.attribs.find((a) => a.name === name)?.current;
-    if (getAttr("class")) document.getElementById("charClass").value = getAttr("class");
-    if (getAttr("race")) document.getElementById("charRace").value = getAttr("race");
-    if (getAttr("level")) document.getElementById("charLevel").value = parseInt(getAttr("level"), 10) || 1;
-    if (getAttr("ac")) document.getElementById("ac").value = parseInt(getAttr("ac"), 10) || 10;
-    if (getAttr("hp")) {
-      document.getElementById("curHp").value = parseInt(getAttr("hp"), 10) || 10;
-      const max = d.attribs.find((a) => a.name === "hp")?.max;
-      document.getElementById("maxHp").value = parseInt(max || getAttr("hp"), 10) || 10;
-    }
-    const statNames = { str: "strength", dex: "dexterity", con: "constitution", int: "intelligence", wis: "wisdom", cha: "charisma" };
-    Object.keys(statNames).forEach((short) => {
-      const v = getAttr(statNames[short]);
-      if (v) document.getElementById(`attr_${short}`).value = parseInt(v, 10) || 10;
-    });
-  } else {
+  if (!Array.isArray(d.attribs)) {
     importFromPconParchment(d);
     return;
   }
+
+  resetSheet();
+
+  if (d.name) setFieldVal("charName", d.name);
+
+  const getAttr = (name) => d.attribs.find((a) => a.name === name)?.current;
+  if (getAttr("class")) setFieldVal("charClass", getAttr("class"));
+  if (getAttr("race")) setFieldVal("charRace", getAttr("race"));
+  if (getAttr("level")) setFieldVal("charLevel", parseInt(getAttr("level"), 10) || 1);
+  if (getAttr("ac")) setFieldVal("ac", parseInt(getAttr("ac"), 10) || 10);
+  if (getAttr("hp")) {
+    setFieldVal("curHp", parseInt(getAttr("hp"), 10) || 10);
+    const max = d.attribs.find((a) => a.name === "hp")?.max;
+    setFieldVal("maxHp", parseInt(max || getAttr("hp"), 10) || 10);
+  }
+  const statNames = { str: "strength", dex: "dexterity", con: "constitution", int: "intelligence", wis: "wisdom", cha: "charisma" };
+  Object.keys(statNames).forEach((short) => {
+    const v = getAttr(statNames[short]);
+    if (v) setFieldVal(`attr_${short}`, parseInt(v, 10) || 10);
+  });
 
   recalculateAll();
   saveSheet(false);
@@ -8280,16 +8343,21 @@ function openHandoutViewer(handoutId) {
   const editMode = document.getElementById("handoutEditMode");
   if (!modal || !viewMode || !editMode) return;
 
-  document.getElementById("handoutModalTitle").textContent = h.title || "Party Handout";
-  document.getElementById("parchmentTitle").textContent = h.title || "Ancient Parchment";
+  const setText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+
+  setText("handoutModalTitle", h.title || "Party Handout");
+  setText("parchmentTitle", h.title || "Ancient Parchment");
 
   let typeBadgeText = (h.type || "letter").toUpperCase();
   if (h.recipient && h.recipient !== "all") {
     typeBadgeText += ` • FOR: ${h.recipient.toUpperCase()}`;
   }
-  document.getElementById("parchmentTypeBadge").textContent = typeBadgeText;
-  document.getElementById("parchmentOrigin").textContent = h.author ? `Origin: ${h.author}` : "Origin: Unknown";
-  document.getElementById("parchmentDate").textContent = h.date ? `Date: ${h.date}` : "Date: 1492 DR";
+  setText("parchmentTypeBadge", typeBadgeText);
+  setText("parchmentOrigin", h.author ? `Origin: ${h.author}` : "Origin: Unknown");
+  setText("parchmentDate", h.date ? `Date: ${h.date}` : "Date: 1492 DR");
 
   // Seal Icon
   const sealEl = document.getElementById("parchmentSealIcon");
@@ -8416,7 +8484,8 @@ function openHandoutViewer(handoutId) {
     }
   }
 
-  document.getElementById("parchmentContent").textContent = h.content || "";
+  const contentEl = document.getElementById("parchmentContent");
+  if (contentEl) contentEl.textContent = h.content || "";
 
   // Only allow DM or creator to edit/reshare
   const canManage = canIEditOrDeleteHandout(h);
@@ -8730,7 +8799,6 @@ function openHandoutEditor(handoutId = null) {
   const typeSelect = document.getElementById("handoutFormType");
   const recipientSelect = document.getElementById("handoutFormRecipient");
   const authorInput = document.getElementById("handoutFormAuthor");
-  const dateInput = document.getElementById("handoutFormDate");
   const imageInput = document.getElementById("handoutFormImageUrl");
   const contentInput = document.getElementById("handoutFormContent");
 
@@ -8738,7 +8806,6 @@ function openHandoutEditor(handoutId = null) {
   const wpnDmgInput = document.getElementById("handoutWpnDmg");
   const wpnTypeInput = document.getElementById("handoutWpnType");
   const wpnNotesInput = document.getElementById("handoutWpnNotes");
-  const wpnWeightInput = document.getElementById("handoutWpnWeight");
 
   const itemNameInput = document.getElementById("handoutItemName");
   const itemQtyInput = document.getElementById("handoutItemQty");
@@ -8787,7 +8854,6 @@ function openHandoutEditor(handoutId = null) {
     if (recipientSelect) recipientSelect.value = h.recipient || "all";
     if (titleInput) titleInput.value = h.title || "";
     if (authorInput) authorInput.value = h.author || "";
-    if (dateInput) dateInput.value = h.date || "";
     if (imageInput) imageInput.value = h.imageUrl || "";
     if (contentInput) contentInput.value = h.content || "";
 
@@ -8797,13 +8863,11 @@ function openHandoutEditor(handoutId = null) {
       if (wpnDmgInput) wpnDmgInput.value = w.dmg || "";
       if (wpnTypeInput) wpnTypeInput.value = w.type || w.atk || "";
       if (wpnNotesInput) wpnNotesInput.value = w.notes || "";
-      if (wpnWeightInput) wpnWeightInput.value = (w.weight !== undefined) ? w.weight : 0;
     } else {
       if (wpnNameInput) wpnNameInput.value = "";
       if (wpnDmgInput) wpnDmgInput.value = "";
       if (wpnTypeInput) wpnTypeInput.value = "";
       if (wpnNotesInput) wpnNotesInput.value = "";
-      if (wpnWeightInput) wpnWeightInput.value = 0;
     }
 
     if (h.item && !h.item?.isWeapon) {
@@ -8818,14 +8882,14 @@ function openHandoutEditor(handoutId = null) {
       if (coinGP) coinGP.value = h.coins.gp || 0;
       if (coinPP) coinPP.value = h.coins.pp || 0;
     }
-    document.getElementById("handoutModalTitle").textContent = "Edit Handout";
+    const handoutTitleEl = document.getElementById("handoutModalTitle");
+    if (handoutTitleEl) handoutTitleEl.textContent = "Edit Handout";
   } else {
     if (hiddenId) hiddenId.value = "";
     if (typeSelect) typeSelect.value = preselectedType || "weapon";
     if (recipientSelect) recipientSelect.value = "all";
     if (titleInput) titleInput.value = "";
     if (authorInput) authorInput.value = "";
-    if (dateInput) dateInput.value = "";
     if (imageInput) imageInput.value = "";
     if (contentInput) contentInput.value = "";
 
@@ -8833,7 +8897,6 @@ function openHandoutEditor(handoutId = null) {
     if (wpnDmgInput) wpnDmgInput.value = "";
     if (wpnTypeInput) wpnTypeInput.value = "";
     if (wpnNotesInput) wpnNotesInput.value = "";
-    if (wpnWeightInput) wpnWeightInput.value = 0;
 
     if (itemNameInput) itemNameInput.value = "";
     if (itemQtyInput) itemQtyInput.value = 1;
@@ -8845,7 +8908,8 @@ function openHandoutEditor(handoutId = null) {
     if (coinGP) coinGP.value = 0;
     if (coinPP) coinPP.value = 0;
 
-    document.getElementById("handoutModalTitle").textContent = "New Handout / Reward";
+    const handoutTitleEl = document.getElementById("handoutModalTitle");
+    if (handoutTitleEl) handoutTitleEl.textContent = "New Handout / Reward";
   }
 
   const filterInput = document.getElementById("quickWeaponFilterInput");
@@ -8918,7 +8982,7 @@ function saveHandoutFromForm(isDraft = false) {
   } else {
     title = document.getElementById("handoutFormTitle")?.value.trim() || "Untitled Handout";
     author = document.getElementById("handoutFormAuthor")?.value.trim() || "";
-    date = document.getElementById("handoutFormDate")?.value.trim() || "";
+    date = "";
     imageUrl = document.getElementById("handoutFormImageUrl")?.value.trim() || "";
     maxClaims = 1;
   }
@@ -9409,14 +9473,6 @@ function initPWAAndNetworkStatus() {
     input.value = "";
   });
 
-  document.getElementById("partyModalChatForm")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const input = document.getElementById("partyModalChatInput");
-    if (!input || !input.value.trim()) return;
-    sendPartyChatMessage(input.value.trim());
-    input.value = "";
-  });
-
   // Hook exhaustion input explainer
   const exhInput = document.getElementById("exhaustionLevel");
   if (exhInput) {
@@ -9691,6 +9747,8 @@ async function sendSessionHeartbeat(force = false) {
   }
 }
 
+let sessionPresenceInitialized = false;
+
 function initSessionPresence() {
   sendSessionHeartbeat(true);
 
@@ -9699,6 +9757,9 @@ function initSessionPresence() {
       sendSessionHeartbeat();
     }, 28000);
   }
+
+  if (sessionPresenceInitialized) return;
+  sessionPresenceInitialized = true;
 
   // Trigger heartbeat when user returns to tab
   document.addEventListener("visibilitychange", () => {
@@ -11299,14 +11360,38 @@ let mapActiveMeasure = null; // { x1, y1, x2, y2 }
 let mapPings = []; // [{ x, y, color, startTime }]
 let mapAnimFrameId = null;
 let mapImageCache = {};
+const MAX_MAP_IMAGE_CACHE = 40;
 let mapAutosaveTimer = null;
 let mapFirestoreUnsubscribe = null;
 
+function clearMapImageCache() {
+  mapImageCache = {};
+}
+
+function getOrLoadMapImage(src) {
+  if (!src) return null;
+  const cached = mapImageCache[src];
+  if (cached) {
+    return cached.complete && cached.naturalWidth > 0 ? cached : null;
+  }
+
+  const keys = Object.keys(mapImageCache);
+  if (keys.length >= MAX_MAP_IMAGE_CACHE) {
+    delete mapImageCache[keys[0]];
+  }
+
+  const img = new Image();
+  img.onload = () => resizeAndRenderOwlbearCanvas();
+  img.onerror = () => {
+    if (mapImageCache[src] === img) delete mapImageCache[src];
+  };
+  img.src = src;
+  mapImageCache[src] = img;
+  return null;
+}
+
 // Player Color (Used for pointer ping, ruler & notes)
 let mapPlayerColor = localStorage.getItem(MAP_PLAYER_COLOR_KEY) || "#d4af37";
-
-// Dice Tray State
-let mapDiceTrayRolls = [];
 
 // Token Drawer Filter & Search State
 let mapTokenCatFilter = "all";
@@ -11418,6 +11503,7 @@ function deleteSavedMap(roomId) {
   if (activeMapRoomId === roomId) {
     showMapLobbyView();
   } else {
+    clearMapImageCache();
     renderSavedMapsGrid();
   }
   showStatus(`Map ${roomId} deleted.`);
@@ -11529,6 +11615,7 @@ function showMapLobbyView() {
   // Close all popovers and drawers
   closeAllMapPopovers();
   closeMapDrawer();
+  clearMapImageCache();
 
   activeMapRoomId = null;
   renderSavedMapsGrid();
@@ -11972,15 +12059,10 @@ function renderOwlbearCanvas() {
 function drawMapSceneBackground(ctx, state, width, height) {
   // If custom map image is provided
   if (state.customMapUrl) {
-    const cached = mapImageCache[state.customMapUrl];
-    if (cached && cached.complete && cached.naturalWidth > 0) {
-      ctx.drawImage(cached, 0, 0, width, height);
+    const cachedImg = getOrLoadMapImage(state.customMapUrl);
+    if (cachedImg) {
+      ctx.drawImage(cachedImg, 0, 0, width, height);
       return;
-    } else if (!cached) {
-      const img = new Image();
-      img.onload = () => resizeAndRenderOwlbearCanvas();
-      img.src = state.customMapUrl;
-      mapImageCache[state.customMapUrl] = img;
     }
   }
 
@@ -12496,19 +12578,14 @@ function drawMapTokens(ctx, state) {
 
     // Custom Token Image or Icon
     if (token.img) {
-      const cached = mapImageCache[token.img];
-      if (cached && cached.complete && cached.naturalWidth > 0) {
+      const cachedImg = getOrLoadMapImage(token.img);
+      if (cachedImg) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(0, 0, radius - 2, 0, Math.PI * 2);
         ctx.clip();
-        ctx.drawImage(cached, -radius, -radius, size, size);
+        ctx.drawImage(cachedImg, -radius, -radius, size, size);
         ctx.restore();
-      } else if (!cached) {
-        const img = new Image();
-        img.onload = () => resizeAndRenderOwlbearCanvas();
-        img.src = token.img;
-        mapImageCache[token.img] = img;
       }
     } else {
       // Draw Crisp Monogram Badge (No Emojis)
@@ -13910,12 +13987,10 @@ function openMapDrawer(tabName) {
   // Switch pane
   const paneMaps = document.getElementById("vttDrawerPaneMaps");
   const paneTokens = document.getElementById("vttDrawerPaneTokens");
-  const paneDice = document.getElementById("vttDrawerPaneDice");
   const paneInit = document.getElementById("vttDrawerPaneInit");
 
   if (paneMaps) paneMaps.style.display = tabName === "maps" ? "flex" : "none";
   if (paneTokens) paneTokens.style.display = tabName === "tokens" ? "flex" : "none";
-  if (paneDice) paneDice.style.display = tabName === "dice" ? "flex" : "none";
   if (paneInit) paneInit.style.display = tabName === "init" ? "flex" : "none";
 
   if (tabName === "tokens") renderMapPresetTokensGrid(mapTokenCatFilter, mapTokenSearchQuery);
@@ -14118,28 +14193,6 @@ function initMapBottomDrawersListeners() {
     }
   });
 
-  // Dice Tray Listeners
-  document.querySelectorAll("#mapDiceRack .map-die-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const sides = parseInt(btn.dataset.mapDie, 10);
-      if (sides) rollMapDie(sides);
-    });
-  });
-
-  document.getElementById("mapDiceRerollBtn")?.addEventListener("click", () => {
-    if (mapDiceTrayRolls.length === 0) return;
-    mapDiceTrayRolls = mapDiceTrayRolls.map(r => ({
-      ...r,
-      value: Math.floor(Math.random() * r.sides) + 1
-    }));
-    renderMapDiceTray();
-  });
-
-  document.getElementById("mapDiceClearBtn")?.addEventListener("click", () => {
-    mapDiceTrayRolls = [];
-    renderMapDiceTray();
-  });
-
   // Initiative Tracker Listeners
   document.getElementById("mapInitNextTurnBtn")?.addEventListener("click", () => {
     if (!activeMapState || !activeMapState.initiative || activeMapState.initiative.length === 0) return;
@@ -14282,60 +14335,6 @@ function updateMapActiveTokensList() {
 
     list.appendChild(row);
   });
-}
-
-function rollMapDie(sides) {
-  const val = Math.floor(Math.random() * sides) + 1;
-  const rollObj = {
-    id: "die_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
-    sides: sides,
-    value: val,
-    color: sides === 20 ? "#ef4444" : sides === 100 ? "#8b5cf6" : "#d4af37"
-  };
-  mapDiceTrayRolls.push(rollObj);
-  renderMapDiceTray();
-}
-
-function renderMapDiceTray() {
-  const arena = document.getElementById("mapDiceVisualList");
-  const totalBar = document.getElementById("mapDiceTotalBar");
-  const breakdown = document.getElementById("mapDiceBreakdownText");
-  const totalVal = document.getElementById("mapDiceTotalValue");
-  if (!arena) return;
-
-  arena.innerHTML = "";
-
-  if (mapDiceTrayRolls.length === 0) {
-    arena.innerHTML = '<span class="map-dice-empty-hint">Click any die above to roll</span>';
-    if (totalBar) totalBar.style.display = "none";
-    return;
-  }
-
-  let sum = 0;
-  const counts = {};
-
-  mapDiceTrayRolls.forEach(die => {
-    sum += die.value;
-    counts[die.sides] = (counts[die.sides] || 0) + 1;
-
-    const el = document.createElement("div");
-    el.className = "map-tray-die-pill";
-    el.style.borderColor = die.color;
-    el.innerHTML = `
-      <span class="map-tray-die-sides">d${die.sides}</span>
-      <strong class="map-tray-die-val">${die.value}</strong>
-    `;
-    arena.appendChild(el);
-  });
-
-  if (totalBar) {
-    totalBar.style.display = "flex";
-    if (totalVal) totalVal.textContent = sum;
-    if (breakdown) {
-      const parts = Object.entries(counts).map(([s, cnt]) => `${cnt}d${s}`);
-      breakdown.textContent = parts.join(" + ");
-    }
-  }
 }
 
 function renderMapInitiativeList() {

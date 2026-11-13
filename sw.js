@@ -2,7 +2,7 @@
    ADVENTURER CODEX — 5E SHEET SERVICE WORKER (OFFLINE PWA ENGINE)
    ========================================================================== */
 
-const CACHE_NAME = "adventurer-codex-5e-v94";
+const CACHE_NAME = "adventurer-codex-5e-v95";
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -60,7 +60,7 @@ self.addEventListener("fetch", (event) => {
           return networkRes;
         })
         .catch(() => {
-          return caches.match(req).then((cachedRes) => {
+          return caches.match(req, { ignoreSearch: true }).then((cachedRes) => {
             if (cachedRes) return cachedRes;
             if (req.mode === "navigate") {
               return caches.match("./index.html");
