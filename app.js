@@ -7699,7 +7699,7 @@ function toggleFloatingPartyChat(forceOpen = null) {
   const panel = document.getElementById("floatingPartyChat");
   if (!panel) return;
 
-  if (forceOpen === false) {
+  if (forceOpen === false || (forceOpen === null && panel.style.display !== "none")) {
     panel.style.display = "none";
     isFloatingChatOpen = false;
     const bottomChatBtn = document.getElementById("bottomLeftPartyChatBtn");
@@ -7720,7 +7720,7 @@ function toggleFloatingPartyChat(forceOpen = null) {
     return;
   }
 
-  isFloatingChatOpen = forceOpen !== null ? forceOpen : (panel.style.display === "none");
+  isFloatingChatOpen = true;
 
   if (isFloatingChatOpen) {
     panel.style.display = "flex";
@@ -7886,6 +7886,15 @@ async function getAdminActiveCampaignRoomsList() {
   getCreatedRooms().forEach((r) => roomSet.add(r.trim().toUpperCase()));
   getRecentRooms().forEach((r) => roomSet.add(r.trim().toUpperCase()));
 
+  // 2b. Live presence sessions (in case a room has active members without a parent doc)
+  if (Array.isArray(adminActivePresenceSessions)) {
+    adminActivePresenceSessions.forEach((s) => {
+      if (s && s.activeRoom && s.activeRoom !== "Solo / Offline") {
+        roomSet.add(String(s.activeRoom).trim().toUpperCase());
+      }
+    });
+  }
+
   // 3. Firestore query if admin
   if (db && isAdminSession()) {
     try {
@@ -7898,6 +7907,20 @@ async function getAdminActiveCampaignRoomsList() {
       });
     } catch (err) {
       console.warn("getAdminActiveCampaignRoomsList query error:", err);
+    }
+
+    if (!adminActivePresenceSessions || adminActivePresenceSessions.length === 0) {
+      try {
+        const presSnap = await db.collection("campaigns").doc("CODEX_PRESENCE").collection("members").get();
+        const activeCutoff = Date.now() - (3.5 * 60 * 1000);
+        presSnap.forEach((doc) => {
+          const data = doc.data();
+          if (data && (data.updatedAt || 0) >= activeCutoff && data.charBackground) {
+            const room = String(data.charBackground).replace(/^Party:\s*/, "").trim().toUpperCase();
+            if (room && room !== "SOLO / OFFLINE") roomSet.add(room);
+          }
+        });
+      } catch (err) {}
     }
   }
 
@@ -7956,23 +7979,33 @@ function returnToMyAdminPartyRoom() {
 }
 
 async function openAdminChatWithoutRoom() {
-  showStatus("Opening Party Chat in Admin Mode...");
-  isJoinedViaAdminPanel = true;
-  const rooms = await getAdminActiveCampaignRoomsList();
+  const panel = document.getElementById("floatingPartyChat");
+  if (!panel) return;
 
-  if (rooms.length > 0) {
-    const targetRoom = rooms[0];
-    switchAdminChatRoom(targetRoom);
-    toggleFloatingPartyChat(true);
-  } else {
-    const custom = prompt("Admin Party Chat Monitor: Enter a Campaign Room Code to inspect:");
-    if (custom && custom.trim()) {
-      const cleanCustom = custom.trim().toUpperCase();
-      switchAdminChatRoom(cleanCustom);
-      toggleFloatingPartyChat(true);
-    } else {
-      showStatus("No campaign room selected.");
-    }
+  isJoinedViaAdminPanel = true;
+  isFloatingChatOpen = true;
+  panel.style.display = "flex";
+  clampFloatingChatToBounds();
+
+  const bottomChatBtn = document.getElementById("bottomLeftPartyChatBtn");
+  if (bottomChatBtn) bottomChatBtn.classList.add("active");
+
+  const adminBar = document.getElementById("adminChatCampaignBar");
+  if (adminBar) adminBar.style.display = "flex";
+
+  unreadChatCount = 0;
+  unreadPerChannel[activePartyChannelId] = 0;
+  updateChatUnreadBadges();
+
+  const rooms = await getAdminActiveCampaignRoomsList();
+  await updateAdminChatBarUI();
+  updateChatInputPlaceholder();
+
+  const floatContainer = document.getElementById("floatingChatMessages");
+  if (floatContainer) {
+    floatContainer.innerHTML = rooms.length > 0
+      ? `<div class="chat-empty-state">Select an active campaign chat from the dropdown above to view messages.</div>`
+      : `<div class="chat-empty-state">No active campaign chats found right now. Click Refresh above or select <strong>Custom Room Code...</strong> to open a room.</div>`;
   }
 }
 
@@ -8001,6 +8034,10 @@ async function updateAdminChatBarUI() {
   let optionsHtml = "";
   if (myRoom) {
     optionsHtml += `<option value="${escapeHtml(myRoom)}">My Room (${escapeHtml(myRoom)})</option>`;
+  } else if (!currentRoom) {
+    optionsHtml += rooms.length > 0
+      ? `<option value="" selected>Select an active chat...</option>`
+      : `<option value="" selected>No active chats</option>`;
   }
 
   rooms.forEach((r) => {
