@@ -5832,7 +5832,7 @@ function exportCharacterJson() {
       name: "New Ability",
       type: "Class Feature",
       desc: "",
-      isExpanded: true
+      isExpanded: false
     });
     saveSheet(false);
     renderMyTraits();
