@@ -10207,6 +10207,101 @@ body.owlbear-theater-active .map-vtt-shell {
 .rich-text-editor i {
   font-style: italic;
 }
+.rich-text-editor u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rich-text-editor s {
+  text-decoration: line-through;
+  opacity: 0.78;
+}
+.rich-text-editor ul,
+.rich-text-editor ol {
+  margin: 0.35rem 0 0.35rem 1.25rem;
+  padding-left: 0.45rem;
+}
+.rich-text-editor ul {
+  list-style-type: disc;
+}
+.rich-text-editor ol {
+  list-style-type: decimal;
+}
+.rich-text-editor li {
+  margin: 0.15rem 0;
+}
+.rich-text-editor .rt-text-lg {
+  font-size: 1.2em;
+  line-height: 1.45;
+}
+.rich-text-editor .rt-highlight {
+  background: var(--glow-1);
+  color: var(--accent-gold);
+  border-bottom: 1.5px solid var(--accent-gold);
+  padding: 0 3px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+body.theme-parchment .rich-text-editor .rt-highlight {
+  background: rgba(139, 37, 0, 0.12);
+  color: var(--primary-red);
+  border-bottom-color: var(--primary-red);
+}
+
+/* Global Floating Rich-Text Selection Toolbar */
+.rich-text-floating-toolbar {
+  position: fixed;
+  z-index: 10500;
+  display: none;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--border-subtle);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  user-select: none;
+}
+body.theme-parchment .rich-text-floating-toolbar {
+  box-shadow: 0 10px 26px rgba(60, 36, 12, 0.22), 0 0 0 1px var(--border-medium);
+}
+.rt-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.rt-tool-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+  border-color: var(--border-subtle);
+}
+.rt-tool-btn.active {
+  background: var(--glow-1);
+  color: var(--accent-gold);
+  border-color: var(--border-active);
+}
+body.theme-parchment .rt-tool-btn.active {
+  background: rgba(139, 37, 0, 0.14);
+  color: var(--primary-red);
+  border-color: var(--primary-red);
+}
+.rt-toolbar-sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--border-subtle);
+  flex-shrink: 0;
+}
 .rich-text-editor[data-rows="4"] { min-height: 6.5rem; }
 .rich-text-editor[data-rows="10"] { min-height: 14rem; }
 .rich-text-editor[data-rows="12"] { min-height: 16.5rem; }

@@ -406,6 +406,8 @@ function escapeHtml(str) {
 }
 
 const LARGE_TEXT_STORAGE_KEY = "codex_large_note_text_v1";
+const ALLOWED_RT_SPAN_CLASSES = new Set(["rt-highlight", "rt-text-lg"]);
+const UNSAFE_RT_DROP_TAGS = new Set(["script", "style", "iframe", "object", "embed", "svg", "noscript"]);
 
 function sanitizeRichTextHtml(raw) {
   if (raw === null || raw === undefined) return "";
@@ -418,17 +420,25 @@ function sanitizeRichTextHtml(raw) {
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return "";
     const tag = node.tagName.toLowerCase();
+    if (UNSAFE_RT_DROP_TAGS.has(tag)) return "";
     const inner = Array.from(node.childNodes).map(cleanNode).join("");
     if (tag === "br") return "<br>";
     if (tag === "b" || tag === "strong") return inner ? `<strong>${inner}</strong>` : "";
     if (tag === "i" || tag === "em") return inner ? `<em>${inner}</em>` : "";
+    if (tag === "u") return inner ? `<u>${inner}</u>` : "";
+    if (tag === "s" || tag === "strike" || tag === "del") return inner ? `<s>${inner}</s>` : "";
+    if (tag === "ul" || tag === "ol" || tag === "li") return inner ? `<${tag}>${inner}</${tag}>` : "";
+    if (tag === "span") {
+      const safeClasses = Array.from(node.classList || []).filter((c) => ALLOWED_RT_SPAN_CLASSES.has(c));
+      if (!inner) return "";
+      return safeClasses.length > 0 ? `<span class="${safeClasses.join(" ")}">${inner}</span>` : inner;
+    }
     if (tag === "p" || tag === "div") return inner ? `<div>${inner}</div>` : "<br>";
     return inner;
   };
 
   let cleaned = Array.from(tpl.content.childNodes).map(cleanNode).join("");
   cleaned = cleaned.replace(/^(<br>)+|(<br>)+$/g, (m) => (m === "<br>" ? "" : m));
-  // Collapse empty editor artifacts like "<br>" alone
   if (cleaned === "<br>" || cleaned === "<div><br></div>") return "";
   return cleaned;
 }
@@ -437,7 +447,7 @@ function formatRichTextForDisplay(raw) {
   if (raw === null || raw === undefined) return "";
   const str = String(raw);
   if (!str) return "";
-  if (/<\/?(strong|b|em|i|br|p|div)\b/i.test(str)) {
+  if (/<\/?(strong|b|em|i|u|s|strike|del|ul|ol|li|span|br|p|div)\b/i.test(str)) {
     return sanitizeRichTextHtml(str);
   }
   return escapeHtml(str).replace(/\r?\n/g, "<br>");
@@ -449,6 +459,14 @@ function getFieldInputValue(el) {
     return sanitizeRichTextHtml(el.innerHTML);
   }
   return el.value;
+}
+
+function getPlainTextFieldValue(el) {
+  if (!el) return "";
+  if (el.dataset && el.dataset.richEditor === "true") {
+    return (el.textContent || "").trim();
+  }
+  return (el.value || "").trim();
 }
 
 function setFieldInputValue(el, val) {
@@ -473,7 +491,206 @@ function applyLargeTextPreference(isLarge) {
   } catch (e) {}
 }
 
+let activeRichTextEditor = null;
+let richToolbarRafId = null;
+let richTextControlsInitialized = false;
+
+function hideRichTextToolbar() {
+  if (richToolbarRafId) {
+    cancelAnimationFrame(richToolbarRafId);
+    richToolbarRafId = null;
+  }
+  const toolbar = document.getElementById("richTextFloatingToolbar");
+  if (toolbar) toolbar.style.display = "none";
+  activeRichTextEditor = null;
+}
+
+function getEligibleRichEditorForSelection(sel) {
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+  const selectedText = sel.toString();
+  if (!selectedText || !selectedText.trim()) return null;
+
+  const range = sel.getRangeAt(0);
+  const startEl = range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentElement;
+  const endEl = range.endContainer.nodeType === Node.ELEMENT_NODE ? range.endContainer : range.endContainer.parentElement;
+  if (!startEl || !endEl) return null;
+
+  const startEditor = startEl.closest('[data-rich-editor="true"]');
+  const endEditor = endEl.closest('[data-rich-editor="true"]');
+  if (!startEditor || startEditor !== endEditor || !startEditor.isContentEditable) return null;
+  if (startEditor.getClientRects().length === 0) return null;
+  return startEditor;
+}
+
+function selectionHasSpanClass(editor, className) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  const anchorEl = sel.anchorNode?.nodeType === Node.ELEMENT_NODE ? sel.anchorNode : sel.anchorNode?.parentElement;
+  if (anchorEl) {
+    const match = anchorEl.closest(`span.${className}`);
+    if (match && editor.contains(match)) return true;
+  }
+  const spans = editor.querySelectorAll(`span.${className}`);
+  for (const sp of spans) {
+    if (typeof range.intersectsNode === "function" && range.intersectsNode(sp)) return true;
+  }
+  return false;
+}
+
+function unwrapElementPreservingChildren(el) {
+  const parent = el.parentNode;
+  if (!parent) return;
+  while (el.firstChild) {
+    parent.insertBefore(el.firstChild, el);
+  }
+  parent.removeChild(el);
+}
+
+function toggleSelectionSpanClass(editor, className) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+  const range = sel.getRangeAt(0);
+
+  const anchorEl = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+    ? range.commonAncestorContainer
+    : range.commonAncestorContainer.parentElement;
+  const existingWrap = anchorEl?.closest(`span.${className}`);
+  if (existingWrap && editor.contains(existingWrap)) {
+    const firstNode = existingWrap.firstChild;
+    const lastNode = existingWrap.lastChild;
+    unwrapElementPreservingChildren(existingWrap);
+    if (firstNode && lastNode) {
+      const nextRange = document.createRange();
+      nextRange.setStartBefore(firstNode);
+      nextRange.setEndAfter(lastNode);
+      sel.removeAllRanges();
+      sel.addRange(nextRange);
+    }
+    return;
+  }
+
+  const fragment = range.extractContents();
+  fragment.querySelectorAll(`span.${className}`).forEach(unwrapElementPreservingChildren);
+  const wrapper = document.createElement("span");
+  wrapper.className = className;
+  wrapper.appendChild(fragment);
+  range.insertNode(wrapper);
+
+  const nextRange = document.createRange();
+  nextRange.selectNodeContents(wrapper);
+  sel.removeAllRanges();
+  sel.addRange(nextRange);
+}
+
+function clearRichTextSelectionFormatting(editor) {
+  document.execCommand("removeFormat", false, null);
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0);
+    editor.querySelectorAll("span.rt-highlight, span.rt-text-lg").forEach((sp) => {
+      if (typeof range.intersectsNode === "function" && range.intersectsNode(sp)) {
+        unwrapElementPreservingChildren(sp);
+      }
+    });
+  }
+}
+
+function updateRichTextToolbarActiveStates(toolbar, editor) {
+  if (!toolbar || !editor) return;
+  const queryStateSafe = (cmd) => {
+    try { return Boolean(document.queryCommandState(cmd)); } catch (e) { return false; }
+  };
+  const states = {
+    bold: queryStateSafe("bold"),
+    italic: queryStateSafe("italic"),
+    underline: queryStateSafe("underline"),
+    strikeThrough: queryStateSafe("strikeThrough"),
+    insertUnorderedList: queryStateSafe("insertUnorderedList"),
+    highlight: selectionHasSpanClass(editor, "rt-highlight"),
+    toggleSize: selectionHasSpanClass(editor, "rt-text-lg")
+  };
+  toolbar.querySelectorAll(".rt-tool-btn[data-rt-cmd]").forEach((btn) => {
+    const cmd = btn.dataset.rtCmd;
+    btn.classList.toggle("active", Boolean(states[cmd]));
+  });
+}
+
+function positionAndShowRichTextToolbar() {
+  const toolbar = document.getElementById("richTextFloatingToolbar");
+  if (!toolbar) return;
+
+  const sel = window.getSelection();
+  const editor = getEligibleRichEditorForSelection(sel);
+  if (!editor) {
+    hideRichTextToolbar();
+    return;
+  }
+
+  const range = sel.getRangeAt(0);
+  let rect = range.getBoundingClientRect();
+  if ((!rect || (rect.width === 0 && rect.height === 0)) && typeof range.getClientRects === "function") {
+    rect = range.getClientRects()[0];
+  }
+  if (!rect || (rect.width === 0 && rect.height === 0)) {
+    hideRichTextToolbar();
+    return;
+  }
+
+  toolbar.style.visibility = "hidden";
+  toolbar.style.display = "flex";
+  const tw = toolbar.offsetWidth || 280;
+  const th = toolbar.offsetHeight || 38;
+
+  const margin = 8;
+  const centerX = rect.left + rect.width / 2;
+  const left = Math.max(margin, Math.min(window.innerWidth - tw - margin, centerX - tw / 2));
+
+  let top = rect.bottom + 8;
+  const flipped = top + th > window.innerHeight - margin;
+  if (flipped) {
+    top = Math.max(margin, rect.top - th - 8);
+  }
+
+  toolbar.style.left = `${Math.round(left)}px`;
+  toolbar.style.top = `${Math.round(top)}px`;
+  toolbar.classList.toggle("flipped-above", flipped);
+  toolbar.style.visibility = "visible";
+
+  activeRichTextEditor = editor;
+  updateRichTextToolbarActiveStates(toolbar, editor);
+}
+
+function scheduleRichTextToolbarUpdate() {
+  if (richToolbarRafId) cancelAnimationFrame(richToolbarRafId);
+  richToolbarRafId = requestAnimationFrame(() => {
+    richToolbarRafId = null;
+    positionAndShowRichTextToolbar();
+  });
+}
+
+function executeRichTextCommand(cmd, editor) {
+  if (!editor || !cmd) return;
+  editor.focus({ preventScroll: true });
+
+  if (cmd === "toggleSize") {
+    toggleSelectionSpanClass(editor, "rt-text-lg");
+  } else if (cmd === "highlight") {
+    toggleSelectionSpanClass(editor, "rt-highlight");
+  } else if (cmd === "removeFormat") {
+    clearRichTextSelectionFormatting(editor);
+  } else {
+    document.execCommand(cmd, false, null);
+  }
+
+  editor.dispatchEvent(new Event("input", { bubbles: true }));
+  scheduleRichTextToolbarUpdate();
+}
+
 (function initRichTextAndSizeControls() {
+  if (richTextControlsInitialized) return;
+  richTextControlsInitialized = true;
+
   try {
     applyLargeTextPreference(localStorage.getItem(LARGE_TEXT_STORAGE_KEY) === "true");
   } catch (e) {}
@@ -483,18 +700,47 @@ function applyLargeTextPreference(isLarge) {
     if (toggleBtn) {
       const next = !document.body.classList.contains("large-note-text");
       applyLargeTextPreference(next);
+      return;
+    }
+
+    const toolBtn = e.target.closest?.("#richTextFloatingToolbar .rt-tool-btn");
+    if (toolBtn) {
+      const editor = activeRichTextEditor || getEligibleRichEditorForSelection(window.getSelection());
+      if (editor) executeRichTextCommand(toolBtn.dataset.rtCmd, editor);
     }
   });
+
+  document.addEventListener("mousedown", (e) => {
+    if (e.target.closest?.("#richTextFloatingToolbar")) {
+      e.preventDefault();
+      return;
+    }
+    if (!e.target.closest?.('[data-rich-editor="true"]')) {
+      hideRichTextToolbar();
+    }
+  });
+
+  document.addEventListener("selectionchange", scheduleRichTextToolbarUpdate);
+  document.addEventListener("mouseup", scheduleRichTextToolbarUpdate);
+  document.addEventListener("keyup", scheduleRichTextToolbarUpdate);
+  window.addEventListener("resize", () => {
+    if (activeRichTextEditor) scheduleRichTextToolbarUpdate();
+  });
+  document.addEventListener("scroll", () => {
+    if (activeRichTextEditor) scheduleRichTextToolbarUpdate();
+  }, { capture: true, passive: true });
 
   document.addEventListener("keydown", (e) => {
     const editor = e.target.closest?.('[data-rich-editor="true"]');
     if (!editor) return;
     if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
     const key = e.key.toLowerCase();
-    if (key === "b" || key === "i") {
+    if (key === "b" || key === "i" || key === "u") {
       e.preventDefault();
-      document.execCommand(key === "b" ? "bold" : "italic", false, null);
+      const cmdMap = { b: "bold", i: "italic", u: "underline" };
+      document.execCommand(cmdMap[key], false, null);
       editor.dispatchEvent(new Event("input", { bubbles: true }));
+      scheduleRichTextToolbarUpdate();
     }
   });
 
@@ -2237,6 +2483,7 @@ function resetTransientCombatUI() {
   lastRollAttr = null;
   if (typeof closeConcentrationCheckPrompt === "function") closeConcentrationCheckPrompt();
   if (typeof closeConditionExplainer === "function") closeConditionExplainer();
+  if (typeof hideRichTextToolbar === "function") hideRichTextToolbar();
 }
 
 function applyCharacterData(charData) {
@@ -3248,11 +3495,11 @@ function buildQuickSearchIndex(query = "") {
   });
 
   // 12. NOTES, QUESTS, PERSONALITY & HANDOUTS
-  const trRole = document.getElementById("traits")?.value || "";
-  const idRole = document.getElementById("ideals")?.value || "";
-  const bnRole = document.getElementById("bonds")?.value || "";
-  const flRole = document.getElementById("flaws")?.value || "";
-  const bkRole = document.getElementById("backstory")?.value || "";
+  const trRole = getPlainTextFieldValue(document.getElementById("traits"));
+  const idRole = getPlainTextFieldValue(document.getElementById("ideals"));
+  const bnRole = getPlainTextFieldValue(document.getElementById("bonds"));
+  const flRole = getPlainTextFieldValue(document.getElementById("flaws"));
+  const bkRole = getPlainTextFieldValue(document.getElementById("backstory"));
 
   items.push(
     { title: "Personality Traits", sub: trRole ? trRole.slice(0, 60) + "..." : "Roleplay mannerisms & quirks", tag: "Roleplay", tab: "tab-journal", subtab: "sub-personality", selector: "#traits", keywords: `personality traits mannerisms roleplay habits ${trRole}` },
