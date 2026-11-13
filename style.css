@@ -2173,6 +2173,7 @@ input[type="number"].init-misc-input:focus,
   pointer-events: auto;
 }
 [data-blur-id].blurred input,
+[data-blur-id].blurred .rich-text-single,
 [data-blur-id].blurred .orb-val {
   filter: blur(6px);
   opacity: 0.25;

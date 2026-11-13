@@ -6226,6 +6226,9 @@ function exportCharacterJson() {
       if (wrapper.classList.contains("blurred")) {
         if (!myBlurredPills.includes(blurId)) myBlurredPills.push(blurId);
         wrapper.querySelectorAll(".dropdown-menu").forEach((d) => d.classList.remove("open"));
+        const activeTarget = wrapper.querySelector('[data-rich-editor="true"]:focus, input:focus');
+        if (activeTarget) activeTarget.blur();
+        if (typeof hideRichTextToolbar === "function") hideRichTextToolbar();
       } else {
         myBlurredPills = myBlurredPills.filter((id) => id !== blurId);
       }
