@@ -584,16 +584,19 @@ function toggleSelectionSpanClass(editor, className) {
 }
 
 function clearRichTextSelectionFormatting(editor) {
-  document.execCommand("removeFormat", false, null);
   const sel = window.getSelection();
   if (sel && sel.rangeCount > 0) {
     const range = sel.getRangeAt(0);
-    editor.querySelectorAll("span.rt-highlight, span.rt-text-lg").forEach((sp) => {
-      if (typeof range.intersectsNode === "function" && range.intersectsNode(sp)) {
-        unwrapElementPreservingChildren(sp);
-      }
+    const commonEl = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+      ? range.commonAncestorContainer
+      : range.commonAncestorContainer.parentElement;
+    const toUnwrap = Array.from(editor.querySelectorAll("span.rt-highlight, span.rt-text-lg")).filter((sp) => {
+      if (commonEl && sp.contains(commonEl)) return true;
+      return typeof range.intersectsNode === "function" && range.intersectsNode(sp);
     });
+    toUnwrap.forEach(unwrapElementPreservingChildren);
   }
+  document.execCommand("removeFormat", false, null);
 }
 
 function updateRichTextToolbarActiveStates(toolbar, editor) {
