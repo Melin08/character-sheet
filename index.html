@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=MedievalSharp&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=97" />
+  <link rel="stylesheet" href="style.css?v=98" />
 </head>
 <body id="top" class="theme-nexus">
 
@@ -445,13 +445,13 @@
         <!-- Character Name & Sleek Tag Strip -->
         <div class="hero-identity-cluster">
           <div class="hero-name-row">
-            <input type="text" id="charName" class="save-field hero-name-input" placeholder="Untitled Adventurer" />
+            <span id="charName" class="save-field hero-name-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Untitled Adventurer"></span>
           </div>
 
           <div class="hero-badges-strip">
             <div class="codex-field-pill dropdown-pill-wrapper" data-blur-id="class">
               <span class="pill-title">Class</span>
-              <input type="text" id="charClass" class="save-field pill-input" autocomplete="off" placeholder="Class..." />
+              <span id="charClass" class="save-field pill-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Class..."></span>
               <div id="classDropdown" class="dropdown-menu"></div>
               <button type="button" class="blur-toggle-btn" title="Toggle privacy blur">
                 <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -460,7 +460,7 @@
 
             <div class="codex-field-pill" data-blur-id="subclass">
               <span class="pill-title">Subclass</span>
-              <input type="text" id="charSubclass" class="save-field pill-input" placeholder="Archetype..." />
+              <span id="charSubclass" class="save-field pill-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Archetype..."></span>
               <button type="button" class="blur-toggle-btn" title="Toggle privacy blur">
                 <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               </button>
@@ -468,7 +468,7 @@
 
             <div class="codex-field-pill dropdown-pill-wrapper" data-blur-id="race">
               <span class="pill-title">Race</span>
-              <input type="text" id="charRace" class="save-field pill-input" autocomplete="off" placeholder="Race..." />
+              <span id="charRace" class="save-field pill-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Race..."></span>
               <div id="raceDropdown" class="dropdown-menu"></div>
               <button type="button" class="blur-toggle-btn" title="Toggle privacy blur">
                 <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -477,7 +477,7 @@
 
             <div class="codex-field-pill" data-blur-id="background">
               <span class="pill-title">Background</span>
-              <input type="text" id="charBackground" class="save-field pill-input" placeholder="Background..." />
+              <span id="charBackground" class="save-field pill-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Background..."></span>
               <button type="button" class="blur-toggle-btn" title="Toggle privacy blur">
                 <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               </button>
@@ -485,7 +485,7 @@
 
             <div class="codex-field-pill" data-blur-id="alignment">
               <span class="pill-title">Alignment</span>
-              <input type="text" id="charAlignment" class="save-field pill-input" placeholder="Alignment..." />
+              <span id="charAlignment" class="save-field pill-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Alignment..."></span>
               <button type="button" class="blur-toggle-btn" title="Toggle privacy blur">
                 <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               </button>
@@ -564,7 +564,7 @@
             </span>
           </label>
           <span class="insp-title">Inspiration</span>
-          <input type="text" id="charInspiration" class="save-field insp-input" placeholder="None / d6" />
+          <span id="charInspiration" class="save-field insp-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="None / d6"></span>
           <button type="button" class="blur-toggle-btn" title="Toggle blur">
             <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
@@ -633,7 +633,7 @@
           <div class="vitals-card ac-card">
             <div class="vitals-card-top">
               <span class="card-tag">Armor Class</span>
-              <input type="text" id="armorWornNote" class="save-field vitals-mini-note" placeholder="Gear / Shield..." />
+              <span id="armorWornNote" class="save-field vitals-mini-note rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Gear / Shield..."></span>
             </div>
             <div class="card-main">
               <div class="ac-shield-box">
@@ -705,7 +705,7 @@
           <div class="vitals-card resource-card">
             <div class="vitals-card-top">
               <span class="card-tag">Class Pool</span>
-              <input type="text" id="classResourceName" class="save-field vitals-mini-note" placeholder="Ki / Rage / Sorcery..." />
+              <span id="classResourceName" class="save-field vitals-mini-note rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Ki / Rage / Sorcery..."></span>
             </div>
             <div class="card-main">
               <div class="resource-counter-box">
@@ -925,11 +925,11 @@
               <div class="defenses-summary-card">
                 <div class="defense-field-row">
                   <label for="charSenses">Senses &amp; Vision</label>
-                  <input type="text" id="charSenses" class="save-field" placeholder="Darkvision 60 ft., Blindsight..." />
+                  <span id="charSenses" class="save-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Darkvision 60 ft., Blindsight..."></span>
                 </div>
                 <div class="defense-field-row">
                   <label for="charResistances">Resistances &amp; Immunities</label>
-                  <input type="text" id="charResistances" class="save-field" placeholder="Fire, Poison, Charmed..." />
+                  <span id="charResistances" class="save-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Fire, Poison, Charmed..."></span>
                 </div>
               </div>
             </div>
@@ -1317,7 +1317,7 @@
         <div class="spell-basics">
           <div class="spell-stat-card">
             <span class="spell-stat-label">Spellcasting Ability</span>
-            <input type="text" id="spellAbility" class="save-field spell-stat-input center" placeholder="INT / WIS / CHA" />
+            <span id="spellAbility" class="save-field spell-stat-input center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="INT / WIS / CHA"></span>
             <button type="button" id="autoCalcSpellStatsBtn" class="mini-calc-link">Auto-Sync</button>
           </div>
           <div class="spell-stat-card">
@@ -1347,7 +1347,7 @@
           </div>
           <div class="spell-stat-card concentration-card">
             <span class="spell-stat-label">Active Concentration</span>
-            <input type="text" id="spellConcentration" class="save-field spell-stat-input concentration-input center" placeholder="No spell held..." />
+            <span id="spellConcentration" class="save-field spell-stat-input concentration-input center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="No spell held..."></span>
           </div>
         </div>
 
@@ -1404,15 +1404,15 @@
             <div class="attunement-slots-row">
               <div class="attune-slot">
                 <input type="checkbox" id="attune_cb_1" class="save-field attune-cb" />
-                <input type="text" id="attune_item_1" class="save-field attune-input" placeholder="Attuned Item 1..." />
+                <span id="attune_item_1" class="save-field attune-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Attuned Item 1..."></span>
               </div>
               <div class="attune-slot">
                 <input type="checkbox" id="attune_cb_2" class="save-field attune-cb" />
-                <input type="text" id="attune_item_2" class="save-field attune-input" placeholder="Attuned Item 2..." />
+                <span id="attune_item_2" class="save-field attune-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Attuned Item 2..."></span>
               </div>
               <div class="attune-slot">
                 <input type="checkbox" id="attune_cb_3" class="save-field attune-cb" />
-                <input type="text" id="attune_item_3" class="save-field attune-input" placeholder="Attuned Item 3..." />
+                <span id="attune_item_3" class="save-field attune-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-placeholder="Attuned Item 3..."></span>
               </div>
             </div>
           </div>
@@ -3476,6 +3476,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=97"></script>
+  <script src="app.js?v=98"></script>
 </body>
 </html>

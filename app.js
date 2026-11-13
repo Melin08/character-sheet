@@ -409,46 +409,75 @@ const LARGE_TEXT_STORAGE_KEY = "codex_large_note_text_v1";
 const ALLOWED_RT_SPAN_CLASSES = new Set(["rt-highlight", "rt-text-lg"]);
 const UNSAFE_RT_DROP_TAGS = new Set(["script", "style", "iframe", "object", "embed", "svg", "noscript"]);
 
-function sanitizeRichTextHtml(raw) {
+const RICH_TAG_RE = /<\/?(strong|b|em|i|u|s|strike|del|ul|ol|li|span|br|p|div)\b/i;
+
+function sanitizeRichTextHtml(raw, singleLine = false) {
   if (raw === null || raw === undefined) return "";
   const tpl = document.createElement("template");
   tpl.innerHTML = String(raw);
 
   const cleanNode = (node) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      return escapeHtml(node.textContent || "");
+      const text = singleLine ? (node.textContent || "").replace(/\r?\n/g, " ") : (node.textContent || "");
+      return escapeHtml(text);
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return "";
     const tag = node.tagName.toLowerCase();
     if (UNSAFE_RT_DROP_TAGS.has(tag)) return "";
     const inner = Array.from(node.childNodes).map(cleanNode).join("");
-    if (tag === "br") return "<br>";
+    if (tag === "br") return singleLine ? " " : "<br>";
     if (tag === "b" || tag === "strong") return inner ? `<strong>${inner}</strong>` : "";
     if (tag === "i" || tag === "em") return inner ? `<em>${inner}</em>` : "";
     if (tag === "u") return inner ? `<u>${inner}</u>` : "";
     if (tag === "s" || tag === "strike" || tag === "del") return inner ? `<s>${inner}</s>` : "";
-    if (tag === "ul" || tag === "ol" || tag === "li") return inner ? `<${tag}>${inner}</${tag}>` : "";
+    if (tag === "ul" || tag === "ol" || tag === "li") {
+      if (singleLine) return inner ? `${tag === "li" ? " " : ""}${inner}` : "";
+      return inner ? `<${tag}>${inner}</${tag}>` : "";
+    }
     if (tag === "span") {
       const safeClasses = Array.from(node.classList || []).filter((c) => ALLOWED_RT_SPAN_CLASSES.has(c));
       if (!inner) return "";
       return safeClasses.length > 0 ? `<span class="${safeClasses.join(" ")}">${inner}</span>` : inner;
     }
-    if (tag === "p" || tag === "div") return inner ? `<div>${inner}</div>` : "<br>";
+    if (tag === "p" || tag === "div") {
+      if (singleLine) return inner ? ` ${inner}` : "";
+      return inner ? `<div>${inner}</div>` : "<br>";
+    }
     return inner;
   };
 
   let cleaned = Array.from(tpl.content.childNodes).map(cleanNode).join("");
+  if (singleLine) {
+    cleaned = cleaned.replace(/(<br>|<div>|<\/div>)/gi, " ").replace(/^\s+|\s+$/g, "");
+    return cleaned;
+  }
   cleaned = cleaned.replace(/^(<br>)+|(<br>)+$/g, (m) => (m === "<br>" ? "" : m));
   if (cleaned === "<br>" || cleaned === "<div><br></div>") return "";
   return cleaned;
 }
 
-function formatRichTextForDisplay(raw) {
+function stripRichHtmlToPlainText(raw) {
   if (raw === null || raw === undefined) return "";
   const str = String(raw);
   if (!str) return "";
-  if (/<\/?(strong|b|em|i|u|s|strike|del|ul|ol|li|span|br|p|div)\b/i.test(str)) {
-    return sanitizeRichTextHtml(str);
+  if (!RICH_TAG_RE.test(str)) {
+    return str.replace(/\r?\n/g, " ").trim();
+  }
+  const safeHtml = sanitizeRichTextHtml(str, false).replace(/<br\s*\/?>/gi, " ").replace(/<\/(div|p|li)>/gi, " ");
+  const tpl = document.createElement("template");
+  tpl.innerHTML = safeHtml;
+  return (tpl.content.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+function formatRichTextForDisplay(raw, singleLine = false) {
+  if (raw === null || raw === undefined) return "";
+  const str = String(raw);
+  if (!str) return "";
+  if (RICH_TAG_RE.test(str)) {
+    return sanitizeRichTextHtml(str, singleLine);
+  }
+  if (singleLine) {
+    return escapeHtml(str.replace(/\r?\n/g, " "));
   }
   return escapeHtml(str).replace(/\r?\n/g, "<br>");
 }
@@ -456,7 +485,7 @@ function formatRichTextForDisplay(raw) {
 function getFieldInputValue(el) {
   if (!el) return "";
   if (el.dataset && el.dataset.richEditor === "true") {
-    return sanitizeRichTextHtml(el.innerHTML);
+    return sanitizeRichTextHtml(el.innerHTML, el.dataset.singleLine === "true");
   }
   return el.value;
 }
@@ -464,7 +493,7 @@ function getFieldInputValue(el) {
 function getPlainTextFieldValue(el) {
   if (!el) return "";
   if (el.dataset && el.dataset.richEditor === "true") {
-    return (el.textContent || "").trim();
+    return (el.textContent || "").replace(/\s+/g, " ").trim();
   }
   return (el.value || "").trim();
 }
@@ -472,7 +501,7 @@ function getPlainTextFieldValue(el) {
 function setFieldInputValue(el, val) {
   if (!el) return;
   if (el.dataset && el.dataset.richEditor === "true") {
-    el.innerHTML = formatRichTextForDisplay(val);
+    el.innerHTML = formatRichTextForDisplay(val, el.dataset.singleLine === "true");
   } else {
     el.value = val ?? "";
   }
@@ -538,6 +567,58 @@ function selectionHasSpanClass(editor, className) {
   return false;
 }
 
+function selectionHasInlineTag(editor, tagNames) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  const selector = tagNames.join(", ");
+  const anchorEl = sel.anchorNode?.nodeType === Node.ELEMENT_NODE ? sel.anchorNode : sel.anchorNode?.parentElement;
+  if (anchorEl) {
+    const match = anchorEl.closest(selector);
+    if (match && editor.contains(match)) return true;
+  }
+  for (const el of editor.querySelectorAll(selector)) {
+    if (typeof range.intersectsNode === "function" && range.intersectsNode(el)) return true;
+  }
+  return false;
+}
+
+function toggleSelectionInlineTag(editor, tagNames, primaryTag) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+  const range = sel.getRangeAt(0);
+  const selector = tagNames.join(", ");
+
+  const anchorEl = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+    ? range.commonAncestorContainer
+    : range.commonAncestorContainer.parentElement;
+  const existingWrap = anchorEl?.closest(selector);
+  if (existingWrap && editor.contains(existingWrap)) {
+    const firstNode = existingWrap.firstChild;
+    const lastNode = existingWrap.lastChild;
+    unwrapElementPreservingChildren(existingWrap);
+    if (firstNode && lastNode) {
+      const nextRange = document.createRange();
+      nextRange.setStartBefore(firstNode);
+      nextRange.setEndAfter(lastNode);
+      sel.removeAllRanges();
+      sel.addRange(nextRange);
+    }
+    return;
+  }
+
+  const fragment = range.extractContents();
+  fragment.querySelectorAll(selector).forEach(unwrapElementPreservingChildren);
+  const wrapper = document.createElement(primaryTag);
+  wrapper.appendChild(fragment);
+  range.insertNode(wrapper);
+
+  const nextRange = document.createRange();
+  nextRange.selectNodeContents(wrapper);
+  sel.removeAllRanges();
+  sel.addRange(nextRange);
+}
+
 function unwrapElementPreservingChildren(el) {
   const parent = el.parentNode;
   if (!parent) return;
@@ -599,13 +680,20 @@ function clearRichTextSelectionFormatting(editor) {
   document.execCommand("removeFormat", false, null);
 }
 
+function isBoldBaseEditor(editor) {
+  if (!editor) return false;
+  if (editor.dataset?.singleLine === "true") return true;
+  const fw = parseInt(window.getComputedStyle(editor).fontWeight, 10);
+  return !isNaN(fw) && fw >= 600;
+}
+
 function updateRichTextToolbarActiveStates(toolbar, editor) {
   if (!toolbar || !editor) return;
   const queryStateSafe = (cmd) => {
     try { return Boolean(document.queryCommandState(cmd)); } catch (e) { return false; }
   };
   const states = {
-    bold: queryStateSafe("bold"),
+    bold: isBoldBaseEditor(editor) ? selectionHasInlineTag(editor, ["strong", "b"]) : queryStateSafe("bold"),
     italic: queryStateSafe("italic"),
     underline: queryStateSafe("underline"),
     strikeThrough: queryStateSafe("strikeThrough"),
@@ -640,6 +728,12 @@ function positionAndShowRichTextToolbar() {
     return;
   }
 
+  const isSingleLine = editor.dataset.singleLine === "true";
+  const ulBtn = toolbar.querySelector('.rt-tool-btn[data-rt-cmd="insertUnorderedList"]');
+  if (ulBtn) {
+    ulBtn.style.display = isSingleLine ? "none" : "";
+  }
+
   toolbar.style.visibility = "hidden";
   toolbar.style.display = "flex";
   const tw = toolbar.offsetWidth || 280;
@@ -649,10 +743,17 @@ function positionAndShowRichTextToolbar() {
   const centerX = rect.left + rect.width / 2;
   const left = Math.max(margin, Math.min(window.innerWidth - tw - margin, centerX - tw / 2));
 
+  const openDropdown = editor.closest(".dropdown-pill-wrapper")?.querySelector(".dropdown-menu.open");
   let top = rect.bottom + 8;
-  const flipped = top + th > window.innerHeight - margin;
-  if (flipped) {
+  const wouldOverflowBottom = top + th > window.innerHeight - margin;
+  const preferAbove = Boolean(openDropdown) || wouldOverflowBottom;
+  let flipped = false;
+  if (preferAbove && rect.top - th - 8 >= margin) {
+    top = rect.top - th - 8;
+    flipped = true;
+  } else if (wouldOverflowBottom) {
     top = Math.max(margin, rect.top - th - 8);
+    flipped = true;
   }
 
   toolbar.style.left = `${Math.round(left)}px`;
@@ -682,6 +783,8 @@ function executeRichTextCommand(cmd, editor) {
     toggleSelectionSpanClass(editor, "rt-highlight");
   } else if (cmd === "removeFormat") {
     clearRichTextSelectionFormatting(editor);
+  } else if (cmd === "bold" && isBoldBaseEditor(editor)) {
+    toggleSelectionInlineTag(editor, ["strong", "b"], "strong");
   } else {
     document.execCommand(cmd, false, null);
   }
@@ -736,14 +839,16 @@ function executeRichTextCommand(cmd, editor) {
   document.addEventListener("keydown", (e) => {
     const editor = e.target.closest?.('[data-rich-editor="true"]');
     if (!editor) return;
+    if (editor.dataset.singleLine === "true" && e.key === "Enter") {
+      e.preventDefault();
+      return;
+    }
     if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
     const key = e.key.toLowerCase();
     if (key === "b" || key === "i" || key === "u") {
       e.preventDefault();
       const cmdMap = { b: "bold", i: "italic", u: "underline" };
-      document.execCommand(cmdMap[key], false, null);
-      editor.dispatchEvent(new Event("input", { bubbles: true }));
-      scheduleRichTextToolbarUpdate();
+      executeRichTextCommand(cmdMap[key], editor);
     }
   });
 
@@ -751,8 +856,19 @@ function executeRichTextCommand(cmd, editor) {
     const editor = e.target.closest?.('[data-rich-editor="true"]');
     if (!editor) return;
     e.preventDefault();
-    const text = e.clipboardData?.getData("text/plain") || "";
+    let text = e.clipboardData?.getData("text/plain") || "";
+    if (editor.dataset.singleLine === "true") {
+      text = text.replace(/\r?\n+/g, " ");
+    }
     document.execCommand("insertText", false, text);
+  });
+
+  document.addEventListener("input", (e) => {
+    const editor = e.target.closest?.('[data-rich-editor="true"]');
+    if (!editor) return;
+    if (editor.textContent === "" && editor.innerHTML === "<br>") {
+      editor.innerHTML = "";
+    }
   });
 })();
 
@@ -977,7 +1093,7 @@ function updateConcentrationBanner() {
   const concInput = document.getElementById("spellConcentration");
   const banner = document.getElementById("globalConcentrationBanner");
   const nameEl = document.getElementById("globalConcentrationName");
-  const spellVal = concInput?.value?.trim() || "";
+  const spellVal = getPlainTextFieldValue(concInput);
 
   if (banner && nameEl) {
     if (spellVal) {
@@ -1716,16 +1832,16 @@ function renderWeapons() {
   container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
     <div class="attack-entry weapon-row-card" data-index="${idx}">
       <div class="wpn-cell-with-roll wpn-name-cell">
-        <input type="text" class="save-field wpn-field wpn-name-input" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon..." />
+        <span class="save-field wpn-field wpn-name-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Weapon...">${formatRichTextForDisplay(wpn.name || "")}</span>
         <input type="text" class="save-field wpn-field wpn-atk-input center" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="Atk" title="Attack bonus (for example +5)" />
         <button type="button" class="wpn-roll-btn wpn-roll-atk-btn" data-index="${idx}" title="Roll Weapon Attack">d20</button>
       </div>
       <div class="wpn-cell-with-roll">
-        <input type="text" class="save-field wpn-field wpn-dmg-input center" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8+3" />
+        <span class="save-field wpn-field wpn-dmg-input center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="dmg" data-placeholder="1d8+3">${formatRichTextForDisplay(wpn.dmg || "")}</span>
         <button type="button" class="wpn-roll-btn wpn-roll-dmg-btn" data-index="${idx}" title="Roll Weapon Damage">dmg</button>
       </div>
-      <input type="text" class="save-field wpn-field wpn-type-input center" data-prop="type" value="${escapeHtml(wpn.type || "")}" placeholder="Type..." />
-      <input type="text" class="save-field wpn-field wpn-notes-input" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Properties / Notes..." />
+      <span class="save-field wpn-field wpn-type-input center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="type" data-placeholder="Type...">${formatRichTextForDisplay(wpn.type || "")}</span>
+      <span class="save-field wpn-field wpn-notes-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="notes" data-placeholder="Properties / Notes...">${formatRichTextForDisplay(wpn.notes || "")}</span>
       <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
     </div>
   `).join("");
@@ -1746,7 +1862,7 @@ function renderCustomResources() {
 
   container.innerHTML = myCustomResources.map((res, idx) => `
     <div class="custom-res-card" data-index="${idx}">
-      <input type="text" class="custom-res-name custom-res-field" data-prop="name" value="${escapeHtml(res.name || "")}" placeholder="Resource..." />
+      <span class="custom-res-name custom-res-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Resource...">${formatRichTextForDisplay(res.name || "")}</span>
       <div class="custom-res-controls">
         <input type="number" class="custom-res-input custom-res-field" data-prop="cur" value="${res.cur ?? 0}" />
         <span style="color: var(--text-dim); font-weight: 800;">/</span>
@@ -1772,7 +1888,7 @@ function renderStructuredInventory() {
   container.innerHTML = myStructuredInventory.map((item, idx) => `
     <div class="inv-item-row" data-index="${idx}">
       <input type="checkbox" class="inv-item-field" data-prop="equipped" ${item.equipped ? "checked" : ""} title="Equipped / Carried" />
-      <input type="text" class="inv-item-field" data-prop="name" value="${escapeHtml(item.name || "")}" placeholder="Item name..." />
+      <span class="inv-item-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Item name...">${formatRichTextForDisplay(item.name || "")}</span>
       <input type="number" class="inv-item-field center" data-prop="qty" value="${item.qty ?? 1}" min="0" title="Quantity" placeholder="Qty" />
       <input type="number" class="inv-item-field center" data-prop="weight" value="${item.weight ?? 0}" min="0" step="0.5" title="Weight (lbs per item)" placeholder="lbs" />
       <button type="button" class="weapon-delete-btn inv-item-delete" data-index="${idx}" title="Remove item">&times;</button>
@@ -1796,11 +1912,11 @@ function renderCompanions() {
   container.innerHTML = myCompanions.map((comp, idx) => `
     <div class="companion-card" data-index="${idx}">
       <div class="trait-card-header">
-        <input type="text" class="trait-name-input companion-field" data-prop="name" value="${escapeHtml(comp.name || "")}" placeholder="Creature Name (e.g. Owl Familiar, Dire Wolf)" />
+        <span class="trait-name-input companion-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Creature Name (e.g. Owl Familiar, Dire Wolf)">${formatRichTextForDisplay(comp.name || "")}</span>
         <button type="button" class="trait-card-delete companion-delete-btn" data-index="${idx}" title="Delete creature">&times;</button>
       </div>
       <div class="trait-type-wrap">
-        <input type="text" class="trait-type-input companion-field" data-prop="type" value="${escapeHtml(comp.type || "Beast / Familiar")}" placeholder="Type &amp; CR" />
+        <span class="trait-type-input companion-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="type" data-placeholder="Type &amp; CR">${formatRichTextForDisplay(comp.type || "Beast / Familiar")}</span>
       </div>
       <div class="comp-stats-row">
         <div class="comp-stat-pill">
@@ -1813,7 +1929,7 @@ function renderCompanions() {
         </div>
         <div class="comp-stat-pill">
           <label>Speed</label>
-          <input type="text" class="companion-field" data-prop="speed" value="${escapeHtml(comp.speed || "30 ft.")}" placeholder="30 ft., fly 60 ft." />
+          <span class="companion-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="speed" data-placeholder="30 ft., fly 60 ft.">${formatRichTextForDisplay(comp.speed || "30 ft.")}</span>
         </div>
       </div>
       <div class="trait-desc-input companion-field rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-prop="notes" data-placeholder="STR 10 DEX 14 CON 12... Attacks, Keen Senses, Flyby, Pack Tactics...">${formatRichTextForDisplay(comp.notes || "")}</div>
@@ -1837,9 +1953,9 @@ function renderMyTraits() {
   container.innerHTML = myCharacterTraits.map((trait, idx) => {
     if (!trait) return "";
     const isExpanded = !!trait.isExpanded;
-    const tName = (trait.name || "").toLowerCase();
-    const tType = (trait.type || "FEATURE").toLowerCase();
-    const tDesc = (trait.desc || "").toLowerCase();
+    const tName = stripRichHtmlToPlainText(trait.name).toLowerCase();
+    const tType = stripRichHtmlToPlainText(trait.type || "FEATURE").toLowerCase();
+    const tDesc = stripRichHtmlToPlainText(trait.desc).toLowerCase();
 
     let matchesCat = true;
     if (activeTraitCategoryFilter === "class") matchesCat = tType.includes("class");
@@ -1852,11 +1968,11 @@ function renderMyTraits() {
     return `
       <div class="trait-card ${isExpanded ? "expanded" : ""}" data-index="${idx}" style="${hiddenStyle}">
         <div class="trait-card-header">
-          <input type="text" class="trait-name-input custom-trait-field" data-prop="name" value="${escapeHtml(trait.name || "")}" placeholder="Ability Name" />
+          <span class="trait-name-input custom-trait-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Ability Name">${formatRichTextForDisplay(trait.name || "")}</span>
           <button class="trait-card-delete" data-index="${idx}" type="button" title="Delete ability">&times;</button>
         </div>
         <div class="trait-type-wrap">
-          <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || "FEATURE")}" placeholder="Category (e.g. Class Feature, Feat)" />
+          <span class="trait-type-input custom-trait-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="type" data-placeholder="Category (e.g. Class Feature, Feat)">${formatRichTextForDisplay(trait.type || "FEATURE")}</span>
         </div>
         <div class="trait-desc-input custom-trait-field rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-prop="desc" data-placeholder="Ability description and rules...">${formatRichTextForDisplay(trait.desc || "")}</div>
         <div class="trait-card-footer">
@@ -1882,17 +1998,20 @@ function renderMySpells() {
   }
 
   const searchQ = (document.getElementById("filterSpellbookInput")?.value || "").toLowerCase().trim();
-  const activeConc = (document.getElementById("spellConcentration")?.value || "").trim().toLowerCase();
+  const activeConc = getPlainTextFieldValue(document.getElementById("spellConcentration")).toLowerCase();
 
   container.innerHTML = myCharacterSpells.map((spell, idx) => {
     if (!spell) return "";
     const typeVal = spell.type || spell.levelTag || "Cantrip";
     const descVal = Array.isArray(spell.desc) ? spell.desc.join("\n\n") : (spell.desc || "");
     const sName = spell.name || "";
-    const isConcentrating = activeConc && sName.toLowerCase() === activeConc;
+    const sPlainName = stripRichHtmlToPlainText(sName);
+    const typePlain = stripRichHtmlToPlainText(typeVal);
+    const descPlain = stripRichHtmlToPlainText(descVal);
+    const isConcentrating = activeConc && sPlainName.toLowerCase() === activeConc;
 
     let matchesLvl = true;
-    const lowerType = typeVal.toLowerCase();
+    const lowerType = typePlain.toLowerCase();
     if (activeSpellLevelFilter === "cantrip") {
       matchesLvl = lowerType.includes("cantrip") || lowerType.includes("0");
     } else if (activeSpellLevelFilter === "5") {
@@ -1902,9 +2021,9 @@ function renderMySpells() {
     }
 
     const matchesSearch = !searchQ ||
-      sName.toLowerCase().includes(searchQ) ||
+      sPlainName.toLowerCase().includes(searchQ) ||
       lowerType.includes(searchQ) ||
-      descVal.toLowerCase().includes(searchQ);
+      descPlain.toLowerCase().includes(searchQ);
 
     const isExpanded = !!spell.isExpanded;
     const hiddenStyle = (matchesLvl && matchesSearch) ? "" : "display: none;";
@@ -1913,9 +2032,9 @@ function renderMySpells() {
       <div class="spell-card ${isExpanded ? "expanded" : ""}" draggable="false" data-index="${idx}" style="${hiddenStyle}">
         <div class="spell-card-header">
           <span class="spell-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">&#8942;&#8942;</span>
-          <input type="text" class="spell-custom-title-input custom-spell-field" data-prop="name" value="${escapeHtml(sName)}" placeholder="Spell Name" />
+          <span class="spell-custom-title-input custom-spell-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Spell Name">${formatRichTextForDisplay(sName)}</span>
           <div class="spell-card-actions">
-            <button type="button" class="spell-conc-btn ${isConcentrating ? "active" : ""}" data-spell-name="${escapeHtml(sName)}" title="Set as active concentration spell">
+            <button type="button" class="spell-conc-btn ${isConcentrating ? "active" : ""}" data-spell-name="${escapeHtml(sPlainName)}" title="Set as active concentration spell">
               ${isConcentrating ? "Concentrating" : "Concentrate"}
             </button>
             <button class="spell-card-delete" data-index="${idx}" type="button" title="Delete spell">&times;</button>
@@ -1923,16 +2042,16 @@ function renderMySpells() {
         </div>
         <div class="spell-card-meta">
           <div class="spell-meta-badge">
-            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="type" value="${escapeHtml(typeVal)}" placeholder="Level / Type" />
+            <span class="spell-meta-input custom-spell-field center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="type" data-placeholder="Level / Type">${formatRichTextForDisplay(typeVal)}</span>
           </div>
           <div class="spell-meta-badge">
-            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="casting_time" value="${escapeHtml(spell.casting_time || "")}" placeholder="1 Action" />
+            <span class="spell-meta-input custom-spell-field center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="casting_time" data-placeholder="1 Action">${formatRichTextForDisplay(spell.casting_time || "")}</span>
           </div>
           <div class="spell-meta-badge">
-            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="range" value="${escapeHtml(spell.range || "")}" placeholder="30 ft" />
+            <span class="spell-meta-input custom-spell-field center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="range" data-placeholder="30 ft">${formatRichTextForDisplay(spell.range || "")}</span>
           </div>
           <div class="spell-meta-badge">
-            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="duration" value="${escapeHtml(spell.duration || "")}" placeholder="Instant" />
+            <span class="spell-meta-input custom-spell-field center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="duration" data-placeholder="Instant">${formatRichTextForDisplay(spell.duration || "")}</span>
           </div>
         </div>
         <div class="spell-custom-desc-textarea custom-spell-field rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-prop="desc" data-placeholder="Spell description and effects...">${formatRichTextForDisplay(descVal)}</div>
@@ -2215,7 +2334,7 @@ function rollCustomFormula(formulaStr, customLabel = "") {
 
 function addDiceHistory(desc, total) {
   const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const charName = document.getElementById("charName")?.value?.trim() || "Adventurer";
+  const charName = getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer";
 
   diceRollHistory.unshift({ desc, total, time });
   if (diceRollHistory.length > 25) diceRollHistory.pop();
@@ -2315,12 +2434,12 @@ function extractFullCharacterPayload(charData) {
   const payload = {
     id: activeCharId,
     ownerUid: auth?.currentUser?.uid || "anon",
-    name: charData.name || "Unnamed Adventurer",
-    charClass: f.charClass || "",
-    charSubclass: f.charSubclass || "",
-    charRace: f.charRace || "",
-    charBackground: f.charBackground || "",
-    charAlignment: f.charAlignment || "",
+    name: stripRichHtmlToPlainText(charData.name) || "Unnamed Adventurer",
+    charClass: stripRichHtmlToPlainText(f.charClass),
+    charSubclass: stripRichHtmlToPlainText(f.charSubclass),
+    charRace: stripRichHtmlToPlainText(f.charRace),
+    charBackground: stripRichHtmlToPlainText(f.charBackground),
+    charAlignment: stripRichHtmlToPlainText(f.charAlignment),
     level: parseInt(f.charLevel, 10) || 1,
     avatar: myCharacterAvatar || "",
     hp: { cur: curHp, max: maxHp, temp: tempHp },
@@ -2347,12 +2466,12 @@ function extractFullCharacterPayload(charData) {
     structuredInventory: myStructuredInventory || [],
     companions: myCompanions || [],
     conditions: myActiveConditions || [],
-    concentration: (f.spellConcentration || "").trim(),
+    concentration: stripRichHtmlToPlainText(f.spellConcentration),
     otherProfs: f.otherProfs || "",
     passivePerception: parseInt(document.getElementById("passivePerception")?.textContent, 10) || 10,
     passiveInsight: parseInt(document.getElementById("passiveInsight")?.textContent, 10) || 10,
     passiveInvestigation: parseInt(document.getElementById("passiveInvestigation")?.textContent, 10) || 10,
-    inspiration: f.charInspiration || "",
+    inspiration: stripRichHtmlToPlainText(f.charInspiration),
     heroicInspiration: !!f.heroicInspirationToggle,
     updatedAt: Date.now()
   };
@@ -2423,9 +2542,9 @@ function getCurrentSheetData() {
 function saveSheet(quiet = false) {
   const roster = getRoster();
   const fields = getCurrentSheetData();
-  const name = fields.charName?.trim() || "Unnamed Character";
-  const charClass = fields.charClass?.trim() || "";
-  const subclass = fields.charSubclass?.trim() || "";
+  const name = stripRichHtmlToPlainText(fields.charName) || "Unnamed Character";
+  const charClass = stripRichHtmlToPlainText(fields.charClass);
+  const subclass = stripRichHtmlToPlainText(fields.charSubclass);
   const level = fields.charLevel || 1;
 
   const classLabel = subclass ? `${subclass} ${charClass}`.trim() : charClass;
@@ -3161,7 +3280,7 @@ function navigateToSearchedThing(item) {
       } else if (item.action === "focus-spell") {
         const concEl = document.getElementById("spellConcentration");
         if (concEl && item.spellName) {
-          concEl.value = item.spellName;
+          setFieldInputValue(concEl, item.spellName);
           updateConcentrationBanner();
           renderMySpells();
           saveSheet(false);
@@ -3211,12 +3330,12 @@ function buildQuickSearchIndex(query = "") {
   );
 
   // 2. CHARACTER HEADER IDENTITY
-  const cName = document.getElementById("charName")?.value || "";
-  const cClass = document.getElementById("charClass")?.value || "";
-  const cSub = document.getElementById("charSubclass")?.value || "";
-  const cRace = document.getElementById("charRace")?.value || "";
-  const cBg = document.getElementById("charBackground")?.value || "";
-  const cAlign = document.getElementById("charAlignment")?.value || "";
+  const cName = getPlainTextFieldValue(document.getElementById("charName"));
+  const cClass = getPlainTextFieldValue(document.getElementById("charClass"));
+  const cSub = getPlainTextFieldValue(document.getElementById("charSubclass"));
+  const cRace = getPlainTextFieldValue(document.getElementById("charRace"));
+  const cBg = getPlainTextFieldValue(document.getElementById("charBackground"));
+  const cAlign = getPlainTextFieldValue(document.getElementById("charAlignment"));
   const cXp = document.getElementById("charExp")?.value || "";
 
   items.push(
@@ -3240,10 +3359,10 @@ function buildQuickSearchIndex(query = "") {
   const lvlVal = document.getElementById("charLevel")?.value || "1";
   const hdCurVal = document.getElementById("hitDiceCur")?.value || "1";
   const hdMaxVal = document.getElementById("hitDiceMax")?.value || "1";
-  const classResLabel = document.getElementById("classResourceName")?.value || document.getElementById("classPtsLabel")?.value || "Class Resource";
+  const classResLabel = getPlainTextFieldValue(document.getElementById("classResourceName")) || getPlainTextFieldValue(document.getElementById("classPtsLabel")) || "Class Resource";
   const classResCur = document.getElementById("classPtsCur")?.value || "0";
   const classResMax = document.getElementById("classPtsMax")?.value || "0";
-  const defVal = document.getElementById("charResistances")?.value || document.getElementById("resistancesSummary")?.value || "";
+  const defVal = getPlainTextFieldValue(document.getElementById("charResistances")) || getPlainTextFieldValue(document.getElementById("resistancesSummary"));
 
   items.push(
     { title: `Armor Class (AC: ${acVal})`, sub: "Base AC, shield & armor protection", tag: "Vitality", tab: "tab-stats", selector: "#ac", keywords: `ac armor class shield defense protection ${acVal}` },
@@ -3415,10 +3534,10 @@ function buildQuickSearchIndex(query = "") {
     }
   });
 
-  const spAbility = document.getElementById("spellAbility")?.value || "INT";
+  const spAbility = getPlainTextFieldValue(document.getElementById("spellAbility")) || "INT";
   const spDc = document.getElementById("spellDc")?.value || "13";
   const spAtk = document.getElementById("spellAtkBonus")?.value || "+5";
-  const spConc = document.getElementById("spellConcentration")?.value || "None";
+  const spConc = getPlainTextFieldValue(document.getElementById("spellConcentration")) || "None";
 
   items.push(
     { title: `Spell Save DC: ${spDc}`, sub: "Difficulty class for enemies resisting your spells", tag: "Magic", tab: "tab-spells", selector: "#spellDc", keywords: `spell save dc difficulty class magic dc ${spDc}` },
@@ -4697,7 +4816,7 @@ function getConSaveBonus() {
 function dropConcentration(reasonText) {
   const concEl = document.getElementById("spellConcentration");
   if (!concEl) return;
-  concEl.value = "";
+  setFieldInputValue(concEl, "");
   updateConcentrationBanner();
   if (typeof renderMySpells === "function") renderMySpells();
   saveSheet(false);
@@ -4790,7 +4909,7 @@ function showConcentrationCheckPrompt(damage, spellName) {
     const newHp = parseInt(e.target.value, 10) || 0;
     const dmg = lastHp - newHp;
     lastHp = newHp;
-    const concSpell = document.getElementById("spellConcentration")?.value?.trim();
+    const concSpell = getPlainTextFieldValue(document.getElementById("spellConcentration"));
     if (dmg > 0 && concSpell) showConcentrationCheckPrompt(dmg, concSpell);
   });
 })();
@@ -4818,7 +4937,7 @@ function applyQuickHpStep(delta) {
       curHp = Math.max(0, curHp - dmg);
     }
 
-    const concSpell = document.getElementById("spellConcentration")?.value?.trim();
+    const concSpell = getPlainTextFieldValue(document.getElementById("spellConcentration"));
     if (concSpell) {
       showConcentrationCheckPrompt(dmg, concSpell);
     }
@@ -4862,7 +4981,7 @@ function applyHpAdjustment(type) {
       curHp = Math.max(0, curHp - amt);
     }
 
-    const concSpell = document.getElementById("spellConcentration")?.value?.trim();
+    const concSpell = getPlainTextFieldValue(document.getElementById("spellConcentration"));
     if (concSpell) {
       showConcentrationCheckPrompt(amt, concSpell);
     } else {
@@ -4987,7 +5106,7 @@ function applyLongRest() {
 
 function setFieldVal(id, value) {
   const el = document.getElementById(id);
-  if (el) el.value = value;
+  if (el) setFieldInputValue(el, value);
 }
 
 function importFromPconParchment(parsed) {
@@ -5271,7 +5390,7 @@ document.addEventListener("click", async (e) => {
   if (e.target.id === "clearConcentrationBtn" || e.target.closest("#globalConcentrationBanner")) {
     const concEl = document.getElementById("spellConcentration");
     if (concEl) {
-      concEl.value = "";
+      setFieldInputValue(concEl, "");
       updateConcentrationBanner();
       renderMySpells();
       saveSheet(false);
@@ -5286,11 +5405,11 @@ document.addEventListener("click", async (e) => {
     const sName = spellConcBtn.dataset.spellName || "";
     const concEl = document.getElementById("spellConcentration");
     if (concEl) {
-      if (concEl.value.trim().toLowerCase() === sName.toLowerCase()) {
-        concEl.value = "";
+      if (getPlainTextFieldValue(concEl).toLowerCase() === sName.toLowerCase()) {
+        setFieldInputValue(concEl, "");
         showStatus("Concentration Ended");
       } else {
-        concEl.value = sName;
+        setFieldInputValue(concEl, sName);
         showStatus(`Concentrating on ${sName}!`);
       }
       updateConcentrationBanner();
@@ -5302,7 +5421,7 @@ document.addEventListener("click", async (e) => {
 
   // Auto-Calculate Spell Save DC & Spell Attack Bonus
   if (e.target.id === "autoCalcSpellStatsBtn") {
-    const abilRaw = (document.getElementById("spellAbility")?.value || "int").toLowerCase().trim();
+    const abilRaw = getPlainTextFieldValue(document.getElementById("spellAbility")).toLowerCase() || "int";
     const statKey = ["str", "dex", "con", "int", "wis", "cha"].find((k) => abilRaw.includes(k)) || "int";
     const score = parseInt(document.getElementById(`attr_${statKey}`)?.value, 10) || 10;
     const mod = getModifier(score);
@@ -5312,7 +5431,7 @@ document.addEventListener("click", async (e) => {
     const dcEl = document.getElementById("spellDc");
     const atkEl = document.getElementById("spellAtkBonus");
     const abilEl = document.getElementById("spellAbility");
-    if (abilEl && !abilEl.value.trim()) abilEl.value = statKey.toUpperCase();
+    if (abilEl && !getPlainTextFieldValue(abilEl)) setFieldInputValue(abilEl, statKey.toUpperCase());
     if (dcEl) dcEl.value = 8 + prof + mod;
     if (atkEl) atkEl.value = formatSigned(prof + mod);
     saveSheet(false);
@@ -5333,7 +5452,7 @@ document.addEventListener("click", async (e) => {
   if (wpnAtkBtn) {
     const idx = parseInt(wpnAtkBtn.dataset.index, 10);
     const wpn = myCharacterWeapons[idx] || {};
-    const name = wpn.name?.trim() || "Weapon";
+    const name = stripRichHtmlToPlainText(wpn.name) || "Weapon";
     const numMatch = String(wpn.atk || "").match(/[+-]?\d+/);
     const bonus = numMatch ? parseInt(numMatch[0], 10) : 0;
     applyConditionRollMode("attack");
@@ -5345,8 +5464,8 @@ document.addEventListener("click", async (e) => {
   if (wpnDmgBtn) {
     const idx = parseInt(wpnDmgBtn.dataset.index, 10);
     const wpn = myCharacterWeapons[idx] || {};
-    const name = wpn.name?.trim() || "Weapon";
-    const rawDmg = (wpn.dmg || "1d6").trim();
+    const name = stripRichHtmlToPlainText(wpn.name) || "Weapon";
+    const rawDmg = stripRichHtmlToPlainText(wpn.dmg) || "1d6";
     rollCustomFormula(rawDmg, `${name} Dmg`);
     return;
   }
@@ -6092,7 +6211,7 @@ function exportCharacterJson() {
   if (e.target.classList.contains("select-class-item")) {
     const classInput = document.getElementById("charClass");
     if (classInput) {
-      classInput.value = e.target.dataset.name;
+      setFieldInputValue(classInput, e.target.dataset.name);
       saveSheet(false);
     }
     document.getElementById("classDropdown")?.classList.remove("open");
@@ -6102,7 +6221,7 @@ function exportCharacterJson() {
   if (e.target.classList.contains("select-race-item")) {
     const raceInput = document.getElementById("charRace");
     if (raceInput) {
-      raceInput.value = e.target.dataset.name;
+      setFieldInputValue(raceInput, e.target.dataset.name);
       saveSheet(false);
     }
     document.getElementById("raceDropdown")?.classList.remove("open");
@@ -6795,22 +6914,22 @@ document.getElementById("avatarFileInput")?.addEventListener("change", (e) => {
 });
 
 document.getElementById("charClass")?.addEventListener("focus", (e) => {
-  renderClassDropdown(e.target.value);
+  renderClassDropdown(getPlainTextFieldValue(e.target));
   document.getElementById("classDropdown")?.classList.add("open");
 });
 
 document.getElementById("charClass")?.addEventListener("input", (e) => {
-  renderClassDropdown(e.target.value);
+  renderClassDropdown(getPlainTextFieldValue(e.target));
   document.getElementById("classDropdown")?.classList.add("open");
 });
 
 document.getElementById("charRace")?.addEventListener("focus", (e) => {
-  renderRaceDropdown(e.target.value);
+  renderRaceDropdown(getPlainTextFieldValue(e.target));
   document.getElementById("raceDropdown")?.classList.add("open");
 });
 
 document.getElementById("charRace")?.addEventListener("input", (e) => {
-  renderRaceDropdown(e.target.value);
+  renderRaceDropdown(getPlainTextFieldValue(e.target));
   document.getElementById("raceDropdown")?.classList.add("open");
 });
 
@@ -6923,7 +7042,7 @@ document.addEventListener("input", (e) => {
         myCharacterSpells[idx][e.target.dataset.prop] = val;
         if (e.target.dataset.prop === "name") {
           const concBtn = card.querySelector(".spell-conc-btn");
-          if (concBtn) concBtn.dataset.spellName = val;
+          if (concBtn) concBtn.dataset.spellName = stripRichHtmlToPlainText(val);
         }
         saveSheet(true);
       }
@@ -6946,7 +7065,7 @@ document.addEventListener("input", (e) => {
     if (entry) {
       const idx = parseInt(entry.dataset.index, 10);
       if (myCharacterWeapons[idx]) {
-        myCharacterWeapons[idx][e.target.dataset.prop] = e.target.value;
+        myCharacterWeapons[idx][e.target.dataset.prop] = getFieldInputValue(e.target);
         saveSheet(true);
       }
     }
@@ -6958,7 +7077,7 @@ document.addEventListener("input", (e) => {
       const idx = parseInt(card.dataset.index, 10);
       if (myCustomResources[idx]) {
         const prop = e.target.dataset.prop;
-        myCustomResources[idx][prop] = prop === "name" ? e.target.value : (parseInt(e.target.value, 10) || 0);
+        myCustomResources[idx][prop] = prop === "name" ? getFieldInputValue(e.target) : (parseInt(e.target.value, 10) || 0);
         saveSheet(true);
       }
     }
@@ -6970,7 +7089,7 @@ document.addEventListener("input", (e) => {
       const idx = parseInt(row.dataset.index, 10);
       if (myStructuredInventory[idx]) {
         const prop = e.target.dataset.prop;
-        myStructuredInventory[idx][prop] = prop === "name" ? e.target.value : (parseFloat(e.target.value) || 0);
+        myStructuredInventory[idx][prop] = prop === "name" ? getFieldInputValue(e.target) : (parseFloat(e.target.value) || 0);
         updateWealthAndEncumbrance();
         saveSheet(true);
       }
@@ -7440,9 +7559,9 @@ function renderDiscordExport() {
 }
 
 function generateDiscordMarkdown(c) {
-  const name = c.name || "Adventurer";
-  const charClass = c.class || "Hero";
-  const race = c.race || "";
+  const name = stripRichHtmlToPlainText(c.name) || "Adventurer";
+  const charClass = stripRichHtmlToPlainText(c.class) || "Hero";
+  const race = stripRichHtmlToPlainText(c.race) || "";
   const lvl = c.level || 1;
   const hp = c.hp || { cur: 10, max: 10, temp: 0 };
   const pb = c.proficiency || 2;
@@ -7454,12 +7573,16 @@ function generateDiscordMarkdown(c) {
     return `\`${s.toUpperCase()}\` ${att.score} (${sign})`;
   }).join(" • ");
 
-  const weaponsList = (c.weapons || []).filter(w => w && w.name).map((w) => {
-    return `• **${w.name}**: +${w.atk || 0} to hit | ${w.dmg || "1d6"} dmg ${w.notes ? `(${w.notes})` : ""}`;
-  }).join("\n") || "• None equipped";
+  const weaponsList = (c.weapons || []).map((w) => {
+    const wName = stripRichHtmlToPlainText(w?.name);
+    if (!wName) return null;
+    const wDmg = stripRichHtmlToPlainText(w?.dmg) || "1d6";
+    const wNotes = stripRichHtmlToPlainText(w?.notes);
+    return `• **${wName}**: +${w.atk || 0} to hit | ${wDmg} dmg ${wNotes ? `(${wNotes})` : ""}`;
+  }).filter(Boolean).join("\n") || "• None equipped";
 
-  const spellsList = (c.spells || []).slice(0, 8).map(s => s.name).join(", ") || "None prepared";
-  const traitsList = (c.traits || []).slice(0, 5).map(t => t.name).join(" • ") || "None";
+  const spellsList = (c.spells || []).slice(0, 8).map(s => stripRichHtmlToPlainText(s.name)).filter(Boolean).join(", ") || "None prepared";
+  const traitsList = (c.traits || []).slice(0, 5).map(t => stripRichHtmlToPlainText(t.name)).filter(Boolean).join(" • ") || "None";
 
   return `>>> **${name}** — Level ${lvl} ${race ? `${race} ` : ""}${charClass}
 **HP:** ${hp.cur}/${hp.max}${hp.temp > 0 ? ` (+${hp.temp} temp)` : ""} | **AC:** ${c.ac || 10} | **Speed:** ${c.speed || 30}ft | **Proficiency:** +${pb} | **Init:** ${c.initiative >= 0 ? `+${c.initiative}` : c.initiative}
@@ -7478,9 +7601,9 @@ ${traitsList}`;
 }
 
 function generateAvraeMacros(c) {
-  const name = c.name || "Adventurer";
-  const weapons = (c.weapons || []).filter(w => w && w.name);
-  const spells = (c.spells || []).filter(s => s && s.name);
+  const name = stripRichHtmlToPlainText(c.name) || "Adventurer";
+  const weapons = (c.weapons || []).filter(w => w && stripRichHtmlToPlainText(w.name));
+  const spells = (c.spells || []).filter(s => s && stripRichHtmlToPlainText(s.name));
 
   let out = `# Avrae Discord Bot Commands for ${name}\n\n`;
   out += `# Core Checks & Saves\n`;
@@ -7494,7 +7617,7 @@ function generateAvraeMacros(c) {
   if (weapons.length > 0) {
     out += `# Weapon Attacks\n`;
     weapons.forEach((w) => {
-      out += `!a "${w.name}"\n`;
+      out += `!a "${stripRichHtmlToPlainText(w.name)}"\n`;
     });
     out += `\n`;
   }
@@ -7502,7 +7625,7 @@ function generateAvraeMacros(c) {
   if (spells.length > 0) {
     out += `# Spells\n`;
     spells.slice(0, 10).forEach((s) => {
-      out += `!cast "${s.name}"\n`;
+      out += `!cast "${stripRichHtmlToPlainText(s.name)}"\n`;
     });
   }
 
@@ -7512,8 +7635,10 @@ function generateAvraeMacros(c) {
 function generateCompactDiscordCard(c) {
   const hp = c.hp || { cur: 10, max: 10, temp: 0 };
   const conds = (myActiveConditions || []).join(", ") || "None";
-  const conc = (document.getElementById("spellConcentration")?.value || document.getElementById("concentrationSpellInput")?.value || "").trim() || "None";
-  return `> **${c.name || "Adventurer"}** (Lvl ${c.level || 1} ${c.class || "Hero"}) — HP: **${hp.cur}/${hp.max}**${hp.temp > 0 ? ` (+${hp.temp})` : ""} | AC: **${c.ac || 10}** | Conc: *${conc}* | Status: [${conds}]`;
+  const conc = getPlainTextFieldValue(document.getElementById("spellConcentration")) || getPlainTextFieldValue(document.getElementById("concentrationSpellInput")) || "None";
+  const name = stripRichHtmlToPlainText(c.name) || "Adventurer";
+  const charClass = stripRichHtmlToPlainText(c.class) || "Hero";
+  return `> **${name}** (Lvl ${c.level || 1} ${charClass}) — HP: **${hp.cur}/${hp.max}**${hp.temp > 0 ? ` (+${hp.temp})` : ""} | AC: **${c.ac || 10}** | Conc: *${conc}* | Status: [${conds}]`;
 }
 
 /* ==========================================================================
@@ -7542,7 +7667,7 @@ function isUserAllowedInChannel(chan) {
   if (isAdminSession()) return true; // Admins have universal oversight across all channels
   const myCharId = activeCharId;
   const myUid = auth?.currentUser?.uid;
-  const myName = (document.getElementById("charName")?.value || "").trim().toLowerCase();
+  const myName = getPlainTextFieldValue(document.getElementById("charName")).toLowerCase();
   const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === (connectedCampaignRoom || activeDMRoomCode));
 
   if (chan.creatorId === myCharId || chan.creatorId === myUid) return true;
@@ -7810,7 +7935,7 @@ async function confirmCreateChannel() {
 
   const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === (connectedCampaignRoom || activeDMRoomCode));
   const myId = activeCharId || auth?.currentUser?.uid || "anon";
-  const myName = isDM ? "Dungeon Master" : (document.getElementById("charName")?.value?.trim() || "Adventurer");
+  const myName = isDM ? "Dungeon Master" : (getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer");
 
   const selectedMembers = [myId];
   if (isDM && !selectedMembers.includes("DM")) selectedMembers.push("DM");
@@ -7868,7 +7993,7 @@ async function sendPartyChatMessage(text, type = "chat", payload = null) {
     (activeRoom && sessionStorage.getItem("admin_joined_room_" + activeRoom) === "true")
   );
 
-  let senderName = isDM ? "Dungeon Master" : (document.getElementById("charName")?.value?.trim() || "Adventurer");
+  let senderName = isDM ? "Dungeon Master" : (getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer");
   let senderId = activeCharId || auth?.currentUser?.uid || "anon";
   let senderRole = isDM ? "dm" : "player";
   let isDev = false;
@@ -8509,7 +8634,7 @@ function canISeeHandout(h) {
   const rec = (h.recipient || "all").trim().toLowerCase();
   if (rec === "all" || rec === "") return true;
 
-  const curCharName = (document.getElementById("charName")?.value || "").trim().toLowerCase();
+  const curCharName = getPlainTextFieldValue(document.getElementById("charName")).toLowerCase();
   const roster = getRoster();
   const activeRosterName = (roster[activeCharId]?.name || "").trim().toLowerCase();
 
@@ -9414,7 +9539,7 @@ function saveHandoutFromForm(isDraft = false) {
     claimedBy: [],
     claimedCount: 0,
     maxClaims,
-    author: author || (isDM ? "Dungeon Master" : (document.getElementById("charName")?.value?.trim() || "Adventurer")),
+    author: author || (isDM ? "Dungeon Master" : (getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer")),
     authorUid: auth?.currentUser?.uid || "anon",
     date: date || new Date().toLocaleDateString(),
     imageUrl,
@@ -9497,7 +9622,7 @@ async function claimHandoutWeapon(handoutId) {
 
   // 4. Update claim counts on shared handout in Firestore
   const activeRoom = connectedCampaignRoom || activeDMRoomCode;
-  const myIdentifier = activeCharId || document.getElementById("charName")?.value?.trim() || "Adventurer";
+  const myIdentifier = activeCharId || getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer";
   const nextClaimedBy = Array.isArray(h.claimedBy) ? [...h.claimedBy] : [];
   if (!nextClaimedBy.includes(myIdentifier)) nextClaimedBy.push(myIdentifier);
   const nextClaimedCount = (parseInt(h.claimedCount, 10) || 0) + 1;
@@ -9595,7 +9720,7 @@ async function claimHandoutItem(handoutId, qtyToClaim = 1) {
 
   // Update claim counts on shared handout
   const activeRoom = connectedCampaignRoom || activeDMRoomCode;
-  const myIdentifier = activeCharId || document.getElementById("charName")?.value?.trim() || "Adventurer";
+  const myIdentifier = activeCharId || getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer";
   const nextClaimedBy = Array.isArray(h.claimedBy) ? [...h.claimedBy] : [];
   if (!nextClaimedBy.includes(myIdentifier)) nextClaimedBy.push(myIdentifier);
   const nextClaimedCount = currentClaimed + countClaimed;
@@ -9676,7 +9801,7 @@ async function claimHandoutCoins(handoutId) {
   myClaimedHandoutIds.push(handoutId);
 
   const activeRoom = connectedCampaignRoom || activeDMRoomCode;
-  const myIdentifier = activeCharId || document.getElementById("charName")?.value?.trim() || "Adventurer";
+  const myIdentifier = activeCharId || getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer";
   const nextClaimedBy = Array.isArray(h.claimedBy) ? [...h.claimedBy] : [];
   if (!nextClaimedBy.includes(myIdentifier)) nextClaimedBy.push(myIdentifier);
   const nextClaimedCount = (parseInt(h.claimedCount, 10) || 0) + 1;
@@ -10142,7 +10267,7 @@ async function sendSessionHeartbeat(force = false) {
   try {
     const user = auth?.currentUser || currentUser;
     const email = (user && !user.isAnonymous && user.email) ? user.email.trim() : "";
-    const charName = document.getElementById("charName")?.value?.trim() || "";
+    const charName = getPlainTextFieldValue(document.getElementById("charName"));
     const activeRoom = connectedCampaignRoom || activeDMRoomCode || "";
     const role = activeDMRoomCode ? "Dungeon Master" : (connectedCampaignRoom ? "Player" : "Stand-alone");
 

@@ -486,7 +486,8 @@ input[type="email"],
 input[type="password"],
 input[type="url"],
 input[type="search"],
-textarea {
+textarea,
+.rich-text-single {
   color-scheme: dark;
   background-color: var(--bg-input) !important;
   border: 1px solid var(--border-subtle) !important;
@@ -494,6 +495,38 @@ textarea {
   color: var(--text-main) !important;
   outline: none !important;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease !important;
+}
+
+.rich-text-single {
+  display: block;
+  min-width: 0;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  cursor: text;
+  padding: 0.32rem 0.55rem;
+  font-family: inherit;
+  line-height: 1.35;
+}
+.rich-text-single::-webkit-scrollbar {
+  display: none;
+}
+.rich-text-single br {
+  display: none;
+}
+.rich-text-single:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-dim);
+  opacity: 0.72;
+  pointer-events: none;
+}
+.rich-text-single * {
+  display: inline !important;
+  white-space: nowrap !important;
+  margin: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 /* ==========================================================================
@@ -586,7 +619,8 @@ body.theme-parchment input[type="email"],
 body.theme-parchment input[type="password"],
 body.theme-parchment input[type="url"],
 body.theme-parchment input[type="search"],
-body.theme-parchment textarea {
+body.theme-parchment textarea,
+body.theme-parchment .rich-text-single {
   color-scheme: light;
   background-color: var(--bg-input) !important;
   color: var(--text-main) !important;
@@ -631,7 +665,7 @@ body.theme-parchment select optgroup {
   color: #631c00 !important;
 }
 
-body.theme-parchment input.hero-name-input,
+body.theme-parchment .hero-name-input,
 body.theme-parchment .pill-input,
 body.theme-parchment select.pill-input,
 body.theme-parchment input.orb-number,
@@ -649,14 +683,15 @@ body.theme-parchment input[type="number"].death-input,
 body.theme-parchment input.attr-input,
 body.theme-parchment input[type="number"].attr-input,
 body.theme-parchment input.xp-input,
-body.theme-parchment input.insp-input,
-body.theme-parchment input.vitals-mini-note,
-body.theme-parchment input.custom-res-name,
-body.theme-parchment input.trait-name-input,
-body.theme-parchment input.spell-custom-title-input,
+body.theme-parchment .insp-input,
+body.theme-parchment .vitals-mini-note,
+body.theme-parchment .custom-res-name,
+body.theme-parchment .trait-name-input,
+body.theme-parchment .spell-custom-title-input,
 body.theme-parchment .comp-stat-pill input,
+body.theme-parchment .comp-stat-pill .rich-text-single,
 body.theme-parchment input.slot-input,
-body.theme-parchment input.attune-input {
+body.theme-parchment .attune-input {
   background: transparent !important;
   background-color: transparent !important;
   border: none !important;
@@ -671,6 +706,7 @@ textarea:hover {
 
 input:focus,
 textarea:focus,
+.rich-text-single:focus,
 select.hd-size-select:focus {
   border-color: var(--primary-red) !important;
   box-shadow: 0 0 0 3px var(--theme-rim) !important;
@@ -3067,7 +3103,8 @@ input[type="number"].attr-input:focus,
   color: var(--text-dim);
   text-transform: uppercase;
 }
-.defense-field-row input {
+.defense-field-row input,
+.defense-field-row .rich-text-single {
   width: 100%;
   padding: 0.3rem 0.55rem !important;
   font-size: 0.78rem !important;
@@ -3136,9 +3173,11 @@ input[type="number"].attr-input:focus,
   border-left-color: #ffd700;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
-.weapon-row-card input {
+.weapon-row-card input,
+.weapon-row-card .rich-text-single {
   width: 100% !important;
   height: 32px !important;
+  line-height: 22px !important;
   font-size: 0.8rem !important;
   padding: 0.25rem 0.5rem !important;
 }
@@ -3787,11 +3826,13 @@ input[type="number"].attr-input:focus,
   transform: scale(1.12);
 }
 .trait-type-input {
+  display: inline-block !important;
   font-size: 0.68rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   padding: 0.18rem 0.5rem !important;
   width: auto !important;
+  min-width: 72px;
   max-width: 190px;
 }
 .trait-desc-input, .spell-custom-desc-textarea {
@@ -3850,7 +3891,8 @@ input[type="number"].attr-input:focus,
 .comp-stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; }
 .comp-stat-pill { background: var(--bg-input); border-radius: 6px; padding: 0.25rem 0.45rem; display: flex; flex-direction: column; align-items: center; }
 .comp-stat-pill label { font-size: 0.58rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; }
-.comp-stat-pill input { width: 100%; text-align: center; font-weight: 700 !important; background: transparent !important; border: none !important; }
+.comp-stat-pill input,
+.comp-stat-pill .rich-text-single { width: 100%; text-align: center; font-weight: 700 !important; background: transparent !important; border: none !important; padding: 0.1rem 0.25rem !important; }
 
 /* Spells Basics & Slots */
 .spell-basics {
@@ -4027,8 +4069,8 @@ input[type="number"].attr-input:focus,
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(212, 175, 55, 0.14);
 }
 .attunement-slots-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
-.attune-slot { display: flex; align-items: center; gap: 0.35rem; background: var(--bg-input); border-radius: 6px; padding: 0.25rem 0.45rem; }
-.attune-input { width: 100%; background: transparent !important; border: none !important; font-size: 0.76rem !important; }
+.attune-slot { display: flex; align-items: center; gap: 0.35rem; background: var(--bg-input); border-radius: 6px; padding: 0.25rem 0.45rem; min-width: 0; }
+.attune-input { width: 100%; min-width: 0; background: transparent !important; border: none !important; font-size: 0.76rem !important; padding: 0.1rem 0.2rem !important; }
 .encumbrance-header { display: flex; justify-content: space-between; align-items: center; }
 .encumbrance-stats { font-size: 0.76rem; font-weight: 700; }
 .encumbrance-track { width: 100% !important; height: 6px !important; }
@@ -10199,19 +10241,19 @@ body.owlbear-theater-active .map-vtt-shell {
   color: var(--text-dim);
   pointer-events: none;
 }
-.rich-text-editor strong,
-.rich-text-editor b {
+[data-rich-editor="true"] strong,
+[data-rich-editor="true"] b {
   font-weight: 700;
 }
-.rich-text-editor em,
-.rich-text-editor i {
+[data-rich-editor="true"] em,
+[data-rich-editor="true"] i {
   font-style: italic;
 }
-.rich-text-editor u {
+[data-rich-editor="true"] u {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.rich-text-editor s {
+[data-rich-editor="true"] s {
   text-decoration: line-through;
   opacity: 0.78;
 }
@@ -10229,11 +10271,15 @@ body.owlbear-theater-active .map-vtt-shell {
 .rich-text-editor li {
   margin: 0.15rem 0;
 }
-.rich-text-editor .rt-text-lg {
+[data-rich-editor="true"] .rt-text-lg {
   font-size: 1.2em;
   line-height: 1.45;
 }
-.rich-text-editor .rt-highlight {
+.rich-text-single .rt-text-lg {
+  font-size: 1.15em;
+  line-height: 1.2;
+}
+[data-rich-editor="true"] .rt-highlight {
   background: var(--glow-1);
   color: var(--accent-gold);
   border-bottom: 1.5px solid var(--accent-gold);
@@ -10241,7 +10287,7 @@ body.owlbear-theater-active .map-vtt-shell {
   border-radius: 3px;
   font-weight: 600;
 }
-body.theme-parchment .rich-text-editor .rt-highlight {
+body.theme-parchment [data-rich-editor="true"] .rt-highlight {
   background: rgba(139, 37, 0, 0.12);
   color: var(--primary-red);
   border-bottom-color: var(--primary-red);
