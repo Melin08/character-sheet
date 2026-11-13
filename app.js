@@ -89,7 +89,6 @@ let partyChannels = [
 let activePartyChannelId = "general";
 let unreadPerChannel = {};
 
-let draggedSpellIndex = null;
 const apiCache = {};
 
 let allSpellsCache = [];
@@ -1966,24 +1965,31 @@ function renderMyTraits() {
     const hiddenStyle = (matchesCat && matchesSearch) ? "" : "display: none;";
 
     return `
-      <div class="trait-card ${isExpanded ? "expanded" : ""}" data-index="${idx}" style="${hiddenStyle}">
+      <div class="trait-card ${isExpanded ? "expanded" : ""}" draggable="false" data-index="${idx}" style="${hiddenStyle}">
         <div class="trait-card-header">
           <span class="trait-name-input custom-trait-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Ability Name">${formatRichTextForDisplay(trait.name || "")}</span>
-          <button class="trait-card-delete" data-index="${idx}" type="button" title="Delete ability">&times;</button>
+          <div class="trait-card-actions">
+            <span class="trait-drag-handle spell-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">&#8942;&#8942;</span>
+            <button class="trait-card-delete" data-index="${idx}" type="button" title="Delete ability">&times;</button>
+          </div>
         </div>
-        <div class="trait-type-wrap">
-          <span class="trait-type-input custom-trait-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="type" data-placeholder="Category (e.g. Class Feature, Feat)">${formatRichTextForDisplay(trait.type || "FEATURE")}</span>
+        <div class="trait-card-meta">
+          <div class="spell-meta-badge trait-meta-badge">
+            <span class="trait-type-input spell-meta-input custom-trait-field center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="type" data-placeholder="Class, Race, Feat...">${formatRichTextForDisplay(trait.type || "FEATURE")}</span>
+          </div>
         </div>
         <div class="trait-desc-input custom-trait-field rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-prop="desc" data-placeholder="Ability description and rules...">${formatRichTextForDisplay(trait.desc || "")}</div>
         <div class="trait-card-footer">
           <button type="button" class="trait-expand-btn">
             ${isExpanded ? "Collapse" : "Expand"}
-            <span class="trait-expand-icon">&blacktriangledown;</span>
+            <span class="trait-expand-icon">${isExpanded ? "&blacktriangle;" : "&blacktriangledown;"}</span>
           </button>
         </div>
       </div>
     `;
   }).join("");
+
+  attachTraitDragEvents();
 }
 
 function renderMySpells() {
@@ -2031,12 +2037,12 @@ function renderMySpells() {
     return `
       <div class="spell-card ${isExpanded ? "expanded" : ""}" draggable="false" data-index="${idx}" style="${hiddenStyle}">
         <div class="spell-card-header">
-          <span class="spell-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">&#8942;&#8942;</span>
           <span class="spell-custom-title-input custom-spell-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Spell Name">${formatRichTextForDisplay(sName)}</span>
           <div class="spell-card-actions">
             <button type="button" class="spell-conc-btn ${isConcentrating ? "active" : ""}" data-spell-name="${escapeHtml(sPlainName)}" title="Set as active concentration spell">
               ${isConcentrating ? "Concentrating" : "Concentrate"}
             </button>
+            <span class="spell-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">&#8942;&#8942;</span>
             <button class="spell-card-delete" data-index="${idx}" type="button" title="Delete spell">&times;</button>
           </div>
         </div>
@@ -2068,21 +2074,23 @@ function renderMySpells() {
   attachSpellDragEvents();
 }
 
-function attachSpellDragEvents() {
-  const container = document.getElementById("spellsList");
+function attachCardDragReorder({ containerId, cardSelector, handleSelector, getList, render }) {
+  const container = document.getElementById(containerId);
   if (!container || container.dataset.dragDelegated === "true") return;
   container.dataset.dragDelegated = "true";
 
+  let draggedIndex = null;
+
   const clearCardDraggables = () => {
-    container.querySelectorAll('.spell-card[draggable="true"]').forEach((c) => {
+    container.querySelectorAll(`${cardSelector}[draggable="true"]`).forEach((c) => {
       c.setAttribute("draggable", "false");
     });
   };
 
   container.addEventListener("pointerdown", (e) => {
-    const card = e.target.closest(".spell-card");
+    const card = e.target.closest(cardSelector);
     if (!card || !container.contains(card)) return;
-    if (e.target.closest(".spell-drag-handle")) {
+    if (e.target.closest(handleSelector)) {
       card.setAttribute("draggable", "true");
     } else {
       card.setAttribute("draggable", "false");
@@ -2093,7 +2101,7 @@ function attachSpellDragEvents() {
   document.addEventListener("pointerup", clearCardDraggables);
 
   container.addEventListener("dragstart", (e) => {
-    const card = e.target.closest(".spell-card");
+    const card = e.target.closest(cardSelector);
     if (!card || !container.contains(card)) return;
     if (
       card.getAttribute("draggable") !== "true" ||
@@ -2103,48 +2111,71 @@ function attachSpellDragEvents() {
       e.preventDefault();
       return;
     }
-    draggedSpellIndex = parseInt(card.dataset.index, 10);
+    draggedIndex = parseInt(card.dataset.index, 10);
     if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
     card.style.opacity = "0.4";
   });
 
   container.addEventListener("dragend", (e) => {
-    const card = e.target.closest(".spell-card");
+    const card = e.target.closest(cardSelector);
     if (card) {
       card.style.opacity = "1";
       card.setAttribute("draggable", "false");
     }
-    container.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
-    draggedSpellIndex = null;
+    container.querySelectorAll(cardSelector).forEach((c) => c.classList.remove("drag-over"));
+    draggedIndex = null;
   });
 
   container.addEventListener("dragover", (e) => {
-    const card = e.target.closest(".spell-card");
+    const card = e.target.closest(cardSelector);
     if (!card || !container.contains(card)) return;
     e.preventDefault();
     card.classList.add("drag-over");
   });
 
   container.addEventListener("dragleave", (e) => {
-    const card = e.target.closest(".spell-card");
+    const card = e.target.closest(cardSelector);
     if (!card || !container.contains(card)) return;
     if (e.relatedTarget && card.contains(e.relatedTarget)) return;
     card.classList.remove("drag-over");
   });
 
   container.addEventListener("drop", (e) => {
-    const card = e.target.closest(".spell-card");
+    const card = e.target.closest(cardSelector);
     if (!card || !container.contains(card)) return;
     e.preventDefault();
     card.classList.remove("drag-over");
-    if (draggedSpellIndex === null) return;
+    if (draggedIndex === null) return;
     const targetIndex = parseInt(card.dataset.index, 10);
-    if (draggedSpellIndex === targetIndex) return;
+    if (draggedIndex === targetIndex) return;
 
-    const moved = myCharacterSpells.splice(draggedSpellIndex, 1)[0];
-    myCharacterSpells.splice(targetIndex, 0, moved);
+    const list = getList();
+    if (!Array.isArray(list)) return;
+    const moved = list.splice(draggedIndex, 1)[0];
+    list.splice(targetIndex, 0, moved);
+    draggedIndex = null;
     saveSheet(false);
-    renderMySpells();
+    render();
+  });
+}
+
+function attachTraitDragEvents() {
+  attachCardDragReorder({
+    containerId: "traitsList",
+    cardSelector: ".trait-card",
+    handleSelector: ".trait-drag-handle",
+    getList: () => myCharacterTraits,
+    render: renderMyTraits
+  });
+}
+
+function attachSpellDragEvents() {
+  attachCardDragReorder({
+    containerId: "spellsList",
+    cardSelector: ".spell-card",
+    handleSelector: ".spell-drag-handle",
+    getList: () => myCharacterSpells,
+    render: renderMySpells
   });
 }
 
@@ -6779,7 +6810,7 @@ function exportCharacterJson() {
     const idx = parseInt(card.dataset.index, 10);
     card.classList.toggle("expanded");
     const isExp = card.classList.contains("expanded");
-    btn.innerHTML = `${isExp ? "Collapse" : "Expand"} <span class="trait-expand-icon">&blacktriangledown;</span>`;
+    btn.innerHTML = `${isExp ? "Collapse" : "Expand"} <span class="trait-expand-icon">${isExp ? "&blacktriangle;" : "&blacktriangledown;"}</span>`;
     if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp;
     saveSheet(true);
     return;
