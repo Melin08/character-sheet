@@ -89,7 +89,6 @@ let partyChannels = [
 let activePartyChannelId = "general";
 let unreadPerChannel = {};
 
-let draggedSpellIndex = null;
 const apiCache = {};
 
 let allSpellsCache = [];
@@ -405,6 +404,473 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;");
 }
 
+const LARGE_TEXT_STORAGE_KEY = "codex_large_note_text_v1";
+const ALLOWED_RT_SPAN_CLASSES = new Set(["rt-highlight", "rt-text-lg"]);
+const UNSAFE_RT_DROP_TAGS = new Set(["script", "style", "iframe", "object", "embed", "svg", "noscript"]);
+
+const RICH_TAG_RE = /<\/?(strong|b|em|i|u|s|strike|del|ul|ol|li|span|br|p|div)\b/i;
+
+function sanitizeRichTextHtml(raw, singleLine = false) {
+  if (raw === null || raw === undefined) return "";
+  const tpl = document.createElement("template");
+  tpl.innerHTML = String(raw);
+
+  const cleanNode = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = singleLine ? (node.textContent || "").replace(/\r?\n/g, " ") : (node.textContent || "");
+      return escapeHtml(text);
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return "";
+    const tag = node.tagName.toLowerCase();
+    if (UNSAFE_RT_DROP_TAGS.has(tag)) return "";
+    const inner = Array.from(node.childNodes).map(cleanNode).join("");
+    if (tag === "br") return singleLine ? " " : "<br>";
+    if (tag === "b" || tag === "strong") return inner ? `<strong>${inner}</strong>` : "";
+    if (tag === "i" || tag === "em") return inner ? `<em>${inner}</em>` : "";
+    if (tag === "u") return inner ? `<u>${inner}</u>` : "";
+    if (tag === "s" || tag === "strike" || tag === "del") return inner ? `<s>${inner}</s>` : "";
+    if (tag === "ul" || tag === "ol" || tag === "li") {
+      if (singleLine) return inner ? `${tag === "li" ? " " : ""}${inner}` : "";
+      return inner ? `<${tag}>${inner}</${tag}>` : "";
+    }
+    if (tag === "span") {
+      const safeClasses = Array.from(node.classList || []).filter((c) => ALLOWED_RT_SPAN_CLASSES.has(c));
+      if (!inner) return "";
+      return safeClasses.length > 0 ? `<span class="${safeClasses.join(" ")}">${inner}</span>` : inner;
+    }
+    if (tag === "p" || tag === "div") {
+      if (singleLine) return inner ? ` ${inner}` : "";
+      return inner ? `<div>${inner}</div>` : "<br>";
+    }
+    return inner;
+  };
+
+  let cleaned = Array.from(tpl.content.childNodes).map(cleanNode).join("");
+  if (singleLine) {
+    cleaned = cleaned.replace(/(<br>|<div>|<\/div>)/gi, " ").replace(/^\s+|\s+$/g, "");
+    return cleaned;
+  }
+  cleaned = cleaned.replace(/^(<br>)+|(<br>)+$/g, (m) => (m === "<br>" ? "" : m));
+  if (cleaned === "<br>" || cleaned === "<div><br></div>") return "";
+  return cleaned;
+}
+
+function stripRichHtmlToPlainText(raw) {
+  if (raw === null || raw === undefined) return "";
+  const str = String(raw);
+  if (!str) return "";
+  if (!RICH_TAG_RE.test(str)) {
+    return str.replace(/\r?\n/g, " ").trim();
+  }
+  const safeHtml = sanitizeRichTextHtml(str, false).replace(/<br\s*\/?>/gi, " ").replace(/<\/(div|p|li)>/gi, " ");
+  const tpl = document.createElement("template");
+  tpl.innerHTML = safeHtml;
+  return (tpl.content.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+function formatRichTextForDisplay(raw, singleLine = false) {
+  if (raw === null || raw === undefined) return "";
+  const str = String(raw);
+  if (!str) return "";
+  if (RICH_TAG_RE.test(str)) {
+    return sanitizeRichTextHtml(str, singleLine);
+  }
+  if (singleLine) {
+    return escapeHtml(str.replace(/\r?\n/g, " "));
+  }
+  return escapeHtml(str).replace(/\r?\n/g, "<br>");
+}
+
+function getFieldInputValue(el) {
+  if (!el) return "";
+  if (el.dataset && el.dataset.richEditor === "true") {
+    return sanitizeRichTextHtml(el.innerHTML, el.dataset.singleLine === "true");
+  }
+  return el.value;
+}
+
+function getPlainTextFieldValue(el) {
+  if (!el) return "";
+  if (el.dataset && el.dataset.richEditor === "true") {
+    return (el.textContent || "").replace(/\s+/g, " ").trim();
+  }
+  return (el.value || "").trim();
+}
+
+function setFieldInputValue(el, val) {
+  if (!el) return;
+  if (el.dataset && el.dataset.richEditor === "true") {
+    el.innerHTML = formatRichTextForDisplay(val, el.dataset.singleLine === "true");
+  } else {
+    el.value = val ?? "";
+  }
+}
+
+function applyLargeTextPreference(isLarge) {
+  document.body.classList.toggle("large-note-text", !!isLarge);
+  const btn = document.getElementById("textSizeToggleBtn");
+  if (btn) {
+    btn.classList.toggle("active", !!isLarge);
+    btn.setAttribute("aria-pressed", isLarge ? "true" : "false");
+    btn.textContent = isLarge ? "Aa-" : "Aa+";
+  }
+  try {
+    localStorage.setItem(LARGE_TEXT_STORAGE_KEY, isLarge ? "true" : "false");
+  } catch (e) {}
+}
+
+let activeRichTextEditor = null;
+let richToolbarRafId = null;
+let richTextControlsInitialized = false;
+
+function hideRichTextToolbar() {
+  if (richToolbarRafId) {
+    cancelAnimationFrame(richToolbarRafId);
+    richToolbarRafId = null;
+  }
+  const toolbar = document.getElementById("richTextFloatingToolbar");
+  if (toolbar) toolbar.style.display = "none";
+  activeRichTextEditor = null;
+}
+
+function getEligibleRichEditorForSelection(sel) {
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+  const selectedText = sel.toString();
+  if (!selectedText || !selectedText.trim()) return null;
+
+  const range = sel.getRangeAt(0);
+  const startEl = range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentElement;
+  const endEl = range.endContainer.nodeType === Node.ELEMENT_NODE ? range.endContainer : range.endContainer.parentElement;
+  if (!startEl || !endEl) return null;
+
+  const startEditor = startEl.closest('[data-rich-editor="true"]');
+  const endEditor = endEl.closest('[data-rich-editor="true"]');
+  if (!startEditor || startEditor !== endEditor || !startEditor.isContentEditable) return null;
+  if (startEditor.getClientRects().length === 0) return null;
+  return startEditor;
+}
+
+function selectionHasSpanClass(editor, className) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  const anchorEl = sel.anchorNode?.nodeType === Node.ELEMENT_NODE ? sel.anchorNode : sel.anchorNode?.parentElement;
+  if (anchorEl) {
+    const match = anchorEl.closest(`span.${className}`);
+    if (match && editor.contains(match)) return true;
+  }
+  const spans = editor.querySelectorAll(`span.${className}`);
+  for (const sp of spans) {
+    if (typeof range.intersectsNode === "function" && range.intersectsNode(sp)) return true;
+  }
+  return false;
+}
+
+function selectionHasInlineTag(editor, tagNames) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  const selector = tagNames.join(", ");
+  const anchorEl = sel.anchorNode?.nodeType === Node.ELEMENT_NODE ? sel.anchorNode : sel.anchorNode?.parentElement;
+  if (anchorEl) {
+    const match = anchorEl.closest(selector);
+    if (match && editor.contains(match)) return true;
+  }
+  for (const el of editor.querySelectorAll(selector)) {
+    if (typeof range.intersectsNode === "function" && range.intersectsNode(el)) return true;
+  }
+  return false;
+}
+
+function toggleSelectionInlineTag(editor, tagNames, primaryTag) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+  const range = sel.getRangeAt(0);
+  const selector = tagNames.join(", ");
+
+  const anchorEl = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+    ? range.commonAncestorContainer
+    : range.commonAncestorContainer.parentElement;
+  const existingWrap = anchorEl?.closest(selector);
+  if (existingWrap && editor.contains(existingWrap)) {
+    const firstNode = existingWrap.firstChild;
+    const lastNode = existingWrap.lastChild;
+    unwrapElementPreservingChildren(existingWrap);
+    if (firstNode && lastNode) {
+      const nextRange = document.createRange();
+      nextRange.setStartBefore(firstNode);
+      nextRange.setEndAfter(lastNode);
+      sel.removeAllRanges();
+      sel.addRange(nextRange);
+    }
+    return;
+  }
+
+  const fragment = range.extractContents();
+  fragment.querySelectorAll(selector).forEach(unwrapElementPreservingChildren);
+  const wrapper = document.createElement(primaryTag);
+  wrapper.appendChild(fragment);
+  range.insertNode(wrapper);
+
+  const nextRange = document.createRange();
+  nextRange.selectNodeContents(wrapper);
+  sel.removeAllRanges();
+  sel.addRange(nextRange);
+}
+
+function unwrapElementPreservingChildren(el) {
+  const parent = el.parentNode;
+  if (!parent) return;
+  while (el.firstChild) {
+    parent.insertBefore(el.firstChild, el);
+  }
+  parent.removeChild(el);
+}
+
+function toggleSelectionSpanClass(editor, className) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+  const range = sel.getRangeAt(0);
+
+  const anchorEl = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+    ? range.commonAncestorContainer
+    : range.commonAncestorContainer.parentElement;
+  const existingWrap = anchorEl?.closest(`span.${className}`);
+  if (existingWrap && editor.contains(existingWrap)) {
+    const firstNode = existingWrap.firstChild;
+    const lastNode = existingWrap.lastChild;
+    unwrapElementPreservingChildren(existingWrap);
+    if (firstNode && lastNode) {
+      const nextRange = document.createRange();
+      nextRange.setStartBefore(firstNode);
+      nextRange.setEndAfter(lastNode);
+      sel.removeAllRanges();
+      sel.addRange(nextRange);
+    }
+    return;
+  }
+
+  const fragment = range.extractContents();
+  fragment.querySelectorAll(`span.${className}`).forEach(unwrapElementPreservingChildren);
+  const wrapper = document.createElement("span");
+  wrapper.className = className;
+  wrapper.appendChild(fragment);
+  range.insertNode(wrapper);
+
+  const nextRange = document.createRange();
+  nextRange.selectNodeContents(wrapper);
+  sel.removeAllRanges();
+  sel.addRange(nextRange);
+}
+
+function clearRichTextSelectionFormatting(editor) {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0);
+    const commonEl = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+      ? range.commonAncestorContainer
+      : range.commonAncestorContainer.parentElement;
+    const toUnwrap = Array.from(editor.querySelectorAll("span.rt-highlight, span.rt-text-lg")).filter((sp) => {
+      if (commonEl && sp.contains(commonEl)) return true;
+      return typeof range.intersectsNode === "function" && range.intersectsNode(sp);
+    });
+    toUnwrap.forEach(unwrapElementPreservingChildren);
+  }
+  document.execCommand("removeFormat", false, null);
+}
+
+function isBoldBaseEditor(editor) {
+  if (!editor) return false;
+  if (editor.dataset?.singleLine === "true") return true;
+  const fw = parseInt(window.getComputedStyle(editor).fontWeight, 10);
+  return !isNaN(fw) && fw >= 600;
+}
+
+function updateRichTextToolbarActiveStates(toolbar, editor) {
+  if (!toolbar || !editor) return;
+  const queryStateSafe = (cmd) => {
+    try { return Boolean(document.queryCommandState(cmd)); } catch (e) { return false; }
+  };
+  const states = {
+    bold: isBoldBaseEditor(editor) ? selectionHasInlineTag(editor, ["strong", "b"]) : queryStateSafe("bold"),
+    italic: queryStateSafe("italic"),
+    underline: queryStateSafe("underline"),
+    strikeThrough: queryStateSafe("strikeThrough"),
+    insertUnorderedList: queryStateSafe("insertUnorderedList"),
+    highlight: selectionHasSpanClass(editor, "rt-highlight"),
+    toggleSize: selectionHasSpanClass(editor, "rt-text-lg")
+  };
+  toolbar.querySelectorAll(".rt-tool-btn[data-rt-cmd]").forEach((btn) => {
+    const cmd = btn.dataset.rtCmd;
+    btn.classList.toggle("active", Boolean(states[cmd]));
+  });
+}
+
+function positionAndShowRichTextToolbar() {
+  const toolbar = document.getElementById("richTextFloatingToolbar");
+  if (!toolbar) return;
+
+  const sel = window.getSelection();
+  const editor = getEligibleRichEditorForSelection(sel);
+  if (!editor) {
+    hideRichTextToolbar();
+    return;
+  }
+
+  const range = sel.getRangeAt(0);
+  let rect = range.getBoundingClientRect();
+  if ((!rect || (rect.width === 0 && rect.height === 0)) && typeof range.getClientRects === "function") {
+    rect = range.getClientRects()[0];
+  }
+  if (!rect || (rect.width === 0 && rect.height === 0)) {
+    hideRichTextToolbar();
+    return;
+  }
+
+  const isSingleLine = editor.dataset.singleLine === "true";
+  const ulBtn = toolbar.querySelector('.rt-tool-btn[data-rt-cmd="insertUnorderedList"]');
+  if (ulBtn) {
+    ulBtn.style.display = isSingleLine ? "none" : "";
+  }
+
+  toolbar.style.visibility = "hidden";
+  toolbar.style.display = "flex";
+  const tw = toolbar.offsetWidth || 280;
+  const th = toolbar.offsetHeight || 38;
+
+  const margin = 8;
+  const centerX = rect.left + rect.width / 2;
+  const left = Math.max(margin, Math.min(window.innerWidth - tw - margin, centerX - tw / 2));
+
+  const openDropdown = editor.closest(".dropdown-pill-wrapper")?.querySelector(".dropdown-menu.open");
+  let top = rect.bottom + 8;
+  const wouldOverflowBottom = top + th > window.innerHeight - margin;
+  const preferAbove = Boolean(openDropdown) || wouldOverflowBottom;
+  let flipped = false;
+  if (preferAbove && rect.top - th - 8 >= margin) {
+    top = rect.top - th - 8;
+    flipped = true;
+  } else if (wouldOverflowBottom) {
+    top = Math.max(margin, rect.top - th - 8);
+    flipped = true;
+  }
+
+  toolbar.style.left = `${Math.round(left)}px`;
+  toolbar.style.top = `${Math.round(top)}px`;
+  toolbar.classList.toggle("flipped-above", flipped);
+  toolbar.style.visibility = "visible";
+
+  activeRichTextEditor = editor;
+  updateRichTextToolbarActiveStates(toolbar, editor);
+}
+
+function scheduleRichTextToolbarUpdate() {
+  if (richToolbarRafId) cancelAnimationFrame(richToolbarRafId);
+  richToolbarRafId = requestAnimationFrame(() => {
+    richToolbarRafId = null;
+    positionAndShowRichTextToolbar();
+  });
+}
+
+function executeRichTextCommand(cmd, editor) {
+  if (!editor || !cmd) return;
+  editor.focus({ preventScroll: true });
+
+  if (cmd === "toggleSize") {
+    toggleSelectionSpanClass(editor, "rt-text-lg");
+  } else if (cmd === "highlight") {
+    toggleSelectionSpanClass(editor, "rt-highlight");
+  } else if (cmd === "removeFormat") {
+    clearRichTextSelectionFormatting(editor);
+  } else if (cmd === "bold" && isBoldBaseEditor(editor)) {
+    toggleSelectionInlineTag(editor, ["strong", "b"], "strong");
+  } else {
+    document.execCommand(cmd, false, null);
+  }
+
+  editor.dispatchEvent(new Event("input", { bubbles: true }));
+  scheduleRichTextToolbarUpdate();
+}
+
+(function initRichTextAndSizeControls() {
+  if (richTextControlsInitialized) return;
+  richTextControlsInitialized = true;
+
+  try {
+    applyLargeTextPreference(localStorage.getItem(LARGE_TEXT_STORAGE_KEY) === "true");
+  } catch (e) {}
+
+  document.addEventListener("click", (e) => {
+    const toggleBtn = e.target.closest?.("#textSizeToggleBtn");
+    if (toggleBtn) {
+      const next = !document.body.classList.contains("large-note-text");
+      applyLargeTextPreference(next);
+      return;
+    }
+
+    const toolBtn = e.target.closest?.("#richTextFloatingToolbar .rt-tool-btn");
+    if (toolBtn) {
+      const editor = activeRichTextEditor || getEligibleRichEditorForSelection(window.getSelection());
+      if (editor) executeRichTextCommand(toolBtn.dataset.rtCmd, editor);
+    }
+  });
+
+  document.addEventListener("mousedown", (e) => {
+    if (e.target.closest?.("#richTextFloatingToolbar")) {
+      e.preventDefault();
+      return;
+    }
+    if (!e.target.closest?.('[data-rich-editor="true"]')) {
+      hideRichTextToolbar();
+    }
+  });
+
+  document.addEventListener("selectionchange", scheduleRichTextToolbarUpdate);
+  document.addEventListener("mouseup", scheduleRichTextToolbarUpdate);
+  document.addEventListener("keyup", scheduleRichTextToolbarUpdate);
+  window.addEventListener("resize", () => {
+    if (activeRichTextEditor) scheduleRichTextToolbarUpdate();
+  });
+  document.addEventListener("scroll", () => {
+    if (activeRichTextEditor) scheduleRichTextToolbarUpdate();
+  }, { capture: true, passive: true });
+
+  document.addEventListener("keydown", (e) => {
+    const editor = e.target.closest?.('[data-rich-editor="true"]');
+    if (!editor) return;
+    if (editor.dataset.singleLine === "true" && e.key === "Enter") {
+      e.preventDefault();
+      return;
+    }
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const key = e.key.toLowerCase();
+    if (key === "b" || key === "i" || key === "u") {
+      e.preventDefault();
+      const cmdMap = { b: "bold", i: "italic", u: "underline" };
+      executeRichTextCommand(cmdMap[key], editor);
+    }
+  });
+
+  document.addEventListener("paste", (e) => {
+    const editor = e.target.closest?.('[data-rich-editor="true"]');
+    if (!editor) return;
+    e.preventDefault();
+    let text = e.clipboardData?.getData("text/plain") || "";
+    if (editor.dataset.singleLine === "true") {
+      text = text.replace(/\r?\n+/g, " ");
+    }
+    document.execCommand("insertText", false, text);
+  });
+
+  document.addEventListener("input", (e) => {
+    const editor = e.target.closest?.('[data-rich-editor="true"]');
+    if (!editor) return;
+    if (editor.textContent === "" && editor.innerHTML === "<br>") {
+      editor.innerHTML = "";
+    }
+  });
+})();
+
 let toastTimer = null;
 function showStatus(text) {
   const toast = document.getElementById("saveToast");
@@ -626,7 +1092,7 @@ function updateConcentrationBanner() {
   const concInput = document.getElementById("spellConcentration");
   const banner = document.getElementById("globalConcentrationBanner");
   const nameEl = document.getElementById("globalConcentrationName");
-  const spellVal = concInput?.value?.trim() || "";
+  const spellVal = getPlainTextFieldValue(concInput);
 
   if (banner && nameEl) {
     if (spellVal) {
@@ -1284,7 +1750,8 @@ function recalculateAll() {
   const mods = {};
 
   stats.forEach((stat) => {
-    const scoreVal = parseInt(document.getElementById(`attr_${stat}`)?.value, 10) || 10;
+    const rawScore = parseInt(document.getElementById(`attr_${stat}`)?.value, 10);
+    const scoreVal = Number.isNaN(rawScore) ? 10 : rawScore;
     const mod = getModifier(scoreVal);
     mods[stat] = mod;
 
@@ -1364,16 +1831,16 @@ function renderWeapons() {
   container.innerHTML = myCharacterWeapons.map((wpn, idx) => `
     <div class="attack-entry weapon-row-card" data-index="${idx}">
       <div class="wpn-cell-with-roll wpn-name-cell">
-        <input type="text" class="save-field wpn-field wpn-name-input" data-prop="name" value="${escapeHtml(wpn.name || "")}" placeholder="Weapon..." />
+        <span class="save-field wpn-field wpn-name-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Weapon...">${formatRichTextForDisplay(wpn.name || "")}</span>
         <input type="text" class="save-field wpn-field wpn-atk-input center" data-prop="atk" value="${escapeHtml(wpn.atk || "")}" placeholder="Atk" title="Attack bonus (for example +5)" />
         <button type="button" class="wpn-roll-btn wpn-roll-atk-btn" data-index="${idx}" title="Roll Weapon Attack">d20</button>
       </div>
       <div class="wpn-cell-with-roll">
-        <input type="text" class="save-field wpn-field wpn-dmg-input center" data-prop="dmg" value="${escapeHtml(wpn.dmg || "")}" placeholder="1d8+3" />
+        <span class="save-field wpn-field wpn-dmg-input center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="dmg" data-placeholder="1d8+3">${formatRichTextForDisplay(wpn.dmg || "")}</span>
         <button type="button" class="wpn-roll-btn wpn-roll-dmg-btn" data-index="${idx}" title="Roll Weapon Damage">dmg</button>
       </div>
-      <input type="text" class="save-field wpn-field wpn-type-input center" data-prop="type" value="${escapeHtml(wpn.type || "")}" placeholder="Type..." />
-      <input type="text" class="save-field wpn-field wpn-notes-input" data-prop="notes" value="${escapeHtml(wpn.notes || "")}" placeholder="Properties / Notes..." />
+      <span class="save-field wpn-field wpn-type-input center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="type" data-placeholder="Type...">${formatRichTextForDisplay(wpn.type || "")}</span>
+      <span class="save-field wpn-field wpn-notes-input rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="notes" data-placeholder="Properties / Notes...">${formatRichTextForDisplay(wpn.notes || "")}</span>
       <button type="button" class="weapon-delete-btn" data-index="${idx}" title="Delete weapon">&times;</button>
     </div>
   `).join("");
@@ -1394,7 +1861,7 @@ function renderCustomResources() {
 
   container.innerHTML = myCustomResources.map((res, idx) => `
     <div class="custom-res-card" data-index="${idx}">
-      <input type="text" class="custom-res-name custom-res-field" data-prop="name" value="${escapeHtml(res.name || "")}" placeholder="Resource..." />
+      <span class="custom-res-name custom-res-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Resource...">${formatRichTextForDisplay(res.name || "")}</span>
       <div class="custom-res-controls">
         <input type="number" class="custom-res-input custom-res-field" data-prop="cur" value="${res.cur ?? 0}" />
         <span style="color: var(--text-dim); font-weight: 800;">/</span>
@@ -1420,7 +1887,7 @@ function renderStructuredInventory() {
   container.innerHTML = myStructuredInventory.map((item, idx) => `
     <div class="inv-item-row" data-index="${idx}">
       <input type="checkbox" class="inv-item-field" data-prop="equipped" ${item.equipped ? "checked" : ""} title="Equipped / Carried" />
-      <input type="text" class="inv-item-field" data-prop="name" value="${escapeHtml(item.name || "")}" placeholder="Item name..." />
+      <span class="inv-item-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Item name...">${formatRichTextForDisplay(item.name || "")}</span>
       <input type="number" class="inv-item-field center" data-prop="qty" value="${item.qty ?? 1}" min="0" title="Quantity" placeholder="Qty" />
       <input type="number" class="inv-item-field center" data-prop="weight" value="${item.weight ?? 0}" min="0" step="0.5" title="Weight (lbs per item)" placeholder="lbs" />
       <button type="button" class="weapon-delete-btn inv-item-delete" data-index="${idx}" title="Remove item">&times;</button>
@@ -1444,11 +1911,11 @@ function renderCompanions() {
   container.innerHTML = myCompanions.map((comp, idx) => `
     <div class="companion-card" data-index="${idx}">
       <div class="trait-card-header">
-        <input type="text" class="trait-name-input companion-field" data-prop="name" value="${escapeHtml(comp.name || "")}" placeholder="Creature Name (e.g. Owl Familiar, Dire Wolf)" />
+        <span class="trait-name-input companion-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Creature Name (e.g. Owl Familiar, Dire Wolf)">${formatRichTextForDisplay(comp.name || "")}</span>
         <button type="button" class="trait-card-delete companion-delete-btn" data-index="${idx}" title="Delete creature">&times;</button>
       </div>
       <div class="trait-type-wrap">
-        <input type="text" class="trait-type-input companion-field" data-prop="type" value="${escapeHtml(comp.type || "Beast / Familiar")}" placeholder="Type &amp; CR" />
+        <span class="trait-type-input companion-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="type" data-placeholder="Type &amp; CR">${formatRichTextForDisplay(comp.type || "Beast / Familiar")}</span>
       </div>
       <div class="comp-stats-row">
         <div class="comp-stat-pill">
@@ -1461,10 +1928,10 @@ function renderCompanions() {
         </div>
         <div class="comp-stat-pill">
           <label>Speed</label>
-          <input type="text" class="companion-field" data-prop="speed" value="${escapeHtml(comp.speed || "30 ft.")}" placeholder="30 ft., fly 60 ft." />
+          <span class="companion-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="speed" data-placeholder="30 ft., fly 60 ft.">${formatRichTextForDisplay(comp.speed || "30 ft.")}</span>
         </div>
       </div>
-      <textarea class="trait-desc-input companion-field" data-prop="notes" placeholder="STR 10 DEX 14 CON 12... Attacks, Keen Senses, Flyby, Pack Tactics...">${escapeHtml(comp.notes || "")}</textarea>
+      <div class="trait-desc-input companion-field rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-prop="notes" data-placeholder="STR 10 DEX 14 CON 12... Attacks, Keen Senses, Flyby, Pack Tactics...">${formatRichTextForDisplay(comp.notes || "")}</div>
     </div>
   `).join("");
 }
@@ -1485,9 +1952,9 @@ function renderMyTraits() {
   container.innerHTML = myCharacterTraits.map((trait, idx) => {
     if (!trait) return "";
     const isExpanded = !!trait.isExpanded;
-    const tName = (trait.name || "").toLowerCase();
-    const tType = (trait.type || "FEATURE").toLowerCase();
-    const tDesc = (trait.desc || "").toLowerCase();
+    const tName = stripRichHtmlToPlainText(trait.name).toLowerCase();
+    const tType = stripRichHtmlToPlainText(trait.type || "FEATURE").toLowerCase();
+    const tDesc = stripRichHtmlToPlainText(trait.desc).toLowerCase();
 
     let matchesCat = true;
     if (activeTraitCategoryFilter === "class") matchesCat = tType.includes("class");
@@ -1498,24 +1965,31 @@ function renderMyTraits() {
     const hiddenStyle = (matchesCat && matchesSearch) ? "" : "display: none;";
 
     return `
-      <div class="trait-card ${isExpanded ? "expanded" : ""}" data-index="${idx}" style="${hiddenStyle}">
+      <div class="trait-card ${isExpanded ? "expanded" : ""}" draggable="false" data-index="${idx}" style="${hiddenStyle}">
         <div class="trait-card-header">
-          <input type="text" class="trait-name-input custom-trait-field" data-prop="name" value="${escapeHtml(trait.name || "")}" placeholder="Ability Name" />
-          <button class="trait-card-delete" data-index="${idx}" type="button" title="Delete ability">&times;</button>
+          <span class="trait-name-input custom-trait-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Ability Name">${formatRichTextForDisplay(trait.name || "")}</span>
+          <div class="trait-card-actions">
+            <span class="trait-drag-handle spell-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">&#8942;&#8942;</span>
+            <button class="trait-card-delete" data-index="${idx}" type="button" title="Delete ability">&times;</button>
+          </div>
         </div>
-        <div class="trait-type-wrap">
-          <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || "FEATURE")}" placeholder="Category (e.g. Class Feature, Feat)" />
+        <div class="trait-card-meta">
+          <div class="spell-meta-badge trait-meta-badge">
+            <span class="trait-type-input spell-meta-input custom-trait-field center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="type" data-placeholder="Class, Race, Feat...">${formatRichTextForDisplay(trait.type || "FEATURE")}</span>
+          </div>
         </div>
-        <textarea class="trait-desc-input custom-trait-field" data-prop="desc" placeholder="Ability description and rules...">${escapeHtml(trait.desc || "")}</textarea>
+        <div class="trait-desc-input custom-trait-field rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-prop="desc" data-placeholder="Ability description and rules...">${formatRichTextForDisplay(trait.desc || "")}</div>
         <div class="trait-card-footer">
           <button type="button" class="trait-expand-btn">
             ${isExpanded ? "Collapse" : "Expand"}
-            <span class="trait-expand-icon">&blacktriangledown;</span>
+            <span class="trait-expand-icon">${isExpanded ? "&blacktriangle;" : "&blacktriangledown;"}</span>
           </button>
         </div>
       </div>
     `;
   }).join("");
+
+  attachTraitDragEvents();
 }
 
 function renderMySpells() {
@@ -1530,17 +2004,20 @@ function renderMySpells() {
   }
 
   const searchQ = (document.getElementById("filterSpellbookInput")?.value || "").toLowerCase().trim();
-  const activeConc = (document.getElementById("spellConcentration")?.value || "").trim().toLowerCase();
+  const activeConc = getPlainTextFieldValue(document.getElementById("spellConcentration")).toLowerCase();
 
   container.innerHTML = myCharacterSpells.map((spell, idx) => {
     if (!spell) return "";
     const typeVal = spell.type || spell.levelTag || "Cantrip";
     const descVal = Array.isArray(spell.desc) ? spell.desc.join("\n\n") : (spell.desc || "");
     const sName = spell.name || "";
-    const isConcentrating = activeConc && sName.toLowerCase() === activeConc;
+    const sPlainName = stripRichHtmlToPlainText(sName);
+    const typePlain = stripRichHtmlToPlainText(typeVal);
+    const descPlain = stripRichHtmlToPlainText(descVal);
+    const isConcentrating = activeConc && sPlainName.toLowerCase() === activeConc;
 
     let matchesLvl = true;
-    const lowerType = typeVal.toLowerCase();
+    const lowerType = typePlain.toLowerCase();
     if (activeSpellLevelFilter === "cantrip") {
       matchesLvl = lowerType.includes("cantrip") || lowerType.includes("0");
     } else if (activeSpellLevelFilter === "5") {
@@ -1550,40 +2027,40 @@ function renderMySpells() {
     }
 
     const matchesSearch = !searchQ ||
-      sName.toLowerCase().includes(searchQ) ||
+      sPlainName.toLowerCase().includes(searchQ) ||
       lowerType.includes(searchQ) ||
-      descVal.toLowerCase().includes(searchQ);
+      descPlain.toLowerCase().includes(searchQ);
 
     const isExpanded = !!spell.isExpanded;
     const hiddenStyle = (matchesLvl && matchesSearch) ? "" : "display: none;";
 
     return `
-      <div class="spell-card ${isExpanded ? "expanded" : ""}" draggable="true" data-index="${idx}" style="${hiddenStyle}">
+      <div class="spell-card ${isExpanded ? "expanded" : ""}" draggable="false" data-index="${idx}" style="${hiddenStyle}">
         <div class="spell-card-header">
-          <span class="spell-drag-handle" title="Drag to reorder">&vellip;&vellip;</span>
-          <input type="text" class="spell-custom-title-input custom-spell-field" data-prop="name" value="${escapeHtml(sName)}" placeholder="Spell Name" />
+          <span class="spell-custom-title-input custom-spell-field rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="name" data-placeholder="Spell Name">${formatRichTextForDisplay(sName)}</span>
           <div class="spell-card-actions">
-            <button type="button" class="spell-conc-btn ${isConcentrating ? "active" : ""}" data-spell-name="${escapeHtml(sName)}" title="Set as active concentration spell">
+            <button type="button" class="spell-conc-btn ${isConcentrating ? "active" : ""}" data-spell-name="${escapeHtml(sPlainName)}" title="Set as active concentration spell">
               ${isConcentrating ? "Concentrating" : "Concentrate"}
             </button>
+            <span class="spell-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">&#8942;&#8942;</span>
             <button class="spell-card-delete" data-index="${idx}" type="button" title="Delete spell">&times;</button>
           </div>
         </div>
         <div class="spell-card-meta">
           <div class="spell-meta-badge">
-            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="type" value="${escapeHtml(typeVal)}" placeholder="Level / Type" />
+            <span class="spell-meta-input custom-spell-field center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="type" data-placeholder="Level / Type">${formatRichTextForDisplay(typeVal)}</span>
           </div>
           <div class="spell-meta-badge">
-            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="casting_time" value="${escapeHtml(spell.casting_time || "")}" placeholder="1 Action" />
+            <span class="spell-meta-input custom-spell-field center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="casting_time" data-placeholder="1 Action">${formatRichTextForDisplay(spell.casting_time || "")}</span>
           </div>
           <div class="spell-meta-badge">
-            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="range" value="${escapeHtml(spell.range || "")}" placeholder="30 ft" />
+            <span class="spell-meta-input custom-spell-field center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="range" data-placeholder="30 ft">${formatRichTextForDisplay(spell.range || "")}</span>
           </div>
           <div class="spell-meta-badge">
-            <input type="text" class="spell-meta-input custom-spell-field center" data-prop="duration" value="${escapeHtml(spell.duration || "")}" placeholder="Instant" />
+            <span class="spell-meta-input custom-spell-field center rich-text-single" contenteditable="true" role="textbox" aria-multiline="false" data-rich-editor="true" data-single-line="true" data-prop="duration" data-placeholder="Instant">${formatRichTextForDisplay(spell.duration || "")}</span>
           </div>
         </div>
-        <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description and effects...">${escapeHtml(descVal)}</textarea>
+        <div class="spell-custom-desc-textarea custom-spell-field rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-prop="desc" data-placeholder="Spell description and effects...">${formatRichTextForDisplay(descVal)}</div>
         <div class="trait-card-footer">
           <button type="button" class="spell-expand-btn">
             ${isExpanded ? "Collapse" : "Expand"}
@@ -1597,45 +2074,108 @@ function renderMySpells() {
   attachSpellDragEvents();
 }
 
-function attachSpellDragEvents() {
-  document.querySelectorAll(".spell-card").forEach((card) => {
-    card.addEventListener("dragstart", (e) => {
-      if (["INPUT", "TEXTAREA", "BUTTON"].includes(e.target.tagName)) {
-        e.preventDefault();
-        return;
-      }
-      draggedSpellIndex = parseInt(card.dataset.index, 10);
-      e.dataTransfer.effectAllowed = "move";
-      card.style.opacity = "0.4";
-    });
+function attachCardDragReorder({ containerId, cardSelector, handleSelector, getList, render }) {
+  const container = document.getElementById(containerId);
+  if (!container || container.dataset.dragDelegated === "true") return;
+  container.dataset.dragDelegated = "true";
 
-    card.addEventListener("dragend", () => {
+  let draggedIndex = null;
+
+  const clearCardDraggables = () => {
+    container.querySelectorAll(`${cardSelector}[draggable="true"]`).forEach((c) => {
+      c.setAttribute("draggable", "false");
+    });
+  };
+
+  container.addEventListener("pointerdown", (e) => {
+    const card = e.target.closest(cardSelector);
+    if (!card || !container.contains(card)) return;
+    if (e.target.closest(handleSelector)) {
+      card.setAttribute("draggable", "true");
+    } else {
+      card.setAttribute("draggable", "false");
+    }
+  });
+
+  container.addEventListener("pointerup", clearCardDraggables);
+  document.addEventListener("pointerup", clearCardDraggables);
+
+  container.addEventListener("dragstart", (e) => {
+    const card = e.target.closest(cardSelector);
+    if (!card || !container.contains(card)) return;
+    if (
+      card.getAttribute("draggable") !== "true" ||
+      ["INPUT", "TEXTAREA", "BUTTON"].includes(e.target.tagName) ||
+      e.target.closest?.('[data-rich-editor="true"]')
+    ) {
+      e.preventDefault();
+      return;
+    }
+    draggedIndex = parseInt(card.dataset.index, 10);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+    card.style.opacity = "0.4";
+  });
+
+  container.addEventListener("dragend", (e) => {
+    const card = e.target.closest(cardSelector);
+    if (card) {
       card.style.opacity = "1";
-      document.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
-      draggedSpellIndex = null;
-    });
+      card.setAttribute("draggable", "false");
+    }
+    container.querySelectorAll(cardSelector).forEach((c) => c.classList.remove("drag-over"));
+    draggedIndex = null;
+  });
 
-    card.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      card.classList.add("drag-over");
-    });
+  container.addEventListener("dragover", (e) => {
+    const card = e.target.closest(cardSelector);
+    if (!card || !container.contains(card)) return;
+    e.preventDefault();
+    card.classList.add("drag-over");
+  });
 
-    card.addEventListener("dragleave", () => {
-      card.classList.remove("drag-over");
-    });
+  container.addEventListener("dragleave", (e) => {
+    const card = e.target.closest(cardSelector);
+    if (!card || !container.contains(card)) return;
+    if (e.relatedTarget && card.contains(e.relatedTarget)) return;
+    card.classList.remove("drag-over");
+  });
 
-    card.addEventListener("drop", (e) => {
-      e.preventDefault();
-      card.classList.remove("drag-over");
-      if (draggedSpellIndex === null) return;
-      const targetIndex = parseInt(card.dataset.index, 10);
-      if (draggedSpellIndex === targetIndex) return;
+  container.addEventListener("drop", (e) => {
+    const card = e.target.closest(cardSelector);
+    if (!card || !container.contains(card)) return;
+    e.preventDefault();
+    card.classList.remove("drag-over");
+    if (draggedIndex === null) return;
+    const targetIndex = parseInt(card.dataset.index, 10);
+    if (draggedIndex === targetIndex) return;
 
-      const moved = myCharacterSpells.splice(draggedSpellIndex, 1)[0];
-      myCharacterSpells.splice(targetIndex, 0, moved);
-      saveSheet(false);
-      renderMySpells();
-    });
+    const list = getList();
+    if (!Array.isArray(list)) return;
+    const moved = list.splice(draggedIndex, 1)[0];
+    list.splice(targetIndex, 0, moved);
+    draggedIndex = null;
+    saveSheet(false);
+    render();
+  });
+}
+
+function attachTraitDragEvents() {
+  attachCardDragReorder({
+    containerId: "traitsList",
+    cardSelector: ".trait-card",
+    handleSelector: ".trait-drag-handle",
+    getList: () => myCharacterTraits,
+    render: renderMyTraits
+  });
+}
+
+function attachSpellDragEvents() {
+  attachCardDragReorder({
+    containerId: "spellsList",
+    cardSelector: ".spell-card",
+    handleSelector: ".spell-drag-handle",
+    getList: () => myCharacterSpells,
+    render: renderMySpells
   });
 }
 
@@ -1825,7 +2365,7 @@ function rollCustomFormula(formulaStr, customLabel = "") {
 
 function addDiceHistory(desc, total) {
   const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const charName = document.getElementById("charName")?.value?.trim() || "Adventurer";
+  const charName = getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer";
 
   diceRollHistory.unshift({ desc, total, time });
   if (diceRollHistory.length > 25) diceRollHistory.pop();
@@ -1925,12 +2465,12 @@ function extractFullCharacterPayload(charData) {
   const payload = {
     id: activeCharId,
     ownerUid: auth?.currentUser?.uid || "anon",
-    name: charData.name || "Unnamed Adventurer",
-    charClass: f.charClass || "",
-    charSubclass: f.charSubclass || "",
-    charRace: f.charRace || "",
-    charBackground: f.charBackground || "",
-    charAlignment: f.charAlignment || "",
+    name: stripRichHtmlToPlainText(charData.name) || "Unnamed Adventurer",
+    charClass: stripRichHtmlToPlainText(f.charClass),
+    charSubclass: stripRichHtmlToPlainText(f.charSubclass),
+    charRace: stripRichHtmlToPlainText(f.charRace),
+    charBackground: stripRichHtmlToPlainText(f.charBackground),
+    charAlignment: stripRichHtmlToPlainText(f.charAlignment),
     level: parseInt(f.charLevel, 10) || 1,
     avatar: myCharacterAvatar || "",
     hp: { cur: curHp, max: maxHp, temp: tempHp },
@@ -1957,12 +2497,12 @@ function extractFullCharacterPayload(charData) {
     structuredInventory: myStructuredInventory || [],
     companions: myCompanions || [],
     conditions: myActiveConditions || [],
-    concentration: (f.spellConcentration || "").trim(),
+    concentration: stripRichHtmlToPlainText(f.spellConcentration),
     otherProfs: f.otherProfs || "",
     passivePerception: parseInt(document.getElementById("passivePerception")?.textContent, 10) || 10,
     passiveInsight: parseInt(document.getElementById("passiveInsight")?.textContent, 10) || 10,
     passiveInvestigation: parseInt(document.getElementById("passiveInvestigation")?.textContent, 10) || 10,
-    inspiration: f.charInspiration || "",
+    inspiration: stripRichHtmlToPlainText(f.charInspiration),
     heroicInspiration: !!f.heroicInspirationToggle,
     updatedAt: Date.now()
   };
@@ -2024,7 +2564,7 @@ function getCurrentSheetData() {
   const fields = {};
   document.querySelectorAll(".save-field").forEach((field) => {
     if (field.id) {
-      fields[field.id] = field.type === "checkbox" ? field.checked : field.value;
+      fields[field.id] = field.type === "checkbox" ? field.checked : getFieldInputValue(field);
     }
   });
   return fields;
@@ -2033,9 +2573,9 @@ function getCurrentSheetData() {
 function saveSheet(quiet = false) {
   const roster = getRoster();
   const fields = getCurrentSheetData();
-  const name = fields.charName?.trim() || "Unnamed Character";
-  const charClass = fields.charClass?.trim() || "";
-  const subclass = fields.charSubclass?.trim() || "";
+  const name = stripRichHtmlToPlainText(fields.charName) || "Unnamed Character";
+  const charClass = stripRichHtmlToPlainText(fields.charClass);
+  const subclass = stripRichHtmlToPlainText(fields.charSubclass);
   const level = fields.charLevel || 1;
 
   const classLabel = subclass ? `${subclass} ${charClass}`.trim() : charClass;
@@ -2067,17 +2607,51 @@ function saveSheet(quiet = false) {
   if (!quiet) showStatus("Saved!");
 }
 
+function resetSaveFieldsToDefaults() {
+  document.querySelectorAll(".save-field").forEach((field) => {
+    if (field.type === "checkbox") field.checked = false;
+    else if (field.id === "charLevel") field.value = 1;
+    else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") field.value = 10;
+    else if (field.classList.contains("attr-input")) field.value = 10;
+    else if (field.id === "charSpeed") field.value = 30;
+    else if (field.id === "hitDiceCur" || field.id === "hitDiceMax") field.value = 1;
+    else if (field.id === "hitDieSize") field.value = 8;
+    else if (
+      field.classList.contains("hitdice-input") ||
+      field.classList.contains("coin-input") ||
+      field.classList.contains("slot-input") ||
+      field.classList.contains("death-input") ||
+      field.classList.contains("res-input") ||
+      field.classList.contains("exhaustion-input") ||
+      field.id === "tempHp" ||
+      field.id === "initBonusMod"
+    ) field.value = 0;
+    else setFieldInputValue(field, "");
+  });
+}
+
+function resetTransientCombatUI() {
+  if (typeof setManualDiceMode === "function") setManualDiceMode("norm");
+  lastRollCategory = null;
+  lastRollAttr = null;
+  if (typeof closeConcentrationCheckPrompt === "function") closeConcentrationCheckPrompt();
+  if (typeof closeConditionExplainer === "function") closeConditionExplainer();
+  if (typeof hideRichTextToolbar === "function") hideRichTextToolbar();
+}
+
 function applyCharacterData(charData) {
   if (!charData) return;
   const fields = charData.fields || {};
 
+  resetSaveFieldsToDefaults();
+  resetTransientCombatUI();
   renderSpellSlotGrid(fields);
 
   Object.keys(fields).forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
       if (el.type === "checkbox") el.checked = !!fields[id];
-      else el.value = fields[id];
+      else setFieldInputValue(el, fields[id] ?? "");
     }
   });
 
@@ -2156,26 +2730,8 @@ function resetSheet() {
   activeCharId = "char_" + Date.now();
   localStorage.setItem(ACTIVE_CHAR_ID_KEY, activeCharId);
 
-  document.querySelectorAll(".save-field").forEach((field) => {
-    if (field.type === "checkbox") field.checked = false;
-    else if (field.id === "charLevel") field.value = 1;
-    else if (field.id === "ac" || field.id === "curHp" || field.id === "maxHp") field.value = 10;
-    else if (field.classList.contains("attr-input")) field.value = 10;
-    else if (field.id === "charSpeed") field.value = 30;
-    else if (field.id === "hitDiceCur" || field.id === "hitDiceMax") field.value = 1;
-    else if (field.id === "hitDieSize") field.value = 8;
-    else if (
-      field.classList.contains("hitdice-input") ||
-      field.classList.contains("coin-input") ||
-      field.classList.contains("slot-input") ||
-      field.classList.contains("death-input") ||
-      field.classList.contains("res-input") ||
-      field.classList.contains("exhaustion-input") ||
-      field.id === "tempHp" ||
-      field.id === "initBonusMod"
-    ) field.value = 0;
-    else field.value = "";
-  });
+  resetSaveFieldsToDefaults();
+  resetTransientCombatUI();
 
   myCharacterAvatar = "";
   myCharacterSpells = [];
@@ -2392,8 +2948,27 @@ if (auth) {
       try {
         const doc = await db.collection("users").doc(user.uid).get();
         if (doc.exists && doc.data()?.roster) {
-          const merged = { ...getRoster(), ...doc.data().roster };
+          const localRoster = getRoster();
+          const remoteRoster = doc.data().roster;
+          const merged = { ...localRoster };
+          let localIsNewer = false;
+
+          Object.keys(remoteRoster).forEach((id) => {
+            const localChar = localRoster[id];
+            const remoteChar = remoteRoster[id];
+            if (!localChar || (remoteChar.updatedAt || 0) >= (localChar.updatedAt || 0)) {
+              merged[id] = remoteChar;
+            } else {
+              localIsNewer = true;
+            }
+          });
+
+          Object.keys(localRoster).forEach((id) => {
+            if (!remoteRoster[id]) localIsNewer = true;
+          });
+
           localStorage.setItem(ROSTER_STORAGE_KEY, JSON.stringify(merged));
+          if (localIsNewer) syncRosterToCloud(merged);
           loadSheet();
           showStatus("Cloud Synced");
         } else {
@@ -2736,7 +3311,7 @@ function navigateToSearchedThing(item) {
       } else if (item.action === "focus-spell") {
         const concEl = document.getElementById("spellConcentration");
         if (concEl && item.spellName) {
-          concEl.value = item.spellName;
+          setFieldInputValue(concEl, item.spellName);
           updateConcentrationBanner();
           renderMySpells();
           saveSheet(false);
@@ -2786,12 +3361,12 @@ function buildQuickSearchIndex(query = "") {
   );
 
   // 2. CHARACTER HEADER IDENTITY
-  const cName = document.getElementById("charName")?.value || "";
-  const cClass = document.getElementById("charClass")?.value || "";
-  const cSub = document.getElementById("charSubclass")?.value || "";
-  const cRace = document.getElementById("charRace")?.value || "";
-  const cBg = document.getElementById("charBackground")?.value || "";
-  const cAlign = document.getElementById("charAlignment")?.value || "";
+  const cName = getPlainTextFieldValue(document.getElementById("charName"));
+  const cClass = getPlainTextFieldValue(document.getElementById("charClass"));
+  const cSub = getPlainTextFieldValue(document.getElementById("charSubclass"));
+  const cRace = getPlainTextFieldValue(document.getElementById("charRace"));
+  const cBg = getPlainTextFieldValue(document.getElementById("charBackground"));
+  const cAlign = getPlainTextFieldValue(document.getElementById("charAlignment"));
   const cXp = document.getElementById("charExp")?.value || "";
 
   items.push(
@@ -2815,10 +3390,10 @@ function buildQuickSearchIndex(query = "") {
   const lvlVal = document.getElementById("charLevel")?.value || "1";
   const hdCurVal = document.getElementById("hitDiceCur")?.value || "1";
   const hdMaxVal = document.getElementById("hitDiceMax")?.value || "1";
-  const classResLabel = document.getElementById("classResourceName")?.value || document.getElementById("classPtsLabel")?.value || "Class Resource";
+  const classResLabel = getPlainTextFieldValue(document.getElementById("classResourceName")) || getPlainTextFieldValue(document.getElementById("classPtsLabel")) || "Class Resource";
   const classResCur = document.getElementById("classPtsCur")?.value || "0";
   const classResMax = document.getElementById("classPtsMax")?.value || "0";
-  const defVal = document.getElementById("charResistances")?.value || document.getElementById("resistancesSummary")?.value || "";
+  const defVal = getPlainTextFieldValue(document.getElementById("charResistances")) || getPlainTextFieldValue(document.getElementById("resistancesSummary"));
 
   items.push(
     { title: `Armor Class (AC: ${acVal})`, sub: "Base AC, shield & armor protection", tag: "Vitality", tab: "tab-stats", selector: "#ac", keywords: `ac armor class shield defense protection ${acVal}` },
@@ -2990,10 +3565,10 @@ function buildQuickSearchIndex(query = "") {
     }
   });
 
-  const spAbility = document.getElementById("spellAbility")?.value || "INT";
+  const spAbility = getPlainTextFieldValue(document.getElementById("spellAbility")) || "INT";
   const spDc = document.getElementById("spellDc")?.value || "13";
   const spAtk = document.getElementById("spellAtkBonus")?.value || "+5";
-  const spConc = document.getElementById("spellConcentration")?.value || "None";
+  const spConc = getPlainTextFieldValue(document.getElementById("spellConcentration")) || "None";
 
   items.push(
     { title: `Spell Save DC: ${spDc}`, sub: "Difficulty class for enemies resisting your spells", tag: "Magic", tab: "tab-spells", selector: "#spellDc", keywords: `spell save dc difficulty class magic dc ${spDc}` },
@@ -3073,11 +3648,11 @@ function buildQuickSearchIndex(query = "") {
   });
 
   // 12. NOTES, QUESTS, PERSONALITY & HANDOUTS
-  const trRole = document.getElementById("traits")?.value || "";
-  const idRole = document.getElementById("ideals")?.value || "";
-  const bnRole = document.getElementById("bonds")?.value || "";
-  const flRole = document.getElementById("flaws")?.value || "";
-  const bkRole = document.getElementById("backstory")?.value || "";
+  const trRole = getPlainTextFieldValue(document.getElementById("traits"));
+  const idRole = getPlainTextFieldValue(document.getElementById("ideals"));
+  const bnRole = getPlainTextFieldValue(document.getElementById("bonds"));
+  const flRole = getPlainTextFieldValue(document.getElementById("flaws"));
+  const bkRole = getPlainTextFieldValue(document.getElementById("backstory"));
 
   items.push(
     { title: "Personality Traits", sub: trRole ? trRole.slice(0, 60) + "..." : "Roleplay mannerisms & quirks", tag: "Roleplay", tab: "tab-journal", subtab: "sub-personality", selector: "#traits", keywords: `personality traits mannerisms roleplay habits ${trRole}` },
@@ -4272,14 +4847,20 @@ function getConSaveBonus() {
 function dropConcentration(reasonText) {
   const concEl = document.getElementById("spellConcentration");
   if (!concEl) return;
-  concEl.value = "";
+  setFieldInputValue(concEl, "");
   updateConcentrationBanner();
   if (typeof renderMySpells === "function") renderMySpells();
   saveSheet(false);
   if (reasonText) showStatus(reasonText);
 }
 
+let concPromptAutoCloseTimer = null;
+
 function closeConcentrationCheckPrompt() {
+  if (concPromptAutoCloseTimer) {
+    clearTimeout(concPromptAutoCloseTimer);
+    concPromptAutoCloseTimer = null;
+  }
   const el = document.getElementById("concCheckPrompt");
   if (el) {
     el.classList.remove("show");
@@ -4288,6 +4869,10 @@ function closeConcentrationCheckPrompt() {
 }
 
 function showConcentrationCheckPrompt(damage, spellName) {
+  if (concPromptAutoCloseTimer) {
+    clearTimeout(concPromptAutoCloseTimer);
+    concPromptAutoCloseTimer = null;
+  }
   const dc = Math.max(10, Math.floor(damage / 2));
   const bonus = getConSaveBonus();
 
@@ -4340,7 +4925,7 @@ function showConcentrationCheckPrompt(damage, spellName) {
     } else {
       dropConcentration(`Concentration on ${spellName} broken!`);
     }
-    setTimeout(closeConcentrationCheckPrompt, 3200);
+    concPromptAutoCloseTimer = setTimeout(closeConcentrationCheckPrompt, 3200);
   });
 }
 
@@ -4355,7 +4940,7 @@ function showConcentrationCheckPrompt(damage, spellName) {
     const newHp = parseInt(e.target.value, 10) || 0;
     const dmg = lastHp - newHp;
     lastHp = newHp;
-    const concSpell = document.getElementById("spellConcentration")?.value?.trim();
+    const concSpell = getPlainTextFieldValue(document.getElementById("spellConcentration"));
     if (dmg > 0 && concSpell) showConcentrationCheckPrompt(dmg, concSpell);
   });
 })();
@@ -4367,6 +4952,7 @@ function applyQuickHpStep(delta) {
 
   let curHp = parseInt(curHpEl?.value, 10) || 0;
   const maxHp = parseInt(maxHpEl?.value, 10) || 10;
+  const effectiveMaxHp = getEffectiveMaxHp(getActiveConditionEffects(), maxHp);
   let tempHp = parseInt(tempHpEl?.value, 10) || 0;
 
   if (delta < 0) {
@@ -4382,12 +4968,12 @@ function applyQuickHpStep(delta) {
       curHp = Math.max(0, curHp - dmg);
     }
 
-    const concSpell = document.getElementById("spellConcentration")?.value?.trim();
+    const concSpell = getPlainTextFieldValue(document.getElementById("spellConcentration"));
     if (concSpell) {
       showConcentrationCheckPrompt(dmg, concSpell);
     }
   } else if (delta > 0) {
-    curHp = Math.min(maxHp, curHp + delta);
+    curHp = Math.min(effectiveMaxHp, curHp + delta);
   }
 
   if (curHpEl) curHpEl.value = curHp;
@@ -4410,6 +4996,7 @@ function applyHpAdjustment(type) {
 
   let curHp = parseInt(curHpEl?.value, 10) || 0;
   const maxHp = parseInt(maxHpEl?.value, 10) || 10;
+  const effectiveMaxHp = getEffectiveMaxHp(getActiveConditionEffects(), maxHp);
   let tempHp = parseInt(tempHpEl?.value, 10) || 0;
 
   if (type === "damage") {
@@ -4425,14 +5012,14 @@ function applyHpAdjustment(type) {
       curHp = Math.max(0, curHp - amt);
     }
 
-    const concSpell = document.getElementById("spellConcentration")?.value?.trim();
+    const concSpell = getPlainTextFieldValue(document.getElementById("spellConcentration"));
     if (concSpell) {
       showConcentrationCheckPrompt(amt, concSpell);
     } else {
       showStatus(`Took ${amt} damage!`);
     }
   } else if (type === "heal") {
-    curHp = Math.min(maxHp, curHp + amt);
+    curHp = Math.min(effectiveMaxHp, curHp + amt);
     showStatus(`Healed for ${amt} HP!`);
   } else if (type === "temp") {
     tempHp = Math.max(tempHp, amt);
@@ -4548,6 +5135,11 @@ function applyLongRest() {
    MULTI-PLATFORM IMPORTERS
    ========================================================================== */
 
+function setFieldVal(id, value) {
+  const el = document.getElementById(id);
+  if (el) setFieldInputValue(el, value);
+}
+
 function importFromPconParchment(parsed) {
   const data = Array.isArray(parsed) ? parsed[0] : (parsed.character || parsed.data || parsed);
   if (!data) throw new Error("Unrecognized parchment format");
@@ -4555,23 +5147,22 @@ function importFromPconParchment(parsed) {
   resetSheet();
 
   const charName = data.name || data.charName || "Imported Character";
-  document.getElementById("charName").value = charName;
-  if (data.level || data.charLevel) document.getElementById("charLevel").value = data.level || data.charLevel;
-  if (data.race || data.charRace) document.getElementById("charRace").value = data.race || data.charRace;
-  if (data.class || data.charClass) document.getElementById("charClass").value = data.class || data.charClass;
+  setFieldVal("charName", charName);
+  if (data.level || data.charLevel) setFieldVal("charLevel", data.level || data.charLevel);
+  if (data.race || data.charRace) setFieldVal("charRace", data.race || data.charRace);
+  if (data.class || data.charClass) setFieldVal("charClass", data.class || data.charClass);
 
   const stats = ["str", "dex", "con", "int", "wis", "cha"];
   stats.forEach((s) => {
     const val = data.stats?.[s] || data.attributes?.[s]?.score || data[`attr_${s}`] || 10;
-    const el = document.getElementById(`attr_${s}`);
-    if (el) el.value = val;
+    setFieldVal(`attr_${s}`, val);
   });
 
   if (data.hp || data.maxHp) {
     const max = data.hp?.max || data.maxHp || 10;
     const cur = data.hp?.cur || data.curHp || max;
-    document.getElementById("maxHp").value = max;
-    document.getElementById("curHp").value = cur;
+    setFieldVal("maxHp", max);
+    setFieldVal("curHp", cur);
   }
 
   if (Array.isArray(data.spells)) myCharacterSpells = data.spells;
@@ -4592,30 +5183,29 @@ function importFromDnDBeyond(parsed) {
 
   resetSheet();
 
-  document.getElementById("charName").value = d.name || "D&D Beyond Character";
-  if (d.race?.fullName) document.getElementById("charRace").value = d.race.fullName;
+  setFieldVal("charName", d.name || "D&D Beyond Character");
+  if (d.race?.fullName) setFieldVal("charRace", d.race.fullName);
 
   if (Array.isArray(d.classes) && d.classes.length > 0) {
     const primary = d.classes[0];
-    document.getElementById("charClass").value = primary.definition?.name || "";
-    document.getElementById("charSubclass").value = primary.subclassDefinition?.name || "";
-    document.getElementById("charLevel").value = primary.level || 1;
+    setFieldVal("charClass", primary.definition?.name || "");
+    setFieldVal("charSubclass", primary.subclassDefinition?.name || "");
+    setFieldVal("charLevel", primary.level || 1);
   }
 
   const statMap = ["str", "dex", "con", "int", "wis", "cha"];
   if (Array.isArray(d.stats)) {
     d.stats.forEach((s, idx) => {
       const statCode = statMap[idx];
-      const el = document.getElementById(`attr_${statCode}`);
-      if (el) el.value = s.value || 10;
+      setFieldVal(`attr_${statCode}`, s.value || 10);
     });
   }
 
   const baseHp = d.baseHitPoints || 10;
   const bonusHp = d.bonusHitPoints || 0;
   const totalMax = baseHp + bonusHp;
-  document.getElementById("maxHp").value = totalMax;
-  document.getElementById("curHp").value = totalMax - (d.removedHitPoints || 0);
+  setFieldVal("maxHp", totalMax);
+  setFieldVal("curHp", totalMax - (d.removedHitPoints || 0));
 
   if (Array.isArray(d.inventory)) {
     myCharacterWeapons = [];
@@ -4661,31 +5251,32 @@ function importFromDnDBeyond(parsed) {
 }
 
 function importFromGenericOrRoll20(parsed) {
-  resetSheet();
   const d = parsed.character || parsed.data || parsed;
 
-  if (d.name) document.getElementById("charName").value = d.name;
-
-  if (Array.isArray(d.attribs)) {
-    const getAttr = (name) => d.attribs.find((a) => a.name === name)?.current;
-    if (getAttr("class")) document.getElementById("charClass").value = getAttr("class");
-    if (getAttr("race")) document.getElementById("charRace").value = getAttr("race");
-    if (getAttr("level")) document.getElementById("charLevel").value = parseInt(getAttr("level"), 10) || 1;
-    if (getAttr("ac")) document.getElementById("ac").value = parseInt(getAttr("ac"), 10) || 10;
-    if (getAttr("hp")) {
-      document.getElementById("curHp").value = parseInt(getAttr("hp"), 10) || 10;
-      const max = d.attribs.find((a) => a.name === "hp")?.max;
-      document.getElementById("maxHp").value = parseInt(max || getAttr("hp"), 10) || 10;
-    }
-    const statNames = { str: "strength", dex: "dexterity", con: "constitution", int: "intelligence", wis: "wisdom", cha: "charisma" };
-    Object.keys(statNames).forEach((short) => {
-      const v = getAttr(statNames[short]);
-      if (v) document.getElementById(`attr_${short}`).value = parseInt(v, 10) || 10;
-    });
-  } else {
+  if (!Array.isArray(d.attribs)) {
     importFromPconParchment(d);
     return;
   }
+
+  resetSheet();
+
+  if (d.name) setFieldVal("charName", d.name);
+
+  const getAttr = (name) => d.attribs.find((a) => a.name === name)?.current;
+  if (getAttr("class")) setFieldVal("charClass", getAttr("class"));
+  if (getAttr("race")) setFieldVal("charRace", getAttr("race"));
+  if (getAttr("level")) setFieldVal("charLevel", parseInt(getAttr("level"), 10) || 1);
+  if (getAttr("ac")) setFieldVal("ac", parseInt(getAttr("ac"), 10) || 10);
+  if (getAttr("hp")) {
+    setFieldVal("curHp", parseInt(getAttr("hp"), 10) || 10);
+    const max = d.attribs.find((a) => a.name === "hp")?.max;
+    setFieldVal("maxHp", parseInt(max || getAttr("hp"), 10) || 10);
+  }
+  const statNames = { str: "strength", dex: "dexterity", con: "constitution", int: "intelligence", wis: "wisdom", cha: "charisma" };
+  Object.keys(statNames).forEach((short) => {
+    const v = getAttr(statNames[short]);
+    if (v) setFieldVal(`attr_${short}`, parseInt(v, 10) || 10);
+  });
 
   recalculateAll();
   saveSheet(false);
@@ -4830,7 +5421,7 @@ document.addEventListener("click", async (e) => {
   if (e.target.id === "clearConcentrationBtn" || e.target.closest("#globalConcentrationBanner")) {
     const concEl = document.getElementById("spellConcentration");
     if (concEl) {
-      concEl.value = "";
+      setFieldInputValue(concEl, "");
       updateConcentrationBanner();
       renderMySpells();
       saveSheet(false);
@@ -4845,11 +5436,11 @@ document.addEventListener("click", async (e) => {
     const sName = spellConcBtn.dataset.spellName || "";
     const concEl = document.getElementById("spellConcentration");
     if (concEl) {
-      if (concEl.value.trim().toLowerCase() === sName.toLowerCase()) {
-        concEl.value = "";
+      if (getPlainTextFieldValue(concEl).toLowerCase() === sName.toLowerCase()) {
+        setFieldInputValue(concEl, "");
         showStatus("Concentration Ended");
       } else {
-        concEl.value = sName;
+        setFieldInputValue(concEl, sName);
         showStatus(`Concentrating on ${sName}!`);
       }
       updateConcentrationBanner();
@@ -4861,7 +5452,7 @@ document.addEventListener("click", async (e) => {
 
   // Auto-Calculate Spell Save DC & Spell Attack Bonus
   if (e.target.id === "autoCalcSpellStatsBtn") {
-    const abilRaw = (document.getElementById("spellAbility")?.value || "int").toLowerCase().trim();
+    const abilRaw = getPlainTextFieldValue(document.getElementById("spellAbility")).toLowerCase() || "int";
     const statKey = ["str", "dex", "con", "int", "wis", "cha"].find((k) => abilRaw.includes(k)) || "int";
     const score = parseInt(document.getElementById(`attr_${statKey}`)?.value, 10) || 10;
     const mod = getModifier(score);
@@ -4871,7 +5462,7 @@ document.addEventListener("click", async (e) => {
     const dcEl = document.getElementById("spellDc");
     const atkEl = document.getElementById("spellAtkBonus");
     const abilEl = document.getElementById("spellAbility");
-    if (abilEl && !abilEl.value.trim()) abilEl.value = statKey.toUpperCase();
+    if (abilEl && !getPlainTextFieldValue(abilEl)) setFieldInputValue(abilEl, statKey.toUpperCase());
     if (dcEl) dcEl.value = 8 + prof + mod;
     if (atkEl) atkEl.value = formatSigned(prof + mod);
     saveSheet(false);
@@ -4892,7 +5483,7 @@ document.addEventListener("click", async (e) => {
   if (wpnAtkBtn) {
     const idx = parseInt(wpnAtkBtn.dataset.index, 10);
     const wpn = myCharacterWeapons[idx] || {};
-    const name = wpn.name?.trim() || "Weapon";
+    const name = stripRichHtmlToPlainText(wpn.name) || "Weapon";
     const numMatch = String(wpn.atk || "").match(/[+-]?\d+/);
     const bonus = numMatch ? parseInt(numMatch[0], 10) : 0;
     applyConditionRollMode("attack");
@@ -4904,8 +5495,8 @@ document.addEventListener("click", async (e) => {
   if (wpnDmgBtn) {
     const idx = parseInt(wpnDmgBtn.dataset.index, 10);
     const wpn = myCharacterWeapons[idx] || {};
-    const name = wpn.name?.trim() || "Weapon";
-    const rawDmg = (wpn.dmg || "1d6").trim();
+    const name = stripRichHtmlToPlainText(wpn.name) || "Weapon";
+    const rawDmg = stripRichHtmlToPlainText(wpn.dmg) || "1d6";
     rollCustomFormula(rawDmg, `${name} Dmg`);
     return;
   }
@@ -5651,7 +6242,7 @@ function exportCharacterJson() {
   if (e.target.classList.contains("select-class-item")) {
     const classInput = document.getElementById("charClass");
     if (classInput) {
-      classInput.value = e.target.dataset.name;
+      setFieldInputValue(classInput, e.target.dataset.name);
       saveSheet(false);
     }
     document.getElementById("classDropdown")?.classList.remove("open");
@@ -5661,7 +6252,7 @@ function exportCharacterJson() {
   if (e.target.classList.contains("select-race-item")) {
     const raceInput = document.getElementById("charRace");
     if (raceInput) {
-      raceInput.value = e.target.dataset.name;
+      setFieldInputValue(raceInput, e.target.dataset.name);
       saveSheet(false);
     }
     document.getElementById("raceDropdown")?.classList.remove("open");
@@ -6219,7 +6810,7 @@ function exportCharacterJson() {
     const idx = parseInt(card.dataset.index, 10);
     card.classList.toggle("expanded");
     const isExp = card.classList.contains("expanded");
-    btn.innerHTML = `${isExp ? "Collapse" : "Expand"} <span class="trait-expand-icon">&blacktriangledown;</span>`;
+    btn.innerHTML = `${isExp ? "Collapse" : "Expand"} <span class="trait-expand-icon">${isExp ? "&blacktriangle;" : "&blacktriangledown;"}</span>`;
     if (myCharacterTraits[idx]) myCharacterTraits[idx].isExpanded = isExp;
     saveSheet(true);
     return;
@@ -6354,22 +6945,22 @@ document.getElementById("avatarFileInput")?.addEventListener("change", (e) => {
 });
 
 document.getElementById("charClass")?.addEventListener("focus", (e) => {
-  renderClassDropdown(e.target.value);
+  renderClassDropdown(getPlainTextFieldValue(e.target));
   document.getElementById("classDropdown")?.classList.add("open");
 });
 
 document.getElementById("charClass")?.addEventListener("input", (e) => {
-  renderClassDropdown(e.target.value);
+  renderClassDropdown(getPlainTextFieldValue(e.target));
   document.getElementById("classDropdown")?.classList.add("open");
 });
 
 document.getElementById("charRace")?.addEventListener("focus", (e) => {
-  renderRaceDropdown(e.target.value);
+  renderRaceDropdown(getPlainTextFieldValue(e.target));
   document.getElementById("raceDropdown")?.classList.add("open");
 });
 
 document.getElementById("charRace")?.addEventListener("input", (e) => {
-  renderRaceDropdown(e.target.value);
+  renderRaceDropdown(getPlainTextFieldValue(e.target));
   document.getElementById("raceDropdown")?.classList.add("open");
 });
 
@@ -6478,10 +7069,11 @@ document.addEventListener("input", (e) => {
     if (card) {
       const idx = parseInt(card.dataset.index, 10);
       if (myCharacterSpells[idx]) {
-        myCharacterSpells[idx][e.target.dataset.prop] = e.target.value;
+        const val = getFieldInputValue(e.target);
+        myCharacterSpells[idx][e.target.dataset.prop] = val;
         if (e.target.dataset.prop === "name") {
           const concBtn = card.querySelector(".spell-conc-btn");
-          if (concBtn) concBtn.dataset.spellName = e.target.value;
+          if (concBtn) concBtn.dataset.spellName = stripRichHtmlToPlainText(val);
         }
         saveSheet(true);
       }
@@ -6493,7 +7085,7 @@ document.addEventListener("input", (e) => {
     if (card) {
       const idx = parseInt(card.dataset.index, 10);
       if (myCharacterTraits[idx]) {
-        myCharacterTraits[idx][e.target.dataset.prop] = e.target.value;
+        myCharacterTraits[idx][e.target.dataset.prop] = getFieldInputValue(e.target);
         saveSheet(true);
       }
     }
@@ -6504,7 +7096,7 @@ document.addEventListener("input", (e) => {
     if (entry) {
       const idx = parseInt(entry.dataset.index, 10);
       if (myCharacterWeapons[idx]) {
-        myCharacterWeapons[idx][e.target.dataset.prop] = e.target.value;
+        myCharacterWeapons[idx][e.target.dataset.prop] = getFieldInputValue(e.target);
         saveSheet(true);
       }
     }
@@ -6516,7 +7108,7 @@ document.addEventListener("input", (e) => {
       const idx = parseInt(card.dataset.index, 10);
       if (myCustomResources[idx]) {
         const prop = e.target.dataset.prop;
-        myCustomResources[idx][prop] = prop === "name" ? e.target.value : (parseInt(e.target.value, 10) || 0);
+        myCustomResources[idx][prop] = prop === "name" ? getFieldInputValue(e.target) : (parseInt(e.target.value, 10) || 0);
         saveSheet(true);
       }
     }
@@ -6528,7 +7120,7 @@ document.addEventListener("input", (e) => {
       const idx = parseInt(row.dataset.index, 10);
       if (myStructuredInventory[idx]) {
         const prop = e.target.dataset.prop;
-        myStructuredInventory[idx][prop] = prop === "name" ? e.target.value : (parseFloat(e.target.value) || 0);
+        myStructuredInventory[idx][prop] = prop === "name" ? getFieldInputValue(e.target) : (parseFloat(e.target.value) || 0);
         updateWealthAndEncumbrance();
         saveSheet(true);
       }
@@ -6540,7 +7132,7 @@ document.addEventListener("input", (e) => {
     if (card) {
       const idx = parseInt(card.dataset.index, 10);
       if (myCompanions[idx]) {
-        myCompanions[idx][e.target.dataset.prop] = e.target.value;
+        myCompanions[idx][e.target.dataset.prop] = getFieldInputValue(e.target);
         saveSheet(true);
       }
     }
@@ -6998,9 +7590,9 @@ function renderDiscordExport() {
 }
 
 function generateDiscordMarkdown(c) {
-  const name = c.name || "Adventurer";
-  const charClass = c.class || "Hero";
-  const race = c.race || "";
+  const name = stripRichHtmlToPlainText(c.name) || "Adventurer";
+  const charClass = stripRichHtmlToPlainText(c.class) || "Hero";
+  const race = stripRichHtmlToPlainText(c.race) || "";
   const lvl = c.level || 1;
   const hp = c.hp || { cur: 10, max: 10, temp: 0 };
   const pb = c.proficiency || 2;
@@ -7012,12 +7604,16 @@ function generateDiscordMarkdown(c) {
     return `\`${s.toUpperCase()}\` ${att.score} (${sign})`;
   }).join(" • ");
 
-  const weaponsList = (c.weapons || []).filter(w => w && w.name).map((w) => {
-    return `• **${w.name}**: +${w.atk || 0} to hit | ${w.dmg || "1d6"} dmg ${w.notes ? `(${w.notes})` : ""}`;
-  }).join("\n") || "• None equipped";
+  const weaponsList = (c.weapons || []).map((w) => {
+    const wName = stripRichHtmlToPlainText(w?.name);
+    if (!wName) return null;
+    const wDmg = stripRichHtmlToPlainText(w?.dmg) || "1d6";
+    const wNotes = stripRichHtmlToPlainText(w?.notes);
+    return `• **${wName}**: +${w.atk || 0} to hit | ${wDmg} dmg ${wNotes ? `(${wNotes})` : ""}`;
+  }).filter(Boolean).join("\n") || "• None equipped";
 
-  const spellsList = (c.spells || []).slice(0, 8).map(s => s.name).join(", ") || "None prepared";
-  const traitsList = (c.traits || []).slice(0, 5).map(t => t.name).join(" • ") || "None";
+  const spellsList = (c.spells || []).slice(0, 8).map(s => stripRichHtmlToPlainText(s.name)).filter(Boolean).join(", ") || "None prepared";
+  const traitsList = (c.traits || []).slice(0, 5).map(t => stripRichHtmlToPlainText(t.name)).filter(Boolean).join(" • ") || "None";
 
   return `>>> **${name}** — Level ${lvl} ${race ? `${race} ` : ""}${charClass}
 **HP:** ${hp.cur}/${hp.max}${hp.temp > 0 ? ` (+${hp.temp} temp)` : ""} | **AC:** ${c.ac || 10} | **Speed:** ${c.speed || 30}ft | **Proficiency:** +${pb} | **Init:** ${c.initiative >= 0 ? `+${c.initiative}` : c.initiative}
@@ -7036,9 +7632,9 @@ ${traitsList}`;
 }
 
 function generateAvraeMacros(c) {
-  const name = c.name || "Adventurer";
-  const weapons = (c.weapons || []).filter(w => w && w.name);
-  const spells = (c.spells || []).filter(s => s && s.name);
+  const name = stripRichHtmlToPlainText(c.name) || "Adventurer";
+  const weapons = (c.weapons || []).filter(w => w && stripRichHtmlToPlainText(w.name));
+  const spells = (c.spells || []).filter(s => s && stripRichHtmlToPlainText(s.name));
 
   let out = `# Avrae Discord Bot Commands for ${name}\n\n`;
   out += `# Core Checks & Saves\n`;
@@ -7052,7 +7648,7 @@ function generateAvraeMacros(c) {
   if (weapons.length > 0) {
     out += `# Weapon Attacks\n`;
     weapons.forEach((w) => {
-      out += `!a "${w.name}"\n`;
+      out += `!a "${stripRichHtmlToPlainText(w.name)}"\n`;
     });
     out += `\n`;
   }
@@ -7060,7 +7656,7 @@ function generateAvraeMacros(c) {
   if (spells.length > 0) {
     out += `# Spells\n`;
     spells.slice(0, 10).forEach((s) => {
-      out += `!cast "${s.name}"\n`;
+      out += `!cast "${stripRichHtmlToPlainText(s.name)}"\n`;
     });
   }
 
@@ -7070,8 +7666,10 @@ function generateAvraeMacros(c) {
 function generateCompactDiscordCard(c) {
   const hp = c.hp || { cur: 10, max: 10, temp: 0 };
   const conds = (myActiveConditions || []).join(", ") || "None";
-  const conc = (document.getElementById("spellConcentration")?.value || document.getElementById("concentrationSpellInput")?.value || "").trim() || "None";
-  return `> **${c.name || "Adventurer"}** (Lvl ${c.level || 1} ${c.class || "Hero"}) — HP: **${hp.cur}/${hp.max}**${hp.temp > 0 ? ` (+${hp.temp})` : ""} | AC: **${c.ac || 10}** | Conc: *${conc}* | Status: [${conds}]`;
+  const conc = getPlainTextFieldValue(document.getElementById("spellConcentration")) || getPlainTextFieldValue(document.getElementById("concentrationSpellInput")) || "None";
+  const name = stripRichHtmlToPlainText(c.name) || "Adventurer";
+  const charClass = stripRichHtmlToPlainText(c.class) || "Hero";
+  return `> **${name}** (Lvl ${c.level || 1} ${charClass}) — HP: **${hp.cur}/${hp.max}**${hp.temp > 0 ? ` (+${hp.temp})` : ""} | AC: **${c.ac || 10}** | Conc: *${conc}* | Status: [${conds}]`;
 }
 
 /* ==========================================================================
@@ -7100,7 +7698,7 @@ function isUserAllowedInChannel(chan) {
   if (isAdminSession()) return true; // Admins have universal oversight across all channels
   const myCharId = activeCharId;
   const myUid = auth?.currentUser?.uid;
-  const myName = (document.getElementById("charName")?.value || "").trim().toLowerCase();
+  const myName = getPlainTextFieldValue(document.getElementById("charName")).toLowerCase();
   const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === (connectedCampaignRoom || activeDMRoomCode));
 
   if (chan.creatorId === myCharId || chan.creatorId === myUid) return true;
@@ -7368,7 +7966,7 @@ async function confirmCreateChannel() {
 
   const isDM = Boolean(activeDMRoomCode && activeDMRoomCode === (connectedCampaignRoom || activeDMRoomCode));
   const myId = activeCharId || auth?.currentUser?.uid || "anon";
-  const myName = isDM ? "Dungeon Master" : (document.getElementById("charName")?.value?.trim() || "Adventurer");
+  const myName = isDM ? "Dungeon Master" : (getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer");
 
   const selectedMembers = [myId];
   if (isDM && !selectedMembers.includes("DM")) selectedMembers.push("DM");
@@ -7426,7 +8024,7 @@ async function sendPartyChatMessage(text, type = "chat", payload = null) {
     (activeRoom && sessionStorage.getItem("admin_joined_room_" + activeRoom) === "true")
   );
 
-  let senderName = isDM ? "Dungeon Master" : (document.getElementById("charName")?.value?.trim() || "Adventurer");
+  let senderName = isDM ? "Dungeon Master" : (getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer");
   let senderId = activeCharId || auth?.currentUser?.uid || "anon";
   let senderRole = isDM ? "dm" : "player";
   let isDev = false;
@@ -7636,7 +8234,7 @@ function toggleFloatingPartyChat(forceOpen = null) {
   const panel = document.getElementById("floatingPartyChat");
   if (!panel) return;
 
-  if (forceOpen === false) {
+  if (forceOpen === false || (forceOpen === null && panel.style.display !== "none")) {
     panel.style.display = "none";
     isFloatingChatOpen = false;
     const bottomChatBtn = document.getElementById("bottomLeftPartyChatBtn");
@@ -7657,7 +8255,7 @@ function toggleFloatingPartyChat(forceOpen = null) {
     return;
   }
 
-  isFloatingChatOpen = forceOpen !== null ? forceOpen : (panel.style.display === "none");
+  isFloatingChatOpen = true;
 
   if (isFloatingChatOpen) {
     panel.style.display = "flex";
@@ -7823,6 +8421,15 @@ async function getAdminActiveCampaignRoomsList() {
   getCreatedRooms().forEach((r) => roomSet.add(r.trim().toUpperCase()));
   getRecentRooms().forEach((r) => roomSet.add(r.trim().toUpperCase()));
 
+  // 2b. Live presence sessions (in case a room has active members without a parent doc)
+  if (Array.isArray(adminActivePresenceSessions)) {
+    adminActivePresenceSessions.forEach((s) => {
+      if (s && s.activeRoom && s.activeRoom !== "Solo / Offline") {
+        roomSet.add(String(s.activeRoom).trim().toUpperCase());
+      }
+    });
+  }
+
   // 3. Firestore query if admin
   if (db && isAdminSession()) {
     try {
@@ -7835,6 +8442,20 @@ async function getAdminActiveCampaignRoomsList() {
       });
     } catch (err) {
       console.warn("getAdminActiveCampaignRoomsList query error:", err);
+    }
+
+    if (!adminActivePresenceSessions || adminActivePresenceSessions.length === 0) {
+      try {
+        const presSnap = await db.collection("campaigns").doc("CODEX_PRESENCE").collection("members").get();
+        const activeCutoff = Date.now() - (3.5 * 60 * 1000);
+        presSnap.forEach((doc) => {
+          const data = doc.data();
+          if (data && (data.updatedAt || 0) >= activeCutoff && data.charBackground) {
+            const room = String(data.charBackground).replace(/^Party:\s*/, "").trim().toUpperCase();
+            if (room && room !== "SOLO / OFFLINE") roomSet.add(room);
+          }
+        });
+      } catch (err) {}
     }
   }
 
@@ -7893,23 +8514,33 @@ function returnToMyAdminPartyRoom() {
 }
 
 async function openAdminChatWithoutRoom() {
-  showStatus("Opening Party Chat in Admin Mode...");
-  isJoinedViaAdminPanel = true;
-  const rooms = await getAdminActiveCampaignRoomsList();
+  const panel = document.getElementById("floatingPartyChat");
+  if (!panel) return;
 
-  if (rooms.length > 0) {
-    const targetRoom = rooms[0];
-    switchAdminChatRoom(targetRoom);
-    toggleFloatingPartyChat(true);
-  } else {
-    const custom = prompt("Admin Party Chat Monitor: Enter a Campaign Room Code to inspect:");
-    if (custom && custom.trim()) {
-      const cleanCustom = custom.trim().toUpperCase();
-      switchAdminChatRoom(cleanCustom);
-      toggleFloatingPartyChat(true);
-    } else {
-      showStatus("No campaign room selected.");
-    }
+  isJoinedViaAdminPanel = true;
+  isFloatingChatOpen = true;
+  panel.style.display = "flex";
+  clampFloatingChatToBounds();
+
+  const bottomChatBtn = document.getElementById("bottomLeftPartyChatBtn");
+  if (bottomChatBtn) bottomChatBtn.classList.add("active");
+
+  const adminBar = document.getElementById("adminChatCampaignBar");
+  if (adminBar) adminBar.style.display = "flex";
+
+  unreadChatCount = 0;
+  unreadPerChannel[activePartyChannelId] = 0;
+  updateChatUnreadBadges();
+
+  const rooms = await getAdminActiveCampaignRoomsList();
+  await updateAdminChatBarUI();
+  updateChatInputPlaceholder();
+
+  const floatContainer = document.getElementById("floatingChatMessages");
+  if (floatContainer) {
+    floatContainer.innerHTML = rooms.length > 0
+      ? `<div class="chat-empty-state">Select an active campaign chat from the dropdown above to view messages.</div>`
+      : `<div class="chat-empty-state">No active campaign chats found right now. Click Refresh above or select <strong>Custom Room Code...</strong> to open a room.</div>`;
   }
 }
 
@@ -7938,6 +8569,10 @@ async function updateAdminChatBarUI() {
   let optionsHtml = "";
   if (myRoom) {
     optionsHtml += `<option value="${escapeHtml(myRoom)}">My Room (${escapeHtml(myRoom)})</option>`;
+  } else if (!currentRoom) {
+    optionsHtml += rooms.length > 0
+      ? `<option value="" selected>Select an active chat...</option>`
+      : `<option value="" selected>No active chats</option>`;
   }
 
   rooms.forEach((r) => {
@@ -8030,7 +8665,7 @@ function canISeeHandout(h) {
   const rec = (h.recipient || "all").trim().toLowerCase();
   if (rec === "all" || rec === "") return true;
 
-  const curCharName = (document.getElementById("charName")?.value || "").trim().toLowerCase();
+  const curCharName = getPlainTextFieldValue(document.getElementById("charName")).toLowerCase();
   const roster = getRoster();
   const activeRosterName = (roster[activeCharId]?.name || "").trim().toLowerCase();
 
@@ -8280,16 +8915,21 @@ function openHandoutViewer(handoutId) {
   const editMode = document.getElementById("handoutEditMode");
   if (!modal || !viewMode || !editMode) return;
 
-  document.getElementById("handoutModalTitle").textContent = h.title || "Party Handout";
-  document.getElementById("parchmentTitle").textContent = h.title || "Ancient Parchment";
+  const setText = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+
+  setText("handoutModalTitle", h.title || "Party Handout");
+  setText("parchmentTitle", h.title || "Ancient Parchment");
 
   let typeBadgeText = (h.type || "letter").toUpperCase();
   if (h.recipient && h.recipient !== "all") {
     typeBadgeText += ` • FOR: ${h.recipient.toUpperCase()}`;
   }
-  document.getElementById("parchmentTypeBadge").textContent = typeBadgeText;
-  document.getElementById("parchmentOrigin").textContent = h.author ? `Origin: ${h.author}` : "Origin: Unknown";
-  document.getElementById("parchmentDate").textContent = h.date ? `Date: ${h.date}` : "Date: 1492 DR";
+  setText("parchmentTypeBadge", typeBadgeText);
+  setText("parchmentOrigin", h.author ? `Origin: ${h.author}` : "Origin: Unknown");
+  setText("parchmentDate", h.date ? `Date: ${h.date}` : "Date: 1492 DR");
 
   // Seal Icon
   const sealEl = document.getElementById("parchmentSealIcon");
@@ -8416,7 +9056,8 @@ function openHandoutViewer(handoutId) {
     }
   }
 
-  document.getElementById("parchmentContent").textContent = h.content || "";
+  const contentEl = document.getElementById("parchmentContent");
+  if (contentEl) contentEl.textContent = h.content || "";
 
   // Only allow DM or creator to edit/reshare
   const canManage = canIEditOrDeleteHandout(h);
@@ -8730,7 +9371,6 @@ function openHandoutEditor(handoutId = null) {
   const typeSelect = document.getElementById("handoutFormType");
   const recipientSelect = document.getElementById("handoutFormRecipient");
   const authorInput = document.getElementById("handoutFormAuthor");
-  const dateInput = document.getElementById("handoutFormDate");
   const imageInput = document.getElementById("handoutFormImageUrl");
   const contentInput = document.getElementById("handoutFormContent");
 
@@ -8738,7 +9378,6 @@ function openHandoutEditor(handoutId = null) {
   const wpnDmgInput = document.getElementById("handoutWpnDmg");
   const wpnTypeInput = document.getElementById("handoutWpnType");
   const wpnNotesInput = document.getElementById("handoutWpnNotes");
-  const wpnWeightInput = document.getElementById("handoutWpnWeight");
 
   const itemNameInput = document.getElementById("handoutItemName");
   const itemQtyInput = document.getElementById("handoutItemQty");
@@ -8787,7 +9426,6 @@ function openHandoutEditor(handoutId = null) {
     if (recipientSelect) recipientSelect.value = h.recipient || "all";
     if (titleInput) titleInput.value = h.title || "";
     if (authorInput) authorInput.value = h.author || "";
-    if (dateInput) dateInput.value = h.date || "";
     if (imageInput) imageInput.value = h.imageUrl || "";
     if (contentInput) contentInput.value = h.content || "";
 
@@ -8797,13 +9435,11 @@ function openHandoutEditor(handoutId = null) {
       if (wpnDmgInput) wpnDmgInput.value = w.dmg || "";
       if (wpnTypeInput) wpnTypeInput.value = w.type || w.atk || "";
       if (wpnNotesInput) wpnNotesInput.value = w.notes || "";
-      if (wpnWeightInput) wpnWeightInput.value = (w.weight !== undefined) ? w.weight : 0;
     } else {
       if (wpnNameInput) wpnNameInput.value = "";
       if (wpnDmgInput) wpnDmgInput.value = "";
       if (wpnTypeInput) wpnTypeInput.value = "";
       if (wpnNotesInput) wpnNotesInput.value = "";
-      if (wpnWeightInput) wpnWeightInput.value = 0;
     }
 
     if (h.item && !h.item?.isWeapon) {
@@ -8818,14 +9454,14 @@ function openHandoutEditor(handoutId = null) {
       if (coinGP) coinGP.value = h.coins.gp || 0;
       if (coinPP) coinPP.value = h.coins.pp || 0;
     }
-    document.getElementById("handoutModalTitle").textContent = "Edit Handout";
+    const handoutTitleEl = document.getElementById("handoutModalTitle");
+    if (handoutTitleEl) handoutTitleEl.textContent = "Edit Handout";
   } else {
     if (hiddenId) hiddenId.value = "";
     if (typeSelect) typeSelect.value = preselectedType || "weapon";
     if (recipientSelect) recipientSelect.value = "all";
     if (titleInput) titleInput.value = "";
     if (authorInput) authorInput.value = "";
-    if (dateInput) dateInput.value = "";
     if (imageInput) imageInput.value = "";
     if (contentInput) contentInput.value = "";
 
@@ -8833,7 +9469,6 @@ function openHandoutEditor(handoutId = null) {
     if (wpnDmgInput) wpnDmgInput.value = "";
     if (wpnTypeInput) wpnTypeInput.value = "";
     if (wpnNotesInput) wpnNotesInput.value = "";
-    if (wpnWeightInput) wpnWeightInput.value = 0;
 
     if (itemNameInput) itemNameInput.value = "";
     if (itemQtyInput) itemQtyInput.value = 1;
@@ -8845,7 +9480,8 @@ function openHandoutEditor(handoutId = null) {
     if (coinGP) coinGP.value = 0;
     if (coinPP) coinPP.value = 0;
 
-    document.getElementById("handoutModalTitle").textContent = "New Handout / Reward";
+    const handoutTitleEl = document.getElementById("handoutModalTitle");
+    if (handoutTitleEl) handoutTitleEl.textContent = "New Handout / Reward";
   }
 
   const filterInput = document.getElementById("quickWeaponFilterInput");
@@ -8918,7 +9554,7 @@ function saveHandoutFromForm(isDraft = false) {
   } else {
     title = document.getElementById("handoutFormTitle")?.value.trim() || "Untitled Handout";
     author = document.getElementById("handoutFormAuthor")?.value.trim() || "";
-    date = document.getElementById("handoutFormDate")?.value.trim() || "";
+    date = "";
     imageUrl = document.getElementById("handoutFormImageUrl")?.value.trim() || "";
     maxClaims = 1;
   }
@@ -8934,7 +9570,7 @@ function saveHandoutFromForm(isDraft = false) {
     claimedBy: [],
     claimedCount: 0,
     maxClaims,
-    author: author || (isDM ? "Dungeon Master" : (document.getElementById("charName")?.value?.trim() || "Adventurer")),
+    author: author || (isDM ? "Dungeon Master" : (getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer")),
     authorUid: auth?.currentUser?.uid || "anon",
     date: date || new Date().toLocaleDateString(),
     imageUrl,
@@ -9017,7 +9653,7 @@ async function claimHandoutWeapon(handoutId) {
 
   // 4. Update claim counts on shared handout in Firestore
   const activeRoom = connectedCampaignRoom || activeDMRoomCode;
-  const myIdentifier = activeCharId || document.getElementById("charName")?.value?.trim() || "Adventurer";
+  const myIdentifier = activeCharId || getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer";
   const nextClaimedBy = Array.isArray(h.claimedBy) ? [...h.claimedBy] : [];
   if (!nextClaimedBy.includes(myIdentifier)) nextClaimedBy.push(myIdentifier);
   const nextClaimedCount = (parseInt(h.claimedCount, 10) || 0) + 1;
@@ -9115,7 +9751,7 @@ async function claimHandoutItem(handoutId, qtyToClaim = 1) {
 
   // Update claim counts on shared handout
   const activeRoom = connectedCampaignRoom || activeDMRoomCode;
-  const myIdentifier = activeCharId || document.getElementById("charName")?.value?.trim() || "Adventurer";
+  const myIdentifier = activeCharId || getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer";
   const nextClaimedBy = Array.isArray(h.claimedBy) ? [...h.claimedBy] : [];
   if (!nextClaimedBy.includes(myIdentifier)) nextClaimedBy.push(myIdentifier);
   const nextClaimedCount = currentClaimed + countClaimed;
@@ -9196,7 +9832,7 @@ async function claimHandoutCoins(handoutId) {
   myClaimedHandoutIds.push(handoutId);
 
   const activeRoom = connectedCampaignRoom || activeDMRoomCode;
-  const myIdentifier = activeCharId || document.getElementById("charName")?.value?.trim() || "Adventurer";
+  const myIdentifier = activeCharId || getPlainTextFieldValue(document.getElementById("charName")) || "Adventurer";
   const nextClaimedBy = Array.isArray(h.claimedBy) ? [...h.claimedBy] : [];
   if (!nextClaimedBy.includes(myIdentifier)) nextClaimedBy.push(myIdentifier);
   const nextClaimedCount = (parseInt(h.claimedCount, 10) || 0) + 1;
@@ -9404,14 +10040,6 @@ function initPWAAndNetworkStatus() {
   document.getElementById("floatingChatForm")?.addEventListener("submit", (e) => {
     e.preventDefault();
     const input = document.getElementById("floatingChatInput");
-    if (!input || !input.value.trim()) return;
-    sendPartyChatMessage(input.value.trim());
-    input.value = "";
-  });
-
-  document.getElementById("partyModalChatForm")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const input = document.getElementById("partyModalChatInput");
     if (!input || !input.value.trim()) return;
     sendPartyChatMessage(input.value.trim());
     input.value = "";
@@ -9670,7 +10298,7 @@ async function sendSessionHeartbeat(force = false) {
   try {
     const user = auth?.currentUser || currentUser;
     const email = (user && !user.isAnonymous && user.email) ? user.email.trim() : "";
-    const charName = document.getElementById("charName")?.value?.trim() || "";
+    const charName = getPlainTextFieldValue(document.getElementById("charName"));
     const activeRoom = connectedCampaignRoom || activeDMRoomCode || "";
     const role = activeDMRoomCode ? "Dungeon Master" : (connectedCampaignRoom ? "Player" : "Stand-alone");
 
@@ -9691,6 +10319,8 @@ async function sendSessionHeartbeat(force = false) {
   }
 }
 
+let sessionPresenceInitialized = false;
+
 function initSessionPresence() {
   sendSessionHeartbeat(true);
 
@@ -9699,6 +10329,9 @@ function initSessionPresence() {
       sendSessionHeartbeat();
     }, 28000);
   }
+
+  if (sessionPresenceInitialized) return;
+  sessionPresenceInitialized = true;
 
   // Trigger heartbeat when user returns to tab
   document.addEventListener("visibilitychange", () => {
@@ -11299,14 +11932,38 @@ let mapActiveMeasure = null; // { x1, y1, x2, y2 }
 let mapPings = []; // [{ x, y, color, startTime }]
 let mapAnimFrameId = null;
 let mapImageCache = {};
+const MAX_MAP_IMAGE_CACHE = 40;
 let mapAutosaveTimer = null;
 let mapFirestoreUnsubscribe = null;
 
+function clearMapImageCache() {
+  mapImageCache = {};
+}
+
+function getOrLoadMapImage(src) {
+  if (!src) return null;
+  const cached = mapImageCache[src];
+  if (cached) {
+    return cached.complete && cached.naturalWidth > 0 ? cached : null;
+  }
+
+  const keys = Object.keys(mapImageCache);
+  if (keys.length >= MAX_MAP_IMAGE_CACHE) {
+    delete mapImageCache[keys[0]];
+  }
+
+  const img = new Image();
+  img.onload = () => resizeAndRenderOwlbearCanvas();
+  img.onerror = () => {
+    if (mapImageCache[src] === img) delete mapImageCache[src];
+  };
+  img.src = src;
+  mapImageCache[src] = img;
+  return null;
+}
+
 // Player Color (Used for pointer ping, ruler & notes)
 let mapPlayerColor = localStorage.getItem(MAP_PLAYER_COLOR_KEY) || "#d4af37";
-
-// Dice Tray State
-let mapDiceTrayRolls = [];
 
 // Token Drawer Filter & Search State
 let mapTokenCatFilter = "all";
@@ -11418,6 +12075,7 @@ function deleteSavedMap(roomId) {
   if (activeMapRoomId === roomId) {
     showMapLobbyView();
   } else {
+    clearMapImageCache();
     renderSavedMapsGrid();
   }
   showStatus(`Map ${roomId} deleted.`);
@@ -11529,6 +12187,7 @@ function showMapLobbyView() {
   // Close all popovers and drawers
   closeAllMapPopovers();
   closeMapDrawer();
+  clearMapImageCache();
 
   activeMapRoomId = null;
   renderSavedMapsGrid();
@@ -12039,15 +12698,10 @@ function renderOwlbearCanvas() {
 function drawMapSceneBackground(ctx, state, width, height) {
   // If custom map image is provided
   if (state.customMapUrl) {
-    const cached = mapImageCache[state.customMapUrl];
-    if (cached && cached.complete && cached.naturalWidth > 0) {
-      ctx.drawImage(cached, 0, 0, width, height);
+    const cachedImg = getOrLoadMapImage(state.customMapUrl);
+    if (cachedImg) {
+      ctx.drawImage(cachedImg, 0, 0, width, height);
       return;
-    } else if (!cached) {
-      const img = new Image();
-      img.onload = () => resizeAndRenderOwlbearCanvas();
-      img.src = state.customMapUrl;
-      mapImageCache[state.customMapUrl] = img;
     }
   }
 
@@ -12567,19 +13221,14 @@ function drawMapTokens(ctx, state) {
 
     // Custom Token Image or Icon
     if (token.img) {
-      const cached = mapImageCache[token.img];
-      if (cached && cached.complete && cached.naturalWidth > 0) {
+      const cachedImg = getOrLoadMapImage(token.img);
+      if (cachedImg) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(0, 0, radius - 2, 0, Math.PI * 2);
         ctx.clip();
-        ctx.drawImage(cached, -radius, -radius, size, size);
+        ctx.drawImage(cachedImg, -radius, -radius, size, size);
         ctx.restore();
-      } else if (!cached) {
-        const img = new Image();
-        img.onload = () => resizeAndRenderOwlbearCanvas();
-        img.src = token.img;
-        mapImageCache[token.img] = img;
       }
     } else {
       // Draw Crisp Monogram Badge (No Emojis)
@@ -13981,12 +14630,10 @@ function openMapDrawer(tabName) {
   // Switch pane
   const paneMaps = document.getElementById("vttDrawerPaneMaps");
   const paneTokens = document.getElementById("vttDrawerPaneTokens");
-  const paneDice = document.getElementById("vttDrawerPaneDice");
   const paneInit = document.getElementById("vttDrawerPaneInit");
 
   if (paneMaps) paneMaps.style.display = tabName === "maps" ? "flex" : "none";
   if (paneTokens) paneTokens.style.display = tabName === "tokens" ? "flex" : "none";
-  if (paneDice) paneDice.style.display = tabName === "dice" ? "flex" : "none";
   if (paneInit) paneInit.style.display = tabName === "init" ? "flex" : "none";
 
   if (tabName === "tokens") renderMapPresetTokensGrid(mapTokenCatFilter, mapTokenSearchQuery);
@@ -14271,28 +14918,6 @@ function initMapBottomDrawersListeners() {
     }
   });
 
-  // Dice Tray Listeners
-  document.querySelectorAll("#mapDiceRack .map-die-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const sides = parseInt(btn.dataset.mapDie, 10);
-      if (sides) rollMapDie(sides);
-    });
-  });
-
-  document.getElementById("mapDiceRerollBtn")?.addEventListener("click", () => {
-    if (mapDiceTrayRolls.length === 0) return;
-    mapDiceTrayRolls = mapDiceTrayRolls.map(r => ({
-      ...r,
-      value: Math.floor(Math.random() * r.sides) + 1
-    }));
-    renderMapDiceTray();
-  });
-
-  document.getElementById("mapDiceClearBtn")?.addEventListener("click", () => {
-    mapDiceTrayRolls = [];
-    renderMapDiceTray();
-  });
-
   // Initiative Tracker Listeners
   document.getElementById("mapInitNextTurnBtn")?.addEventListener("click", () => {
     if (!activeMapState || !activeMapState.initiative || activeMapState.initiative.length === 0) return;
@@ -14435,60 +15060,6 @@ function updateMapActiveTokensList() {
 
     list.appendChild(row);
   });
-}
-
-function rollMapDie(sides) {
-  const val = Math.floor(Math.random() * sides) + 1;
-  const rollObj = {
-    id: "die_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
-    sides: sides,
-    value: val,
-    color: sides === 20 ? "#ef4444" : sides === 100 ? "#8b5cf6" : "#d4af37"
-  };
-  mapDiceTrayRolls.push(rollObj);
-  renderMapDiceTray();
-}
-
-function renderMapDiceTray() {
-  const arena = document.getElementById("mapDiceVisualList");
-  const totalBar = document.getElementById("mapDiceTotalBar");
-  const breakdown = document.getElementById("mapDiceBreakdownText");
-  const totalVal = document.getElementById("mapDiceTotalValue");
-  if (!arena) return;
-
-  arena.innerHTML = "";
-
-  if (mapDiceTrayRolls.length === 0) {
-    arena.innerHTML = '<span class="map-dice-empty-hint">Click any die above to roll</span>';
-    if (totalBar) totalBar.style.display = "none";
-    return;
-  }
-
-  let sum = 0;
-  const counts = {};
-
-  mapDiceTrayRolls.forEach(die => {
-    sum += die.value;
-    counts[die.sides] = (counts[die.sides] || 0) + 1;
-
-    const el = document.createElement("div");
-    el.className = "map-tray-die-pill";
-    el.style.borderColor = die.color;
-    el.innerHTML = `
-      <span class="map-tray-die-sides">d${die.sides}</span>
-      <strong class="map-tray-die-val">${die.value}</strong>
-    `;
-    arena.appendChild(el);
-  });
-
-  if (totalBar) {
-    totalBar.style.display = "flex";
-    if (totalVal) totalVal.textContent = sum;
-    if (breakdown) {
-      const parts = Object.entries(counts).map(([s, cnt]) => `${cnt}d${s}`);
-      breakdown.textContent = parts.join(" + ");
-    }
-  }
 }
 
 function renderMapInitiativeList() {

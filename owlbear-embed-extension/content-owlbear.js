@@ -168,6 +168,11 @@
   }
 
   window.addEventListener("message", (ev) => {
+    if (ev.source !== window && ev.source !== window.parent) return;
+    const allowedOrigin = ev.origin === window.location.origin ||
+      ev.origin === "https://melin08.github.io" ||
+      /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(ev.origin);
+    if (!allowedOrigin) return;
     if (ev.data && ev.data.type === "OBR_REMOTE_INPUT") {
       dispatchRemoteInput(ev.data);
     }
