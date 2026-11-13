@@ -451,6 +451,7 @@ h1, h2, h3, h4, h5, h6,
 
 .journal-box,
 textarea.block-text,
+.block-text.rich-text-editor,
 .trait-desc-input,
 .spell-custom-desc-textarea {
   font-family: var(--font-narrative) !important;
@@ -3748,6 +3749,28 @@ input[type="number"].attr-input:focus,
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
+  cursor: text;
+}
+.spell-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0.18rem 0.3rem;
+  border-radius: 4px;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.spell-drag-handle:hover {
+  color: var(--accent-gold);
+  background: var(--bg-hover);
+}
+.spell-drag-handle:active {
+  cursor: grabbing;
 }
 .trait-card-delete, .spell-card-delete {
   width: 24px;
@@ -4022,7 +4045,8 @@ input[type="number"].attr-input:focus,
   border-radius: 6px;
   padding: 0.3rem 0.5rem;
 }
-textarea.block-text {
+textarea.block-text,
+.block-text.rich-text-editor {
   width: 100% !important;
   padding: 0.85rem !important;
   font-size: 0.88rem !important;
@@ -4033,7 +4057,8 @@ textarea.block-text {
   border-radius: var(--radius-sm) !important;
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5) !important;
 }
-body.theme-parchment textarea.block-text {
+body.theme-parchment textarea.block-text,
+body.theme-parchment .block-text.rich-text-editor {
   background: var(--bg-input) !important;
   color: var(--text-main) !important;
   border-left: 3px solid var(--accent-gold) !important;
@@ -10145,3 +10170,75 @@ body.owlbear-theater-active .map-vtt-shell {
 }
 .conc-check-roll-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
 .conc-check-roll-btn:disabled { cursor: default; opacity: 0.6; transform: none; }
+
+/* ==========================================================================
+   RICH TEXT EDITORS & TEXT SIZE TOGGLE
+   ========================================================================== */
+.rich-text-editor {
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  color: var(--text-main);
+  cursor: text;
+  outline: none;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  resize: vertical;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.rich-text-editor:hover {
+  border-color: var(--border-medium);
+}
+.rich-text-editor:focus {
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 2px var(--glow-1);
+}
+.rich-text-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.rich-text-editor strong,
+.rich-text-editor b {
+  font-weight: 700;
+}
+.rich-text-editor em,
+.rich-text-editor i {
+  font-style: italic;
+}
+.rich-text-editor[data-rows="4"] { min-height: 6.5rem; }
+.rich-text-editor[data-rows="10"] { min-height: 14rem; }
+.rich-text-editor[data-rows="12"] { min-height: 16.5rem; }
+.rich-text-editor[data-rows="14"] { min-height: 19rem; }
+.rich-text-editor[data-rows="18"] { min-height: 24rem; }
+
+.text-size-toggle-btn {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--border-medium);
+  color: var(--text-muted);
+  background: var(--bg-input);
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-xs);
+  transition: all var(--transition-fast);
+}
+.text-size-toggle-btn:hover {
+  color: var(--text-main);
+  border-color: var(--border-active);
+  background: var(--bg-hover);
+}
+.text-size-toggle-btn.active {
+  color: var(--primary-fg);
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+}
+
+body.large-note-text .journal-box,
+body.large-note-text .block-text,
+body.large-note-text .trait-desc-input,
+body.large-note-text .spell-custom-desc-textarea {
+  font-size: 1.15rem !important;
+  line-height: 1.75 !important;
+}

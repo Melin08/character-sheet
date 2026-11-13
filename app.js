@@ -405,6 +405,108 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;");
 }
 
+const LARGE_TEXT_STORAGE_KEY = "codex_large_note_text_v1";
+
+function sanitizeRichTextHtml(raw) {
+  if (raw === null || raw === undefined) return "";
+  const tpl = document.createElement("template");
+  tpl.innerHTML = String(raw);
+
+  const cleanNode = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return escapeHtml(node.textContent || "");
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return "";
+    const tag = node.tagName.toLowerCase();
+    const inner = Array.from(node.childNodes).map(cleanNode).join("");
+    if (tag === "br") return "<br>";
+    if (tag === "b" || tag === "strong") return inner ? `<strong>${inner}</strong>` : "";
+    if (tag === "i" || tag === "em") return inner ? `<em>${inner}</em>` : "";
+    if (tag === "p" || tag === "div") return inner ? `<div>${inner}</div>` : "<br>";
+    return inner;
+  };
+
+  let cleaned = Array.from(tpl.content.childNodes).map(cleanNode).join("");
+  cleaned = cleaned.replace(/^(<br>)+|(<br>)+$/g, (m) => (m === "<br>" ? "" : m));
+  // Collapse empty editor artifacts like "<br>" alone
+  if (cleaned === "<br>" || cleaned === "<div><br></div>") return "";
+  return cleaned;
+}
+
+function formatRichTextForDisplay(raw) {
+  if (raw === null || raw === undefined) return "";
+  const str = String(raw);
+  if (!str) return "";
+  if (/<\/?(strong|b|em|i|br|p|div)\b/i.test(str)) {
+    return sanitizeRichTextHtml(str);
+  }
+  return escapeHtml(str).replace(/\r?\n/g, "<br>");
+}
+
+function getFieldInputValue(el) {
+  if (!el) return "";
+  if (el.dataset && el.dataset.richEditor === "true") {
+    return sanitizeRichTextHtml(el.innerHTML);
+  }
+  return el.value;
+}
+
+function setFieldInputValue(el, val) {
+  if (!el) return;
+  if (el.dataset && el.dataset.richEditor === "true") {
+    el.innerHTML = formatRichTextForDisplay(val);
+  } else {
+    el.value = val ?? "";
+  }
+}
+
+function applyLargeTextPreference(isLarge) {
+  document.body.classList.toggle("large-note-text", !!isLarge);
+  const btn = document.getElementById("textSizeToggleBtn");
+  if (btn) {
+    btn.classList.toggle("active", !!isLarge);
+    btn.setAttribute("aria-pressed", isLarge ? "true" : "false");
+    btn.textContent = isLarge ? "Aa-" : "Aa+";
+  }
+  try {
+    localStorage.setItem(LARGE_TEXT_STORAGE_KEY, isLarge ? "true" : "false");
+  } catch (e) {}
+}
+
+(function initRichTextAndSizeControls() {
+  try {
+    applyLargeTextPreference(localStorage.getItem(LARGE_TEXT_STORAGE_KEY) === "true");
+  } catch (e) {}
+
+  document.addEventListener("click", (e) => {
+    const toggleBtn = e.target.closest?.("#textSizeToggleBtn");
+    if (toggleBtn) {
+      const next = !document.body.classList.contains("large-note-text");
+      applyLargeTextPreference(next);
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    const editor = e.target.closest?.('[data-rich-editor="true"]');
+    if (!editor) return;
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const key = e.key.toLowerCase();
+    if (key === "b" || key === "i") {
+      e.preventDefault();
+      document.execCommand(key === "b" ? "bold" : "italic", false, null);
+      editor.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  });
+
+  document.addEventListener("paste", (e) => {
+    const editor = e.target.closest?.('[data-rich-editor="true"]');
+    if (!editor) return;
+    e.preventDefault();
+    const text = e.clipboardData?.getData("text/plain") || "";
+    document.execCommand("insertText", false, text);
+  });
+})();
+
 let toastTimer = null;
 function showStatus(text) {
   const toast = document.getElementById("saveToast");
@@ -1465,7 +1567,7 @@ function renderCompanions() {
           <input type="text" class="companion-field" data-prop="speed" value="${escapeHtml(comp.speed || "30 ft.")}" placeholder="30 ft., fly 60 ft." />
         </div>
       </div>
-      <textarea class="trait-desc-input companion-field" data-prop="notes" placeholder="STR 10 DEX 14 CON 12... Attacks, Keen Senses, Flyby, Pack Tactics...">${escapeHtml(comp.notes || "")}</textarea>
+      <div class="trait-desc-input companion-field rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-prop="notes" data-placeholder="STR 10 DEX 14 CON 12... Attacks, Keen Senses, Flyby, Pack Tactics...">${formatRichTextForDisplay(comp.notes || "")}</div>
     </div>
   `).join("");
 }
@@ -1507,7 +1609,7 @@ function renderMyTraits() {
         <div class="trait-type-wrap">
           <input type="text" class="trait-type-input custom-trait-field" data-prop="type" value="${escapeHtml(trait.type || "FEATURE")}" placeholder="Category (e.g. Class Feature, Feat)" />
         </div>
-        <textarea class="trait-desc-input custom-trait-field" data-prop="desc" placeholder="Ability description and rules...">${escapeHtml(trait.desc || "")}</textarea>
+        <div class="trait-desc-input custom-trait-field rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-prop="desc" data-placeholder="Ability description and rules...">${formatRichTextForDisplay(trait.desc || "")}</div>
         <div class="trait-card-footer">
           <button type="button" class="trait-expand-btn">
             ${isExpanded ? "Collapse" : "Expand"}
@@ -1559,9 +1661,9 @@ function renderMySpells() {
     const hiddenStyle = (matchesLvl && matchesSearch) ? "" : "display: none;";
 
     return `
-      <div class="spell-card ${isExpanded ? "expanded" : ""}" draggable="true" data-index="${idx}" style="${hiddenStyle}">
+      <div class="spell-card ${isExpanded ? "expanded" : ""}" draggable="false" data-index="${idx}" style="${hiddenStyle}">
         <div class="spell-card-header">
-          <span class="spell-drag-handle" title="Drag to reorder">&vellip;&vellip;</span>
+          <span class="spell-drag-handle" title="Drag to reorder" aria-label="Drag to reorder">&#8942;&#8942;</span>
           <input type="text" class="spell-custom-title-input custom-spell-field" data-prop="name" value="${escapeHtml(sName)}" placeholder="Spell Name" />
           <div class="spell-card-actions">
             <button type="button" class="spell-conc-btn ${isConcentrating ? "active" : ""}" data-spell-name="${escapeHtml(sName)}" title="Set as active concentration spell">
@@ -1584,7 +1686,7 @@ function renderMySpells() {
             <input type="text" class="spell-meta-input custom-spell-field center" data-prop="duration" value="${escapeHtml(spell.duration || "")}" placeholder="Instant" />
           </div>
         </div>
-        <textarea class="spell-custom-desc-textarea custom-spell-field" data-prop="desc" placeholder="Spell description and effects...">${escapeHtml(descVal)}</textarea>
+        <div class="spell-custom-desc-textarea custom-spell-field rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-prop="desc" data-placeholder="Spell description and effects...">${formatRichTextForDisplay(descVal)}</div>
         <div class="trait-card-footer">
           <button type="button" class="spell-expand-btn">
             ${isExpanded ? "Collapse" : "Expand"}
@@ -1599,14 +1701,37 @@ function renderMySpells() {
 }
 
 function attachSpellDragEvents() {
-  const container = document.getElementById("mySpellsList");
+  const container = document.getElementById("spellsList");
   if (!container || container.dataset.dragDelegated === "true") return;
   container.dataset.dragDelegated = "true";
+
+  const clearCardDraggables = () => {
+    container.querySelectorAll('.spell-card[draggable="true"]').forEach((c) => {
+      c.setAttribute("draggable", "false");
+    });
+  };
+
+  container.addEventListener("pointerdown", (e) => {
+    const card = e.target.closest(".spell-card");
+    if (!card || !container.contains(card)) return;
+    if (e.target.closest(".spell-drag-handle")) {
+      card.setAttribute("draggable", "true");
+    } else {
+      card.setAttribute("draggable", "false");
+    }
+  });
+
+  container.addEventListener("pointerup", clearCardDraggables);
+  document.addEventListener("pointerup", clearCardDraggables);
 
   container.addEventListener("dragstart", (e) => {
     const card = e.target.closest(".spell-card");
     if (!card || !container.contains(card)) return;
-    if (["INPUT", "TEXTAREA", "BUTTON"].includes(e.target.tagName)) {
+    if (
+      card.getAttribute("draggable") !== "true" ||
+      ["INPUT", "TEXTAREA", "BUTTON"].includes(e.target.tagName) ||
+      e.target.closest?.('[data-rich-editor="true"]')
+    ) {
       e.preventDefault();
       return;
     }
@@ -1617,7 +1742,10 @@ function attachSpellDragEvents() {
 
   container.addEventListener("dragend", (e) => {
     const card = e.target.closest(".spell-card");
-    if (card) card.style.opacity = "1";
+    if (card) {
+      card.style.opacity = "1";
+      card.setAttribute("draggable", "false");
+    }
     container.querySelectorAll(".spell-card").forEach((c) => c.classList.remove("drag-over"));
     draggedSpellIndex = null;
   });
@@ -2037,7 +2165,7 @@ function getCurrentSheetData() {
   const fields = {};
   document.querySelectorAll(".save-field").forEach((field) => {
     if (field.id) {
-      fields[field.id] = field.type === "checkbox" ? field.checked : field.value;
+      fields[field.id] = field.type === "checkbox" ? field.checked : getFieldInputValue(field);
     }
   });
   return fields;
@@ -2099,7 +2227,7 @@ function resetSaveFieldsToDefaults() {
       field.id === "tempHp" ||
       field.id === "initBonusMod"
     ) field.value = 0;
-    else field.value = "";
+    else setFieldInputValue(field, "");
   });
 }
 
@@ -2123,7 +2251,7 @@ function applyCharacterData(charData) {
     const el = document.getElementById(id);
     if (el) {
       if (el.type === "checkbox") el.checked = !!fields[id];
-      else el.value = fields[id] ?? "";
+      else setFieldInputValue(el, fields[id] ?? "");
     }
   });
 
@@ -6541,10 +6669,11 @@ document.addEventListener("input", (e) => {
     if (card) {
       const idx = parseInt(card.dataset.index, 10);
       if (myCharacterSpells[idx]) {
-        myCharacterSpells[idx][e.target.dataset.prop] = e.target.value;
+        const val = getFieldInputValue(e.target);
+        myCharacterSpells[idx][e.target.dataset.prop] = val;
         if (e.target.dataset.prop === "name") {
           const concBtn = card.querySelector(".spell-conc-btn");
-          if (concBtn) concBtn.dataset.spellName = e.target.value;
+          if (concBtn) concBtn.dataset.spellName = val;
         }
         saveSheet(true);
       }
@@ -6556,7 +6685,7 @@ document.addEventListener("input", (e) => {
     if (card) {
       const idx = parseInt(card.dataset.index, 10);
       if (myCharacterTraits[idx]) {
-        myCharacterTraits[idx][e.target.dataset.prop] = e.target.value;
+        myCharacterTraits[idx][e.target.dataset.prop] = getFieldInputValue(e.target);
         saveSheet(true);
       }
     }
@@ -6603,7 +6732,7 @@ document.addEventListener("input", (e) => {
     if (card) {
       const idx = parseInt(card.dataset.index, 10);
       if (myCompanions[idx]) {
-        myCompanions[idx][e.target.dataset.prop] = e.target.value;
+        myCompanions[idx][e.target.dataset.prop] = getFieldInputValue(e.target);
         saveSheet(true);
       }
     }

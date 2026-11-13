@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=MedievalSharp&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=95" />
+  <link rel="stylesheet" href="style.css?v=96" />
 </head>
 <body id="top" class="theme-nexus">
 
@@ -161,6 +161,8 @@
             <span class="live-beacon-dot" id="headerPartyDot"></span>
             <span id="headerPartyBtnText">Party</span>
           </button>
+
+          <button type="button" class="btn btn-ghost btn-xs text-size-toggle-btn" id="textSizeToggleBtn" title="Toggle larger text for notes and descriptions" aria-pressed="false">Aa+</button>
 
           <div class="theme-selector-wrapper" id="themeDropdownWrapper" title="Switch Theme">
             <button type="button" class="theme-trigger-btn" id="themeDropdownBtn" aria-haspopup="true" aria-expanded="false" title="Switch Theme">
@@ -1430,7 +1432,7 @@
         <div class="two-col-layout">
           <div>
             <h2 class="section-title">Proficiencies, Languages &amp; Boons</h2>
-            <textarea id="otherProfs" class="save-field block-text" rows="12" placeholder="Armor, weapons, tools, languages, resistances..."></textarea>
+            <div id="otherProfs" class="save-field block-text rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-rows="12" data-placeholder="Armor, weapons, tools, languages, resistances..."></div>
           </div>
           <div>
             <div class="pane-header flex-header">
@@ -1440,7 +1442,7 @@
             <div id="structuredInventoryList" class="structured-inv-list"></div>
 
             <label for="inventory" class="subsection-title" style="display:block; margin: 0.75rem 0 0.4rem 0;">Additional Gear &amp; Notes</label>
-            <textarea id="inventory" class="save-field block-text journal-box" rows="10" placeholder="Loot, magic items, containers, potions..."></textarea>
+            <div id="inventory" class="save-field block-text journal-box rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-rows="10" data-placeholder="Loot, magic items, containers, potions..."></div>
           </div>
         </div>
       </div>
@@ -1473,18 +1475,18 @@
 
         <div id="sub-notes" class="subtab-page active">
           <h2 class="section-title">Campaign Log &amp; Session Notes</h2>
-          <textarea id="campaignNotes" class="save-field block-text journal-box" rows="18" placeholder="Session notes, clues, locations..."></textarea>
+          <div id="campaignNotes" class="save-field block-text journal-box rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-rows="18" data-placeholder="Session notes, clues, locations..."></div>
         </div>
 
         <div id="sub-quests" class="subtab-page">
           <div class="two-col-layout">
             <div>
               <h2 class="section-title">Active Quests &amp; Objectives</h2>
-              <textarea id="activeQuestsNotes" class="save-field block-text journal-box" rows="14" placeholder="Main quests, bounties, personal goals..."></textarea>
+              <div id="activeQuestsNotes" class="save-field block-text journal-box rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-rows="14" data-placeholder="Main quests, bounties, personal goals..."></div>
             </div>
             <div>
               <h2 class="section-title">Completed Quests &amp; Rumors</h2>
-              <textarea id="completedQuestsNotes" class="save-field block-text journal-box" rows="14" placeholder="Resolved quests, world lore..."></textarea>
+              <div id="completedQuestsNotes" class="save-field block-text journal-box rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-rows="14" data-placeholder="Resolved quests, world lore..."></div>
             </div>
           </div>
         </div>
@@ -1493,27 +1495,27 @@
           <div class="two-col-layout">
             <div>
               <h2 class="section-title">Personality Traits</h2>
-              <textarea id="traits" class="save-field block-text" rows="4"></textarea>
+              <div id="traits" class="save-field block-text rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-rows="4"></div>
 
               <h2 class="section-title">Ideals</h2>
-              <textarea id="ideals" class="save-field block-text" rows="4"></textarea>
+              <div id="ideals" class="save-field block-text rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-rows="4"></div>
             </div>
             <div>
               <h2 class="section-title">Bonds</h2>
-              <textarea id="bonds" class="save-field block-text" rows="4"></textarea>
+              <div id="bonds" class="save-field block-text rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-rows="4"></div>
 
               <h2 class="section-title">Flaws</h2>
-              <textarea id="flaws" class="save-field block-text" rows="4"></textarea>
+              <div id="flaws" class="save-field block-text rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-rows="4"></div>
             </div>
           </div>
 
           <h2 class="section-title">Character Appearance &amp; Backstory</h2>
-          <textarea id="backstory" class="save-field block-text journal-box" rows="10" placeholder="Origin, physical description, key life events..."></textarea>
+          <div id="backstory" class="save-field block-text journal-box rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-rows="10" data-placeholder="Origin, physical description, key life events..."></div>
         </div>
 
         <div id="sub-npcs" class="subtab-page">
           <h2 class="section-title">NPCs, Factions &amp; Contacts</h2>
-          <textarea id="npcList" class="save-field block-text journal-box" rows="18" placeholder="Names, affiliations, attitudes, locations..."></textarea>
+          <div id="npcList" class="save-field block-text journal-box rich-text-editor" contenteditable="true" role="textbox" aria-multiline="true" data-rich-editor="true" data-rows="18" data-placeholder="Names, affiliations, attitudes, locations..."></div>
         </div>
 
         <div id="sub-handouts" class="subtab-page">
@@ -3444,6 +3446,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="app.js?v=95"></script>
+  <script src="app.js?v=96"></script>
 </body>
 </html>
